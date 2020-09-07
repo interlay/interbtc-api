@@ -1,0 +1,7 @@
+.cache
+.idea/*
+build
+node_modules
+src/**.js
+*.log
+yarn.lock
