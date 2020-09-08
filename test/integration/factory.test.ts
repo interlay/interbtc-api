@@ -7,5 +7,6 @@ describe("createAPI", () => {
     it("should connect to parachain", async () => {
         const api = await createAPI(defaultEndpoint).then((api) => api.isReady);
         assert.isTrue(api.isConnected);
+        await api.disconnect();
     });
 });
