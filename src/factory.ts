@@ -1,10 +1,18 @@
 import { ApiPromise } from "@polkadot/api";
 import { WsProvider, HttpProvider } from "@polkadot/rpc-provider";
 import { ProviderInterface } from "@polkadot/rpc-provider/types";
+import { TypeRegistry } from "@polkadot/types";
+import { RegistryTypes } from "@polkadot/types/types";
+
+import Mock from "./mock";
 
 import * as definitions from "./interfaces/definitions";
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
+    if (endpoint === "mock") {
+        const registry = new TypeRegistry();
+        return new Mock(registry);
+    }
     if (/https?:\/\//.exec(endpoint)) {
         return new HttpProvider(endpoint);
     }
@@ -16,6 +24,10 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
 
 export function createAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
-    const types = Object.values(definitions).reduce((res, { types }) => ({ ...res, ...types }), {});
+    const types = getAPITypes();
     return ApiPromise.create({ provider, types });
+}
+
+export function getAPITypes(): RegistryTypes {
+    return Object.values(definitions).reduce((res, { types }) => ({ ...res, ...types }), {});
 }

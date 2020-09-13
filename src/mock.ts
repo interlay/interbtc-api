@@ -1,0 +1,243 @@
+// Copyright 2017-2020 @polkadot/rpc-provider authors & contributors
+// This software may be modified and distributed under the terms
+// of the Apache-2.0 license. See the LICENSE file for details.
+
+/* eslint-disable camelcase */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { Header } from "@polkadot/types/interfaces";
+import { Codec, Registry } from "@polkadot/types/types";
+import { ProviderInterface, ProviderInterfaceEmitted, ProviderInterfaceEmitCb } from "@polkadot/rpc-provider/types";
+import { MockStateSubscriptions, MockStateSubscriptionCallback, MockStateDb } from "@polkadot/rpc-provider/mock/types";
+
+import BN from "bn.js";
+import EventEmitter from "eventemitter3";
+import Metadata from "@polkadot/metadata/Decorated";
+import rpcMetadata from "@polkadot/metadata/Metadata/static";
+import jsonrpc from "@polkadot/types/interfaces/jsonrpc";
+import testKeyring from "@polkadot/keyring/testing";
+import { bnToU8a, logger, u8aToHex } from "@polkadot/util";
+import { randomAsU8a } from "@polkadot/util-crypto";
+
+import rpcHeader from "./json/Header.004.json";
+import rpcSignedBlock from "./json/SignedBlock.004.immortal.json";
+import rpcMethods from "./json/RpcMethods.json";
+
+const INTERVAL = 1000;
+const SUBSCRIPTIONS: string[] = Array.prototype.concat.apply(
+    [],
+    Object.values(jsonrpc).map((section): string[] =>
+        Object.values(section)
+            .filter(({ isSubscription }) => isSubscription)
+            .map(({ jsonrpc }) => jsonrpc)
+            .concat("chain_subscribeNewHead")
+    )
+) as string[];
+
+const keyring = testKeyring({ type: "ed25519" });
+const l = logger("api-mock");
+
+/**
+ * A mock provider mainly used for testing.
+ * @return {ProviderInterface} The mock provider
+ * @internal
+ */
+export default class Mock implements ProviderInterface {
+    private db: MockStateDb = {};
+
+    private emitter = new EventEmitter();
+
+    public isUpdating = true;
+
+    private registry: Registry;
+
+    private prevNumber = new BN(-1);
+
+    private requests: Record<string, (...params: any[]) => unknown> = {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars,@typescript-eslint/no-unsafe-member-access
+        chain_getBlock: (hash: string): any => this.registry.createType("SignedBlock", rpcSignedBlock.result).toJSON(),
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        chain_getBlockHash: (blockNumber: number): string => "0x1234",
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        chain_getFinalizedHead: () => this.registry.createType("Header", rpcHeader.result).hash,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        chain_getHeader: () => this.registry.createType("Header", rpcHeader.result).toJSON(),
+        rpc_methods: (): { version: number; methods: string[] } => rpcMethods.result,
+        state_getKeys: (): string[] => [],
+        state_getKeysPaged: (): string[] => [],
+        state_getMetadata: (): string => rpcMetadata,
+        state_getRuntimeVersion: (): string => this.registry.createType("RuntimeVersion").toHex(),
+        state_getStorage: (storage: MockStateDb, params: any[]): string => u8aToHex(storage[params[0] as string]),
+        system_chain: (): string => "mockChain",
+        system_name: (): string => "mockClient",
+        system_properties: (): Record<string, number | string> => ({ ss58Format: 42 }),
+        system_version: (): string => "9.8.7",
+    };
+
+    public subscriptions: MockStateSubscriptions = SUBSCRIPTIONS.reduce((subs, name): MockStateSubscriptions => {
+        subs[name] = {
+            callbacks: {},
+            lastValue: null,
+        };
+
+        return subs;
+    }, {} as MockStateSubscriptions);
+
+    private subscriptionId = 0;
+
+    private subscriptionMap: Record<number, string> = {};
+    private connected: boolean = false;
+
+    constructor(registry: Registry) {
+        this.registry = registry;
+        this.connect();
+
+        // this.init();
+    }
+
+    public get hasSubscriptions(): boolean {
+        return true;
+    }
+
+    public clone(): Mock {
+        throw new Error("Unimplemented");
+    }
+
+    public async connect(): Promise<void> {
+        this.connected = true;
+        this.emitter.emit("ready");
+    }
+
+    public async disconnect(): Promise<void> {
+        this.connected = false;
+    }
+
+    public get isConnected(): boolean {
+        return this.connected;
+    }
+
+    public on(type: ProviderInterfaceEmitted, sub: ProviderInterfaceEmitCb): () => void {
+        this.emitter.on(type, sub);
+
+        return (): void => {
+            this.emitter.removeListener(type, sub);
+        };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    public async send(method: string, params: any[]): Promise<unknown> {
+        console.log(method);
+        if (!this.requests[method]) {
+            throw new Error(`provider.send: Invalid method '${method}'`);
+        }
+
+        return this.requests[method](this.db, params);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    public async subscribe(type: string, method: string, ...params: unknown[]): Promise<number> {
+        l.debug((): any => ["subscribe", method, params]);
+
+        if (this.subscriptions[method]) {
+            const callback = params.pop() as MockStateSubscriptionCallback;
+            const id = ++this.subscriptionId;
+
+            this.subscriptions[method].callbacks[id] = callback;
+            this.subscriptionMap[id] = method;
+
+            if (this.subscriptions[method].lastValue !== null) {
+                callback(null, this.subscriptions[method].lastValue);
+            }
+
+            return id;
+        }
+
+        throw new Error(`provider.subscribe: Invalid method '${method}'`);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    public async unsubscribe(type: string, method: string, id: number): Promise<boolean> {
+        const sub = this.subscriptionMap[id];
+
+        l.debug((): any => ["unsubscribe", id, sub]);
+
+        if (!sub) {
+            throw new Error(`Unable to find subscription for ${id}`);
+        }
+
+        delete this.subscriptionMap[id];
+        delete this.subscriptions[sub].callbacks[id];
+
+        return true;
+    }
+
+    private init(): void {
+        const emitEvents: ProviderInterfaceEmitted[] = ["connected", "disconnected"];
+        let emitIndex = 0;
+        let newHead = this.makeBlockHeader();
+        let counter = -1;
+
+        const metadata = new Metadata(this.registry, rpcMetadata);
+
+        // Do something every 1 seconds
+        setInterval((): void => {
+            if (!this.isUpdating) {
+                return;
+            }
+
+            // create a new header (next block)
+            newHead = this.makeBlockHeader();
+
+            // increment the balances and nonce for each account
+            keyring.getPairs().forEach(({ publicKey }, index): void => {
+                this.setStateBn(metadata.query.system.account(publicKey), newHead.number.toBn().addn(index));
+            });
+
+            // set the timestamp for the current block
+            this.setStateBn(metadata.query.timestamp.now(), Math.floor(Date.now() / 1000));
+            this.updateSubs("chain_subscribeNewHead", newHead);
+
+            // We emit connected/disconnected at intervals
+            if (++counter % 2 === 1) {
+                if (++emitIndex === emitEvents.length) {
+                    emitIndex = 0;
+                }
+
+                this.emitter.emit(emitEvents[emitIndex]);
+            }
+        }, INTERVAL);
+    }
+
+    private makeBlockHeader(): Header {
+        const blockNumber = this.prevNumber.addn(1);
+        const header = this.registry.createType("Header", {
+            digest: {
+                logs: [],
+            },
+            extrinsicsRoot: randomAsU8a(),
+            number: blockNumber,
+            parentHash: blockNumber.isZero() ? new Uint8Array(32) : bnToU8a(this.prevNumber, 256, false),
+            stateRoot: bnToU8a(blockNumber, 256, false),
+        });
+
+        this.prevNumber = blockNumber;
+
+        return header;
+    }
+
+    private setStateBn(key: Uint8Array, value: BN | number): void {
+        this.db[u8aToHex(key)] = bnToU8a(value, 64, true);
+    }
+
+    private updateSubs(method: string, value: Codec): void {
+        this.subscriptions[method].lastValue = value;
+
+        Object.values(this.subscriptions[method].callbacks).forEach((cb): void => {
+            try {
+                cb(null, value.toJSON());
+            } catch (error) {
+                console.error(`Error on '${method}' subscription`, error);
+            }
+        });
+    }
+}

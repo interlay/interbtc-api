@@ -5,7 +5,7 @@ const defaultEndpoint = "ws://localhost:9944";
 
 describe("createAPI", () => {
     it("should connect to parachain", async () => {
-        const api = await createAPI(defaultEndpoint).then((api) => api.isReady);
+        const api = await createAPI(defaultEndpoint);
         assert.isTrue(api.isConnected);
         await api.disconnect();
     });
