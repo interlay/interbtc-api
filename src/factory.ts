@@ -1,12 +1,12 @@
 import { ApiPromise } from "@polkadot/api";
-import { WsProvider, HttpProvider } from "@polkadot/rpc-provider";
+import { HttpProvider, WsProvider } from "@polkadot/rpc-provider";
 import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { TypeRegistry } from "@polkadot/types";
 import { RegistryTypes } from "@polkadot/types/types";
-
+import * as definitions from "./interfaces/definitions";
 import Mock from "./mock";
 
-import * as definitions from "./interfaces/definitions";
+
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
     if (endpoint === "mock") {

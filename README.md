@@ -1,4 +1,4 @@
-# polkabtc
+# PolkaBTC JS
 
 JavaScript library to interact with PolkaBTC
 
@@ -16,4 +16,11 @@ Then, to run tests, run
 
 ```
 yarn test
+```
+
+Note that the parachain needs to be running for all tests to pass.
+To run only unit tests, use
+
+```
+yarn test:unit
 ```
