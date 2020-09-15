@@ -4,6 +4,7 @@ import { AccountId, Balance, BalanceOf, BlockNumber, ExtrinsicsWeight, H256, Has
 import { ApiPromise } from "@polkadot/api";
 import Vaults from "./vaults";
 import BN from "bn.js";
+import * as esplora from '@interlay/esplora-btc-api';
 
 interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
@@ -49,9 +50,15 @@ class StakedRelayerAPI {
         return await this.api.query.btcRelay.bestBlock();
     }
 
-    async getLatestBTCBlockFromBTCCore() {}
+    async getLatestBTCBlockFromBTCCore(): Promise<import("axios").AxiosResponse<number>> {
+        const basePath = "https://blockstream.info/api";
+        const blockApi = new esplora.BlockApi({basePath: basePath});
+        return await blockApi.getLastBlockHeight();
+    }
 
-    async getMonitoredVaultsCollateralizationRate() {}
+    async getMonitoredVaultsCollateralizationRate() {
+        return this.vaults.list();
+    }
 
     async getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]> {
         const lastBTCDOTExchangeRate = await this.api.query.exchangeRateOracle.exchangeRate();
