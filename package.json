@@ -23,7 +23,7 @@
     "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/polkabtc/interfaces --endpoint ./src/json/edgeware.json --output ./src/interfaces",
     "test": "run-s build test:*",
     "test:lint": "eslint src --ext .ts",
-    "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts",
+    "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts --timeout 10000",
     "test:integration": "mocha test/integration/**/*.test.ts",
     "watch:build": "tsc -p tsconfig.json -w",
     "watch:test": "mocha --watch test/**/*.test.ts"

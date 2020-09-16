@@ -1,10 +1,10 @@
 import { DOT, PolkaBTC, Vault, ActiveStakedRelayer, H256Le, StatusCode } from "@interlay/polkabtc/interfaces/default";
-import { Bytes, U256, bool, u128, u32, u64 } from '@polkadot/types/primitive';
-import { AccountId, Balance, BalanceOf, BlockNumber, ExtrinsicsWeight, H256, Hash, Moment, Releases } from '@polkadot/types/interfaces/runtime';
+import { Bytes, U256, bool, u128, u32, u64 } from "@polkadot/types/primitive";
+import { AccountId, Balance, BalanceOf, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import Vaults from "./vaults";
 import BN from "bn.js";
-import * as esplora from '@interlay/esplora-btc-api';
+import * as esplora from "@interlay/esplora-btc-api";
 
 interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
@@ -12,6 +12,7 @@ interface StakedRelayerAPI {
     getStakedDOTAmount(): Promise<DOT>;
     getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT>;
     getLatestBTCBlockFromBTCRelay(): Promise<H256Le>;
+    getLatestBTCBlockHeightFromBTCRelay(): Promise<u32>;
     getLatestBTCBlockFromBTCCore(): any;
     getMonitoredVaultsCollateralizationRate(): any;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
@@ -39,7 +40,10 @@ class StakedRelayerAPI {
         const activeStakedRelayersMappings = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
         const activeStakedRelayers: DOT[] = activeStakedRelayersMappings.map((v) => v[1].stake);
         const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
-        return activeStakedRelayers.reduce(sumReducer);
+        if(activeStakedRelayers.length) {
+            return activeStakedRelayers.reduce(sumReducer);
+        }
+        return new BN(0) as DOT;
     }
 
     async getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT> {
@@ -48,6 +52,10 @@ class StakedRelayerAPI {
 
     async getLatestBTCBlockFromBTCRelay(): Promise<H256Le> {
         return await this.api.query.btcRelay.bestBlock();
+    }
+
+    async getLatestBTCBlockHeightFromBTCRelay(): Promise<u32> {
+        return await this.api.query.btcRelay.bestBlockHeight();
     }
 
     async getLatestBTCBlockFromBTCCore(): Promise<import("axios").AxiosResponse<number>> {
@@ -63,7 +71,7 @@ class StakedRelayerAPI {
     async getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]> {
         const lastBTCDOTExchangeRate = await this.api.query.exchangeRateOracle.exchangeRate();
         const lastBTCDOTExchangeRateTime = await this.api.query.exchangeRateOracle.lastExchangeRateTime();
-        return [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime]
+        return [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime];
     }
 
     async getCurrentStateOfBTCParachain(): Promise<StatusCode> {
