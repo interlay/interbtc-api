@@ -5,6 +5,9 @@ export default {
         PolkaBTC: "Balance",
         BTCBalance: "u128",
         StatusCode: { _enum: ["Running", "Error", "Shutdown"] },
+        
+        // Silence the warnings:
+        Status: "StatusCode",
         ErrorCode: { _enum: ["None", "NoDataBTCRelay", "InvalidBTCRelay", "OracleOffline", "Liquidation"] },
         RawBlockHeader: { 0: "[u8; 80]" },
         RichBlockHeader: {
