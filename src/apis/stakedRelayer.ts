@@ -9,7 +9,8 @@ import * as esplora from "@interlay/esplora-btc-api";
 interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer>;
-    getStakedDOTAmount(): Promise<DOT>;
+    getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
+    getTotalStakedDOTAmount(): Promise<DOT>;
     getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT>;
     getLatestBTCBlockFromBTCRelay(): Promise<H256Le>;
     getLatestBTCBlockHeightFromBTCRelay(): Promise<u32>;
@@ -36,13 +37,19 @@ class StakedRelayerAPI {
         return this.api.query.stakedRelayers.activeStakedRelayers.at(activeStakedRelayerId);
     }
 
-    async getStakedDOTAmounts(): Promise<DOT[]> {
+    async getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT> {
+        const activeStakedRelayer: ActiveStakedRelayer = await this.get(activeStakedRelayerId);
+        return activeStakedRelayer.stake;
+    }
+
+    private async getStakedDOTAmounts(): Promise<DOT[]> {
         const activeStakedRelayersMappings = await this.list();
         const activeStakedRelayersStakes: DOT[] = activeStakedRelayersMappings.map(v => v.stake);
         return activeStakedRelayersStakes;
     }
 
-    async getTotalStakedDOTAmount(stakedDOTAmounts: DOT[]): Promise<DOT> {
+    async getTotalStakedDOTAmount(): Promise<DOT> {
+        const stakedDOTAmounts: DOT[] = await this.getStakedDOTAmounts();
         if(stakedDOTAmounts.length) {
             const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
             return stakedDOTAmounts.reduce(sumReducer);

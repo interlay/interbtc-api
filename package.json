@@ -33,7 +33,8 @@
   },
   "dependencies": {
     "@interlay/esplora-btc-api": "^0.1.7",
-    "@polkadot/api": "^1.32.1"
+    "@polkadot/api": "^1.32.1",
+    "sinon": "^9.0.3"
   },
   "devDependencies": {
     "@polkadot/typegen": "^1.32.1",

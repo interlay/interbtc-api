@@ -20,7 +20,7 @@ describe("issue", () => {
             return api.disconnect();
         });
 
-        it("should fail if not account is set", () => {
+        it("should fail if no account is set", () => {
             const amount = api.createType("PolkaBTC", 10);
             assert.isRejected(issue.request(amount));
         });

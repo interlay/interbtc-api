@@ -1,9 +1,11 @@
-import { DOT } from "@interlay/polkabtc/interfaces/default";
+import { DOT, ActiveStakedRelayer } from "../../../src/interfaces/default";
+import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "../../chai";
 import StakedRelayerAPI from "../../../src/apis/stakedRelayer";
 import { createAPI } from "../../../src/factory";
 import BN from "bn.js";
+const sinon = require("sinon");
 
 describe("stakedRelayerAPI", () => {
     
@@ -25,20 +27,26 @@ describe("stakedRelayerAPI", () => {
             return api.disconnect();
         });
 
-        it("should getStakedDOTAmounts", async () => {
-            const stakedDOTAmount = await stakedRelayerAPI.getStakedDOTAmounts();
-            assert.notEqual(typeof(stakedDOTAmount), undefined);
+        it("should getStakedDOTAmount", async () => {
+            const _ = sinon.stub(stakedRelayerAPI, "get").returns(
+                <ActiveStakedRelayer> { stake: new BN(100) as DOT }
+            );
+            const activeStakedRelayerId = <AccountId> {}
+            const stakedDOTAmount: DOT = await stakedRelayerAPI.getStakedDOTAmount(activeStakedRelayerId);
+            assert.equal(stakedDOTAmount.toNumber(), 100);
         });
 
         it("should compute totalStakedDOTAmount with nonzero sum", async () => {
-            const stakedDOTAmounts: DOT[] = [1 , 2, 3].map(x => numberToDOT(x));
-            const totalStakedDOTAmount: BN = await stakedRelayerAPI.getTotalStakedDOTAmount(stakedDOTAmounts);
+            const mockStakedDOTAmounts: DOT[] = [1 , 2, 3].map(x => numberToDOT(x));
+            const _ = sinon.stub(stakedRelayerAPI, "getStakedDOTAmounts").returns(mockStakedDOTAmounts);
+            const totalStakedDOTAmount: BN = await stakedRelayerAPI.getTotalStakedDOTAmount();
             assert.equal(totalStakedDOTAmount.toNumber(), 6);
         });
 
         it("should compute totalStakedDOTAmount with zero sum", async () => {
-            const stakedDOTAmounts: DOT[] = [];
-            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedDOTAmount(stakedDOTAmounts);
+            const mockStakedDOTAmounts: DOT[] = [];
+            const isLoggedInStub = sinon.stub(stakedRelayerAPI, "getStakedDOTAmounts").returns(mockStakedDOTAmounts);
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedDOTAmount();
             assert.equal(totalStakedDOTAmount.toNumber(), 0);
         });
 
