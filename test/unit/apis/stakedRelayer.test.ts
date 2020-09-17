@@ -1,13 +1,15 @@
+import { DOT } from "@interlay/polkabtc/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "../../chai";
-
 import StakedRelayerAPI from "../../../src/apis/stakedRelayer";
 import { createAPI } from "../../../src/factory";
-
+import BN from "bn.js";
 
 describe("stakedRelayerAPI", () => {
-    // FIXME: hangs although test has succeeded
-    // disconnect seems to be behaving awkwardly
+    
+    function numberToDOT(x: number): DOT {
+        return new BN(x) as DOT;
+    }
     describe.skip("request", () => {
         let api: ApiPromise;
         let stakedRelayerAPI: StakedRelayerAPI;
@@ -23,9 +25,21 @@ describe("stakedRelayerAPI", () => {
             return api.disconnect();
         });
 
-        it("should getStakedDOTAmount", async () => {
-            const stakedDOTAmount = await stakedRelayerAPI.getStakedDOTAmount();
+        it("should getStakedDOTAmounts", async () => {
+            const stakedDOTAmount = await stakedRelayerAPI.getStakedDOTAmounts();
             assert.notEqual(typeof(stakedDOTAmount), undefined);
+        });
+
+        it("should compute totalStakedDOTAmount with nonzero sum", async () => {
+            const stakedDOTAmounts: DOT[] = [1 , 2, 3].map(x => numberToDOT(x));
+            const totalStakedDOTAmount: BN = await stakedRelayerAPI.getTotalStakedDOTAmount(stakedDOTAmounts);
+            assert.equal(totalStakedDOTAmount.toNumber(), 6);
+        });
+
+        it("should compute totalStakedDOTAmount with zero sum", async () => {
+            const stakedDOTAmounts: DOT[] = [];
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedDOTAmount(stakedDOTAmounts);
+            assert.equal(totalStakedDOTAmount.toNumber(), 0);
         });
 
         // commented because function is only a stub now

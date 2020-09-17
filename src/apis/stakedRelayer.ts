@@ -13,7 +13,7 @@ interface StakedRelayerAPI {
     getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT>;
     getLatestBTCBlockFromBTCRelay(): Promise<H256Le>;
     getLatestBTCBlockHeightFromBTCRelay(): Promise<u32>;
-    getLatestBTCBlockFromBTCCore(): Promise<import("axios").AxiosResponse<number>>;
+    getLatestBTCBlockFromBTCCore(): Promise<number | undefined>;
     getMonitoredVaultsCollateralizationRate(): Promise<Vault[]>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
@@ -36,12 +36,16 @@ class StakedRelayerAPI {
         return this.api.query.stakedRelayers.activeStakedRelayers.at(activeStakedRelayerId);
     }
 
-    async getStakedDOTAmount(): Promise<DOT> {
-        const activeStakedRelayersMappings = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
-        const activeStakedRelayers: DOT[] = activeStakedRelayersMappings.map((v) => v[1].stake);
-        const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
-        if(activeStakedRelayers.length) {
-            return activeStakedRelayers.reduce(sumReducer);
+    async getStakedDOTAmounts(): Promise<DOT[]> {
+        const activeStakedRelayersMappings = await this.list();
+        const activeStakedRelayersStakes: DOT[] = activeStakedRelayersMappings.map(v => v.stake);
+        return activeStakedRelayersStakes;
+    }
+
+    async getTotalStakedDOTAmount(stakedDOTAmounts: DOT[]): Promise<DOT> {
+        if(stakedDOTAmounts.length) {
+            const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
+            return stakedDOTAmounts.reduce(sumReducer);
         }
         return new BN(0) as DOT;
     }
@@ -58,10 +62,16 @@ class StakedRelayerAPI {
         return await this.api.query.btcRelay.bestBlockHeight();
     }
 
-    async getLatestBTCBlockFromBTCCore(): Promise<import("axios").AxiosResponse<number>> {
+    async getLatestBTCBlockFromBTCCore(): Promise<number | undefined> {
         const basePath = "https://blockstream.info/api";
         const blockApi = new esplora.BlockApi({basePath: basePath});
-        return await blockApi.getLastBlockHeight();
+        blockApi.getLastBlockHeight()
+            .then(response => {
+                return response.data;
+            });
+
+        // if the request times out
+        return undefined;
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {
