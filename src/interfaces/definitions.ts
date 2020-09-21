@@ -5,6 +5,8 @@ export default {
         PolkaBTC: "Balance",
         BTCBalance: "u128",
         StatusCode: { _enum: ["Running", "Error", "Shutdown"] },
+        Address: "AccountId",
+        LookupSource: "AccountId",
         
         // Silence the warnings:
         Status: "StatusCode",
