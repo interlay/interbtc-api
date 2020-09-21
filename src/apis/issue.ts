@@ -10,7 +10,7 @@ import Vaults from "./vaults";
 export type RequestResult = { hash: Hash; vault: Vault };
 
 interface IssueAPI {
-    request(amount: PolkaBTC, vaultId?: AccountId | string, griefingCollateral?: DOT): Promise<RequestResult>;
+    request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
     setAccount(account?: KeyringPair): void;
     getGriefingCollateral(): Promise<DOT>;
     list(): Promise<IssueRequest[]>;
@@ -23,7 +23,7 @@ class IssueAPI {
         this.vaults = new Vaults(api);
     }
 
-    async request(amount: PolkaBTC, vaultId?: AccountId | string, griefingCollateral?: DOT): Promise<RequestResult> {
+    async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -48,8 +48,17 @@ class IssueAPI {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        this.api.tx.issue
+        await this.api.tx.issue
             .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
+            .signAndSend(this.account);
+    }
+
+    async cancel(issueId: H256): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot request without setting account");
+        }
+        await this.api.tx.issue
+            .cancelIssue(issueId)
             .signAndSend(this.account);
     }
 
