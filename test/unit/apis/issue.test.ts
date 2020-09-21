@@ -86,7 +86,10 @@ describe("issue", () => {
             requestResult = await issueAPI.request(amount);
         });
 
-        it("should succesfully execute after requesting", async () => {
+        it("should send 'executeIssue' transaction after obtaining 'requestIssue' response", async () => {
+            // The test does not check for the succesful termination of 'execute'.
+            // Instead, it checks that the API call can be bundled into a transaction
+            // and published on-chain without any errors being thrown.
             issueAPI.setAccount(alice);
             const requestHash: H256 = requestResult.hash;
             const txId: H256Le = requestHash;
