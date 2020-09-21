@@ -101,6 +101,10 @@ describe("issue", () => {
 
     });
 
+    function delay(ms: number) {
+        return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+
     describe.skip("cancel", () => { 
         let api: ApiPromise;
         let issueAPI: IssueAPI;
@@ -134,6 +138,10 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 11);
             requestResult = await issueAPI.request(amount);
+
+            // delay the sending of the cancel transaction so that the
+            // request transaction propagates and Error: 1014 does not occur
+            await delay(7000);
             await issueAPI.cancel(requestResult.hash);
         });
     });
