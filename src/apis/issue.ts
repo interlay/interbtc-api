@@ -1,13 +1,16 @@
-import { DOT, Issue as IssueRequest, PolkaBTC, Vault } from "@interlay/polkabtc/interfaces/default";
+import { DOT, Issue as IssueRequest, PolkaBTC, Vault, H256Le } from "@interlay/polkabtc/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { AccountId, Hash } from "@polkadot/types/interfaces";
+import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
+import { Bytes, u32 } from "@polkadot/types/primitive"; 
 import Vaults from "./vaults";
+
+
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
 interface IssueAPI {
-    request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
+    request(amount: PolkaBTC, vaultId?: AccountId | string, griefingCollateral?: DOT): Promise<RequestResult>;
     setAccount(account?: KeyringPair): void;
     getGriefingCollateral(): Promise<DOT>;
     list(): Promise<IssueRequest[]>;
@@ -20,7 +23,7 @@ class IssueAPI {
         this.vaults = new Vaults(api);
     }
 
-    async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
+    async request(amount: PolkaBTC, vaultId?: AccountId | string, griefingCollateral?: DOT): Promise<RequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -39,6 +42,15 @@ class IssueAPI {
             .requestIssue(amount, vault.id, griefingCollateral)
             .signAndSend(this.account);
         return { hash, vault };
+    }
+
+    async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot request without setting account");
+        }
+        this.api.tx.issue
+            .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
+            .signAndSend(this.account);
     }
 
     async list(): Promise<IssueRequest[]> {

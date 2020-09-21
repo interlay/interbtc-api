@@ -16,7 +16,7 @@ class VaultsAPI {
         return vaultsMap.map((v) => v[1]);
     }
 
-    get(vaultId: AccountId): Promise<Vault> {
+    get(vaultId: AccountId | string): Promise<Vault> {
         return this.api.query.vaultRegistry.vaults.at(vaultId);
     }
 
