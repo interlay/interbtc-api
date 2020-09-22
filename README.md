@@ -12,6 +12,12 @@ To install dependencies, run
 yarn install
 ```
 
+Build the library using
+
+```
+yarn build
+```
+
 Then, to run tests, run
 
 ```
