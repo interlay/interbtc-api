@@ -31,8 +31,7 @@ To use the library, you will first need to create a PolkadotJS `APIPromise` inst
 and then to instantiate a `PolkaBTCAPI` instance.
 
 ```typescript
-import PolkaBTCAPI from "@interlay/polkabtc-js";
-import { createAPI } from "@interlay/polkabtc-js/factory";
+import { PolkaBTCAPI, createAPI } from "@interlay/polkabtc";
 
 const defaultEndpoint = "ws://127.0.0.1:9944";
 const api = await createAPI(defaultEndpoint);

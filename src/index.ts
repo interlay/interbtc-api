@@ -5,7 +5,7 @@ import RedeemAPI from "./apis/redeem";
 import VaultsAPI from "./apis/vaults";
 export * from "./factory";
 
-export default class PolkaBTCAPI {
+export class PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
