@@ -2,9 +2,8 @@
   "name": "@interlay/polkabtc",
   "version": "1.0.0",
   "description": "JavaScript library to interact with PolkaBTC",
-  "main": "build/main/index.js",
-  "typings": "build/main/index.d.ts",
-  "module": "build/module/index.js",
+  "main": "build/index.js",
+  "typings": "build/index.d.ts",
   "repository": "https://github.com/interlay/polkabtc-js",
   "license": "Apache-2.0",
   "keywords": [

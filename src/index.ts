@@ -3,6 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import IssueAPI from "./apis/issue";
 import RedeemAPI from "./apis/redeem";
 import VaultsAPI from "./apis/vaults";
+export * from "./factory";
 
 export default class PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
