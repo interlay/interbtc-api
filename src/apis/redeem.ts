@@ -6,7 +6,7 @@ import Vaults from "./vaults";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-interface RedeemAPI {
+export interface RedeemAPIInterface {
     list(): Promise<Redeem[]>;
     request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult>;
     setAccount(account?: KeyringPair): void;

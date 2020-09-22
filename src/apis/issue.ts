@@ -9,8 +9,10 @@ import Vaults from "./vaults";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-interface IssueAPI {
+export interface IssueAPIInterface {
     request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
+    execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
+    cancel(issueId: H256): Promise<void>;
     setAccount(account?: KeyringPair): void;
     getGriefingCollateral(): Promise<DOT>;
     list(): Promise<IssueRequest[]>;
