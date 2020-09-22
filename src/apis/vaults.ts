@@ -2,7 +2,7 @@ import { PolkaBTC, Vault } from "@interlay/polkabtc/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 
-interface VaultsAPI {
+export interface VaultsAPIInterface {
     list(): Promise<Vault[]>;
     selectRandomVault(btc: PolkaBTC): Promise<Vault>;
     get(vaultId: AccountId): Promise<Vault>;

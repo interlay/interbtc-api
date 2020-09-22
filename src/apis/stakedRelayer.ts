@@ -6,7 +6,7 @@ import Vaults from "./vaults";
 import BN from "bn.js";
 import * as esplora from "@interlay/esplora-btc-api";
 
-interface StakedRelayerAPI {
+export interface StakedRelayerAPIInterface {
     list(): Promise<ActiveStakedRelayer[]>;
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
