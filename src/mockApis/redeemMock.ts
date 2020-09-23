@@ -19,11 +19,13 @@ class RedeemAPIMock implements RedeemAPIInterface {
 
     async list(): Promise<Redeem[]> {
         const registry = new TypeRegistry();
+        const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+
         return Promise.resolve([
             <Redeem> {
                 vault: new GenericAccountId(
                     registry, 
-                    "78443543fdsf"
+                    decodedAccountId
                 ),
                 opentime: new BN(10908) as BlockNumber,
                 amount_polka_btc: new BN(4141) as PolkaBTC,
@@ -32,14 +34,14 @@ class RedeemAPIMock implements RedeemAPIInterface {
                 premium_dot: new BN(140) as DOT,
                 redeemer: new GenericAccountId(
                     registry, 
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+                    decodedAccountId
                 ),
                 btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160
             },
             <Redeem> {
                 vault: new GenericAccountId(
                     registry, 
-                    "78443543fdsf"
+                    decodedAccountId
                 ),
                 opentime: new BN(11208) as BlockNumber,
                 amount_polka_btc: new BN(400) as PolkaBTC,
@@ -48,7 +50,7 @@ class RedeemAPIMock implements RedeemAPIInterface {
                 premium_dot: new BN(10) as DOT,
                 redeemer: new GenericAccountId(
                     registry, 
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+                    decodedAccountId
                 ),
                 btc_address: new U8aFixed(registry, "321321321321321") as H160
             },

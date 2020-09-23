@@ -31,7 +31,7 @@ describe("stakedRelayerAPI", () => {
             const _ = sinon.stub(stakedRelayerAPI, "get").returns(
                 <ActiveStakedRelayer> { stake: new BN(100) as DOT }
             );
-            const activeStakedRelayerId = <AccountId> {}
+            const activeStakedRelayerId = <AccountId> {};
             const stakedDOTAmount: DOT = await stakedRelayerAPI.getStakedDOTAmount(activeStakedRelayerId);
             assert.equal(stakedDOTAmount.toNumber(), 100);
         });

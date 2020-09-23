@@ -10,11 +10,12 @@ class VaultsAPIMock implements VaultsAPIInterface {
 
     async list(): Promise<Vault[]> {
         const registry = new TypeRegistry();
+        const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
         return Promise.resolve([
             <Vault> {
                 id: new GenericAccountId(
                     registry, 
-                    "12321"
+                    decodedAccountId
                 ),
                 to_be_issued_tokens: new BN(120) as PolkaBTC,
                 issued_tokens: new BN(330) as PolkaBTC,
@@ -25,7 +26,7 @@ class VaultsAPIMock implements VaultsAPIInterface {
             <Vault> {
                 id: new GenericAccountId(
                     registry, 
-                    "787321"
+                    decodedAccountId
                 ),
                 to_be_issued_tokens: new BN(220) as PolkaBTC,
                 issued_tokens: new BN(430) as PolkaBTC,
