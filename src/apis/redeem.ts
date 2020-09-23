@@ -2,21 +2,21 @@ import { PolkaBTC, Redeem, Vault } from "@interlay/polkabtc/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId, Hash } from "@polkadot/types/interfaces";
-import Vaults from "./vaults";
+import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-export interface RedeemAPIInterface {
+export interface RedeemAPI {
     list(): Promise<Redeem[]>;
     request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult>;
     setAccount(account?: KeyringPair): void;
 }
 
-class RedeemAPI {
-    private vaults: Vaults;
+export class DefaultRedeemAPI {
+    private vaults: VaultsAPI;
 
     constructor(private api: ApiPromise, private account?: KeyringPair) {
-        this.vaults = new Vaults(api);
+        this.vaults = new DefaultVaultsAPI(api);
     }
 
     async request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult> {
@@ -44,5 +44,3 @@ class RedeemAPI {
         this.account = account;
     }
 }
-
-export default RedeemAPI;

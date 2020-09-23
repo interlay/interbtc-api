@@ -4,13 +4,15 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 
-export interface VaultsAPIInterface {
+export interface VaultsAPI {
     list(): Promise<Vault[]>;
     selectRandomVault(btc: PolkaBTC): Promise<Vault>;
     get(vaultId: AccountId): Promise<Vault>;
+    getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
+    getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
 }
 
-class VaultsAPI {
+export class DefaultVaultsAPI {
     constructor(private api: ApiPromise) {}
 
     async list(): Promise<Vault[]> {
@@ -29,15 +31,15 @@ class VaultsAPI {
 
     private async getIssuedPolkaBTCAmounts(): Promise<PolkaBTC[]> {
         const vaults: Vault[] = await this.list();
-        const issuedTokens: PolkaBTC[] = vaults.map(v => v.issued_tokens);
+        const issuedTokens: PolkaBTC[] = vaults.map((v) => v.issued_tokens);
         return issuedTokens;
     }
 
     async getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC> {
         const issuedTokens: PolkaBTC[] = await this.getIssuedPolkaBTCAmounts();
-        if(issuedTokens.length) {
-            const sumReducer = 
-                (accumulator: PolkaBTC, currentValue: PolkaBTC) => accumulator.add(currentValue) as PolkaBTC;
+        if (issuedTokens.length) {
+            const sumReducer = (accumulator: PolkaBTC, currentValue: PolkaBTC) =>
+                accumulator.add(currentValue) as PolkaBTC;
             return issuedTokens.reduce(sumReducer);
         }
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
@@ -49,5 +51,3 @@ class VaultsAPI {
         return vaults[0];
     }
 }
-
-export default VaultsAPI;

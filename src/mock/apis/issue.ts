@@ -1,4 +1,3 @@
-import { IssueAPIInterface, RequestResult } from "../apis/issue";
 import { DOT, Issue as IssueRequest, PolkaBTC, H256Le } from "@interlay/polkabtc/interfaces/default";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId, H256, H160, BlockNumber } from "@polkadot/types/interfaces";
@@ -8,9 +7,9 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
 
+import { IssueAPI, RequestResult } from "../../apis/issue";
 
-class IssueAPIMock implements IssueAPIInterface {
-
+export class MockIssueAPI implements IssueAPI {
     execute(_issueId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
         throw new Error("Method not implemented.");
     }
@@ -36,38 +35,23 @@ class IssueAPIMock implements IssueAPIInterface {
 
         return Promise.resolve([
             <IssueRequest>{
-                vault: new GenericAccountId(
-                    registry,
-                    decodedAccountId1
-                ),
+                vault: new GenericAccountId(registry, decodedAccountId1),
                 amount: new BN(600) as PolkaBTC,
                 opentime: new BN(10908) as BlockNumber,
                 btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
                 completed: new bool(registry, true),
-                requester: new GenericAccountId(
-                    registry,
-                    decodedAccountId1
-                ),
+                requester: new GenericAccountId(registry, decodedAccountId1),
                 griefing_collateral: new BN(10) as DOT,
             },
             <IssueRequest>{
-                vault: new GenericAccountId(
-                    registry,
-                    decodedAccountId2
-                ),
+                vault: new GenericAccountId(registry, decodedAccountId2),
                 amount: new BN(4510) as PolkaBTC,
                 opentime: new BN(11938) as BlockNumber,
                 btc_address: new U8aFixed(registry, "321321321321321") as H160,
                 completed: new bool(registry, true),
-                requester: new GenericAccountId(
-                    registry,
-                    decodedAccountId2
-                ),
+                requester: new GenericAccountId(registry, decodedAccountId2),
                 griefing_collateral: new BN(76) as DOT,
             },
         ]);
     }
-
 }
-
-export default IssueAPIMock;

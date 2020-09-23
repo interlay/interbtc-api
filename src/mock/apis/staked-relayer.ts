@@ -1,4 +1,3 @@
-import { StakedRelayerAPIInterface } from "../apis/stakedRelayer";
 import { DOT, ActiveStakedRelayer, H256Le, StatusCode, Vault } from "@interlay/polkabtc/interfaces/default";
 import { u128, u32 } from "@polkadot/types/primitive";
 import { AccountId, Balance, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
@@ -6,17 +5,17 @@ import BN from "bn.js";
 import { U8aFixed, UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 
+import { StakedRelayerAPI } from "../../apis/staked-relayer";
 
-class StakedRelayerAPI implements StakedRelayerAPIInterface {
-
+export class MockStakedRelayerAPI implements StakedRelayerAPI {
     async list(): Promise<ActiveStakedRelayer[]> {
         return [
-            <ActiveStakedRelayer> {
-                stake: new BN(10.2) as DOT
+            <ActiveStakedRelayer>{
+                stake: new BN(10.2) as DOT,
             },
-            <ActiveStakedRelayer> {
-                stake: new BN(11.9) as DOT
-            }
+            <ActiveStakedRelayer>{
+                stake: new BN(11.9) as DOT,
+            },
         ];
     }
 
@@ -32,14 +31,14 @@ class StakedRelayerAPI implements StakedRelayerAPIInterface {
         return new BN(x) as DOT;
     }
 
-    private async getStakedDOTAmounts(): Promise<DOT[]> {
-        const mockStakedDOTAmounts: DOT[] = [0.04 , 4, 12].map(x => this.numberToDOT(x));
+    async getStakedDOTAmounts(): Promise<DOT[]> {
+        const mockStakedDOTAmounts: DOT[] = [0.04, 4, 12].map((x) => this.numberToDOT(x));
         return Promise.resolve(mockStakedDOTAmounts);
     }
 
     async getTotalStakedDOTAmount(): Promise<DOT> {
         const stakedDOTAmounts: DOT[] = await this.getStakedDOTAmounts();
-        if(stakedDOTAmounts.length) {
+        if (stakedDOTAmounts.length) {
             const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
             return stakedDOTAmounts.reduce(sumReducer);
         }
@@ -66,9 +65,9 @@ class StakedRelayerAPI implements StakedRelayerAPIInterface {
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {
         return [
-            <Vault> {
+            <Vault>{
                 // we need to define a collateralisation rate field in Vault
-            }
+            },
         ];
     }
 
@@ -78,19 +77,15 @@ class StakedRelayerAPI implements StakedRelayerAPIInterface {
     }
 
     async getCurrentStateOfBTCParachain(): Promise<StatusCode> {
-        return <StatusCode> {
+        return <StatusCode>{
             isRunning: true,
             isError: false,
-            isShutdown: false
+            isShutdown: false,
         };
     }
 
     async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, Balance, Balance]>> {
         const registry = new TypeRegistry();
-        return [
-            [new BN(11208) as BlockNumber, new UInt(registry, 5), new UInt(registry, 5)]
-        ];
+        return [[new BN(11208) as BlockNumber, new UInt(registry, 5), new UInt(registry, 5)]];
     }
 }
-
-export default StakedRelayerAPI;
