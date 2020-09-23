@@ -7,9 +7,11 @@ import { StakedRelayerAPI, DefaultStakedRelayerAPI } from "./apis/staked-relayer
 export * from "./factory";
 
 export interface PolkaBTCAPI {
+    readonly api: ApiPromise;
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
     readonly redeem: RedeemAPI;
+    readonly stakedRelayer: StakedRelayerAPI;
     setAccount(account: KeyringPair): void;
 }
 

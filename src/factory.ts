@@ -31,10 +31,10 @@ export async function createPolkabtcAPI(
     endpoint: string,
     autoConnect?: number | false | undefined
 ): Promise<PolkaBTCAPI> {
-    if (endpoint == "mock") {
-        return new MockPolkaBTCAPI();
-    }
     const api = await createPolkadotAPI(endpoint, autoConnect);
+    if (endpoint == "mock") {
+        return new MockPolkaBTCAPI(api);
+    }
     return new DefaultPolkaBTCAPI(api);
 }
 

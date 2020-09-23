@@ -1,9 +1,13 @@
-import PolkaBTCAPIMock from "../../../src/mock/polkabtc-api";
+import { createPolkabtcAPI } from "../../../src/factory";
+import { PolkaBTCAPI } from "../../../src/polkabtc-api";
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { assert } from "../../chai";
 
-describe("PolkaBTCAPIMock", () => {
-    const polkaBTC = new PolkaBTCAPIMock();
+describe.skip("PolkaBTCAPIMock", () => {
+    let polkaBTC: PolkaBTCAPI;
+    beforeEach(async () => {
+        polkaBTC = await createPolkabtcAPI("mock");
+    });
 
     it("should retrieve mock data from unparameterized methods", async () => {
         const issueRequests = await polkaBTC.issue.list();
