@@ -4,14 +4,13 @@ import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { TypeRegistry } from "@polkadot/types";
 import { RegistryTypes } from "@polkadot/types/types";
 import * as definitions from "./interfaces/definitions";
-import Mock from "./mock";
-
-
+import { MockPolkaBTCAPI, MockProvider } from "./mock";
+import { PolkaBTCAPI, DefaultPolkaBTCAPI } from "./polkabtc-api";
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
     if (endpoint === "mock") {
         const registry = new TypeRegistry();
-        return new Mock(registry);
+        return new MockProvider(registry);
     }
     if (/https?:\/\//.exec(endpoint)) {
         return new HttpProvider(endpoint);
@@ -22,10 +21,21 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
     throw new Error(`unknown scheme for ${endpoint}`);
 }
 
-export function createAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
+export function createPolkadotAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
     const types = getAPITypes();
     return ApiPromise.create({ provider, types });
+}
+
+export async function createPolkabtcAPI(
+    endpoint: string,
+    autoConnect?: number | false | undefined
+): Promise<PolkaBTCAPI> {
+    if (endpoint == "mock") {
+        return new MockPolkaBTCAPI();
+    }
+    const api = await createPolkadotAPI(endpoint, autoConnect);
+    return new DefaultPolkaBTCAPI(api);
 }
 
 export function getAPITypes(): RegistryTypes {

@@ -2,22 +2,22 @@ import { PolkaBTC, Redeem, Vault, H256Le } from "@interlay/polkabtc/interfaces/d
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
-import Vaults from "./vaults";
-import { Bytes, u32 } from "@polkadot/types/primitive"; 
+import { Bytes, u32 } from "@polkadot/types/primitive";
+import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-export interface RedeemAPIInterface {
+export interface RedeemAPI {
     list(): Promise<Redeem[]>;
     request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult>;
     setAccount(account?: KeyringPair): void;
 }
 
-class RedeemAPI {
-    private vaults: Vaults;
+export class DefaultRedeemAPI {
+    private vaults: VaultsAPI;
 
     constructor(private api: ApiPromise, private account?: KeyringPair) {
-        this.vaults = new Vaults(api);
+        this.vaults = new DefaultVaultsAPI(api);
     }
 
     async request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult> {
@@ -50,13 +50,11 @@ class RedeemAPI {
             throw new Error("cannot request without setting account");
         }
 
-        // if no value is specified for `reimburse`, 
-        // `false` = retry Redeem with another Vault. 
+        // if no value is specified for `reimburse`,
+        // `false` = retry Redeem with another Vault.
         // `true` = accept reimbursement in polkaBTC
         const reimburseValue = reimburse ? reimburse : false;
-        await this.api.tx.redeem
-            .cancelRedeem(redeemId, reimburseValue)
-            .signAndSend(this.account);
+        await this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue).signAndSend(this.account);
     }
 
     async list(): Promise<Redeem[]> {
@@ -68,5 +66,3 @@ class RedeemAPI {
         this.account = account;
     }
 }
-
-export default RedeemAPI;

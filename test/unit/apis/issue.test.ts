@@ -7,11 +7,11 @@ import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
-import IssueAPI from "../../../src/apis/issue";
-import { createAPI } from "../../../src/factory";
+import { IssueAPI, DefaultIssueAPI } from "../../../src/apis/issue";
+import { createPolkadotAPI } from "../../../src/factory";
 import * as VaultsAPI from "../../../src/apis/vaults";
-import { ImportMock } from 'ts-mock-imports';
-import { Keyring } from '@polkadot/api';
+import { ImportMock } from "ts-mock-imports";
+import { Keyring } from "@polkadot/api";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -19,7 +19,8 @@ describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: IssueAPI;
     let requestResult: RequestResult;
-    let keyring: Keyring; 
+    let keyring: Keyring;
+
     // alice is the root account
     let alice: KeyringPair;
     const registry: TypeRegistry = new TypeRegistry();
@@ -27,10 +28,10 @@ describe("issue", () => {
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
 
     describe("request", () => {
-
         beforeEach(async () => {
-            api = await createAPI(defaultEndpoint);
-            issueAPI = new IssueAPI(api);
+            const defaultEndpoint = "ws://127.0.0.1:9944";
+            api = await createPolkadotAPI(defaultEndpoint);
+            issueAPI = new DefaultIssueAPI(api);
         });
 
         afterEach(() => {
@@ -43,19 +44,23 @@ describe("issue", () => {
         });
     });
 
-    describe("execute", () => {
+    describe.skip("execute", () => {
+        let api: ApiPromise;
+        let issueAPI: IssueAPI;
+
         beforeEach(async () => {
-            api = await createAPI(defaultEndpoint);
-            keyring = new Keyring({ type: 'sr25519' });
+            // api = await createAPI("mock", false);
+            const defaultEndpoint = "ws://127.0.0.1:9944";
+            api = await createPolkadotAPI(defaultEndpoint);
+            keyring = new Keyring({ type: "sr25519" });
+
+            // Alice is also the root account
             alice = keyring.addFromUri("//Alice");
-            let mockManager = ImportMock.mockClass(VaultsAPI);
-            mockManager.mock("selectRandomVault", <Vault> { id:
-                new GenericAccountId(
-                    registry, 
-                    randomDecodedAccountId
-                ) 
+            const mockManager = ImportMock.mockClass(VaultsAPI);
+            mockManager.mock("selectRandomVault", <Vault>{
+                id: new GenericAccountId(registry, randomDecodedAccountId),
             });
-            issueAPI = new IssueAPI(api);
+            issueAPI = new DefaultIssueAPI(api);
         });
 
         afterEach(() => {
@@ -63,11 +68,11 @@ describe("issue", () => {
         });
 
         it("should fail if no account is set", () => {
-            const issueId: H256 = <H256> {};
-            const txId: H256Le = <H256Le> {};
-            const txBlockHeight: u32 = <u32> {};
-            const merkleProof: Bytes = <Bytes> {};
-            const rawTx: Bytes = <Bytes> {};
+            const issueId: H256 = <H256>{};
+            const txId: H256Le = <H256Le>{};
+            const txBlockHeight: u32 = <u32>{};
+            const merkleProof: Bytes = <Bytes>{};
+            const rawTx: Bytes = <Bytes>{};
             assert.isRejected(issueAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx));
         });
 
@@ -84,32 +89,34 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const requestHash: H256 = requestResult.hash;
             const txId: H256Le = requestHash;
-            const txBlockHeight: u32 = new UInt (registry, 1);
-            const merkleProof: Bytes = <Bytes> {};
-            const rawTx: Bytes = <Bytes> {};
+            const txBlockHeight: u32 = new UInt(registry, 1);
+            const merkleProof: Bytes = <Bytes>{};
+            const rawTx: Bytes = <Bytes>{};
             await issueAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
         });
-
     });
 
     function delay(ms: number) {
-        return new Promise( resolve => setTimeout(resolve, ms) );
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    describe("cancel", () => { 
+    describe.skip("cancel", () => {
+        let api: ApiPromise;
+        let issueAPI: IssueAPI;
 
         beforeEach(async () => {
-            api = await createAPI(defaultEndpoint);
-            let mockManager = ImportMock.mockClass(VaultsAPI);
-            mockManager.mock("selectRandomVault", <Vault> { id:
-                new GenericAccountId(
-                    registry, 
-                    randomDecodedAccountId
-                ) 
+            api = await createPolkadotAPI(defaultEndpoint);
+            keyring = new Keyring({ type: "sr25519" });
+
+            // Alice is also the root account
+            alice = keyring.addFromUri("//Alice");
+            const mockManager = ImportMock.mockClass(VaultsAPI);
+            mockManager.mock("selectRandomVault", <Vault>{
+                id: new GenericAccountId(registry, randomDecodedAccountId),
             });
-            issueAPI = new IssueAPI(api);
+            issueAPI = new DefaultIssueAPI(api);
         });
-        
+
         it("should cancel a request", async () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 11);

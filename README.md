@@ -39,11 +39,10 @@ To use the library, you will first need to create a PolkadotJS `APIPromise` inst
 and then to instantiate a `PolkaBTCAPI` instance.
 
 ```typescript
-import { PolkaBTCAPI, createAPI } from "@interlay/polkabtc";
+import { createPolkabtcAPI } from "@interlay/polkabtc";
 
 const defaultEndpoint = "ws://127.0.0.1:9944";
-const api = await createAPI(defaultEndpoint);
-const polkaBTC = new PolkaBTCAPI(api);
+const polkaBTC = await createPolkabtcAPI(defaultEndpoint);
 ```
 
 To emit transactions, an `account` has to be set.
@@ -61,21 +60,25 @@ The different functionalities are then exposed through the `PolkaBTCAPI` instanc
 ### Mock PolkaBTC Queries
 
 ```typescript
-import { PolkaBTCAPIMock } from "@interlay/polkabtc";
+import { createPolkabtcAPI } from "@interlay/polkabtc";
 
-const polkaBTC = new PolkaBTCAPIMock();
+const polkaBTC = await createPolkabtcAPI("mock");
 ```
 
 Example usage:
+
 ```typescript
 const issueRequests = await polkaBTC.issue.list();
 const totalStakedDOTAmount = await polkaBTC.stakedRelayer.getTotalStakedDOTAmount();
 ```
 
-Certain API calls require a parameter of type `AccountId`. For testing, an empty accountId will suffice:
+Certain API calls require a parameters of type `AccountId`. For testing, an empty accountId will suffice:
+
 ```typescript
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 
-const activeStakedRelayerId = <AccountId> {};
-const feesEarnedByActiveStakedRelayer = await polkaBTC.stakedRelayer.getFeesEarned(activeStakedRelayerId);
+const activeStakedRelayerId = <AccountId>{};
+const feesEarnedByActiveStakedRelayer = await polkaBTC.stakedRelayer.getFeesEarned(
+    activeStakedRelayerId
+);
 ```
