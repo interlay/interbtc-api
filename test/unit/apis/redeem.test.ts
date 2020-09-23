@@ -7,7 +7,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
-import IssueAPI from "../../../src/apis/issue";
+import RedeemAPI from "../../../src/apis/redeem";
 import { createAPI } from "../../../src/factory";
 import * as VaultsAPI from "../../../src/apis/vaults";
 import { ImportMock } from 'ts-mock-imports';
@@ -15,47 +15,41 @@ import { Keyring } from '@polkadot/api';
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-describe("issue", () => {
+describe("redeem", () => {
+    let redeemAPI: RedeemAPI;
     let api: ApiPromise;
-    let issueAPI: IssueAPI;
-    let requestResult: RequestResult;
     let keyring: Keyring; 
     // alice is the root account
     let alice: KeyringPair;
     const registry: TypeRegistry = new TypeRegistry();
     const defaultEndpoint = "ws://127.0.0.1:9944";
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
+    let requestResult: RequestResult;
 
     describe("request", () => {
 
         beforeEach(async () => {
             api = await createAPI(defaultEndpoint);
-            issueAPI = new IssueAPI(api);
-        });
-
-        afterEach(() => {
-            return api.disconnect();
+            redeemAPI = new RedeemAPI(api);
         });
 
         it("should fail if no account is set", () => {
             const amount = api.createType("PolkaBTC", 10);
-            assert.isRejected(issueAPI.request(amount));
+            assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
     });
 
     describe("execute", () => {
+
         beforeEach(async () => {
             api = await createAPI(defaultEndpoint);
             keyring = new Keyring({ type: 'sr25519' });
             alice = keyring.addFromUri("//Alice");
             let mockManager = ImportMock.mockClass(VaultsAPI);
-            mockManager.mock("selectRandomVault", <Vault> { id:
-                new GenericAccountId(
-                    registry, 
-                    randomDecodedAccountId
-                ) 
+            mockManager.mock("selectRandomVault", <Vault> { 
+                id: new GenericAccountId(registry, randomDecodedAccountId) 
             });
-            issueAPI = new IssueAPI(api);
+            redeemAPI = new RedeemAPI(api);
         });
 
         afterEach(() => {
@@ -68,26 +62,26 @@ describe("issue", () => {
             const txBlockHeight: u32 = <u32> {};
             const merkleProof: Bytes = <Bytes> {};
             const rawTx: Bytes = <Bytes> {};
-            assert.isRejected(issueAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx));
+            assert.isRejected(redeemAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx));
         });
 
         it("should request if account is set", async () => {
-            issueAPI.setAccount(alice);
+            redeemAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 10);
-            requestResult = await issueAPI.request(amount);
+            requestResult = await redeemAPI.request(amount, randomDecodedAccountId);
         });
 
         it("should send 'executeIssue' transaction after obtaining 'requestIssue' response", async () => {
             // The test does not check for the succesful termination of 'execute'.
             // Instead, it checks that the API call can be bundled into a transaction
             // and published on-chain without any errors being thrown.
-            issueAPI.setAccount(alice);
+            redeemAPI.setAccount(alice);
             const requestHash: H256 = requestResult.hash;
             const txId: H256Le = requestHash;
             const txBlockHeight: u32 = new UInt (registry, 1);
             const merkleProof: Bytes = <Bytes> {};
             const rawTx: Bytes = <Bytes> {};
-            await issueAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
+            await redeemAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
         });
 
     });
@@ -97,28 +91,44 @@ describe("issue", () => {
     }
 
     describe("cancel", () => { 
+        let api: ApiPromise;
+        let redeemAPI: RedeemAPI;
+        let requestResult: RequestResult;
+        let alice: KeyringPair;
+        let bob: KeyringPair;
+        let keyring: Keyring;
+        let registry: TypeRegistry;
 
         beforeEach(async () => {
             api = await createAPI(defaultEndpoint);
+            keyring = new Keyring({ type: 'sr25519' });
+            alice = keyring.addFromUri("//Alice");
+            bob = keyring.addFromUri("//Bob");
+            registry = new TypeRegistry();
+            let decodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
             let mockManager = ImportMock.mockClass(VaultsAPI);
             mockManager.mock("selectRandomVault", <Vault> { id:
                 new GenericAccountId(
                     registry, 
-                    randomDecodedAccountId
+                    decodedAccountId
                 ) 
             });
-            issueAPI = new IssueAPI(api);
+            redeemAPI = new RedeemAPI(api);
+        });
+
+        afterEach(() => {
+            return api.disconnect();
         });
         
         it("should cancel a request", async () => {
-            issueAPI.setAccount(alice);
+            redeemAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 11);
-            requestResult = await issueAPI.request(amount);
+            requestResult = await redeemAPI.request(amount, randomDecodedAccountId);
 
             // delay the sending of the cancel transaction so that the
             // request transaction propagates and Error: 1014 does not occur
             await delay(7000);
-            await issueAPI.cancel(requestResult.hash);
+            await redeemAPI.cancel(requestResult.hash);
         });
     });
 });

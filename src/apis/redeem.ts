@@ -1,8 +1,9 @@
-import { PolkaBTC, Redeem, Vault } from "@interlay/polkabtc/interfaces/default";
+import { PolkaBTC, Redeem, Vault, H256Le } from "@interlay/polkabtc/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { AccountId, Hash } from "@polkadot/types/interfaces";
+import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import Vaults from "./vaults";
+import { Bytes, u32 } from "@polkadot/types/primitive"; 
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -33,6 +34,29 @@ class RedeemAPI {
 
         const hash = await this.api.tx.redeem.requestRedeem(amount, btcAddress, vault.id).signAndSend(this.account);
         return { hash, vault };
+    }
+
+    async execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot execute without setting account");
+        }
+        await this.api.tx.redeem
+            .executeRedeem(redeemId, txId, txBlockHeight, merkleProof, rawTx)
+            .signAndSend(this.account);
+    }
+
+    async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot request without setting account");
+        }
+
+        // if no value is specified for `reimburse`, 
+        // `false` = retry Redeem with another Vault. 
+        // `true` = accept reimbursement in polkaBTC
+        const reimburseValue = reimburse ? reimburse : false;
+        await this.api.tx.redeem
+            .cancelRedeem(redeemId, reimburseValue)
+            .signAndSend(this.account);
     }
 
     async list(): Promise<Redeem[]> {

@@ -59,6 +59,7 @@ polkaBTC.setAccount(keypair);
 The different functionalities are then exposed through the `PolkaBTCAPI` instance.
 
 ### Mock PolkaBTC Queries
+
 ```typescript
 import { PolkaBTCAPIMock } from "@interlay/polkabtc";
 
@@ -71,7 +72,7 @@ const issueRequests = await polkaBTC.issue.list();
 const totalStakedDOTAmount = await polkaBTC.stakedRelayer.getTotalStakedDOTAmount();
 ```
 
-Certain API calls require a parameters of type `AccountId`. For testing, an empty accountId will suffice:
+Certain API calls require a parameter of type `AccountId`. For testing, an empty accountId will suffice:
 ```typescript
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 
