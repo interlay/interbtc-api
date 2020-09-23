@@ -10,6 +10,7 @@ export interface PolkaBTCAPI {
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
     readonly redeem: RedeemAPI;
+    readonly stakedRelayer: StakedRelayerAPI;
     setAccount(account: KeyringPair): void;
 }
 

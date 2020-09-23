@@ -7,9 +7,9 @@ import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
-import { IssueAPI, DefaultIssueAPI } from "../../../src/apis/issue";
+import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
-import * as VaultsAPI from "../../../src/apis/vaults";
+import * as DefaultVaultsAPI from "../../../src/apis/vaults";
 import { ImportMock } from "ts-mock-imports";
 import { Keyring } from "@polkadot/api";
 
@@ -17,7 +17,7 @@ export type RequestResult = { hash: Hash; vault: Vault };
 
 describe("issue", () => {
     let api: ApiPromise;
-    let issueAPI: IssueAPI;
+    let issueAPI: DefaultIssueAPI;
     let requestResult: RequestResult;
     let keyring: Keyring;
 
@@ -27,7 +27,7 @@ describe("issue", () => {
     const defaultEndpoint = "ws://127.0.0.1:9944";
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
 
-    describe("request", () => {
+    describe.skip("request", () => {
         beforeEach(async () => {
             const defaultEndpoint = "ws://127.0.0.1:9944";
             api = await createPolkadotAPI(defaultEndpoint);
@@ -46,17 +46,15 @@ describe("issue", () => {
 
     describe.skip("execute", () => {
         let api: ApiPromise;
-        let issueAPI: IssueAPI;
+        let issueAPI: DefaultIssueAPI;
 
         beforeEach(async () => {
-            // api = await createAPI("mock", false);
-            const defaultEndpoint = "ws://127.0.0.1:9944";
             api = await createPolkadotAPI(defaultEndpoint);
             keyring = new Keyring({ type: "sr25519" });
 
             // Alice is also the root account
             alice = keyring.addFromUri("//Alice");
-            const mockManager = ImportMock.mockClass(VaultsAPI);
+            const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
             mockManager.mock("selectRandomVault", <Vault>{
                 id: new GenericAccountId(registry, randomDecodedAccountId),
             });
@@ -102,7 +100,7 @@ describe("issue", () => {
 
     describe.skip("cancel", () => {
         let api: ApiPromise;
-        let issueAPI: IssueAPI;
+        let issueAPI: DefaultIssueAPI;
 
         beforeEach(async () => {
             api = await createPolkadotAPI(defaultEndpoint);
@@ -110,7 +108,7 @@ describe("issue", () => {
 
             // Alice is also the root account
             alice = keyring.addFromUri("//Alice");
-            const mockManager = ImportMock.mockClass(VaultsAPI);
+            const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
             mockManager.mock("selectRandomVault", <Vault>{
                 id: new GenericAccountId(registry, randomDecodedAccountId),
             });

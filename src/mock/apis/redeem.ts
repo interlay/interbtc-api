@@ -1,8 +1,8 @@
-import { PolkaBTC, Redeem, Vault, DOT } from "@interlay/polkabtc/interfaces/default";
+import { PolkaBTC, Redeem, Vault, DOT, H256Le } from "@interlay/polkabtc/interfaces/default";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { AccountId, Hash, BlockNumber, H160 } from "@polkadot/types/interfaces";
+import { AccountId, Hash, BlockNumber, H160, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
-import { TypeRegistry } from "@polkadot/types";
+import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import { U8aFixed } from "@polkadot/types/codec";
 
@@ -11,6 +11,14 @@ import { RedeemAPI } from "../../apis/redeem";
 export type RequestResult = { hash: Hash; vault: Vault };
 
 export class MockRedeemAPI implements RedeemAPI {
+    execute(_redeemId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+
+    cancel(_redeemId: H256, _reimburse?: boolean): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+
     async request(_amount: PolkaBTC, _btcAddress: string, _vaultId?: AccountId): Promise<RequestResult> {
         return Promise.resolve({ hash: <Hash>{}, vault: <Vault>{} });
     }

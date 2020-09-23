@@ -10,6 +10,8 @@ export type RequestResult = { hash: Hash; vault: Vault };
 export interface RedeemAPI {
     list(): Promise<Redeem[]>;
     request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult>;
+    execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
+    cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
     setAccount(account?: KeyringPair): void;
 }
 
