@@ -1,8 +1,6 @@
-import { DOT } from "../../src/interfaces/default";
-import { PolkaBTCAPIMock } from "../../src/indexMock";
+import PolkaBTCAPIMock from "../../../src/mock/polkabtc-api";
 import { AccountId } from "@polkadot/types/interfaces/runtime";
-import { assert } from "../chai";
-import BN from "bn.js";
+import { assert } from "../../chai";
 
 describe("PolkaBTCAPIMock", () => {
     const polkaBTC = new PolkaBTCAPIMock();
@@ -16,7 +14,7 @@ describe("PolkaBTCAPIMock", () => {
     });
 
     it("should retrieve mock data from parameterized methods", async () => {
-        const activeStakedRelayerId = <AccountId> {};
+        const activeStakedRelayerId = <AccountId>{};
         const feesEarnedByActiveStakedRelayer = await polkaBTC.stakedRelayer.getFeesEarned(activeStakedRelayerId);
         // toNumber() trims BigNumber to an integer
         assert.equal(feesEarnedByActiveStakedRelayer.toNumber(), 120);

@@ -2,11 +2,11 @@ import { DOT, ActiveStakedRelayer, H256Le, StatusCode, Vault } from "@interlay/p
 import { u128, u32 } from "@polkadot/types/primitive";
 import { AccountId, Balance, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import Vaults from "./vaults";
+import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
 import * as esplora from "@interlay/esplora-btc-api";
 
-export interface StakedRelayerAPIInterface {
+export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
@@ -21,11 +21,11 @@ export interface StakedRelayerAPIInterface {
     getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, Balance, Balance]>>;
 }
 
-class StakedRelayerAPI {
-    private vaults: Vaults;
+export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
+    private vaults: VaultsAPI;
 
     constructor(private api: ApiPromise) {
-        this.vaults = new Vaults(api);
+        this.vaults = new DefaultVaultsAPI(api);
     }
 
     async list(): Promise<ActiveStakedRelayer[]> {
@@ -44,13 +44,13 @@ class StakedRelayerAPI {
 
     private async getStakedDOTAmounts(): Promise<DOT[]> {
         const activeStakedRelayersMappings = await this.list();
-        const activeStakedRelayersStakes: DOT[] = activeStakedRelayersMappings.map(v => v.stake);
+        const activeStakedRelayersStakes: DOT[] = activeStakedRelayersMappings.map((v) => v.stake);
         return activeStakedRelayersStakes;
     }
 
     async getTotalStakedDOTAmount(): Promise<DOT> {
         const stakedDOTAmounts: DOT[] = await this.getStakedDOTAmounts();
-        if(stakedDOTAmounts.length) {
+        if (stakedDOTAmounts.length) {
             const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
             return stakedDOTAmounts.reduce(sumReducer);
         }
@@ -71,11 +71,10 @@ class StakedRelayerAPI {
 
     async getLatestBTCBlockFromBTCCore(): Promise<number | undefined> {
         const basePath = "https://blockstream.info/api";
-        const blockApi = new esplora.BlockApi({basePath: basePath});
-        blockApi.getLastBlockHeight()
-            .then(response => {
-                return response.data;
-            });
+        const blockApi = new esplora.BlockApi({ basePath: basePath });
+        blockApi.getLastBlockHeight().then((response) => {
+            return response.data;
+        });
 
         // if the request times out
         return undefined;
@@ -98,18 +97,13 @@ class StakedRelayerAPI {
     async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, Balance, Balance]>> {
         const statusUpdatesMappings = await this.api.query.stakedRelayers.statusUpdates.entries();
         const statusUpdates = statusUpdatesMappings.map((v) => v[1]);
-        const pendingUpdates = statusUpdates.filter(statusUpdate => statusUpdate.proposal_status.isPending);
-        const ongoingStatusUpdateVotes: Array<[BlockNumber, Balance, Balance]> = pendingUpdates.map(
-            pendingUpdate => [
-                pendingUpdate.time,
-                pendingUpdate.tally.ayes,
-                pendingUpdate.tally.nays
-            ] 
-        );
+        const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate.proposal_status.isPending);
+        const ongoingStatusUpdateVotes: Array<[BlockNumber, Balance, Balance]> = pendingUpdates.map((pendingUpdate) => [
+            pendingUpdate.time,
+            pendingUpdate.tally.ayes,
+            pendingUpdate.tally.nays,
+        ]);
 
         return ongoingStatusUpdateVotes;
     }
-
 }
-
-export default StakedRelayerAPI;
