@@ -1,6 +1,8 @@
 import { PolkaBTC, Vault } from "@interlay/polkabtc/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
+import { UInt } from "@polkadot/types/codec";
+import { TypeRegistry } from "@polkadot/types";
 
 export interface VaultsAPIInterface {
     list(): Promise<Vault[]>;
@@ -18,6 +20,27 @@ class VaultsAPI {
 
     get(vaultId: AccountId): Promise<Vault> {
         return this.api.query.vaultRegistry.vaults.at(vaultId);
+    }
+
+    async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
+        const vault: Vault = await this.get(vaultId);
+        return vault.issued_tokens;
+    }
+
+    private async getIssuedPolkaBTCAmounts(): Promise<PolkaBTC[]> {
+        const vaults: Vault[] = await this.list();
+        const issuedTokens: PolkaBTC[] = vaults.map(v => v.issued_tokens);
+        return issuedTokens;
+    }
+
+    async getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC> {
+        const issuedTokens: PolkaBTC[] = await this.getIssuedPolkaBTCAmounts();
+        if(issuedTokens.length) {
+            const sumReducer = 
+                (accumulator: PolkaBTC, currentValue: PolkaBTC) => accumulator.add(currentValue) as PolkaBTC;
+            return issuedTokens.reduce(sumReducer);
+        }
+        return new UInt(new TypeRegistry(), 0) as PolkaBTC;
     }
 
     // TODO: get vault with enough collateral from the registry
