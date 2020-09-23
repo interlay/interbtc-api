@@ -33,6 +33,8 @@ yarn test:unit
 
 ## Usage
 
+### Real PolkaBTC Queries
+
 To use the library, you will first need to create a PolkadotJS `APIPromise` instance,
 and then to instantiate a `PolkaBTCAPI` instance.
 
@@ -55,3 +57,24 @@ polkaBTC.setAccount(keypair);
 ```
 
 The different functionalities are then exposed through the `PolkaBTCAPI` instance.
+
+### Mock PolkaBTC Queries
+```typescript
+import { PolkaBTCAPIMock } from "@interlay/polkabtc";
+
+const polkaBTC = new PolkaBTCAPIMock();
+```
+
+Example usage:
+```typescript
+const issueRequests = await polkaBTC.issue.list();
+const totalStakedDOTAmount = await polkaBTC.stakedRelayer.getTotalStakedDOTAmount();
+```
+
+Certain API calls require a parameters of type `AccountId`. For testing, an empty accountId will suffice:
+```typescript
+import { AccountId } from "@polkadot/types/interfaces/runtime";
+
+const activeStakedRelayerId = <AccountId> {};
+const feesEarnedByActiveStakedRelayer = await polkaBTC.stakedRelayer.getFeesEarned(activeStakedRelayerId);
+```

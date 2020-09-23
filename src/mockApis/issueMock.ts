@@ -31,11 +31,14 @@ class IssueAPIMock implements IssueAPIInterface {
 
     list(): Promise<IssueRequest[]> {
         const registry = new TypeRegistry();
+        const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
+        const decodedAccountId2 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D6";
+
         return Promise.resolve([
             <IssueRequest>{
                 vault: new GenericAccountId(
                     registry,
-                    "23"
+                    decodedAccountId1
                 ),
                 amount: new BN(600) as PolkaBTC,
                 opentime: new BN(10908) as BlockNumber,
@@ -43,14 +46,14 @@ class IssueAPIMock implements IssueAPIInterface {
                 completed: new bool(registry, true),
                 requester: new GenericAccountId(
                     registry,
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+                    decodedAccountId1
                 ),
                 griefing_collateral: new BN(10) as DOT,
             },
             <IssueRequest>{
                 vault: new GenericAccountId(
                     registry,
-                    "27"
+                    decodedAccountId2
                 ),
                 amount: new BN(4510) as PolkaBTC,
                 opentime: new BN(11938) as BlockNumber,
@@ -58,7 +61,7 @@ class IssueAPIMock implements IssueAPIInterface {
                 completed: new bool(registry, true),
                 requester: new GenericAccountId(
                     registry,
-                    "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+                    decodedAccountId2
                 ),
                 griefing_collateral: new BN(76) as DOT,
             },
