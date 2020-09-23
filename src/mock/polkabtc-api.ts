@@ -1,4 +1,5 @@
 import { KeyringPair } from "@polkadot/keyring/types";
+import { ApiPromise } from "@polkadot/api";
 
 import { IssueAPI, RedeemAPI, VaultsAPI, StakedRelayerAPI } from "../apis";
 import { MockIssueAPI } from "./apis/issue";
@@ -15,12 +16,13 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
 
     private account?: KeyringPair;
 
-    constructor() {
+    constructor(readonly api: ApiPromise) {
         this.vaults = new MockVaultsAPI();
         this.issue = new MockIssueAPI();
         this.redeem = new MockRedeemAPI();
         this.stakedRelayer = new MockStakedRelayerAPI();
     }
+
     setAccount(account: KeyringPair): void {
         this.account = account;
     }
