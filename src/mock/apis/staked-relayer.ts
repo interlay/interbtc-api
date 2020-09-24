@@ -60,6 +60,10 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getLatestBTCBlockFromBTCCore(): Promise<number | undefined> {
+        return parseInt("00000000000f6499c8547227", 16);
+    }
+
+    async getLatestBTCBlockHeightFromBTCCore(): Promise<number | undefined> {
         return 1835346;
     }
 
