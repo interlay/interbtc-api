@@ -7,7 +7,7 @@ export default {
         StatusCode: { _enum: ["Running", "Error", "Shutdown"] },
         Address: "AccountId",
         LookupSource: "AccountId",
-        
+
         // Silence the warnings:
         Status: "StatusCode",
         ErrorCode: { _enum: ["None", "NoDataBTCRelay", "InvalidBTCRelay", "OracleOffline", "Liquidation"] },
@@ -91,5 +91,28 @@ export default {
             status: "StakedRelayerStatus<BlockNumber>",
         },
         StakedRelayerStatus: { _enum: ["Unknown", "Idle", "Bonding(BlockNumber)"] },
+
+        // Staked relayer client:
+        GetAddressResponse: {
+            address: "String",
+        },
+        GetParachainStatusResponse: {
+            status: "StatusCode",
+        },
+        GetStatusUpdateRequest: {
+            id: "u64",
+        },
+        GetStatusUpdateResponse: {
+            status: "StatusUpdate",
+        },
+        RegisterStakedRelayerRequest: {
+            stake: "u128",
+        },
+        SuggestStatusUpdateRequest: {
+            deposit: "u128",
+            status_code: "StatusCode",
+            add_error: "Option<ErrorCode>",
+            remove_error: "Option<ErrorCode>",
+        },
     },
 };
