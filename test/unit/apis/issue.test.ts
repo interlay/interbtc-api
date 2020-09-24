@@ -12,14 +12,23 @@ import { createPolkadotAPI } from "../../../src/factory";
 import * as DefaultVaultsAPI from "../../../src/apis/vaults";
 import { ImportMock } from "ts-mock-imports";
 import { Keyring } from "@polkadot/api";
+import { EventRecord } from "@polkadot/types/interfaces/system";
 
 export type RequestResult = { hash: Hash; vault: Vault };
+
+function printEvents(testType: string, events: EventRecord[]) {
+    console.log(`${testType} events:`);
+    events.forEach(({ phase, event: { data, method, section, meta } }) => {
+        console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
+        // console.log(meta.documentation);
+    });
+}
 
 describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
-    let requestResult: RequestResult;
     let keyring: Keyring;
+    const delayMs: number = 18000;
 
     // alice is the root account
     let alice: KeyringPair;
@@ -77,7 +86,9 @@ describe("issue", () => {
         it("should request if account is set", async () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 10);
-            requestResult = await issueAPI.request(amount);
+            await issueAPI.request(amount);
+            await delay(delayMs);
+            printEvents("requestIssue", issueAPI.events);
         });
 
         it("should send 'executeIssue' transaction after obtaining 'requestIssue' response", async () => {
@@ -85,12 +96,14 @@ describe("issue", () => {
             // Instead, it checks that the API call can be bundled into a transaction
             // and published on-chain without any errors being thrown.
             issueAPI.setAccount(alice);
-            const requestHash: H256 = requestResult.hash;
+            const requestHash: H256 = issueAPI.requestHash;
             const txId: H256Le = requestHash;
             const txBlockHeight: u32 = new UInt(registry, 1);
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
             await issueAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
+            await delay(delayMs);
+            printEvents("executeIssue", issueAPI.events);
         });
     });
 
@@ -118,12 +131,15 @@ describe("issue", () => {
         it("should cancel a request", async () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 11);
-            requestResult = await issueAPI.request(amount);
+            await issueAPI.request(amount);
+            await delay(delayMs);
+            printEvents("requestIssue", issueAPI.events);
 
             // delay the sending of the cancel transaction so that the
             // request transaction propagates and Error: 1014 does not occur
-            await delay(7000);
-            await issueAPI.cancel(requestResult.hash);
+            await issueAPI.cancel(issueAPI.requestHash);
+            await delay(delayMs);
+            printEvents("cancelIssueRequest", issueAPI.events);
         });
     });
 });
