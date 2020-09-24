@@ -13,6 +13,7 @@ import * as DefaultVaultsAPI from "../../../src/apis/vaults";
 import { ImportMock } from "ts-mock-imports";
 import { Keyring } from "@polkadot/api";
 import { EventRecord } from "@polkadot/types/interfaces/system";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -22,6 +23,10 @@ function printEvents(testType: string, events: EventRecord[]) {
         console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
         // console.log(meta.documentation);
     });
+}
+
+function delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 describe("issue", () => {
@@ -35,10 +40,43 @@ describe("issue", () => {
     const registry: TypeRegistry = new TypeRegistry();
     const defaultEndpoint = "ws://127.0.0.1:9944";
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
+    let events: EventRecord[] = [];
+
+    function txCallback(unsubscribe: any, result: ISubmittableResult) {
+        if (result.status.isInBlock) {
+            console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+        } else if (result.status.isFinalized) {
+            console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+            events = result.events;
+            unsubscribe();
+        }
+    }
+
+    describe.skip("exchangeRateOracle", () => {
+
+        it("should setExchangeRate", async () => {
+            api = await createPolkadotAPI(defaultEndpoint);
+            keyring = new Keyring({ type: "sr25519" });
+
+            const bob = keyring.addFromUri("//Bob");
+            const alice = keyring.addFromUri("//Alice");
+
+            let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(20)
+                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
+            await delay(delayMs);
+            printEvents("setExchangeRate", events);
+
+            const bobBTCAddress = "BF3408F6C0DEC0879F7C1D4D0A5E8813FC0DB569";
+            unsubscribe = await api.tx.vaultRegistry.registerVault(100, bobBTCAddress)
+                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
+            await delay(delayMs);
+            printEvents("registerVault", events);
+        });
+
+    });
 
     describe.skip("request", () => {
         beforeEach(async () => {
-            const defaultEndpoint = "ws://127.0.0.1:9944";
             api = await createPolkadotAPI(defaultEndpoint);
             issueAPI = new DefaultIssueAPI(api);
         });
@@ -107,9 +145,7 @@ describe("issue", () => {
         });
     });
 
-    function delay(ms: number) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
-    }
+
 
     describe.skip("cancel", () => {
         let api: ApiPromise;
