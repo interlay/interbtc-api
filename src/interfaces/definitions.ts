@@ -100,7 +100,7 @@ export default {
             status: "StatusCode",
         },
         GetStatusUpdateRequest: {
-            id: "u64",
+            status_update_id: "u64",
         },
         GetStatusUpdateResponse: {
             status: "StatusUpdate",
@@ -113,6 +113,11 @@ export default {
             status_code: "StatusCode",
             add_error: "Option<ErrorCode>",
             remove_error: "Option<ErrorCode>",
+            block_hash: "Option<H256Le>",
+        },
+        VoteOnStatusUpdateRequest: {
+            status_update_id: "U256",
+            approve: "bool",
         },
     },
 };

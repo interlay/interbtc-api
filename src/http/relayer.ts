@@ -1,4 +1,4 @@
-import { Client, HttpClientOptions, HttpClient } from "jayson";
+import { Client, HttpClientOptions, HttpClient, JSONRPCErrorLike, JSONRPCResultLike } from "jayson";
 import {
     GetAddressResponse,
     GetParachainStatusResponse,
@@ -6,20 +6,21 @@ import {
     GetStatusUpdateResponse,
     RegisterStakedRelayerRequest,
     SuggestStatusUpdateRequest,
+    VoteOnStatusUpdateRequest,
     StatusCode,
     ErrorCode,
     StatusUpdate,
+    H256Le,
 } from "@interlay/polkabtc/interfaces/default";
+import { u256 } from "@polkadot/types/primitive";
 import { getAPITypes } from "../factory";
 import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 
-interface JsonResponse {
-    jsonrpc: "2.0";
-    id: string | number;
-    result: string;
-}
+type JsonRpcResult = JSONRPCResultLike;
+
+type JsonRpcError = JSONRPCErrorLike | null | undefined;
 
 export class StakedRelayerClient {
     client: HttpClient;
@@ -32,6 +33,7 @@ export class StakedRelayerClient {
         GetStatusUpdateResponse: Constructor<GetStatusUpdateResponse>;
         RegisterStakedRelayerRequest: Constructor<RegisterStakedRelayerRequest>;
         SuggestStatusUpdateRequest: Constructor<SuggestStatusUpdateRequest>;
+        VoteOnStatusUpdateRequest: Constructor<VoteOnStatusUpdateRequest>;
     };
 
     constructor(options?: HttpClientOptions) {
@@ -52,14 +54,23 @@ export class StakedRelayerClient {
             GetStatusUpdateResponse: this.registry.createClass("GetStatusUpdateResponse"),
             RegisterStakedRelayerRequest: this.registry.createClass("RegisterStakedRelayerRequest"),
             SuggestStatusUpdateRequest: this.registry.createClass("SuggestStatusUpdateRequest"),
+            VoteOnStatusUpdateRequest: this.registry.createClass("VoteOnStatusUpdateRequest"),
         };
+    }
+
+    async connected(): Promise<boolean> {
+        try {
+            await this.getAddress();
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
 
     async getAddress(): Promise<string> {
         return new Promise((resolve, reject) =>
-            this.client.request("get_address", [], (err: any, response: JsonResponse) => {
-                if (err) reject(err);
-                console.log(response);
+            this.client.request("get_address", [], (err: JsonRpcError, response: JsonRpcResult) => {
+                if (err) return reject(err);
                 const result = new this.constr["GetAddressResponse"](this.registry, response.result);
                 resolve(result.address.toString());
             })
@@ -68,37 +79,43 @@ export class StakedRelayerClient {
 
     async getParachainStatus(): Promise<StatusCode> {
         return new Promise((resolve, reject) =>
-            this.client.request("get_parachain_status", [], (err: any, response: JsonResponse) => {
-                if (err) reject(err);
+            this.client.request("get_parachain_status", [], (err: JsonRpcError, response: JsonRpcResult) => {
+                if (err) return reject(err);
                 const result = new this.constr["GetParachainStatusResponse"](this.registry, response.result);
                 resolve(result.status);
             })
         );
     }
 
-    async getStatusUpdate(id: number): Promise<StatusUpdate> {
-        const request = new this.constr["GetStatusUpdateRequest"](this.registry, { id });
+    async getStatusUpdate(status_update_id: number): Promise<StatusUpdate> {
+        const request = new this.constr["GetStatusUpdateRequest"](this.registry, { status_update_id });
         return new Promise((resolve, reject) =>
-            this.client.request("get_status_update", [request.toHex()], (err: any, response: JsonResponse) => {
-                if (err) reject(err);
-                const result = new this.constr["GetStatusUpdateResponse"](this.registry, response.result);
-                resolve(result.status);
-            })
+            this.client.request(
+                "get_status_update",
+                [request.toHex()],
+                (err: JsonRpcError, response: JsonRpcResult) => {
+                    if (err) return reject(err);
+                    const result = new this.constr["GetStatusUpdateResponse"](this.registry, response.result);
+                    resolve(result.status);
+                }
+            )
         );
     }
 
     async registerStakedRelayer(stake: number): Promise<void> {
         const request = new this.constr["RegisterStakedRelayerRequest"](this.registry, { stake: new BN(stake) });
         await new Promise((resolve, reject) =>
-            this.client.request("register_staked_relayer", [request.toHex()], (err: any, response: JsonResponse) =>
-                err ? reject(err) : resolve(response)
+            this.client.request(
+                "register_staked_relayer",
+                [request.toHex()],
+                (err: JsonRpcError, response: JsonRpcResult) => (err ? reject(err) : resolve(response))
             )
         );
     }
 
     async deregisterStakedRelayer(): Promise<void> {
         await new Promise((resolve, reject) =>
-            this.client.request("deregister_staked_relayer", [], (err: any, response: JsonResponse) =>
+            this.client.request("deregister_staked_relayer", [], (err: JsonRpcError, response: JsonRpcResult) =>
                 err ? reject(err) : resolve(response)
             )
         );
@@ -108,18 +125,35 @@ export class StakedRelayerClient {
         deposit: number,
         statusCode: StatusCode,
         addError?: ErrorCode,
-        removeError?: ErrorCode
+        removeError?: ErrorCode,
+        block_hash?: H256Le
     ): Promise<void> {
-        const request = new this.constr["SuggestStatusUpdateRequest"](
-            this.registry,
-            new BN(deposit),
-            statusCode,
-            addError,
-            removeError
-        );
+        const request = new this.constr["SuggestStatusUpdateRequest"](this.registry, {
+            deposit: new BN(deposit),
+            status_code: statusCode,
+            add_error: addError,
+            remove_error: removeError,
+            block_hash,
+        });
         await new Promise((resolve, reject) =>
-            this.client.request("suggest_status_update", [request.toHex()], (err: any, response: JsonResponse) =>
-                err ? reject(err) : resolve(response)
+            this.client.request(
+                "suggest_status_update",
+                [request.toHex()],
+                (err: JsonRpcError, response: JsonRpcResult) => (err ? reject(err) : resolve(response))
+            )
+        );
+    }
+
+    async voteOnStatusUpdate(status_update_id: u256, approve: boolean): Promise<void> {
+        const request = new this.constr["VoteOnStatusUpdateRequest"](this.registry, {
+            status_update_id,
+            approve,
+        });
+        await new Promise((resolve, reject) =>
+            this.client.request(
+                "vote_on_status_update",
+                [request.toHex()],
+                (err: JsonRpcError, response: JsonRpcResult) => (err ? reject(err) : resolve(response))
             )
         );
     }
