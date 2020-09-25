@@ -37,9 +37,7 @@ export class DefaultIssueAPI implements IssueAPI {
     // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>` 
     // isn't recognized by type checker
     private txCallback(unsubscribe: any, result: ISubmittableResult) {
-        if (result.status.isInBlock) {
-            console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-        } else if (result.status.isFinalized) {
+        if (result.status.isFinalized) {
             console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
             this.requestHash = result.status.asFinalized;
             this.events = result.events;
@@ -62,30 +60,28 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!griefingCollateral) {
             griefingCollateral = await this.getGriefingCollateral();
         }
-        const nonce = await this.api.rpc.system.accountNextIndex(this.account.address);
+        // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
         const unsubscribe: any = await this.api.tx.issue
             .requestIssue(amount, vault.id, griefingCollateral)
-            .signAndSend(this.account, { nonce }, (result) => this.txCallback(unsubscribe, result));
+            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
     }
 
     async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        const nonce = await this.api.rpc.system.accountNextIndex(this.account.address);
         const unsubscribe: any = await this.api.tx.issue
             .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
-            .signAndSend(this.account, { nonce }, (result) => this.txCallback(unsubscribe, result));
+            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
     }
 
     async cancel(issueId: H256): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        const nonce = await this.api.rpc.system.accountNextIndex(this.account.address);
         const unsubscribe: any = await this.api.tx.issue
             .cancelIssue(issueId)
-            .signAndSend(this.account, { nonce }, (result) => this.txCallback(unsubscribe, result));
+            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
     }
 
     async list(): Promise<IssueRequest[]> {

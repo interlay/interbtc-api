@@ -4,26 +4,16 @@ import { Bytes, u32 } from "@polkadot/types/primitive";
 import { H256, Hash } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
-import { GenericAccountId } from "@polkadot/types/generic";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
-import * as DefaultVaultsAPI from "../../../src/apis/vaults";
-import { ImportMock } from "ts-mock-imports";
 import { Keyring } from "@polkadot/api";
-import { EventRecord } from "@polkadot/types/interfaces/system";
+import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ISubmittableResult } from "@polkadot/types/types";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-function printEvents(testType: string, events: EventRecord[]) {
-    console.log(`${testType} events:`);
-    events.forEach(({ phase, event: { data, method, section, meta } }) => {
-        console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
-        // console.log(meta.documentation);
-    });
-}
 
 function delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,46 +23,74 @@ describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let keyring: Keyring;
-    const delayMs: number = 18000;
+    const delayMs: number = 25000;
 
     // alice is the root account
     let alice: KeyringPair;
+    let bob: KeyringPair;
     const registry: TypeRegistry = new TypeRegistry();
     const defaultEndpoint = "ws://127.0.0.1:9944";
-    const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
     let events: EventRecord[] = [];
 
     function txCallback(unsubscribe: any, result: ISubmittableResult) {
-        if (result.status.isInBlock) {
-            console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-        } else if (result.status.isFinalized) {
+        if (result.status.isFinalized) {
             console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
             events = result.events;
             unsubscribe();
         }
     }
 
-    describe.skip("exchangeRateOracle", () => {
+    function printEvents(testType: string, events: EventRecord[]) {
+        console.log(`\n${testType} events:`);
 
+        let foundErrorEvent = false;
+        events.forEach(({ event }) => {
+            event.data.forEach(async (eventData: any) => {
+                if (eventData.isModule) {
+                    try {
+                        const parsedEventData = eventData as DispatchError;
+                        const decoded = await api.registry.findMetaError(parsedEventData.asModule);
+                        const { documentation, name, section } = decoded;
+                        if (documentation) {
+                            console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
+                        } else {
+                            console.log(`\t${section}.${name}`);
+                        }
+                        foundErrorEvent = true;
+                    } catch (err) {
+                        console.log("\tCould not find transaction failure details.");
+                    }
+
+                }
+            });
+        });
+
+        if (!foundErrorEvent) {
+            events.forEach(({ phase, event: { data, method, section } }) => {
+                console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
+            });
+        }
+    }
+
+    describe.skip("exchangeRateOracle", () => {
         it("should setExchangeRate", async () => {
             api = await createPolkadotAPI(defaultEndpoint);
             keyring = new Keyring({ type: "sr25519" });
+            bob = keyring.addFromUri("//Bob");
+            console.log("bob.address:");
+            console.log(bob.address);
 
-            const bob = keyring.addFromUri("//Bob");
-            const alice = keyring.addFromUri("//Alice");
-
-            let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(20)
+            let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(1)
                 .signAndSend(bob, (result) => txCallback(unsubscribe, result));
             await delay(delayMs);
             printEvents("setExchangeRate", events);
 
             const bobBTCAddress = "BF3408F6C0DEC0879F7C1D4D0A5E8813FC0DB569";
-            unsubscribe = await api.tx.vaultRegistry.registerVault(100, bobBTCAddress)
+            unsubscribe = await api.tx.vaultRegistry.registerVault(6, bobBTCAddress)
                 .signAndSend(bob, (result) => txCallback(unsubscribe, result));
             await delay(delayMs);
             printEvents("registerVault", events);
         });
-
     });
 
     describe.skip("request", () => {
@@ -101,10 +119,9 @@ describe("issue", () => {
 
             // Alice is also the root account
             alice = keyring.addFromUri("//Alice");
-            const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
-            mockManager.mock("selectRandomVault", <Vault>{
-                id: new GenericAccountId(registry, randomDecodedAccountId),
-            });
+            console.log("alice.address:");
+            console.log(alice.address);
+
             issueAPI = new DefaultIssueAPI(api);
         });
 
@@ -123,8 +140,9 @@ describe("issue", () => {
 
         it("should request if account is set", async () => {
             issueAPI.setAccount(alice);
-            const amount = api.createType("PolkaBTC", 10);
-            await issueAPI.request(amount);
+            const amount = api.createType("PolkaBTC", 1);
+            const bobVaultId = api.createType("AccountId", bob.address);
+            await issueAPI.request(amount, bobVaultId);
             await delay(delayMs);
             printEvents("requestIssue", issueAPI.events);
         });
@@ -157,16 +175,12 @@ describe("issue", () => {
 
             // Alice is also the root account
             alice = keyring.addFromUri("//Alice");
-            const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
-            mockManager.mock("selectRandomVault", <Vault>{
-                id: new GenericAccountId(registry, randomDecodedAccountId),
-            });
             issueAPI = new DefaultIssueAPI(api);
         });
 
         it("should cancel a request", async () => {
             issueAPI.setAccount(alice);
-            const amount = api.createType("PolkaBTC", 11);
+            const amount = api.createType("PolkaBTC", 1);
             await issueAPI.request(amount);
             await delay(delayMs);
             printEvents("requestIssue", issueAPI.events);

@@ -13,7 +13,7 @@ export interface VaultsAPI {
 }
 
 export class DefaultVaultsAPI {
-    constructor(private api: ApiPromise) {}
+    constructor(private api: ApiPromise) { }
 
     async list(): Promise<Vault[]> {
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
@@ -21,7 +21,7 @@ export class DefaultVaultsAPI {
     }
 
     get(vaultId: AccountId): Promise<Vault> {
-        return this.api.query.vaultRegistry.vaults.at(vaultId);
+        return this.api.query.vaultRegistry.vaults(vaultId);
     }
 
     async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
