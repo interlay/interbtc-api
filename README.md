@@ -33,7 +33,7 @@ yarn test:unit
 
 ## Usage
 
-### Real PolkaBTC Queries
+The library assumes you have a [BTC-Parachain](https://github.com/interlay/btc-parachain) running locally.
 
 To use the library, you will first need to create a PolkadotJS `APIPromise` instance,
 and then to instantiate a `PolkaBTCAPI` instance.
@@ -57,7 +57,9 @@ polkaBTC.setAccount(keypair);
 
 The different functionalities are then exposed through the `PolkaBTCAPI` instance.
 
-### Mock PolkaBTC Queries
+## Testing without a running BTC-Parachain
+
+For testing purposes, you can mock the BTC-Parachain and use a mock endpoint that emulates the behavior of the BTC-Parachain. 
 
 ```typescript
 import { createPolkabtcAPI } from "@interlay/polkabtc";
