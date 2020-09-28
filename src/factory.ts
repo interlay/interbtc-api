@@ -47,3 +47,9 @@ export function getAPITypes(): RegistryTypes {
 export function getRPCTypes(): Record<string, Record<string, DefinitionRpc | DefinitionRpcSub>> {
     return Object.values(definitions).reduce((res, { rpc }) => ({ ...res, ...rpc }), {});
 }
+
+export function createAPIRegistry(): TypeRegistry {
+    const registry = new TypeRegistry();
+    registry.register(getAPITypes());
+    return registry;
+}
