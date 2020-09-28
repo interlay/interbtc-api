@@ -3,6 +3,7 @@ import { HttpProvider, WsProvider } from "@polkadot/rpc-provider";
 import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { TypeRegistry } from "@polkadot/types";
 import { RegistryTypes } from "@polkadot/types/types";
+import { DefinitionRpc, DefinitionRpcSub } from "@polkadot/types/types";
 import * as definitions from "./interfaces/definitions";
 import { MockPolkaBTCAPI, MockProvider } from "./mock";
 import { PolkaBTCAPI, DefaultPolkaBTCAPI } from "./polkabtc-api";
@@ -24,7 +25,8 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
 export function createPolkadotAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
     const types = getAPITypes();
-    return ApiPromise.create({ provider, types });
+    const rpc = getRPCTypes();
+    return ApiPromise.create({ provider, types, rpc });
 }
 
 export async function createPolkabtcAPI(
@@ -40,4 +42,8 @@ export async function createPolkabtcAPI(
 
 export function getAPITypes(): RegistryTypes {
     return Object.values(definitions).reduce((res, { types }) => ({ ...res, ...types }), {});
+}
+
+export function getRPCTypes(): Record<string, Record<string, DefinitionRpc | DefinitionRpcSub>> {
+    return Object.values(definitions).reduce((res, { rpc }) => ({ ...res, ...rpc }), {});
 }

@@ -45,9 +45,10 @@ export class DefaultVaultsAPI {
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
     }
 
-    // TODO: get vault with enough collateral from the registry
-    async selectRandomVault(_btc: PolkaBTC): Promise<Vault> {
-        const vaults = await this.list();
-        return vaults[0];
+    async selectRandomVault(btc: PolkaBTC): Promise<Vault> {
+        const customAPIRPC = this.api.rpc as any;
+        const firstVaultWithSufficientCollateral =
+            await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientCollateral(btc);
+        return firstVaultWithSufficientCollateral;
     }
 }

@@ -120,4 +120,60 @@ export default {
             approve: "bool",
         },
     },
+    rpc: {
+        vaultRegistry: {
+            getFirstVaultWithSufficientCollateral: {
+                description:
+                    "Get the first available vault with sufficient collateral " +
+                    "to fulfil an issue request with the specified amount of PolkaBTC.",
+                params: [
+                    {
+                        name: "amount",
+                        type: "PolkaBTC"
+                    },
+                ],
+                type: "AccountId"
+            },
+            getIssueableTokensFromVault: {
+                description: "Get the amount of tokens a vault can issue",
+                params: [
+                    {
+                        name: "vault",
+                        type: "AccountId"
+                    },
+                ],
+                type: "PolkaBTC"
+            },
+        },
+        exchangeRateOracle: {
+            btcToDots: {
+                description:
+                    "BTC to DOT conversion rate",
+                params: [
+                    {
+                        name: "amount",
+                        type: "PolkaBTC"
+                    },
+                ],
+                type: "DOT"
+            },
+        },
+        stakedRelayers: {
+            isTransactionInvalid: {
+                description:
+                    "BTC to DOT conversion rate",
+                params: [
+                    {
+                        name: "vault_id",
+                        type: "AccountId"
+                    },
+                    {
+                        name: "raw_tx",
+                        type: "Vec<u8>"
+                    },
+                ],
+                type: ""
+            },
+        },
+    },
 };

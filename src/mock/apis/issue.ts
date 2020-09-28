@@ -1,23 +1,31 @@
-import { DOT, Issue as IssueRequest, PolkaBTC, H256Le } from "@interlay/polkabtc/interfaces/default";
+import { DOT, Issue as IssueRequest, PolkaBTC, H256Le, Vault } from "@interlay/polkabtc/interfaces/default";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { AccountId, H256, H160, BlockNumber } from "@polkadot/types/interfaces";
+import { AccountId, H256, H160, BlockNumber, Hash } from "@polkadot/types/interfaces";
 import { Bytes, u32, bool } from "@polkadot/types/primitive";
 import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
 
-import { IssueAPI } from "../../apis/issue";
+import { IssueAPI, RequestResult } from "../../apis/issue";
 
 export class MockIssueAPI implements IssueAPI {
     execute(_issueId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
         throw new Error("Method not implemented.");
     }
+
     cancel(_issueId: H256): Promise<void> {
         throw new Error("Method not implemented.");
     }
-    request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<void> {
-        throw new Error("Method not implemented.");
+
+    request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<RequestResult> {
+        const registry = new TypeRegistry();
+        const hash = new U8aFixed(
+            registry,
+            "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c"
+        ) as Hash;
+        const vault = {} as Vault;
+        return Promise.resolve({ hash, vault });
     }
 
     setAccount(_account?: KeyringPair): void {
