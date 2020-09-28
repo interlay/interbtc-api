@@ -4,11 +4,19 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
+import { ISubmittableResult } from "@polkadot/types/types";
+import { EventRecord } from "@polkadot/types/interfaces/system";
+// import { SubmittableResultSubscription } from "@polkadot/api/submittable/types";
+import { ApiTypes } from "@polkadot/api/types/base";
+import { Observable } from "rxjs";
+
+export declare type SubmittableResultSubscription<ApiType extends ApiTypes> =
+    ApiType extends "rxjs" ? Observable<ISubmittableResult> : Promise<() => void>;
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
 export interface IssueAPI {
-    request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
+    request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<void>;
     execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: KeyringPair): void;
@@ -18,12 +26,26 @@ export interface IssueAPI {
 
 export class DefaultIssueAPI implements IssueAPI {
     private vaults: VaultsAPI;
+    requestHash: Hash;
+    events: EventRecord[] = [];
 
     constructor(private api: ApiPromise, private account?: KeyringPair) {
         this.vaults = new DefaultVaultsAPI(api);
+        this.requestHash = this.api.createType("Hash");
     }
 
-    async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
+    // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>` 
+    // isn't recognized by type checker
+    private txCallback(unsubscribe: any, result: ISubmittableResult) {
+        if (result.status.isFinalized) {
+            console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+            this.requestHash = result.status.asFinalized;
+            this.events = result.events;
+            unsubscribe();
+        }
+    }
+
+    async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -38,26 +60,28 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!griefingCollateral) {
             griefingCollateral = await this.getGriefingCollateral();
         }
-        const hash = await this.api.tx.issue
+        // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
+        const unsubscribe: any = await this.api.tx.issue
             .requestIssue(amount, vault.id, griefingCollateral)
-            .signAndSend(this.account);
-        return { hash, vault };
+            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
     }
 
     async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        await this.api.tx.issue
+        const unsubscribe: any = await this.api.tx.issue
             .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
-            .signAndSend(this.account);
+            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
     }
 
     async cancel(issueId: H256): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        await this.api.tx.issue.cancelIssue(issueId).signAndSend(this.account);
+        const unsubscribe: any = await this.api.tx.issue
+            .cancelIssue(issueId)
+            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
     }
 
     async list(): Promise<IssueRequest[]> {
