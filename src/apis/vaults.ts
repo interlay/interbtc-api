@@ -7,13 +7,16 @@ import { u128 } from "@polkadot/types/primitive";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
-    selectRandomVault(btc: PolkaBTC): Promise<Vault>;
     get(vaultId: AccountId): Promise<Vault>;
-    getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
+    getCollateralization(vaultId: AccountId): Promise<number>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
+    getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
+    selectRandomVault(btc: PolkaBTC): Promise<Vault>;
 }
 
 export class DefaultVaultsAPI {
+    granularity = 5;
+
     constructor(private api: ApiPromise) { }
 
     async list(): Promise<Vault[]> {
@@ -25,11 +28,12 @@ export class DefaultVaultsAPI {
         return this.api.query.vaultRegistry.vaults(vaultId);
     }
 
-    async getCollateralization(vaultId: AccountId): Promise<u128> {
+    async getCollateralization(vaultId: AccountId): Promise<number> {
         const customAPIRPC = this.api.rpc as any;
         const collateralization =
             await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
-        return collateralization;
+
+        return this.scaleUsingParachainGranularity(collateralization);
     }
 
     async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
@@ -58,5 +62,9 @@ export class DefaultVaultsAPI {
         const firstVaultWithSufficientCollateral =
             await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientCollateral(btc);
         return firstVaultWithSufficientCollateral;
+    }
+
+    private scaleUsingParachainGranularity(value: u128): number {
+        return value.toNumber() / Math.pow(10, this.granularity);
     }
 }
