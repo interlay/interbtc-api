@@ -15,6 +15,7 @@ export interface StakedRelayerAPI {
     getLatestBTCBlockFromBTCRelay(): Promise<H256Le>;
     getLatestBTCBlockHeightFromBTCRelay(): Promise<u32>;
     getLatestBTCBlockFromBTCCore(): Promise<number | undefined>;
+    getLatestBTCBlockHeightFromBTCCore(): Promise<number | undefined>;
     getMonitoredVaultsCollateralizationRate(): Promise<Vault[]>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
@@ -70,6 +71,17 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getLatestBTCBlockFromBTCCore(): Promise<number | undefined> {
+        const basePath = "https://blockstream.info/api";
+        const blockApi = new esplora.BlockApi({ basePath: basePath });
+        blockApi.getLastBlockHash().then((response) => {
+            return response.data;
+        });
+
+        // if the request times out
+        return undefined;
+    }
+
+    async getLatestBTCBlockHeightFromBTCCore(): Promise<number | undefined> {
         const basePath = "https://blockstream.info/api";
         const blockApi = new esplora.BlockApi({ basePath: basePath });
         blockApi.getLastBlockHeight().then((response) => {
