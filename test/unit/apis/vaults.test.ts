@@ -130,7 +130,7 @@ describe("vaultsAPI", () => {
         it("should get vault collateralization", async () => {
             const vaultId = api.createType("AccountId", bob.address);
             const collateralization = await vaultsAPI.getCollateralization(vaultId);
-            assert.isTrue(parseInt(collateralization.toHuman(), 10) > 1);
+            assert.isTrue(collateralization > 1);
         });
 
     });
