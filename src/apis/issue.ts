@@ -16,7 +16,7 @@ export declare type SubmittableResultSubscription<ApiType extends ApiTypes> =
 export type RequestResult = { hash: Hash; vault: Vault };
 
 export interface IssueAPI {
-    request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<void>;
+    request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
     execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: KeyringPair): void;
@@ -45,7 +45,7 @@ export class DefaultIssueAPI implements IssueAPI {
         }
     }
 
-    async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<void> {
+    async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -64,6 +64,9 @@ export class DefaultIssueAPI implements IssueAPI {
         const unsubscribe: any = await this.api.tx.issue
             .requestIssue(amount, vault.id, griefingCollateral)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
+
+        const hash = this.requestHash;
+        return { hash, vault };
     }
 
     async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {

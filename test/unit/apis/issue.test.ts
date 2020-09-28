@@ -14,7 +14,6 @@ import { ISubmittableResult } from "@polkadot/types/types";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-
 function delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -23,7 +22,7 @@ describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let keyring: Keyring;
-    const delayMs: number = 25000;
+    const delayMs = 25000;
 
     // alice is the root account
     let alice: KeyringPair;
@@ -162,8 +161,6 @@ describe("issue", () => {
             printEvents("executeIssue", issueAPI.events);
         });
     });
-
-
 
     describe.skip("cancel", () => {
         let api: ApiPromise;
