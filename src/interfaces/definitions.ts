@@ -144,6 +144,16 @@ export default {
                 ],
                 type: "PolkaBTC"
             },
+            getCollateralizationFromVault: {
+                description: "Returns the collateralization of a specific vault",
+                params: [
+                    {
+                        name: "vault_id",
+                        type: "AccountId"
+                    },
+                ],
+                type: "u128"
+            }
         },
         exchangeRateOracle: {
             btcToDots: {

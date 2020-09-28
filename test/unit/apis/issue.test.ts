@@ -76,8 +76,6 @@ describe("issue", () => {
             api = await createPolkadotAPI(defaultEndpoint);
             keyring = new Keyring({ type: "sr25519" });
             bob = keyring.addFromUri("//Bob");
-            console.log("bob.address:");
-            console.log(bob.address);
 
             let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(1)
                 .signAndSend(bob, (result) => txCallback(unsubscribe, result));

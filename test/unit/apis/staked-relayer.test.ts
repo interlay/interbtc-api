@@ -73,7 +73,8 @@ describe("stakedRelayerAPI", () => {
         });
 
         it("should getMonitoredVaultsCollateralizationRate", async () => {
-            const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
+            const monitoredVaultsCollateralizationRate =
+                await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
             assert.notEqual(typeof monitoredVaultsCollateralizationRate, undefined);
         });
 
