@@ -68,6 +68,25 @@ describe("vaultsAPI", () => {
         }
     }
 
+    describe.skip("exchangeRateOracle", () => {
+        it("should setExchangeRate", async () => {
+            api = await createPolkadotAPI(defaultEndpoint);
+            keyring = new Keyring({ type: "sr25519" });
+            bob = keyring.addFromUri("//Bob");
+
+            let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(1)
+                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
+            await delay(delayMs);
+            printEvents("setExchangeRate", events);
+
+            const bobBTCAddress = "BF3408F6C0DEC0879F7C1D4D0A5E8813FC0DB569";
+            unsubscribe = await api.tx.vaultRegistry.registerVault(6, bobBTCAddress)
+                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
+            await delay(delayMs);
+            printEvents("registerVault", events);
+        });
+    });
+
     describe.skip("request", () => {
 
         beforeEach(async () => {
@@ -103,23 +122,15 @@ describe("vaultsAPI", () => {
         });
 
         it("should select random vault", async () => {
-            keyring = new Keyring({ type: "sr25519" });
-            bob = keyring.addFromUri("//Bob");
-
-            let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(1)
-                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
-            await delay(delayMs);
-            printEvents("setExchangeRate", events);
-
-            const bobBTCAddress = "BF3408F6C0DEC0879F7C1D4D0A5E8813FC0DB569";
-            unsubscribe = await api.tx.vaultRegistry.registerVault(6, bobBTCAddress)
-                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
-            await delay(delayMs);
-            printEvents("registerVault", events);
-
             const polkaBTCCollateral = api.createType("PolkaBTC", 1);
             const randomVault = await vaultsAPI.selectRandomVault(polkaBTCCollateral);
             assert.equal(randomVault.toHuman(), bob.address);
+        });
+
+        it("should get vault collateralization", async () => {
+            const vaultId = api.createType("AccountId", bob.address);
+            const collateralization = await vaultsAPI.getCollateralization(vaultId);
+            assert.isTrue(parseInt(collateralization.toHuman(), 10) > 1);
         });
 
     });

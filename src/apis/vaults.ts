@@ -3,6 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
+import { u128 } from "@polkadot/types/primitive";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
@@ -22,6 +23,13 @@ export class DefaultVaultsAPI {
 
     get(vaultId: AccountId): Promise<Vault> {
         return this.api.query.vaultRegistry.vaults(vaultId);
+    }
+
+    async getCollateralization(vaultId: AccountId): Promise<u128> {
+        const customAPIRPC = this.api.rpc as any;
+        const collateralization =
+            await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
+        return collateralization;
     }
 
     async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
