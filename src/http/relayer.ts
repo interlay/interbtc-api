@@ -34,6 +34,8 @@ export class StakedRelayerClient {
         RegisterStakedRelayerRequest: Constructor<RegisterStakedRelayerRequest>;
         SuggestStatusUpdateRequest: Constructor<SuggestStatusUpdateRequest>;
         VoteOnStatusUpdateRequest: Constructor<VoteOnStatusUpdateRequest>;
+        StatusCode: Constructor<StatusCode>;
+        ErrorCode: Constructor<ErrorCode>;
     };
 
     constructor(options?: HttpClientOptions) {
@@ -55,6 +57,8 @@ export class StakedRelayerClient {
             RegisterStakedRelayerRequest: this.registry.createClass("RegisterStakedRelayerRequest"),
             SuggestStatusUpdateRequest: this.registry.createClass("SuggestStatusUpdateRequest"),
             VoteOnStatusUpdateRequest: this.registry.createClass("VoteOnStatusUpdateRequest"),
+            StatusCode: this.registry.createClass("StatusCode"),
+            ErrorCode: this.registry.createClass("ErrorCode"),
         };
     }
 
@@ -142,6 +146,12 @@ export class StakedRelayerClient {
                 (err: JsonRpcError, response: JsonRpcResult) => (err ? reject(err) : resolve(response))
             )
         );
+    }
+
+    suggestInvalidBlock(deposit: number, block_hash: H256Le): Promise<void> {
+        const statusCode = new this.constr["StatusCode"](this.registry, { error: true });
+        const addError = new this.constr["ErrorCode"](this.registry, { invalidbtcrelay: true });
+        return this.suggestStatusUpdate(deposit, statusCode, addError, undefined, block_hash);
     }
 
     async voteOnStatusUpdate(status_update_id: u256, approve: boolean): Promise<void> {
