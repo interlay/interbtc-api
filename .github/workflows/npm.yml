@@ -1,0 +1,29 @@
+name: npm
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup node
+      uses: actions/setup-node@v1
+      with:
+        node-version: '14.x'
+        registry-url: 'https://registry.npmjs.org'
+        always-auth: true
+    - run: yarn install
+    - run: yarn build
+    - run: echo ::set-env name=RELEASE_VERSION::${GITHUB_REF:10}
+    - run: echo ${RELEASE_VERSION}
+    - name: publish
+      run: |
+        git config --global user.email "${GITHUB_ACTOR}"
+        git config --global user.name "${GITHUB_ACTOR}"
+        yarn publish --access public --new-version ${RELEASE_VERSION}
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
