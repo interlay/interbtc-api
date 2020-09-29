@@ -1,4 +1,11 @@
-import { DOT, ActiveStakedRelayer, H256Le, StatusCode, Vault } from "@interlay/polkabtc/interfaces/default";
+import {
+    DOT,
+    ActiveStakedRelayer,
+    H256Le,
+    StatusCode,
+    Vault,
+    StatusUpdate,
+} from "@interlay/polkabtc/interfaces/default";
 import { u128, u32 } from "@polkadot/types/primitive";
 import { AccountId, Balance, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -91,5 +98,11 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
     async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, Balance, Balance]>> {
         const registry = new TypeRegistry();
         return [[new BN(11208) as BlockNumber, new UInt(registry, 5), new UInt(registry, 5)]];
+    }
+
+    async getAllStatusUpdates(): Promise<Array<StatusUpdate>> {
+        const registry = new TypeRegistry();
+        const statusCode = new (registry.createClass("StatusUpdate"))(registry, {});
+        return [statusCode];
     }
 }

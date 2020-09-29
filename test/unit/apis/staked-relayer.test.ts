@@ -91,5 +91,10 @@ describe("stakedRelayerAPI", () => {
             const ongoingStatusUpdateVotes = await stakedRelayerAPI.getOngoingStatusUpdateVotes();
             assert.notEqual(typeof ongoingStatusUpdateVotes, undefined);
         });
+
+        it("should getAllStatusUpdates", async () => {
+            const allStatusUpdates = await stakedRelayerAPI.getAllStatusUpdates();
+            assert.notEqual(typeof allStatusUpdates, undefined);
+        });
     });
 });

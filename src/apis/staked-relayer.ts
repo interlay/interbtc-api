@@ -1,4 +1,11 @@
-import { DOT, ActiveStakedRelayer, H256Le, StatusCode, Vault } from "@interlay/polkabtc/interfaces/default";
+import {
+    DOT,
+    ActiveStakedRelayer,
+    H256Le,
+    StatusCode,
+    Vault,
+    StatusUpdate,
+} from "@interlay/polkabtc/interfaces/default";
 import { u128, u32 } from "@polkadot/types/primitive";
 import { AccountId, Balance, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
@@ -19,6 +26,7 @@ export interface StakedRelayerAPI {
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, Balance, Balance]>>;
+    getAllStatusUpdates(): Promise<Array<StatusUpdate>>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -105,5 +113,11 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         ]);
 
         return ongoingStatusUpdateVotes;
+    }
+
+    async getAllStatusUpdates(): Promise<Array<StatusUpdate>> {
+        // TODO: page this so we don't fetch ALL proposals at once
+        const statusUpdatesEntries = await this.api.query.stakedRelayers.statusUpdates.entries();
+        return statusUpdatesEntries.map((v) => v[1]);
     }
 }
