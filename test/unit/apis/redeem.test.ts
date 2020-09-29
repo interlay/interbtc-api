@@ -115,10 +115,6 @@ describe("redeem", () => {
             redeemAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 11);
             requestResult = await redeemAPI.request(amount, randomDecodedAccountId);
-
-            // delay the sending of the cancel transaction so that the
-            // request transaction propagates and Error: 1014 does not occur
-            await delay(7000);
             await redeemAPI.cancel(requestResult.hash);
         });
     });

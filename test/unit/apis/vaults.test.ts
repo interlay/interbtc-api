@@ -122,7 +122,7 @@ describe("vaultsAPI", () => {
         });
 
         it("should select random vault", async () => {
-            const polkaBTCCollateral = api.createType("PolkaBTC", 1);
+            const polkaBTCCollateral = api.createType("PolkaBTC", 0);
             const randomVault = await vaultsAPI.selectRandomVault(polkaBTCCollateral);
             assert.equal(randomVault.toHuman(), bob.address);
         });

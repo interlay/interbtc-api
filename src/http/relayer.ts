@@ -19,10 +19,11 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 
-if (typeof window === 'undefined') {
-    const fetch = require('node-fetch');
+if (typeof window === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const _fetch = require("node-fetch");
 } else {
-    const fetch = window.fetch;
+    const _fetch = window.fetch;
 }
 
 type JsonRpcResult = JSONRPCResultLike;
@@ -46,17 +47,18 @@ export class StakedRelayerClient {
     };
 
     constructor(url: RequestInfo) {
-        const callServer = function(request: string, callback: Function) {
-            const options= {
+        // eslint-disable-next-line @typescript-eslint/ban-types
+        const callServer = function (request: string, callback: Function) {
+            const options = {
                 headers: {
                     "Content-Type": "application/json",
                 }
             };
 
             fetch(url, options)
-                .then(function(res) { return res.text(); })
-                .then(function(text) { callback(null, text); })
-                .catch(function(err) { callback(err); });
+                .then(function (res) { return res.text(); })
+                .then(function (text) { callback(null, text); })
+                .catch(function (err) { callback(err); });
         };
 
         this.client = new ClientBrowser(callServer, {
