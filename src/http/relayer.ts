@@ -1,4 +1,5 @@
-import { Client, HttpClientOptions, HttpClient, JSONRPCErrorLike, JSONRPCResultLike } from "jayson";
+import ClientBrowser from "jayson/lib/client/browser";
+import { JSONRPCErrorLike, JSONRPCResultLike } from "jayson";
 import {
     GetAddressResponse,
     GetParachainStatusResponse,
@@ -18,12 +19,18 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 
+if (typeof window === 'undefined') {
+    const fetch = require('node-fetch');
+} else {
+    const fetch = window.fetch;
+}
+
 type JsonRpcResult = JSONRPCResultLike;
 
 type JsonRpcError = JSONRPCErrorLike | null | undefined;
 
 export class StakedRelayerClient {
-    client: HttpClient;
+    client: ClientBrowser;
     registry: TypeRegistry;
 
     constr: {
@@ -38,12 +45,21 @@ export class StakedRelayerClient {
         ErrorCode: Constructor<ErrorCode>;
     };
 
-    constructor(options?: HttpClientOptions) {
-        this.client = Client.http({
-            headers: {
-                "Content-Type": "application/json",
-            },
-            ...options,
+    constructor(url: RequestInfo) {
+        const callServer = function(request: string, callback: Function) {
+            const options= {
+                headers: {
+                    "Content-Type": "application/json",
+                }
+            };
+
+            fetch(url, options)
+                .then(function(res) { return res.text(); })
+                .then(function(text) { callback(null, text); })
+                .catch(function(err) { callback(err); });
+        };
+
+        this.client = new ClientBrowser(callServer, {
         });
 
         this.registry = new TypeRegistry();
