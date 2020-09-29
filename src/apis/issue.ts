@@ -26,12 +26,11 @@ export interface IssueAPI {
 
 export class DefaultIssueAPI implements IssueAPI {
     private vaults: VaultsAPI;
-    requestHash: Hash;
+    requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
     constructor(private api: ApiPromise, private account?: KeyringPair) {
         this.vaults = new DefaultVaultsAPI(api);
-        this.requestHash = this.api.createType("Hash");
     }
 
     // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>` 
@@ -43,6 +42,10 @@ export class DefaultIssueAPI implements IssueAPI {
             this.events = result.events;
             unsubscribe();
         }
+    }
+
+    private getIssueIdFromEvents(events: EventRecord[]): Hash {
+        return this.api.createType("Hash", events[2].event.data[0]);
     }
 
     async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
@@ -64,9 +67,14 @@ export class DefaultIssueAPI implements IssueAPI {
         const unsubscribe: any = await this.api.tx.issue
             .requestIssue(amount, vault.id, griefingCollateral)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
+        await delay(delayMs);
 
-        const hash = this.requestHash;
-        return { hash, vault };
+        if (this.events.length == 4) {
+            const hash = this.getIssueIdFromEvents(this.events);
+            return { hash, vault };
+        }
+
+        throw new Error("Request transaction failed");
     }
 
     async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
@@ -76,6 +84,7 @@ export class DefaultIssueAPI implements IssueAPI {
         const unsubscribe: any = await this.api.tx.issue
             .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
+        await delay(delayMs);
     }
 
     async cancel(issueId: H256): Promise<void> {
@@ -85,6 +94,7 @@ export class DefaultIssueAPI implements IssueAPI {
         const unsubscribe: any = await this.api.tx.issue
             .cancelIssue(issueId)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
+        await delay(delayMs);
     }
 
     async list(): Promise<IssueRequest[]> {
@@ -99,4 +109,10 @@ export class DefaultIssueAPI implements IssueAPI {
     setAccount(account?: KeyringPair): void {
         this.account = account;
     }
+}
+
+const delayMs = 25000;
+
+function delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }

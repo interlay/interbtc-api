@@ -27,7 +27,6 @@ describe("issue", () => {
     // alice is the root account
     let alice: KeyringPair;
     let bob: KeyringPair;
-    const registry: TypeRegistry = new TypeRegistry();
     const defaultEndpoint = "ws://127.0.0.1:9944";
     let events: EventRecord[] = [];
 
@@ -82,7 +81,7 @@ describe("issue", () => {
             await delay(delayMs);
             printEvents("setExchangeRate", events);
 
-            const bobBTCAddress = "BF3408F6C0DEC0879F7C1D4D0A5E8813FC0DB569";
+            const bobBTCAddress = "0xbf3408f6c0dec0879f7c1d4d0a5e8813fc0db569";
             unsubscribe = await api.tx.vaultRegistry.registerVault(6, bobBTCAddress)
                 .signAndSend(bob, (result) => txCallback(unsubscribe, result));
             await delay(delayMs);
@@ -109,6 +108,7 @@ describe("issue", () => {
     describe.skip("execute", () => {
         let api: ApiPromise;
         let issueAPI: DefaultIssueAPI;
+        let txHash: Hash;
 
         beforeEach(async () => {
             api = await createPolkadotAPI(defaultEndpoint);
@@ -116,9 +116,8 @@ describe("issue", () => {
 
             // Alice is also the root account
             alice = keyring.addFromUri("//Alice");
-            console.log("alice.address:");
+            console.log("alice.address");
             console.log(alice.address);
-
             issueAPI = new DefaultIssueAPI(api);
         });
 
@@ -139,23 +138,41 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 1);
             const bobVaultId = api.createType("AccountId", bob.address);
-            await issueAPI.request(amount, bobVaultId);
-            await delay(delayMs);
+            const requestResult = await issueAPI.request(amount, bobVaultId);
+            txHash = requestResult.hash;
             printEvents("requestIssue", issueAPI.events);
         });
 
         it("should send 'executeIssue' transaction after obtaining 'requestIssue' response", async () => {
-            // The test does not check for the succesful termination of 'execute'.
-            // Instead, it checks that the API call can be bundled into a transaction
-            // and published on-chain without any errors being thrown.
             issueAPI.setAccount(alice);
-            const requestHash: H256 = issueAPI.requestHash;
-            const txId: H256Le = requestHash;
-            const txBlockHeight: u32 = new UInt(registry, 1);
-            const merkleProof: Bytes = <Bytes>{};
-            const rawTx: Bytes = <Bytes>{};
-            await issueAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
-            await delay(delayMs);
+            const issueId =
+                api.createType("H256", "0x81dd458cd3bb82cf68b52dce27a5ac1f616b0278b2f36c4c05bfd528c2e1e8e9");
+            const txId: H256Le = api.createType(
+                "H256",
+                [133, 147, 171, 5, 68, 1, 203, 102, 234, 112, 252, 203, 225, 154, 79, 190, 180, 4, 27, 114, 82,
+                    125, 165, 227, 216, 250, 52, 196, 119, 175, 142, 86]
+            ) as H256Le;
+            const txBlockHeight: u32 = api.createType("u32", 2);
+            const merkleProof: Bytes = api.createType(
+                "Bytes",
+                [2, 0, 0, 0, 244, 134, 26, 210, 38, 249, 3, 175, 137, 182, 208, 251, 9, 59, 211, 77, 200, 110, 67,
+                    171, 216, 90, 255, 111, 72, 97, 187, 76, 166, 94, 240, 19, 194, 186, 229, 243, 51, 153, 14, 133,
+                    11, 119, 8, 8, 120, 221, 62, 145, 140, 182, 90, 49, 118, 196, 254, 126, 251, 71, 108, 249, 180,
+                    115, 33, 44, 243, 99, 179, 94, 0, 0, 64, 32, 1, 0, 0, 0, 2, 0, 0, 0, 2, 56, 108, 49, 183, 51,
+                    251, 228, 176, 233, 214, 204, 196, 69, 202, 199, 158, 219, 253, 38, 85, 184, 163, 65, 215,
+                    198, 31, 60, 181, 117, 8, 151, 212, 133, 147, 171, 5, 68, 1, 203, 102, 234, 112, 252, 203,
+                    225, 154, 79, 190, 180, 4, 27, 114, 82, 125, 165, 227, 216, 250, 52, 196, 119, 175, 142, 86, 1, 5]
+            );
+            const rawTx: Bytes = api.createType(
+                "Bytes",
+                [2, 0, 0, 0, 1, 22, 59, 241, 41, 121, 78, 23, 16, 159, 81, 145, 67, 102, 63, 131, 101, 232, 183, 64,
+                    173, 236, 247, 249, 134, 8, 242, 39, 166, 231, 131, 49, 251, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 100,
+                    0, 0, 0, 0, 0, 0, 0, 25, 118, 169, 20, 191, 52, 8, 246, 192, 222, 192, 135, 159, 124, 29, 77,
+                    10, 94, 136, 19, 252, 13, 181, 105, 136, 172, 0, 0, 0, 0, 0, 0, 0, 0, 34, 106, 32, 129, 221,
+                    69, 140, 211, 187, 130, 207, 104, 181, 45, 206, 39, 165, 172, 31, 97, 107, 2, 120, 178, 243,
+                    108, 76, 5, 191, 213, 40, 194, 225, 232, 233, 0, 0, 0, 0]
+            );
+            await issueAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx);
             printEvents("executeIssue", issueAPI.events);
         });
     });
@@ -177,13 +194,9 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 1);
             await issueAPI.request(amount);
-            await delay(delayMs);
             printEvents("requestIssue", issueAPI.events);
 
-            // delay the sending of the cancel transaction so that the
-            // request transaction propagates and Error: 1014 does not occur
             await issueAPI.cancel(issueAPI.requestHash);
-            await delay(delayMs);
             printEvents("cancelIssueRequest", issueAPI.events);
         });
     });
