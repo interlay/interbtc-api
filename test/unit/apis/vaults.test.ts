@@ -134,8 +134,8 @@ describe("vaultsAPI", () => {
         });
 
         it("should get vault theft flag", async () => {
-            const charlieId = api.createType("AccountId", charlie.address);
-            const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(charlieId);
+            const bobId = api.createType("AccountId", bob.address);
+            const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(bobId);
             assert.isTrue(flaggedForTheft);
         });
 
