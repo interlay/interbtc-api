@@ -146,5 +146,11 @@ describe("vaultsAPI", () => {
             assert.isRejected(vaultsAPI.getCollateralization(charlieId));
         });
 
+        it("should get vault theft flag", async () => {
+            const bobId = api.createType("AccountId", bob.address);
+            const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(bobId);
+            assert.isTrue(flaggedForTheft);
+        });
+
     });
 });
