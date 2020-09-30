@@ -18,6 +18,7 @@ function delay(ms: number) {
 describe("vaultsAPI", () => {
     let keyring: Keyring;
     let bob: KeyringPair;
+    let charlie: KeyringPair;
     let events: EventRecord[] = [];
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
@@ -73,6 +74,7 @@ describe("vaultsAPI", () => {
             api = await createPolkadotAPI(defaultEndpoint);
             keyring = new Keyring({ type: "sr25519" });
             bob = keyring.addFromUri("//Bob");
+            charlie = keyring.addFromUri("//Charlie");
 
             let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(1)
                 .signAndSend(bob, (result) => txCallback(unsubscribe, result));
@@ -80,8 +82,15 @@ describe("vaultsAPI", () => {
             printEvents("setExchangeRate", events);
 
             const bobBTCAddress = "BF3408F6C0DEC0879F7C1D4D0A5E8813FC0DB569";
-            unsubscribe = await api.tx.vaultRegistry.registerVault(6, bobBTCAddress)
+            unsubscribe = await api.tx.vaultRegistry.registerVault(10, bobBTCAddress)
                 .signAndSend(bob, (result) => txCallback(unsubscribe, result));
+            await delay(delayMs);
+            printEvents("registerVault", events);
+
+
+            const charlieBTCAddress = "66c7060feb882664ae62ffad0051fe843e318e85";
+            unsubscribe = await api.tx.vaultRegistry.registerVault(0, charlieBTCAddress)
+                .signAndSend(charlie, (result) => txCallback(unsubscribe, result));
             await delay(delayMs);
             printEvents("registerVault", events);
         });
@@ -127,10 +136,14 @@ describe("vaultsAPI", () => {
             assert.equal(randomVault.toHuman(), bob.address);
         });
 
-        it("should get vault collateralization", async () => {
-            const vaultId = api.createType("AccountId", bob.address);
-            const collateralization = await vaultsAPI.getCollateralization(vaultId);
-            assert.isTrue(collateralization > 1);
+        it("should fail if no vault is found", async () => {
+            const polkaBTCCollateral = api.createType("PolkaBTC", 90000000000);
+            assert.isRejected(vaultsAPI.selectRandomVault(polkaBTCCollateral));
+        });
+
+        it("should fail to get vault collateralization for vault with zero collateral", async () => {
+            const charlieId = api.createType("AccountId", charlie.address);
+            assert.isRejected(vaultsAPI.getCollateralization(charlieId));
         });
 
     });

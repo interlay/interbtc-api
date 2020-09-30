@@ -30,10 +30,13 @@ export class DefaultVaultsAPI {
 
     async getCollateralization(vaultId: AccountId): Promise<number> {
         const customAPIRPC = this.api.rpc as any;
-        const collateralization =
-            await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
-
-        return this.scaleUsingParachainGranularity(collateralization);
+        try {
+            const collateralization =
+                await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
+            return this.scaleUsingParachainGranularity(collateralization);
+        } catch (e) {
+            return Promise.reject("Error during collateralization computation");
+        }
     }
 
     async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
@@ -59,9 +62,13 @@ export class DefaultVaultsAPI {
 
     async selectRandomVault(btc: PolkaBTC): Promise<Vault> {
         const customAPIRPC = this.api.rpc as any;
-        const firstVaultWithSufficientCollateral =
-            await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientCollateral(btc);
-        return firstVaultWithSufficientCollateral;
+        try {
+            const firstVaultWithSufficientCollateral =
+                await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientCollateral(btc);
+            return firstVaultWithSufficientCollateral;
+        } catch (e) {
+            return Promise.reject("Error during vault search");
+        }
     }
 
     private scaleUsingParachainGranularity(value: u128): number {
