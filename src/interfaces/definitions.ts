@@ -152,7 +152,7 @@ export default {
                         type: "AccountId"
                     },
                 ],
-                type: "u128"
+                type: "u64"
             }
         },
         exchangeRateOracle: {
