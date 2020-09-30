@@ -133,5 +133,11 @@ describe("vaultsAPI", () => {
             assert.isTrue(collateralization > 1);
         });
 
+        it("should get vault theft flag", async () => {
+            const charlieId = api.createType("AccountId", charlie.address);
+            const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(charlieId);
+            assert.isTrue(flaggedForTheft);
+        });
+
     });
 });

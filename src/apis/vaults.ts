@@ -64,6 +64,11 @@ export class DefaultVaultsAPI {
         return firstVaultWithSufficientCollateral;
     }
 
+    async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
+        const theftReports = await this.api.query.stakedRelayers.theftReports(vaultId);
+        return theftReports.isEmpty;
+    }
+
     private scaleUsingParachainGranularity(value: u128): number {
         return value.toNumber() / Math.pow(10, this.granularity);
     }
