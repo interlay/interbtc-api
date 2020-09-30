@@ -1,5 +1,3 @@
-import ClientBrowser from "jayson/lib/client/browser";
-import { JSONRPCErrorLike, JSONRPCResultLike } from "jayson";
 import {
     GetAddressResponse,
     GetParachainStatusResponse,
@@ -19,19 +17,63 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 
-if (typeof window === "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const _fetch = require("node-fetch");
-} else {
-    const _fetch = window.fetch;
+type RequestParams = Array<string> | undefined;
+type JsonRpcId = number | string;
+
+interface JsonRpcRequest {
+    jsonrpc: string;
+    method: string;
+    params: RequestParams;
+    id?: JsonRpcId | null;
 }
 
-type JsonRpcResult = JSONRPCResultLike;
+interface JsonRpcError {
+    code: number;
+    message: string;
+    data?: any;
+}
 
-type JsonRpcError = JSONRPCErrorLike | null | undefined;
+interface JsonRpcResponse {
+    jsonrpc: string;
+    result?: string;
+    error?: JsonRpcError;
+    id?: JsonRpcId | null;
+}
+
+async function post(request: RequestInfo, method: string, params?: RequestParams): Promise<JsonRpcResponse> {
+    const id = Math.random().toString(16).substring(7);
+    const body: JsonRpcRequest = {
+        jsonrpc: "2.0",
+        id,
+        method,
+        params,
+    };
+    const httpResponse = await fetch(request, {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    if (!httpResponse.ok) {
+        throw new Error(httpResponse.statusText);
+    }
+
+    const jsonResponse: JsonRpcResponse = await httpResponse.json();
+    if (jsonResponse.id != id) {
+        throw new Error("Invalid id in JsonRpcResponse");
+    }
+
+    return jsonResponse;
+}
+
+if (typeof window === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    global.fetch = require("node-fetch");
+}
 
 export class StakedRelayerClient {
-    client: ClientBrowser;
+    url: string;
     registry: TypeRegistry;
 
     constr: {
@@ -44,26 +86,11 @@ export class StakedRelayerClient {
         VoteOnStatusUpdateRequest: Constructor<VoteOnStatusUpdateRequest>;
         StatusCode: Constructor<StatusCode>;
         ErrorCode: Constructor<ErrorCode>;
+        H256Le: Constructor<H256Le>;
     };
 
-    constructor(url: RequestInfo) {
-        // eslint-disable-next-line @typescript-eslint/ban-types
-        const callServer = function (request: string, callback: Function) {
-            const options = {
-                headers: {
-                    "Content-Type": "application/json",
-                }
-            };
-
-            fetch(url, options)
-                .then(function (res) { return res.text(); })
-                .then(function (text) { callback(null, text); })
-                .catch(function (err) { callback(err); });
-        };
-
-        this.client = new ClientBrowser(callServer, {
-        });
-
+    constructor(url: string) {
+        this.url = url;
         this.registry = new TypeRegistry();
         this.registry.register(getAPITypes());
 
@@ -77,6 +104,7 @@ export class StakedRelayerClient {
             VoteOnStatusUpdateRequest: this.registry.createClass("VoteOnStatusUpdateRequest"),
             StatusCode: this.registry.createClass("StatusCode"),
             ErrorCode: this.registry.createClass("ErrorCode"),
+            H256Le: this.registry.createClass("H256Le"),
         };
     }
 
@@ -90,57 +118,31 @@ export class StakedRelayerClient {
     }
 
     async getAddress(): Promise<string> {
-        return new Promise((resolve, reject) =>
-            this.client.request("get_address", [], (err: JsonRpcError, response: JsonRpcResult) => {
-                if (err) return reject(err);
-                const result = new this.constr["GetAddressResponse"](this.registry, response.result);
-                resolve(result.address.toString());
-            })
-        );
+        const response = await post(this.url, "get_address");
+        const result = new this.constr["GetAddressResponse"](this.registry, response.result);
+        return result.address.toString();
     }
 
     async getParachainStatus(): Promise<StatusCode> {
-        return new Promise((resolve, reject) =>
-            this.client.request("get_parachain_status", [], (err: JsonRpcError, response: JsonRpcResult) => {
-                if (err) return reject(err);
-                const result = new this.constr["GetParachainStatusResponse"](this.registry, response.result);
-                resolve(result.status);
-            })
-        );
+        const response = await post(this.url, "get_parachain_status");
+        const result = new this.constr["GetParachainStatusResponse"](this.registry, response.result);
+        return result.status;
     }
 
     async getStatusUpdate(status_update_id: number): Promise<StatusUpdate> {
         const request = new this.constr["GetStatusUpdateRequest"](this.registry, { status_update_id });
-        return new Promise((resolve, reject) =>
-            this.client.request(
-                "get_status_update",
-                [request.toHex()],
-                (err: JsonRpcError, response: JsonRpcResult) => {
-                    if (err) return reject(err);
-                    const result = new this.constr["GetStatusUpdateResponse"](this.registry, response.result);
-                    resolve(result.status);
-                }
-            )
-        );
+        const response = await post(this.url, "get_status_update", [request.toHex()]);
+        const result = new this.constr["GetStatusUpdateResponse"](this.registry, response.result);
+        return result.status;
     }
 
     async registerStakedRelayer(stake: number): Promise<void> {
         const request = new this.constr["RegisterStakedRelayerRequest"](this.registry, { stake: new BN(stake) });
-        await new Promise((resolve, reject) =>
-            this.client.request(
-                "register_staked_relayer",
-                [request.toHex()],
-                (err: JsonRpcError, response: JsonRpcResult) => (err ? reject(err) : resolve(response))
-            )
-        );
+        await post(this.url, "register_staked_relayer", [request.toHex()]);
     }
 
     async deregisterStakedRelayer(): Promise<void> {
-        await new Promise((resolve, reject) =>
-            this.client.request("deregister_staked_relayer", [], (err: JsonRpcError, response: JsonRpcResult) =>
-                err ? reject(err) : resolve(response)
-            )
-        );
+        await post(this.url, "deregister_staked_relayer");
     }
 
     async suggestStatusUpdate(
@@ -157,18 +159,13 @@ export class StakedRelayerClient {
             remove_error: removeError,
             block_hash,
         });
-        await new Promise((resolve, reject) =>
-            this.client.request(
-                "suggest_status_update",
-                [request.toHex()],
-                (err: JsonRpcError, response: JsonRpcResult) => (err ? reject(err) : resolve(response))
-            )
-        );
+        await post(this.url, "suggest_status_update", [request.toHex()]);
     }
 
-    suggestInvalidBlock(deposit: number, block_hash: H256Le): Promise<void> {
+    suggestInvalidBlock(deposit: number, hash: string): Promise<void> {
         const statusCode = new this.constr["StatusCode"](this.registry, { error: true });
         const addError = new this.constr["ErrorCode"](this.registry, { invalidbtcrelay: true });
+        const block_hash = new this.constr["H256Le"](this.registry, hash);
         return this.suggestStatusUpdate(deposit, statusCode, addError, undefined, block_hash);
     }
 
@@ -177,12 +174,6 @@ export class StakedRelayerClient {
             status_update_id,
             approve,
         });
-        await new Promise((resolve, reject) =>
-            this.client.request(
-                "vote_on_status_update",
-                [request.toHex()],
-                (err: JsonRpcError, response: JsonRpcResult) => (err ? reject(err) : resolve(response))
-            )
-        );
+        await post(this.url, "vote_on_status_update", [request.toHex()]);
     }
 }
