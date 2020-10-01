@@ -6,7 +6,7 @@ import {
     Vault,
     StatusUpdate,
 } from "@interlay/polkabtc/interfaces/default";
-import { u128, u32 } from "@polkadot/types/primitive";
+import { u128, u32, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import { U8aFixed, UInt } from "@polkadot/types/codec";
@@ -92,9 +92,10 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return [[new BN(11208) as BlockNumber, 5, 5]];
     }
 
-    async getAllStatusUpdates(): Promise<Array<StatusUpdate>> {
+    async getAllStatusUpdates(): Promise<Array<[u256, StatusUpdate]>> {
         const registry = new TypeRegistry();
-        const statusCode = new (registry.createClass("StatusUpdate"))(registry, {});
-        return [statusCode];
+        const statusCode = new (registry.createClass("StatusCode"))(registry, { error: true });
+        const statusUpdate = new (registry.createClass("StatusUpdate"))(registry, { statusCode });
+        return [[new UInt(registry, 0), statusUpdate]];
     }
 }
