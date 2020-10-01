@@ -11,7 +11,6 @@ import { AccountId, Balance, BlockNumber, Moment } from "@polkadot/types/interfa
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import * as esplora from "@interlay/esplora-btc-api";
 
 export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
@@ -21,8 +20,6 @@ export interface StakedRelayerAPI {
     getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT>;
     getLatestBTCBlockFromBTCRelay(): Promise<H256Le>;
     getLatestBTCBlockHeightFromBTCRelay(): Promise<u32>;
-    getLatestBTCBlockFromBTCCore(): Promise<number | undefined>;
-    getLatestBTCBlockHeightFromBTCCore(): Promise<number | undefined>;
     getMonitoredVaultsCollateralizationRate(): Promise<Vault[]>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
@@ -76,28 +73,6 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
 
     async getLatestBTCBlockHeightFromBTCRelay(): Promise<u32> {
         return await this.api.query.btcRelay.bestBlockHeight();
-    }
-
-    async getLatestBTCBlockFromBTCCore(): Promise<number | undefined> {
-        const basePath = "https://blockstream.info/api";
-        const blockApi = new esplora.BlockApi({ basePath: basePath });
-        blockApi.getLastBlockHash().then((response) => {
-            return response.data;
-        });
-
-        // if the request times out
-        return undefined;
-    }
-
-    async getLatestBTCBlockHeightFromBTCCore(): Promise<number | undefined> {
-        const basePath = "https://blockstream.info/api";
-        const blockApi = new esplora.BlockApi({ basePath: basePath });
-        blockApi.getLastBlockHeight().then((response) => {
-            return response.data;
-        });
-
-        // if the request times out
-        return undefined;
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {

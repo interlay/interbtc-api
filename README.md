@@ -42,7 +42,8 @@ and then to instantiate a `PolkaBTCAPI` instance.
 import { createPolkabtcAPI } from "@interlay/polkabtc";
 
 const defaultEndpoint = "ws://127.0.0.1:9944";
-const polkaBTC = await createPolkabtcAPI(defaultEndpoint);
+const isMainnet = false;
+const polkaBTC = await createPolkabtcAPI(defaultEndpoint, isMainnet);
 ```
 
 To emit transactions, an `account` has to be set.

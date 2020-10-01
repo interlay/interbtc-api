@@ -66,14 +66,6 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return new UInt(registry, 1835342) as u32;
     }
 
-    async getLatestBTCBlockFromBTCCore(): Promise<number | undefined> {
-        return parseInt("00000000000f6499c8547227", 16);
-    }
-
-    async getLatestBTCBlockHeightFromBTCCore(): Promise<number | undefined> {
-        return 1835346;
-    }
-
     async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {
         return [
             <Vault>{

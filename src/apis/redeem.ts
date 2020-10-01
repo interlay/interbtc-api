@@ -26,7 +26,7 @@ export class DefaultRedeemAPI {
         this.vaults = new DefaultVaultsAPI(api);
     }
 
-    // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>` 
+    // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>`
     // isn't recognized by type checker
     private txCallback(unsubscribe: any, result: ISubmittableResult) {
         if (result.status.isFinalized) {
