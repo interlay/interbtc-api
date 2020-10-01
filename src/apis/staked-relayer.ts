@@ -23,7 +23,7 @@ export interface StakedRelayerAPI {
     getMonitoredVaultsCollateralizationRate(): Promise<Vault[]>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
-    getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, Balance, Balance]>>;
+    getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>>;
     getAllStatusUpdates(): Promise<Array<StatusUpdate>>;
 }
 
@@ -89,17 +89,15 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return await this.api.query.security.parachainStatus();
     }
 
-    async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, Balance, Balance]>> {
+    async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>> {
         const statusUpdatesMappings = await this.api.query.stakedRelayers.statusUpdates.entries();
         const statusUpdates = statusUpdatesMappings.map((v) => v[1]);
         const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate.proposal_status.isPending);
-        const ongoingStatusUpdateVotes: Array<[BlockNumber, Balance, Balance]> = pendingUpdates.map((pendingUpdate) => [
+        return pendingUpdates.map((pendingUpdate) => [
             pendingUpdate.time,
-            pendingUpdate.tally.ayes,
-            pendingUpdate.tally.nays,
+            pendingUpdate.tally.aye.size,
+            pendingUpdate.tally.nay.size,
         ]);
-
-        return ongoingStatusUpdateVotes;
     }
 
     async getAllStatusUpdates(): Promise<Array<StatusUpdate>> {

@@ -85,6 +85,10 @@ export default {
             deposit: "DOT",
             tally: "Tally<AccountId>",
         },
+        Tally: {
+            aye: "BTreeSet<AccountId>",
+            nay: "BTreeSet<AccountId>",
+        },
         ProposalStatus: { _enum: ["Pending", "Accepted", "Rejected"] },
         InactiveStakedRelayer: {
             stake: "DOT",
@@ -129,60 +133,58 @@ export default {
                 params: [
                     {
                         name: "amount",
-                        type: "PolkaBTC"
+                        type: "PolkaBTC",
                     },
                 ],
-                type: "AccountId"
+                type: "AccountId",
             },
             getIssueableTokensFromVault: {
                 description: "Get the amount of tokens a vault can issue",
                 params: [
                     {
                         name: "vault",
-                        type: "AccountId"
+                        type: "AccountId",
                     },
                 ],
-                type: "PolkaBTC"
+                type: "PolkaBTC",
             },
             getCollateralizationFromVault: {
                 description: "Returns the collateralization of a specific vault",
                 params: [
                     {
                         name: "vault_id",
-                        type: "AccountId"
+                        type: "AccountId",
                     },
                 ],
-                type: "u64"
-            }
+                type: "u64",
+            },
         },
         exchangeRateOracle: {
             btcToDots: {
-                description:
-                    "BTC to DOT conversion rate",
+                description: "BTC to DOT conversion rate",
                 params: [
                     {
                         name: "amount",
-                        type: "PolkaBTC"
+                        type: "PolkaBTC",
                     },
                 ],
-                type: "DOT"
+                type: "DOT",
             },
         },
         stakedRelayers: {
             isTransactionInvalid: {
-                description:
-                    "BTC to DOT conversion rate",
+                description: "BTC to DOT conversion rate",
                 params: [
                     {
                         name: "vault_id",
-                        type: "AccountId"
+                        type: "AccountId",
                     },
                     {
                         name: "raw_tx",
-                        type: "Vec<u8>"
+                        type: "Vec<u8>",
                     },
                 ],
-                type: ""
+                type: "",
             },
         },
     },
