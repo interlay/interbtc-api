@@ -5,7 +5,7 @@ import {
     StatusCode,
     Vault,
     StatusUpdate,
-} from "@interlay/polkabtc/interfaces/default";
+} from "../interfaces/default";
 import { u128, u32, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
