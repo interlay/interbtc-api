@@ -1,4 +1,4 @@
-import { ErrorCode } from "@interlay/polkabtc/interfaces/default";
+import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { BTreeSet } from "@polkadot/types/codec";
@@ -27,7 +27,7 @@ export interface OracleAPI {
 }
 
 export class DefaultOracleAPI implements OracleAPI {
-    constructor(private api: ApiPromise) {}
+    constructor(private api: ApiPromise) { }
 
     async getInfo(): Promise<OracleInfo> {
         const results = await this.api.queryMulti([

@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault } from "@interlay/polkabtc/interfaces/default";
+import { PolkaBTC, Vault } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
