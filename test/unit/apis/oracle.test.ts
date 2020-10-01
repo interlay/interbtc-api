@@ -1,4 +1,4 @@
-import { ErrorCode } from "@interlay/polkabtc/interfaces/default";
+import { ErrorCode } from "../../../src/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { TypeRegistry } from "@polkadot/types";
 import { BTreeSet, Raw } from "@polkadot/types/codec";

@@ -10,7 +10,7 @@ import {
     ErrorCode,
     StatusUpdate,
     H256Le,
-} from "@interlay/polkabtc/interfaces/default";
+} from "../interfaces/default";
 import { u256 } from "@polkadot/types/primitive";
 import { getAPITypes } from "../factory";
 import { TypeRegistry } from "@polkadot/types";
