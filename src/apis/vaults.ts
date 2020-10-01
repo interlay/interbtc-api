@@ -11,7 +11,7 @@ export interface VaultsAPI {
     getCollateralization(vaultId: AccountId): Promise<number>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
-    selectRandomVault(btc: PolkaBTC): Promise<Vault>;
+    selectRandomVault(btc: PolkaBTC): Promise<AccountId>;
 }
 
 export class DefaultVaultsAPI {
@@ -60,7 +60,7 @@ export class DefaultVaultsAPI {
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
     }
 
-    async selectRandomVault(btc: PolkaBTC): Promise<Vault> {
+    async selectRandomVault(btc: PolkaBTC): Promise<AccountId> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const firstVaultWithSufficientCollateral =
