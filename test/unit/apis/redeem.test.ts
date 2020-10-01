@@ -46,7 +46,7 @@ describe("redeem", () => {
             // Alice is also the root account
             alice = keyring.addFromUri("//Alice");
             const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
-            mockManager.mock("selectRandomVault", <Vault>{
+            mockManager.mock("selectRandomVaultRedeem", <Vault>{
                 id: new GenericAccountId(registry, randomDecodedAccountId),
             });
             redeemAPI = new DefaultRedeemAPI(api);
@@ -101,7 +101,7 @@ describe("redeem", () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
-            mockManager.mock("selectRandomVault", <Vault>{
+            mockManager.mock("selectRandomVaultRedeem", <Vault>{
                 id: new GenericAccountId(registry, randomDecodedAccountId),
             });
             redeemAPI = new DefaultRedeemAPI(api);

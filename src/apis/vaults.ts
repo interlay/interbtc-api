@@ -11,7 +11,8 @@ export interface VaultsAPI {
     getCollateralization(vaultId: AccountId): Promise<number>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
-    selectRandomVault(btc: PolkaBTC): Promise<AccountId>;
+    selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
+    selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
 }
 
 export class DefaultVaultsAPI {
@@ -60,14 +61,25 @@ export class DefaultVaultsAPI {
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
     }
 
-    async selectRandomVault(btc: PolkaBTC): Promise<AccountId> {
+    async selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const firstVaultWithSufficientCollateral =
                 await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientCollateral(btc);
             return firstVaultWithSufficientCollateral;
         } catch (e) {
-            return Promise.reject("Error during vault search");
+            return Promise.reject("Did not find vault with sufficient collateral");
+        }
+    }
+
+    async selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId> {
+        const customAPIRPC = this.api.rpc as any;
+        try {
+            const firstVaultWithSufficientTokens =
+                await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientTokens(btc);
+            return firstVaultWithSufficientTokens;
+        } catch (e) {
+            return Promise.reject("Did not find vault with sufficient locked BTC");
         }
     }
 

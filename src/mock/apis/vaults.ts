@@ -35,7 +35,12 @@ export class MockVaultsAPI implements VaultsAPI {
         return Promise.resolve(<Vault>{});
     }
 
-    async selectRandomVault(_btc: PolkaBTC): Promise<AccountId> {
+    async selectRandomVaultIssue(_btc: PolkaBTC): Promise<AccountId> {
+        const vaults = await this.list();
+        return vaults[0].id;
+    }
+
+    async selectRandomVaultRedeem(_btc: PolkaBTC): Promise<AccountId> {
         const vaults = await this.list();
         return vaults[0].id;
     }
