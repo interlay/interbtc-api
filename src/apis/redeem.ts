@@ -50,7 +50,7 @@ export class DefaultRedeemAPI {
         if (vaultId) {
             vault = await this.vaults.get(vaultId);
         } else {
-            vaultId = await this.vaults.selectRandomVault(amount);
+            vaultId = await this.vaults.selectRandomVaultRedeem(amount);
             vault = await this.vaults.get(vaultId);
         }
 
