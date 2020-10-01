@@ -11,6 +11,7 @@ export default {
         // Silence the warnings:
         Status: "StatusCode",
         ErrorCode: { _enum: ["None", "NoDataBTCRelay", "InvalidBTCRelay", "OracleOffline", "Liquidation"] },
+        VaultStatus: { _enum: ["Active", "Liquidated", "CommittedTheft"] },
         RawBlockHeader: { 0: "[u8; 80]" },
         RichBlockHeader: {
             block_hash: "H256Le",
@@ -49,6 +50,7 @@ export default {
             to_be_redeemed_tokens: "PolkaBTC",
             btc_address: "H160",
             banned_until: "Option<BlockNumber>",
+            status: "VaultStatus",
         },
         Redeem: {
             vault: "AccountId",
