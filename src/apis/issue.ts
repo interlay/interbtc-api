@@ -57,7 +57,7 @@ export class DefaultIssueAPI implements IssueAPI {
         if (vaultId) {
             vault = await this.vaults.get(vaultId);
         } else {
-            vaultId = await this.vaults.selectRandomVault(amount);
+            vaultId = await this.vaults.selectRandomVaultIssue(amount);
             vault = await this.vaults.get(vaultId);
         }
 

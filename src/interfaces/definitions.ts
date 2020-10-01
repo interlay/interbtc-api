@@ -140,6 +140,18 @@ export default {
                 ],
                 type: "AccountId",
             },
+            getFirstVaultWithSufficientTokens: {
+                description:
+                    "Get the first available vault with sufficient tokens " +
+                    "to fulfil an redeem request with the specified amount of PolkaBTC.",
+                params: [
+                    {
+                        name: "amount",
+                        type: "PolkaBTC",
+                    },
+                ],
+                type: "AccountId",
+            },
             getIssueableTokensFromVault: {
                 description: "Get the amount of tokens a vault can issue",
                 params: [
