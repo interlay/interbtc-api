@@ -1,13 +1,13 @@
-import { OracleAPI } from "@interlay/polkabtc/apis";
-import { OracleInfo } from "@interlay/polkabtc/apis/oracle";
+import { OracleAPI } from "../../apis";
+import { OracleInfo } from "../../apis/oracle";
 
 export class MockOracleAPI implements OracleAPI {
     async getInfo(): Promise<OracleInfo> {
         const oracle_info: OracleInfo = {
             exchangeRate: await this.getExchangeRate(),
             feed: await this.getFeed(),
-            name: await this.getOracleName(), 
-            online: await this.isOnline(), 
+            name: await this.getOracleName(),
+            online: await this.isOnline(),
             lastUpdate: await this.getLastExchangeRateTime(),
         };
 

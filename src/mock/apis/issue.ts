@@ -1,4 +1,4 @@
-import { DOT, Issue as IssueRequest, PolkaBTC, H256Le, Vault } from "@interlay/polkabtc/interfaces/default";
+import { DOT, Issue as IssueRequest, PolkaBTC, H256Le, Vault } from "../../interfaces/default";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId, H256, H160, BlockNumber, Hash } from "@polkadot/types/interfaces";
 import { Bytes, u32, bool } from "@polkadot/types/primitive";

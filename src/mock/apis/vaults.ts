@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault } from "@interlay/polkabtc/interfaces/default";
+import { PolkaBTC, Vault } from "../../interfaces/default";
 import { AccountId, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";

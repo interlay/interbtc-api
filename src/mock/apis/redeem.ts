@@ -1,4 +1,4 @@
-import { PolkaBTC, Redeem, Vault, DOT, H256Le } from "@interlay/polkabtc/interfaces/default";
+import { PolkaBTC, Redeem, Vault, DOT, H256Le } from "../../interfaces/default";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId, Hash, BlockNumber, H160, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
