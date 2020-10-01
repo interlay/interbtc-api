@@ -50,7 +50,8 @@ export class DefaultRedeemAPI {
         if (vaultId) {
             vault = await this.vaults.get(vaultId);
         } else {
-            vault = await this.vaults.selectRandomVault(amount);
+            vaultId = await this.vaults.selectRandomVault(amount);
+            vault = await this.vaults.get(vaultId);
         }
 
         const unsubscribe: any = await this.api.tx.redeem
