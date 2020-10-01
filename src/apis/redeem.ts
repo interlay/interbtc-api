@@ -1,6 +1,6 @@
 import { PolkaBTC, Redeem, Vault, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { KeyringPair } from "@polkadot/keyring/types";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
@@ -14,7 +14,7 @@ export interface RedeemAPI {
     request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult>;
     execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
     cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
-    setAccount(account?: KeyringPair): void;
+    setAccount(account?: AddressOrPair): void;
 }
 
 export class DefaultRedeemAPI {
@@ -22,7 +22,7 @@ export class DefaultRedeemAPI {
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
-    constructor(private api: ApiPromise, private account?: KeyringPair) {
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
     }
 
@@ -97,7 +97,7 @@ export class DefaultRedeemAPI {
         return redeemRequests.map((v) => v[1]);
     }
 
-    setAccount(account?: KeyringPair): void {
+    setAccount(account?: AddressOrPair): void {
         this.account = account;
     }
 }

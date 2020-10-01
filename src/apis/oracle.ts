@@ -1,6 +1,5 @@
 import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { KeyringPair } from "@polkadot/keyring/types";
 import { BTreeSet } from "@polkadot/types/codec";
 import { AccountId } from "@polkadot/types/interfaces";
 import { Moment } from "@polkadot/types/interfaces/runtime";

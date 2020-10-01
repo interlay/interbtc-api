@@ -1,6 +1,6 @@
 import { DOT, Issue as IssueRequest, PolkaBTC, Vault, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { KeyringPair } from "@polkadot/keyring/types";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
@@ -19,7 +19,7 @@ export interface IssueAPI {
     request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
     execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
     cancel(issueId: H256): Promise<void>;
-    setAccount(account?: KeyringPair): void;
+    setAccount(account?: AddressOrPair): void;
     getGriefingCollateral(): Promise<DOT>;
     list(): Promise<IssueRequest[]>;
 }
@@ -29,11 +29,11 @@ export class DefaultIssueAPI implements IssueAPI {
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
-    constructor(private api: ApiPromise, private account?: KeyringPair) {
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
     }
 
-    // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>` 
+    // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>`
     // isn't recognized by type checker
     private txCallback(unsubscribe: any, result: ISubmittableResult) {
         if (result.status.isFinalized) {
@@ -107,7 +107,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return this.api.query.issue.issueGriefingCollateral();
     }
 
-    setAccount(account?: KeyringPair): void {
+    setAccount(account?: AddressOrPair): void {
         this.account = account;
     }
 }

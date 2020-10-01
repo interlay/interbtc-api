@@ -1,5 +1,5 @@
 import { PolkaBTC, Redeem, Vault, DOT, H256Le } from "../../interfaces/default";
-import { KeyringPair } from "@polkadot/keyring/types";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, BlockNumber, H160, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
@@ -51,7 +51,7 @@ export class MockRedeemAPI implements RedeemAPI {
         ]);
     }
 
-    setAccount(_account?: KeyringPair): void {
+    setAccount(_account?: AddressOrPair): void {
         return;
     }
 }
