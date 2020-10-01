@@ -6,8 +6,8 @@ import {
     Vault,
     StatusUpdate,
 } from "@interlay/polkabtc/interfaces/default";
-import { u128, u32 } from "@polkadot/types/primitive";
-import { AccountId, Balance, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
+import { u128, u32, u256 } from "@polkadot/types/primitive";
+import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
@@ -24,7 +24,7 @@ export interface StakedRelayerAPI {
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>>;
-    getAllStatusUpdates(): Promise<Array<StatusUpdate>>;
+    getAllStatusUpdates(): Promise<Array<[u256, StatusUpdate]>>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -100,9 +100,11 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         ]);
     }
 
-    async getAllStatusUpdates(): Promise<Array<StatusUpdate>> {
+    async getAllStatusUpdates(): Promise<Array<[u256, StatusUpdate]>> {
         // TODO: page this so we don't fetch ALL proposals at once
         const statusUpdatesEntries = await this.api.query.stakedRelayers.statusUpdates.entries();
-        return statusUpdatesEntries.map((v) => v[1]);
+        return statusUpdatesEntries.map((v) => {
+            return [new u256(this.api.registry, v[0].args[0].toU8a()), v[1]];
+        });
     }
 }
