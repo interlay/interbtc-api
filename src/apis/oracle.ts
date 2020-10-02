@@ -26,7 +26,7 @@ export interface OracleAPI {
 }
 
 export class DefaultOracleAPI implements OracleAPI {
-    constructor(private api: ApiPromise) { }
+    constructor(private api: ApiPromise) {}
 
     async getInfo(): Promise<OracleInfo> {
         const results = await this.api.queryMulti([
@@ -80,7 +80,7 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     private convertMoment(moment: Moment): Date {
-        return new Date(moment.toNumber() * 1000);
+        return new Date(moment.toNumber());
     }
 
     private convertExchangeRate(rate: u128): number {
