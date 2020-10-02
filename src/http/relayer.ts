@@ -17,23 +17,28 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 
+if (typeof window === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    global.fetch = require("node-fetch");
+}
+
 type RequestParams = Array<string> | undefined;
 type JsonRpcId = number | string;
 
-interface JsonRpcRequest {
+export interface JsonRpcRequest {
     jsonrpc: string;
     method: string;
     params: RequestParams;
     id?: JsonRpcId | null;
 }
 
-interface JsonRpcError {
+export interface JsonRpcError {
     code: number;
     message: string;
     data?: any;
 }
 
-interface JsonRpcResponse {
+export interface JsonRpcResponse {
     jsonrpc: string;
     result?: string;
     error?: JsonRpcError;
@@ -55,21 +60,17 @@ async function post(request: RequestInfo, method: string, params?: RequestParams
             "Content-Type": "application/json",
         },
     });
-    if (!httpResponse.ok) {
-        throw new Error(httpResponse.statusText);
-    }
 
     const jsonResponse: JsonRpcResponse = await httpResponse.json();
     if (jsonResponse.id != id) {
         throw new Error("Invalid id in JsonRpcResponse");
     }
 
-    return jsonResponse;
-}
+    if (!httpResponse.ok) {
+        throw new Error(jsonResponse.error?.message);
+    }
 
-if (typeof window === "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    global.fetch = require("node-fetch");
+    return jsonResponse;
 }
 
 export class StakedRelayerClient {
