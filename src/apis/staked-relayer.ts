@@ -1,11 +1,4 @@
-import {
-    DOT,
-    ActiveStakedRelayer,
-    H256Le,
-    StatusCode,
-    Vault,
-    StatusUpdate,
-} from "../interfaces/default";
+import { DOT, ActiveStakedRelayer, H256Le, StatusCode, Vault, StatusUpdate } from "../interfaces/default";
 import { u128, u32, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
@@ -40,12 +33,12 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {
-        return this.api.query.stakedRelayers.activeStakedRelayers.at(activeStakedRelayerId);
+        return this.api.query.stakedRelayers.activeStakedRelayers(activeStakedRelayerId);
     }
 
     async getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT> {
-        const activeStakedRelayer: ActiveStakedRelayer = await this.get(activeStakedRelayerId);
-        return activeStakedRelayer.stake;
+        const stakedRelayer = await this.get(activeStakedRelayerId);
+        return stakedRelayer.stake;
     }
 
     private async getStakedDOTAmounts(): Promise<DOT[]> {
