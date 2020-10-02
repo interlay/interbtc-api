@@ -60,7 +60,7 @@ describe("oracle", () => {
 
     describe("getLastExchangeRateTime", () => {
         it("should return result as a date", () => {
-            const expected = Math.floor(lastRate.getTime() / 1000) * 1000;
+            const expected = Math.floor(lastRate.getTime() / 1000);
             const actual = oracle.getLastExchangeRateTime().then((v) => v.getTime());
             return assert.eventually.equal(actual, expected);
         });
