@@ -1,5 +1,6 @@
-import { KeyringPair } from "@polkadot/keyring/types";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { ApiPromise } from "@polkadot/api";
+import { Signer } from "@polkadot/api/types";
 
 import { IssueAPI, RedeemAPI, VaultsAPI, StakedRelayerAPI, OracleAPI, BTCCoreAPI } from "../apis";
 import { MockIssueAPI } from "./apis/issue";
@@ -20,9 +21,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
 
-    private account?: KeyringPair;
-
-    constructor(readonly api: ApiPromise) {
+    constructor(readonly api: ApiPromise, private _account?: AddressOrPair) {
         this.vaults = new MockVaultsAPI();
         this.issue = new MockIssueAPI();
         this.redeem = new MockRedeemAPI();
@@ -32,7 +31,11 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.btcCore = new MockBTCCoreAPI();
     }
 
-    setAccount(account: KeyringPair): void {
-        this.account = account;
+    setAccount(account: AddressOrPair, _signer?: Signer): void {
+        this._account = account;
+    }
+
+    get account(): AddressOrPair | undefined {
+        return this._account;
     }
 }

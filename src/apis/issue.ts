@@ -1,17 +1,11 @@
-import { DOT, Issue as IssueRequest, PolkaBTC, Vault, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { KeyringPair } from "@polkadot/keyring/types";
-import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
-import { Bytes, u32 } from "@polkadot/types/primitive";
-import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { ISubmittableResult } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-// import { SubmittableResultSubscription } from "@polkadot/api/submittable/types";
-import { ApiTypes } from "@polkadot/api/types/base";
-import { Observable } from "rxjs";
-
-export declare type SubmittableResultSubscription<ApiType extends ApiTypes> =
-    ApiType extends "rxjs" ? Observable<ISubmittableResult> : Promise<() => void>;
+import { Bytes, u32 } from "@polkadot/types/primitive";
+import { Callback, ISubmittableResult } from "@polkadot/types/types";
+import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
+import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -19,28 +13,27 @@ export interface IssueAPI {
     request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
     execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
     cancel(issueId: H256): Promise<void>;
-    setAccount(account?: KeyringPair): void;
+    setAccount(account?: AddressOrPair): void;
     getGriefingCollateral(): Promise<DOT>;
     list(): Promise<IssueRequest[]>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
     private vaults: VaultsAPI;
-    requestHash: Hash = this.api.createType("Hash");
+    requestHash: Hash;
     events: EventRecord[] = [];
 
-    constructor(private api: ApiPromise, private account?: KeyringPair) {
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
+        this.requestHash = this.api.createType("Hash");
     }
 
-    // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>` 
-    // isn't recognized by type checker
-    private txCallback(unsubscribe: any, result: ISubmittableResult) {
+    private txCallback(unsubscribe: Callback<ISubmittableResult>, result: ISubmittableResult) {
         if (result.status.isFinalized) {
             console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
             this.requestHash = result.status.asFinalized;
             this.events = result.events;
-            unsubscribe();
+            unsubscribe(result);
         }
     }
 
@@ -65,7 +58,7 @@ export class DefaultIssueAPI implements IssueAPI {
             griefingCollateral = await this.getGriefingCollateral();
         }
         // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
-        const unsubscribe: any = await this.api.tx.issue
+        const unsubscribe: Callback<ISubmittableResult> = await this.api.tx.issue
             .requestIssue(amount, vault.id, griefingCollateral)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
         await delay(delayMs);
@@ -82,7 +75,7 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        const unsubscribe: any = await this.api.tx.issue
+        const unsubscribe: Callback<ISubmittableResult> = await this.api.tx.issue
             .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
         await delay(delayMs);
@@ -92,7 +85,7 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        const unsubscribe: any = await this.api.tx.issue
+        const unsubscribe: Callback<ISubmittableResult> = await this.api.tx.issue
             .cancelIssue(issueId)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
         await delay(delayMs);
@@ -107,7 +100,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return this.api.query.issue.issueGriefingCollateral();
     }
 
-    setAccount(account?: KeyringPair): void {
+    setAccount(account?: AddressOrPair): void {
         this.account = account;
     }
 }

@@ -2,8 +2,6 @@ import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { H256, Hash } from "@polkadot/types/interfaces";
-import { UInt } from "@polkadot/types/codec";
-import { TypeRegistry } from "@polkadot/types";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { DefaultIssueAPI } from "../../../src/apis/issue";

@@ -47,7 +47,7 @@ const polkaBTC = await createPolkabtcAPI(defaultEndpoint, isMainnet);
 ```
 
 To emit transactions, an `account` has to be set.
-The account should be an instance of `KeyringPair`.
+The account should be an instance of `AddressOrPair`.
 
 ```typescript
 import testKeyring from "@polkadot/keyring/testing";
