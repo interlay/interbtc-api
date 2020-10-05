@@ -11,7 +11,7 @@ export type RequestResult = { hash: Hash; vault: Vault };
 
 export interface IssueAPI {
     request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
-    execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
+    execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
     getGriefingCollateral(): Promise<DOT>;
@@ -38,7 +38,28 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     private getIssueIdFromEvents(events: EventRecord[]): Hash {
-        return this.api.createType("Hash", events[2].event.data[0]);
+        if (events.length == 4) {
+            const hash = this.api.createType("Hash", events[2].event.data[0]);
+            return hash;
+        }
+        throw new Error("Request transaction failed");
+    }
+
+    isExecutionSucessful(events: EventRecord[]): boolean {
+        // A successful `execute` produces five events:
+        // - vaultRegistry.IssueTokens
+        // - system.NewAccount
+        // - polkaBtc.Endowed
+        // - treasury.Mint
+        // - issue.ExecuteIssue
+        // - system.ExtrinsicSuccess
+
+        // Assuming `system.NewAccount` only occurs on
+        // first execution, at least 5 events are emitted
+        if (events.length > 5) {
+            return true;
+        }
+        return false;
     }
 
     async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
@@ -63,15 +84,11 @@ export class DefaultIssueAPI implements IssueAPI {
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
         await delay(delayMs);
 
-        if (this.events.length == 4) {
-            const hash = this.getIssueIdFromEvents(this.events);
-            return { hash, vault };
-        }
-
-        throw new Error("Request transaction failed");
+        const hash = this.getIssueIdFromEvents(this.events);
+        return { hash, vault };
     }
 
-    async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
+    async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -79,6 +96,8 @@ export class DefaultIssueAPI implements IssueAPI {
             .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
             .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
         await delay(delayMs);
+
+        return this.isExecutionSucessful(this.events);
     }
 
     async cancel(issueId: H256): Promise<void> {

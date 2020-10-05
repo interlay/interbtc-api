@@ -10,8 +10,8 @@ import { U8aFixed } from "@polkadot/types/codec";
 import { IssueAPI, RequestResult } from "../../apis/issue";
 
 export class MockIssueAPI implements IssueAPI {
-    execute(_issueId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
-        throw new Error("Method not implemented.");
+    execute(_issueId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
+        return Promise.resolve(true);
     }
 
     cancel(_issueId: H256): Promise<void> {
