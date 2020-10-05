@@ -23,6 +23,8 @@ export interface PolkaBTCAPI {
     readonly relayer: StakedRelayerClient;
     readonly oracle: OracleAPI;
     readonly btcCore: BTCCoreAPI;
+    readonly collateral: CollateralAPI;
+    readonly treasury: TreasuryAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
