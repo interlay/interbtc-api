@@ -10,7 +10,7 @@ export function getP2WPKHFromH160(hash: string): string | undefined {
         });
         btcAddress = payment.address;
     } catch (error) {
-        console.log("Error converting BTC address " + hash)
+        console.log("Error converting BTC address " + hash);
     }
     return btcAddress;
 }
