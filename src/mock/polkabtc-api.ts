@@ -2,7 +2,16 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { ApiPromise } from "@polkadot/api";
 import { Signer } from "@polkadot/api/types";
 
-import { IssueAPI, RedeemAPI, VaultsAPI, StakedRelayerAPI, OracleAPI, BTCCoreAPI } from "../apis";
+import {
+    IssueAPI,
+    RedeemAPI,
+    VaultsAPI,
+    StakedRelayerAPI,
+    OracleAPI,
+    BTCCoreAPI,
+    CollateralAPI,
+    TreasuryAPI,
+} from "../apis";
 import { MockIssueAPI } from "./apis/issue";
 import { MockRedeemAPI } from "./apis/redeem";
 import { MockVaultsAPI } from "./apis/vaults";
@@ -11,6 +20,8 @@ import { PolkaBTCAPI } from "../polkabtc-api";
 import { StakedRelayerClient } from "../http";
 import { MockOracleAPI } from "./apis/oracle";
 import { MockBTCCoreAPI } from "./apis/btc-core";
+import { MockCollateralAPI } from "./apis/collateral";
+import { MockTreasuryAPI } from "./apis/treasury";
 
 export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
@@ -20,6 +31,8 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly relayer: StakedRelayerClient;
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
+    public readonly collateral: CollateralAPI;
+    public readonly treasury: TreasuryAPI;
 
     constructor(readonly api: ApiPromise, private _account?: AddressOrPair) {
         this.vaults = new MockVaultsAPI();
@@ -29,6 +42,8 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.relayer = new StakedRelayerClient("");
         this.oracle = new MockOracleAPI();
         this.btcCore = new MockBTCCoreAPI();
+        this.collateral = new MockCollateralAPI();
+        this.treasury = new MockTreasuryAPI();
     }
 
     setAccount(account: AddressOrPair, _signer?: Signer): void {
