@@ -1,6 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
 
-export function getP2WPKHFromH160(hash: string): string | undefined {
+export function getP2WPKHFromH160(hash: H160): string | undefined {
     let btcAddress: string | undefined;
     try {
         // TODO: specify script format in parachain
