@@ -38,6 +38,14 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     private getIssueIdFromEvents(events: EventRecord[]): Hash {
+        // A successful `request` produces four events:
+        // - collateral.LockCollateral
+        // - vaultRegistry.IncreaseToBeIssuedTokens
+        // - issue.RequestIssue
+        // - system.ExtrinsicSuccess
+
+        // events[2] is `issue.RequestIssue`. The first element
+        // in the data array of events[2] is the `issueId`
         if (events.length == 4) {
             const hash = this.api.createType("Hash", events[2].event.data[0]);
             return hash;
@@ -56,7 +64,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
         // Assuming `system.NewAccount` only occurs on
         // first execution, at least 5 events are emitted
-        if (events.length > 5) {
+        if (events.length >= 5) {
             return true;
         }
         return false;
