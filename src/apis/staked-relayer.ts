@@ -17,7 +17,7 @@ export interface StakedRelayerAPI {
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>>;
-    getAllStatusUpdates(): Promise<Array<[u256, StatusUpdate]>>;
+    getAllStatusUpdates(): Promise<Array<{ id: u256; status_update: StatusUpdate }>>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -83,7 +83,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>> {
-        const statusUpdatesMappings = await this.api.query.stakedRelayers.statusUpdates.entries();
+        const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entries();
         const statusUpdates = statusUpdatesMappings.map((v) => v[1]);
         const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate.proposal_status.isPending);
         return pendingUpdates.map((pendingUpdate) => [
@@ -93,11 +93,20 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         ]);
     }
 
-    async getAllStatusUpdates(): Promise<Array<[u256, StatusUpdate]>> {
-        // TODO: page this so we don't fetch ALL proposals at once
-        const statusUpdatesEntries = await this.api.query.stakedRelayers.statusUpdates.entries();
-        return statusUpdatesEntries.map((v) => {
-            return [new u256(this.api.registry, v[0].args[0].toU8a()), v[1]];
-        });
+    async getAllStatusUpdates(): Promise<Array<{ id: u256; status_update: StatusUpdate }>> {
+        // TODO: page this so we don't fetch ALL status updates at once
+        const activeStatusUpdates = await this.api.query.stakedRelayers.activeStatusUpdates.entries().then((result) =>
+            result.map(([key, value]) => {
+                return { id: new u256(this.api.registry, key.args[0].toU8a()), status_update: value };
+            })
+        );
+        const inactiveStatusUpdates = await this.api.query.stakedRelayers.inactiveStatusUpdates
+            .entries()
+            .then((result) =>
+                result.map(([key, value]) => {
+                    return { id: new u256(this.api.registry, key.args[0].toU8a()), status_update: value };
+                })
+            );
+        return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
 }
