@@ -51,6 +51,10 @@ export class MockRedeemAPI implements RedeemAPI {
         ]);
     }
 
+    getPagedIterator(_perPage: number): AsyncGenerator<Redeem[]> {
+        return {} as AsyncGenerator<Redeem[]>;
+    }
+
     setAccount(_account?: AddressOrPair): void {
         return;
     }

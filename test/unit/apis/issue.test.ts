@@ -17,7 +17,7 @@ function delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe.skip("issue", () => {
+describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let keyring: Keyring;
@@ -101,6 +101,30 @@ describe.skip("issue", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(issueAPI.request(amount));
+        });
+
+        it("should page listed requests", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            bob = keyring.addFromUri("//Bob");
+            alice = keyring.addFromUri("//Alice");
+            issueAPI.setAccount(alice);
+            const bobVaultId = api.createType("AccountId", bob.address);
+            const sentRequests = 4;
+            for (let i = 0; i < sentRequests; i++) {
+                const amount = api.createType("Balance", i);
+                await issueAPI.request(amount, bobVaultId);
+            }
+
+            const listingsPerPage = 2;
+            const requestsIterator = issueAPI.getPagedIterator(listingsPerPage);
+            let curr = await requestsIterator.next();
+            let requestCount = 0;
+            while (!curr.done) {
+                requestCount += curr.value.length;
+                assert.isTrue(curr.value.length <= listingsPerPage);
+                curr = await requestsIterator.next();
+            }
+            assert.equal(requestCount, sentRequests);
         });
     });
 

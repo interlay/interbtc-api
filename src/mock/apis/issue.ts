@@ -62,4 +62,8 @@ export class MockIssueAPI implements IssueAPI {
             },
         ]);
     }
+
+    getPagedIterator(_perPage: number): AsyncGenerator<IssueRequest[]> {
+        return {} as AsyncGenerator<IssueRequest[]>;
+    }
 }

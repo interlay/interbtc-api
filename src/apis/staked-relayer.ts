@@ -4,9 +4,11 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
+import { pagedIterator } from "../../src/utils";
 
 export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
+    getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]>;
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
     getTotalStakedDOTAmount(): Promise<DOT>;
@@ -30,6 +32,10 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     async list(): Promise<ActiveStakedRelayer[]> {
         const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
         return activeStakedRelayersMap.map((v) => v[1]);
+    }
+
+    getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {
+        return pagedIterator<ActiveStakedRelayer>(this.api, this.api.query.issue.issueRequests, perPage);
     }
 
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {

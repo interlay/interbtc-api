@@ -31,6 +31,10 @@ export class MockVaultsAPI implements VaultsAPI {
         ]);
     }
 
+    getPagedIterator(_perPage: number): AsyncGenerator<Vault[]> {
+        return {} as AsyncGenerator<Vault[]>;
+    }
+
     get(_vaultId: AccountId): Promise<Vault> {
         return Promise.resolve(<Vault>{});
     }

@@ -4,9 +4,11 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
+import { pagedIterator } from "../../src/utils";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
+    getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getCollateralization(vaultId: AccountId): Promise<number>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
@@ -21,8 +23,12 @@ export class DefaultVaultsAPI {
     constructor(private api: ApiPromise) { }
 
     async list(): Promise<Vault[]> {
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
+        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
         return vaultsMap.map((v) => v[1]);
+    }
+
+    getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
+        return pagedIterator<Vault>(this.api, this.api.query.issue.issueRequests, perPage);
     }
 
     get(vaultId: AccountId): Promise<Vault> {
