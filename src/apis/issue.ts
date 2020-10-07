@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
-import { EventRecord } from "@polkadot/types/interfaces/system";
+import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { Callback, ISubmittableResult } from "@polkadot/types/types";
 import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
@@ -28,6 +28,35 @@ export class DefaultIssueAPI implements IssueAPI {
         this.requestHash = this.api.createType("Hash");
     }
 
+    private printEvents(events: EventRecord[]): void {
+        let foundErrorEvent = false;
+        events.forEach(({ event }) => {
+            event.data.forEach(async (eventData: any) => {
+                if (eventData.isModule) {
+                    try {
+                        const parsedEventData = eventData as DispatchError;
+                        const decoded = await this.api.registry.findMetaError(parsedEventData.asModule);
+                        const { documentation, name, section } = decoded;
+                        if (documentation) {
+                            console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
+                        } else {
+                            console.log(`\t${section}.${name}`);
+                        }
+                        foundErrorEvent = true;
+                    } catch (err) {
+                        console.log("\tCould not find transaction failure details.");
+                    }
+
+                }
+            });
+        });
+        if (!foundErrorEvent) {
+            events.forEach(({ phase, event: { data, method, section } }) => {
+                console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
+            });
+        }
+    }
+
     private txCallback(unsubscribe: Callback<ISubmittableResult>, result: ISubmittableResult) {
         if (result.status.isFinalized) {
             console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
@@ -43,13 +72,15 @@ export class DefaultIssueAPI implements IssueAPI {
         // - vaultRegistry.IncreaseToBeIssuedTokens
         // - issue.RequestIssue
         // - system.ExtrinsicSuccess
-
-        // events[2] is `issue.RequestIssue`. The first element
-        // in the data array of events[2] is the `issueId`
-        if (events.length == 4) {
-            const hash = this.api.createType("Hash", events[2].event.data[0]);
-            return hash;
+        this.printEvents(events);
+        
+        for (const { event: { method, section, data } } of events) {
+            if (section == "issue" && method == "RequestIssue") {
+                const hash = this.api.createType("Hash", data[0]);
+                return hash;
+            }
         }
+
         throw new Error("Request transaction failed");
     }
 
@@ -61,12 +92,14 @@ export class DefaultIssueAPI implements IssueAPI {
         // - treasury.Mint
         // - issue.ExecuteIssue
         // - system.ExtrinsicSuccess
+        this.printEvents(events);
 
-        events.forEach(({ event: { method, section } }) => {
-            if (section === "issue" && method === "ExecuteIssue") {
+        for (const { event: { method, section } } of events) {
+            if (section == "issue" && method == "ExecuteIssue") {
                 return true;
             }
-        });
+        }
+
         return false;
     }
 
