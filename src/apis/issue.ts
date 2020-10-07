@@ -62,19 +62,12 @@ export class DefaultIssueAPI implements IssueAPI {
         // - issue.ExecuteIssue
         // - system.ExtrinsicSuccess
 
-        // Whenever there is a failure, the only
-        // emitted event is system.ExtrinsicFailed
-        if (events.length < 2) {
-            return false;
-        }
-
-        let foundExecuteIssueEvent = false;
         events.forEach(({ event: { method, section } }) => {
             if (section === "issue" && method === "ExecuteIssue") {
-                foundExecuteIssueEvent = true;
+                return true;
             }
         });
-        return foundExecuteIssueEvent;
+        return false;
     }
 
     async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
