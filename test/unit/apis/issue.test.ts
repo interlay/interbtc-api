@@ -109,8 +109,6 @@ describe.skip("issue", () => {
         let api: ApiPromise;
         let issueAPI: DefaultIssueAPI;
 
-
-
         beforeEach(async () => {
             keyring = new Keyring({ type: "sr25519" });
             // Alice is also the root account
