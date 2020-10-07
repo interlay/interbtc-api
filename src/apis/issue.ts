@@ -74,7 +74,7 @@ export class DefaultIssueAPI implements IssueAPI {
         // - system.ExtrinsicSuccess
         this.printEvents(events);
         
-        for (let { event: { method, section, data } } of events) {
+        for (const { event: { method, section, data } } of events) {
             if (section == "issue" && method == "RequestIssue") {
                 const hash = this.api.createType("Hash", data[0]);
                 return hash;
@@ -94,7 +94,7 @@ export class DefaultIssueAPI implements IssueAPI {
         // - system.ExtrinsicSuccess
         this.printEvents(events);
 
-        for (let { event: { method, section } } of events) {
+        for (const { event: { method, section } } of events) {
             if (section == "issue" && method == "ExecuteIssue") {
                 return true;
             }

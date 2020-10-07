@@ -69,7 +69,7 @@ export class DefaultRedeemAPI {
     private getRedeemIdFromEvents(events: EventRecord[]): Hash {
         this.printEvents(events);
 
-        for (let { event: { method, section, data } } of events) {
+        for (const { event: { method, section, data } } of events) {
             if (section == "redeem" && method == "RequestRedeem") {
                 const hash = this.api.createType("Hash", data[0]);
                 return hash;
