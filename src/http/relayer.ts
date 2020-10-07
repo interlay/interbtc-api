@@ -13,7 +13,7 @@ import {
 } from "../interfaces/default";
 import { u256 } from "@polkadot/types/primitive";
 import { getAPITypes } from "../factory";
-import { TypeRegistry } from "@polkadot/types";
+import { TypeRegistry, Text } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 
@@ -149,6 +149,7 @@ export class StakedRelayerClient {
     async suggestStatusUpdate(
         deposit: number,
         statusCode: StatusCode,
+        message: string,
         addError?: ErrorCode,
         removeError?: ErrorCode,
         block_hash?: H256Le
@@ -159,15 +160,16 @@ export class StakedRelayerClient {
             add_error: addError,
             remove_error: removeError,
             block_hash,
+            message,
         });
         await post(this.url, "suggest_status_update", [request.toHex()]);
     }
 
-    suggestInvalidBlock(deposit: number, hash: string): Promise<void> {
+    suggestInvalidBlock(deposit: number, hash: string, message: string): Promise<void> {
         const statusCode = new this.constr["StatusCode"](this.registry, { error: true });
         const addError = new this.constr["ErrorCode"](this.registry, { invalidbtcrelay: true });
         const block_hash = new this.constr["H256Le"](this.registry, hash);
-        return this.suggestStatusUpdate(deposit, statusCode, addError, undefined, block_hash);
+        return this.suggestStatusUpdate(deposit, statusCode, message, addError, undefined, block_hash);
     }
 
     async voteOnStatusUpdate(status_update_id: u256, approve: boolean): Promise<void> {

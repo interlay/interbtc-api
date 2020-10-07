@@ -86,6 +86,7 @@ export default {
             proposer: "AccountId",
             deposit: "DOT",
             tally: "Tally<AccountId>",
+            message: "Text",
         },
         Tally: {
             aye: "BTreeSet<AccountId>",
@@ -120,6 +121,7 @@ export default {
             add_error: "Option<ErrorCode>",
             remove_error: "Option<ErrorCode>",
             block_hash: "Option<H256Le>",
+            message: "String",
         },
         VoteOnStatusUpdateRequest: {
             status_update_id: "U256",
