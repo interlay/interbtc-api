@@ -62,11 +62,11 @@ export class DefaultIssueAPI implements IssueAPI {
         // - issue.ExecuteIssue
         // - system.ExtrinsicSuccess
 
-        // Assuming `system.NewAccount` only occurs on
-        // first execution, at least 5 events are emitted
-        if (events.length >= 5) {
-            return true;
-        }
+        events.forEach(({ event: { method, section } }) => {
+            if (section === "issue" && method === "ExecuteIssue") {
+                return true;
+            }
+        });
         return false;
     }
 
