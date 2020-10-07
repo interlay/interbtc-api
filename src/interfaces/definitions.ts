@@ -92,7 +92,7 @@ export default {
             aye: "BTreeSet<AccountId>",
             nay: "BTreeSet<AccountId>",
         },
-        ProposalStatus: { _enum: ["Pending", "Accepted", "Rejected"] },
+        ProposalStatus: { _enum: ["Pending", "Accepted", "Rejected", "Expired"] },
         InactiveStakedRelayer: {
             stake: "DOT",
             status: "StakedRelayerStatus<BlockNumber>",
