@@ -85,10 +85,10 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return [[new BN(11208) as BlockNumber, 5, 5]];
     }
 
-    async getAllStatusUpdates(): Promise<Array<{ id: u256; status_update: StatusUpdate }>> {
+    async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
         const registry = new TypeRegistry();
         const statusCode = new (registry.createClass("StatusCode"))(registry, { error: true });
         const statusUpdate = new (registry.createClass("StatusUpdate"))(registry, { statusCode });
-        return [{ id: new UInt(registry, 0), status_update: statusUpdate }];
+        return [{ id: new UInt(registry, 0), statusUpdate: statusUpdate }];
     }
 }
