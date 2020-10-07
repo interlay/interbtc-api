@@ -46,7 +46,7 @@ describe("issue", () => {
                 if (eventData.isModule) {
                     try {
                         const parsedEventData = eventData as DispatchError;
-                        const decoded = await api.registry.findMetaError(parsedEventData.asModule);
+                        const decoded = api.registry.findMetaError(parsedEventData.asModule);
                         const { documentation, name, section } = decoded;
                         if (documentation) {
                             console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
@@ -122,6 +122,17 @@ describe("issue", () => {
                 assert.isTrue(page.length <= listingsPerPage);
             }
             assert.equal(requestCount, sentRequests);
+        });
+
+        it("should retrieve hash from request", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            bob = keyring.addFromUri("//Bob");
+            alice = keyring.addFromUri("//Alice");
+            issueAPI.setAccount(alice);
+            const bobVaultId = api.createType("AccountId", bob.address);
+            const amount = api.createType("Balance", 1);
+            const requestResult = await issueAPI.request(amount, bobVaultId);
+            assert.isTrue(requestResult.hash.length > 0);
         });
     });
 

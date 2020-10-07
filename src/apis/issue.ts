@@ -6,7 +6,7 @@ import { Bytes, u32 } from "@polkadot/types/primitive";
 import { Callback, ISubmittableResult } from "@polkadot/types/types";
 import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
-import { pagedIterator } from "../utils";
+import { pagedIterator, sendLoggedTx } from "../utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -48,7 +48,6 @@ export class DefaultIssueAPI implements IssueAPI {
                     } catch (err) {
                         console.log("\tCould not find transaction failure details.");
                     }
-
                 }
             });
         });
@@ -76,7 +75,9 @@ export class DefaultIssueAPI implements IssueAPI {
         // - system.ExtrinsicSuccess
         this.printEvents(events);
 
-        for (const { event: { method, section, data } } of events) {
+        for (const {
+            event: { method, section, data },
+        } of events) {
             if (section == "issue" && method == "RequestIssue") {
                 const hash = this.api.createType("Hash", data[0]);
                 return hash;
@@ -96,7 +97,9 @@ export class DefaultIssueAPI implements IssueAPI {
         // - system.ExtrinsicSuccess
         this.printEvents(events);
 
-        for (const { event: { method, section } } of events) {
+        for (const {
+            event: { method, section },
+        } of events) {
             if (section == "issue" && method == "ExecuteIssue") {
                 return true;
             }
@@ -121,10 +124,8 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!griefingCollateral) {
             griefingCollateral = await this.getGriefingCollateral();
         }
-        // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
-        const unsubscribe: Callback<ISubmittableResult> = await this.api.tx.issue
-            .requestIssue(amount, vault.id, griefingCollateral)
-            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
+        const requestIssueTx = this.api.tx.issue.requestIssue(amount, vault.id, griefingCollateral);
+        await sendLoggedTx(requestIssueTx, this.account, this.api, this);
         await delay(delayMs);
 
         const hash = this.getIssueIdFromEvents(this.events);
