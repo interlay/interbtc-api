@@ -17,7 +17,7 @@ export interface StakedRelayerAPI {
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>>;
-    getAllStatusUpdates(): Promise<Array<{ id: u256; status_update: StatusUpdate }>>;
+    getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -93,18 +93,18 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         ]);
     }
 
-    async getAllStatusUpdates(): Promise<Array<{ id: u256; status_update: StatusUpdate }>> {
+    async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
         // TODO: page this so we don't fetch ALL status updates at once
         const activeStatusUpdates = await this.api.query.stakedRelayers.activeStatusUpdates.entries().then((result) =>
             result.map(([key, value]) => {
-                return { id: new u256(this.api.registry, key.args[0].toU8a()), status_update: value };
+                return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
             })
         );
         const inactiveStatusUpdates = await this.api.query.stakedRelayers.inactiveStatusUpdates
             .entries()
             .then((result) =>
                 result.map(([key, value]) => {
-                    return { id: new u256(this.api.registry, key.args[0].toU8a()), status_update: value };
+                    return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
                 })
             );
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
