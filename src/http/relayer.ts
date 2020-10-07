@@ -180,11 +180,3 @@ export class StakedRelayerClient {
         await post(this.url, "vote_on_status_update", [request.toHex()]);
     }
 }
-
-async function main() {
-    const client = new StakedRelayerClient("http://localhost:3030");
-    const statusCode = new client.constr["StatusCode"](client.registry, { error: true });
-    await client.suggestStatusUpdate(100, statusCode, "hello world");
-}
-
-main();
