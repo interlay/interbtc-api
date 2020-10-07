@@ -10,7 +10,7 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
     constructor(private api: ApiPromise) {}
 
     totalPolkaBTC(): Promise<Balance> {
-        return this.api.query.treasury.totalLocked();
+        return this.api.query.polkaBtc.totalIssuance();
     }
 
     async balancePolkaBTC(id: AccountId): Promise<Balance> {
