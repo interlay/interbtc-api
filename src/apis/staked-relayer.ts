@@ -87,7 +87,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         const statusUpdates = statusUpdatesMappings.map((v) => v[1]);
         const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate.proposal_status.isPending);
         return pendingUpdates.map((pendingUpdate) => [
-            pendingUpdate.time,
+            pendingUpdate.end,
             pendingUpdate.tally.aye.size,
             pendingUpdate.tally.nay.size,
         ]);
