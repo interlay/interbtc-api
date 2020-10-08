@@ -35,7 +35,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {
-        return pagedIterator<ActiveStakedRelayer>(this.api, this.api.query.issue.issueRequests, perPage);
+        return pagedIterator<ActiveStakedRelayer>(this.api.query.issue.issueRequests, perPage);
     }
 
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {

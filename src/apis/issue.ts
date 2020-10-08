@@ -126,7 +126,7 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
-        return pagedIterator<IssueRequest>(this.api, this.api.query.issue.issueRequests, perPage);
+        return pagedIterator<IssueRequest>(this.api.query.issue.issueRequests, perPage);
     }
 
     async getGriefingCollateral(): Promise<DOT> {

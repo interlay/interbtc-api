@@ -28,7 +28,7 @@ export class DefaultVaultsAPI {
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
-        return pagedIterator<Vault>(this.api, this.api.query.issue.issueRequests, perPage);
+        return pagedIterator<Vault>(this.api.query.issue.issueRequests, perPage);
     }
 
     get(vaultId: AccountId): Promise<Vault> {

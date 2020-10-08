@@ -100,7 +100,7 @@ export class DefaultRedeemAPI {
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Redeem[]> {
-        return pagedIterator<Redeem>(this.api, this.api.query.redeem.redeemRequests, perPage);
+        return pagedIterator<Redeem>(this.api.query.redeem.redeemRequests, perPage);
     }
 
     setAccount(account?: AddressOrPair): void {

@@ -109,20 +109,17 @@ describe("issue", () => {
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
             const bobVaultId = api.createType("AccountId", bob.address);
-            const sentRequests = 4;
+            const sentRequests = 3;
             for (let i = 0; i < sentRequests; i++) {
                 const amount = api.createType("Balance", i);
                 await issueAPI.request(amount, bobVaultId);
             }
 
             const listingsPerPage = 2;
-            const requestsIterator = issueAPI.getPagedIterator(listingsPerPage);
-            let curr = await requestsIterator.next();
             let requestCount = 0;
-            while (!curr.done) {
-                requestCount += curr.value.length;
-                assert.isTrue(curr.value.length <= listingsPerPage);
-                curr = await requestsIterator.next();
+            for await (const page of issueAPI.getPagedIterator(listingsPerPage)) {
+                requestCount += page.length;
+                assert.isTrue(page.length <= listingsPerPage);
             }
             assert.equal(requestCount, sentRequests);
         });
