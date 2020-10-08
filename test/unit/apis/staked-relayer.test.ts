@@ -68,7 +68,8 @@ describe("stakedRelayerAPI", () => {
         });
 
         it("should getMonitoredVaultsCollateralizationRate", async () => {
-            const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
+            const monitoredVaultsCollateralizationRate =
+                await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
             assert.notEqual(typeof monitoredVaultsCollateralizationRate, undefined);
         });
 
@@ -90,6 +91,16 @@ describe("stakedRelayerAPI", () => {
         it("should getAllStatusUpdates", async () => {
             const allStatusUpdates = await stakedRelayerAPI.getAllStatusUpdates();
             assert.notEqual(typeof allStatusUpdates, undefined);
+        });
+
+        it("should page listed requests", async () => {
+            const listingsPerPage = 2;
+            const requestsIterator = stakedRelayerAPI.getPagedIterator(listingsPerPage);
+            let curr = await requestsIterator.next();
+            while (!curr.done) {
+                assert.isTrue(curr.value.length <= listingsPerPage);
+                curr = await requestsIterator.next();
+            }
         });
     });
 });

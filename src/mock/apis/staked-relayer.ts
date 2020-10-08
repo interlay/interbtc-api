@@ -19,6 +19,10 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         ];
     }
 
+    getPagedIterator(_perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {
+        return {} as AsyncGenerator<ActiveStakedRelayer[]>;
+    }
+
     get(_activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {
         return Promise.resolve(<ActiveStakedRelayer>{});
     }

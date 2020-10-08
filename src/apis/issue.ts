@@ -6,6 +6,7 @@ import { Bytes, u32 } from "@polkadot/types/primitive";
 import { Callback, ISubmittableResult } from "@polkadot/types/types";
 import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
+import { pagedIterator } from "../../src/utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -16,6 +17,7 @@ export interface IssueAPI {
     setAccount(account?: AddressOrPair): void;
     getGriefingCollateral(): Promise<DOT>;
     list(): Promise<IssueRequest[]>;
+    getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
@@ -154,6 +156,10 @@ export class DefaultIssueAPI implements IssueAPI {
     async list(): Promise<IssueRequest[]> {
         const issueRequests = await this.api.query.issue.issueRequests.entries();
         return issueRequests.map((v) => v[1]);
+    }
+
+    getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
+        return pagedIterator<IssueRequest>(this.api.query.issue.issueRequests, perPage);
     }
 
     async getGriefingCollateral(): Promise<DOT> {

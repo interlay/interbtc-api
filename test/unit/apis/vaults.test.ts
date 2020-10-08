@@ -163,5 +163,15 @@ describe("vaultsAPI", () => {
             assert.isTrue(flaggedForTheft);
         });
 
+        it("should page listed requests", async () => {
+            const listingsPerPage = 2;
+            const requestsIterator = vaultsAPI.getPagedIterator(listingsPerPage);
+            let curr = await requestsIterator.next();
+            while (!curr.done) {
+                assert.isTrue(curr.value.length <= listingsPerPage);
+                curr = await requestsIterator.next();
+            }
+        });
+
     });
 });

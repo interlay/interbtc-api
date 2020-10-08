@@ -6,6 +6,7 @@ import { Bytes, u32 } from "@polkadot/types/primitive";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
+import { pagedIterator } from "../../src/utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -15,6 +16,7 @@ export interface RedeemAPI {
     execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
     cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
     setAccount(account?: AddressOrPair): void;
+    getPagedIterator(perPage: number): AsyncGenerator<Redeem[]>;
 }
 
 export class DefaultRedeemAPI {
@@ -129,6 +131,10 @@ export class DefaultRedeemAPI {
     async list(): Promise<Redeem[]> {
         const redeemRequests = await this.api.query.redeem.redeemRequests.entries();
         return redeemRequests.map((v) => v[1]);
+    }
+
+    getPagedIterator(perPage: number): AsyncGenerator<Redeem[]> {
+        return pagedIterator<Redeem>(this.api.query.redeem.redeemRequests, perPage);
     }
 
     setAccount(account?: AddressOrPair): void {

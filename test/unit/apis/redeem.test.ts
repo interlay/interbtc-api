@@ -33,8 +33,33 @@ describe("redeem", () => {
         });
 
         it("should fail if no account is set", () => {
-            const amount = api.createType("PolkaBTC", 10);
+            const amount = api.createType("Balance", 10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
+        });
+
+        it("should page listed requests", async () => {
+            // requires PolkaBTC to have already been issued
+            keyring = new Keyring({ type: "sr25519" });
+            const bob = keyring.addFromUri("//Bob");
+            alice = keyring.addFromUri("//Alice");
+            redeemAPI.setAccount(alice);
+            const bobVaultId = api.createType("AccountId", bob.address);
+            const sentRequests = 4;
+            for (let i = 0; i < sentRequests; i++) {
+                const amount = api.createType("Balance", i);
+                await redeemAPI.request(amount, randomDecodedAccountId, bobVaultId);
+            }
+
+            const listingsPerPage = 2;
+            const requestsIterator = redeemAPI.getPagedIterator(listingsPerPage);
+            let curr = await requestsIterator.next();
+            let requestCount = 0;
+            while (!curr.done) {
+                requestCount += curr.value.length;
+                assert.isTrue(curr.value.length <= listingsPerPage);
+                curr = await requestsIterator.next();
+            }
+            assert.equal(requestCount, sentRequests);
         });
     });
 
@@ -83,6 +108,7 @@ describe("redeem", () => {
             const rawTx: Bytes = <Bytes>{};
             await redeemAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
         });
+
     });
 
     function delay(ms: number) {
