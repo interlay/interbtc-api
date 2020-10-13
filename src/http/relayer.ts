@@ -13,14 +13,10 @@ import {
 } from "../interfaces/default";
 import { u256 } from "@polkadot/types/primitive";
 import { getAPITypes } from "../factory";
-import { TypeRegistry, Text } from "@polkadot/types";
+import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
-
-if (typeof window === "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    global.fetch = require("node-fetch");
-}
+import fetch, { RequestInfo } from "node-fetch";
 
 type RequestParams = Array<string> | undefined;
 type JsonRpcId = number | string;

@@ -10,12 +10,25 @@
         "esModuleInterop": true,
         "baseUrl": ".",
         "resolveJsonModule": true,
+        "lib": [
+            "ES2019"
+        ],
         "paths": {
-            "@interlay/polkabtc/*": ["src/*"],
-            "@polkadot/api/augment": ["src/interfaces/augment-api.ts"],
-            "@polkadot/types/augment": ["src/interfaces/augment-types.ts"]
+            "@interlay/polkabtc/*": [
+                "src/*"
+            ],
+            "@polkadot/api/augment": [
+                "src/interfaces/augment-api.ts"
+            ],
+            "@polkadot/types/augment": [
+                "src/interfaces/augment-types.ts"
+            ]
         }
     },
-    "include": ["src"],
-    "exclude": ["./node_modules/*"]
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "./node_modules/*"
+    ]
 }

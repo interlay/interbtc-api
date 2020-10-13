@@ -1,9 +1,8 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
-import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
+import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes, u32 } from "@polkadot/types/primitive";
-import { Callback, ISubmittableResult } from "@polkadot/types/types";
 import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import { pagedIterator, sendLoggedTx } from "../utils";
@@ -30,50 +29,12 @@ export class DefaultIssueAPI implements IssueAPI {
         this.requestHash = this.api.createType("Hash");
     }
 
-    private printEvents(events: EventRecord[]): void {
-        let foundErrorEvent = false;
-        events.forEach(({ event }) => {
-            event.data.forEach(async (eventData: any) => {
-                if (eventData.isModule) {
-                    try {
-                        const parsedEventData = eventData as DispatchError;
-                        const decoded = await this.api.registry.findMetaError(parsedEventData.asModule);
-                        const { documentation, name, section } = decoded;
-                        if (documentation) {
-                            console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
-                        } else {
-                            console.log(`\t${section}.${name}`);
-                        }
-                        foundErrorEvent = true;
-                    } catch (err) {
-                        console.log("\tCould not find transaction failure details.");
-                    }
-                }
-            });
-        });
-        if (!foundErrorEvent) {
-            events.forEach(({ phase, event: { data, method, section } }) => {
-                console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
-            });
-        }
-    }
-
-    private txCallback(unsubscribe: Callback<ISubmittableResult>, result: ISubmittableResult) {
-        if (result.status.isFinalized) {
-            console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-            this.requestHash = result.status.asFinalized;
-            this.events = result.events;
-            unsubscribe(result);
-        }
-    }
-
     private getIssueIdFromEvents(events: EventRecord[]): Hash {
         // A successful `request` produces four events:
         // - collateral.LockCollateral
         // - vaultRegistry.IncreaseToBeIssuedTokens
         // - issue.RequestIssue
         // - system.ExtrinsicSuccess
-        this.printEvents(events);
 
         for (const {
             event: { method, section, data },
@@ -95,7 +56,6 @@ export class DefaultIssueAPI implements IssueAPI {
         // - treasury.Mint
         // - issue.ExecuteIssue
         // - system.ExtrinsicSuccess
-        this.printEvents(events);
 
         for (const {
             event: { method, section },
@@ -136,9 +96,9 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        const unsubscribe: Callback<ISubmittableResult> = await this.api.tx.issue
-            .executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx)
-            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
+
+        const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx);
+        await sendLoggedTx(executeIssueTx, this.account, this.api, this);
         await delay(delayMs);
 
         return this.isExecutionSucessful(this.events);
@@ -148,9 +108,9 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-        const unsubscribe: Callback<ISubmittableResult> = await this.api.tx.issue
-            .cancelIssue(issueId)
-            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
+
+        const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
+        await sendLoggedTx(cancelIssueTx, this.account, this.api, this);
         await delay(delayMs);
     }
 

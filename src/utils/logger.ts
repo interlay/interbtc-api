@@ -15,7 +15,7 @@ export async function sendLoggedTx(
     transaction: AnyFunctionReturningSubmittableExtrinsicApis,
     signer: AddressOrPair,
     api: ApiPromise,
-    eventContainer: EventContainer
+    eventContainer?: EventContainer
 ): Promise<void> {
     // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
     const unsubscribe: Callback<ISubmittableResult> = await transaction
@@ -28,36 +28,39 @@ function txCallback(
     unsubscribe: Callback<ISubmittableResult>,
     result: ISubmittableResult,
     api: ApiPromise,
-    eventContainer: EventContainer
+    eventContainer?: EventContainer
 ) {
+    if (!result.status.isFinalized) {
+        return;
+    }
     if (result.status.isFinalized) {
         console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         unsubscribe(result);
         printEvents(result.events, api);
-        eventContainer.events = result.events;
+        if (eventContainer) {
+            eventContainer.events = result.events;
+        }
     }
 }
 
 function printEvents(events: EventRecord[], api: ApiPromise) {
     let foundErrorEvent = false;
-    events.forEach(({ event }) => {
-        event.data.forEach(async (eventData: any) => {
-            if (eventData.isModule) {
-                try {
-                    const parsedEventData = eventData as DispatchError;
-                    const decoded = api.registry.findMetaError(parsedEventData.asModule);
-                    const { documentation, name, section } = decoded;
-                    if (documentation) {
-                        console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
-                    } else {
-                        console.log(`\t${section}.${name}`);
-                    }
-                    foundErrorEvent = true;
-                } catch (err) {
-                    console.log("\tCould not find transaction failure details.");
+    events.flatMap(({ event }) => event.data).forEach((eventData: any) => {
+        if (eventData.isModule) {
+            try {
+                const parsedEventData = eventData as DispatchError;
+                const decoded = api.registry.findMetaError(parsedEventData.asModule);
+                const { documentation, name, section } = decoded;
+                if (documentation) {
+                    console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
+                } else {
+                    console.log(`\t${section}.${name}`);
                 }
+                foundErrorEvent = true;
+            } catch (err) {
+                console.log("\tCould not find transaction failure details.");
             }
-        });
+        }
     });
 
     if (!foundErrorEvent) {
