@@ -1,7 +1,7 @@
-import { assert } from "chai";
 import { ApiPromise } from "@polkadot/api";
-import { createPolkadotAPI } from "../../../src/factory";
+import { assert } from "chai";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
+import { createPolkadotAPI } from "../../../src/factory";
 import { defaultEndpoint } from "../../config";
 
 describe("BTCCore", function () {

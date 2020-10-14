@@ -5,8 +5,13 @@ import { assert } from "../../chai";
 
 describe.skip("PolkaBTCAPIMock", () => {
     let polkaBTC: PolkaBTCAPI;
-    beforeEach(async () => {
+
+    before(async () => {
         polkaBTC = await createPolkabtcAPI("mock");
+    });
+
+    after(() => {
+        return polkaBTC.api.disconnect();
     });
 
     it("should retrieve mock data from unparameterized methods", async () => {

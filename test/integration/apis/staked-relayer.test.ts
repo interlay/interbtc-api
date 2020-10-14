@@ -1,28 +1,32 @@
-import { DOT, ActiveStakedRelayer } from "../../../src/interfaces/default";
-import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { assert } from "../../chai";
-import { StakedRelayerAPI, DefaultStakedRelayerAPI } from "../../../src/apis/staked-relayer";
-import { createPolkadotAPI } from "../../../src/factory";
+import { AccountId } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import sinon from "sinon";
+import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "../../../src/apis/staked-relayer";
+import { createPolkadotAPI } from "../../../src/factory";
+import { ActiveStakedRelayer, DOT } from "../../../src/interfaces/default";
+import { assert } from "../../chai";
+import { defaultEndpoint } from "../../config";
+
 
 describe("stakedRelayerAPI", () => {
     function numberToDOT(x: number): DOT {
         return new BN(x) as DOT;
     }
 
-    describe.skip("request", () => {
+    describe("request", () => {
         let api: ApiPromise;
         let stakedRelayerAPI: StakedRelayerAPI;
 
-        beforeEach(async () => {
-            const defaultEndpoint = "ws://127.0.0.1:9944";
+        before(async () => {
             api = await createPolkadotAPI(defaultEndpoint);
+        });
+
+        beforeEach(() => {
             stakedRelayerAPI = new DefaultStakedRelayerAPI(api);
         });
 
-        afterEach(() => {
+        after(() => {
             return api.disconnect();
         });
 
@@ -59,38 +63,37 @@ describe("stakedRelayerAPI", () => {
 
         it("should getLatestBTCBlockFromBTCRelay", async () => {
             const latestBTCBlockFromBTCRelay = await stakedRelayerAPI.getLatestBTCBlockFromBTCRelay();
-            assert.notEqual(typeof latestBTCBlockFromBTCRelay, undefined);
+            assert.isDefined(latestBTCBlockFromBTCRelay);
         });
 
         it("should getLatestBTCBlockHeightFromBTCRelay", async () => {
             const latestBTCBlockHeightFromBTCRelay = await stakedRelayerAPI.getLatestBTCBlockHeightFromBTCRelay();
-            assert.notEqual(typeof latestBTCBlockHeightFromBTCRelay, undefined);
+            assert.isDefined(latestBTCBlockHeightFromBTCRelay);
         });
 
         it("should getMonitoredVaultsCollateralizationRate", async () => {
-            const monitoredVaultsCollateralizationRate =
-                await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
-            assert.notEqual(typeof monitoredVaultsCollateralizationRate, undefined);
+            const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
+            assert.isDefined(monitoredVaultsCollateralizationRate);
         });
 
         it("should getLastBTCDOTExchangeRateAndTime", async () => {
             const lastBTCDOTExchangeRateAndTime = await stakedRelayerAPI.getLastBTCDOTExchangeRateAndTime();
-            assert.notEqual(typeof lastBTCDOTExchangeRateAndTime, undefined);
+            assert.isDefined(lastBTCDOTExchangeRateAndTime);
         });
 
         it("should getCurrentStateOfBTCParachain", async () => {
             const currentStateOfBTCParachain = await stakedRelayerAPI.getCurrentStateOfBTCParachain();
-            assert.notEqual(typeof currentStateOfBTCParachain, undefined);
+            assert.isDefined(currentStateOfBTCParachain);
         });
 
         it("should getOngoingStatusUpdateVotes", async () => {
             const ongoingStatusUpdateVotes = await stakedRelayerAPI.getOngoingStatusUpdateVotes();
-            assert.notEqual(typeof ongoingStatusUpdateVotes, undefined);
+            assert.isDefined(ongoingStatusUpdateVotes);
         });
 
         it("should getAllStatusUpdates", async () => {
             const allStatusUpdates = await stakedRelayerAPI.getAllStatusUpdates();
-            assert.notEqual(typeof allStatusUpdates, undefined);
+            assert.isDefined(allStatusUpdates);
         });
 
         it("should page listed requests", async () => {

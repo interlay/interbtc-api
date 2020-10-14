@@ -1,7 +1,7 @@
 import { assert } from "chai";
 import { createPolkadotAPI } from "../../src/factory";
+import { defaultEndpoint } from "../config";
 
-const defaultEndpoint = "ws://localhost:9944";
 
 describe("createAPI", () => {
     it("should connect to parachain", async () => {

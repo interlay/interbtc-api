@@ -1,4 +1,3 @@
-import { ErrorCode } from "../../../src/interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { TypeRegistry } from "@polkadot/types";
 import { BTreeSet, Raw } from "@polkadot/types/codec";
@@ -7,6 +6,7 @@ import BN from "bn.js";
 import sinon from "sinon";
 import { DefaultOracleAPI, OracleAPI } from "../../../src/apis/oracle";
 import { createAPIRegistry } from "../../../src/factory";
+import { ErrorCode } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 
 describe("oracle", () => {
