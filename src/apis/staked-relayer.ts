@@ -4,7 +4,7 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { pagedIterator } from "../../src/utils";
+import { pagedIterator } from "../utils";
 
 export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;

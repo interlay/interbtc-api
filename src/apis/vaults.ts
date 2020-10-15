@@ -4,7 +4,7 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { pagedIterator } from "../../src/utils";
+import { pagedIterator } from "../utils";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
