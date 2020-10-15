@@ -90,10 +90,11 @@ export default class Mock implements ProviderInterface {
     private subscriptionMap: Record<number, string> = {};
     private connected: boolean = false;
 
+    private interval: NodeJS.Timeout | undefined = undefined;
+
     constructor(registry: Registry) {
         this.registry = registry;
         this.connect();
-
         // this.init();
     }
 
@@ -111,7 +112,12 @@ export default class Mock implements ProviderInterface {
     }
 
     public async disconnect(): Promise<void> {
+        console.log("DISCONNECT");
         this.connected = false;
+        if (this.interval) {
+            clearInterval(this.interval);
+        }
+        this.emitter.removeAllListeners();
     }
 
     public get isConnected(): boolean {
@@ -182,7 +188,7 @@ export default class Mock implements ProviderInterface {
         const decorated = new Decorated(this.registry, metadata);
 
         // Do something every 1 seconds
-        setInterval((): void => {
+        this.interval = setInterval((): void => {
             if (!this.isUpdating) {
                 return;
             }

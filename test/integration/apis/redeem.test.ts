@@ -1,17 +1,18 @@
-import { ApiPromise } from "@polkadot/api";
+import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bytes, u32 } from "@polkadot/types/primitive";
-import { H256, Hash } from "@polkadot/types/interfaces";
-import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
+import { UInt } from "@polkadot/types/codec";
 import { GenericAccountId } from "@polkadot/types/generic";
+import { H256, Hash, AccountId } from "@polkadot/types/interfaces";
+import { Bytes, u32 } from "@polkadot/types/primitive";
+import { ImportMock } from "ts-mock-imports";
+import { DefaultRedeemAPI } from "../../../src/apis/redeem";
+import sinon from "sinon";
+import * as DefaultVaultsAPI from "../../../src/apis/vaults";
+import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
-import { DefaultRedeemAPI } from "../../../src/apis/redeem";
-import { createPolkadotAPI } from "../../../src/factory";
-import * as DefaultVaultsAPI from "../../../src/apis/vaults";
-import { ImportMock } from "ts-mock-imports";
-import { Keyring } from "@polkadot/api";
+import { defaultEndpoint } from "../../config";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -22,16 +23,34 @@ describe("redeem", () => {
     // alice is the root account
     let alice: KeyringPair;
     const registry: TypeRegistry = new TypeRegistry();
-    const defaultEndpoint = "ws://127.0.0.1:9944";
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
     let requestResult: RequestResult;
 
-    describe.skip("request", () => {
-        beforeEach(async () => {
-            api = await createPolkadotAPI(defaultEndpoint);
-            redeemAPI = new DefaultRedeemAPI(api);
-        });
+    before(async () => {
+        api = await createPolkadotAPI(defaultEndpoint);
+        keyring = new Keyring({ type: "sr25519" });
+        alice = keyring.addFromUri("//Alice");
+    });
 
+    beforeEach(() => {
+        redeemAPI = new DefaultRedeemAPI(api);
+        sinon.stub(redeemAPI, <any>"vaults").get(() => {
+            return {
+                selectRandomVaultRedeem() {
+                    return Promise.resolve({ id: new GenericAccountId(registry, randomDecodedAccountId) });
+                },
+                get(id: AccountId) {
+                    return { id };
+                },
+            };
+        });
+    });
+
+    after(() => {
+        return api.disconnect();
+    });
+
+    describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
@@ -39,9 +58,7 @@ describe("redeem", () => {
 
         it("should page listed requests", async () => {
             // requires PolkaBTC to have already been issued
-            keyring = new Keyring({ type: "sr25519" });
             const bob = keyring.addFromUri("//Bob");
-            alice = keyring.addFromUri("//Alice");
             redeemAPI.setAccount(alice);
             const bobVaultId = api.createType("AccountId", bob.address);
             const sentRequests = 4;
@@ -63,24 +80,7 @@ describe("redeem", () => {
         });
     });
 
-    describe.skip("execute", () => {
-        beforeEach(async () => {
-            api = await createPolkadotAPI(defaultEndpoint);
-            keyring = new Keyring({ type: "sr25519" });
-
-            // Alice is also the root account
-            alice = keyring.addFromUri("//Alice");
-            const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
-            mockManager.mock("selectRandomVaultRedeem", <Vault>{
-                id: new GenericAccountId(registry, randomDecodedAccountId),
-            });
-            redeemAPI = new DefaultRedeemAPI(api);
-        });
-
-        afterEach(() => {
-            return api.disconnect();
-        });
-
+    describe("execute", () => {
         it("should fail if no account is set", () => {
             const redeemId: H256 = <H256>{};
             const txId: H256Le = <H256Le>{};
@@ -108,34 +108,10 @@ describe("redeem", () => {
             const rawTx: Bytes = <Bytes>{};
             await redeemAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
         });
-
     });
 
-    function delay(ms: number) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-
-    describe.skip("cancel", () => {
-        let api: ApiPromise;
-        let redeemAPI: DefaultRedeemAPI;
+    describe("cancel", () => {
         let requestResult: RequestResult;
-        let alice: KeyringPair;
-        let keyring: Keyring;
-
-        beforeEach(async () => {
-            api = await createPolkadotAPI(defaultEndpoint);
-            keyring = new Keyring({ type: "sr25519" });
-            alice = keyring.addFromUri("//Alice");
-            const mockManager = ImportMock.mockClass(DefaultVaultsAPI, "DefaultVaultsAPI");
-            mockManager.mock("selectRandomVaultRedeem", <Vault>{
-                id: new GenericAccountId(registry, randomDecodedAccountId),
-            });
-            redeemAPI = new DefaultRedeemAPI(api);
-        });
-
-        afterEach(() => {
-            return api.disconnect();
-        });
 
         it("should cancel a request", async () => {
             redeemAPI.setAccount(alice);
