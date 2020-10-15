@@ -4,43 +4,26 @@ import { Callback, ISubmittableResult } from "@polkadot/types/types";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ApiPromise } from "@polkadot/api";
 
-declare type AnyFunctionReturningSubmittableExtrinsicApis =
-    SubmittableExtrinsic<ApiTypes>;
-
-interface EventContainer {
-    events: EventRecord[];
-}
-
 export async function sendLoggedTx(
-    transaction: AnyFunctionReturningSubmittableExtrinsicApis,
+    transaction: SubmittableExtrinsic<"promise">,
     signer: AddressOrPair,
-    api: ApiPromise,
-    eventContainer?: EventContainer
-): Promise<void> {
+    api: ApiPromise
+): Promise<EventRecord[]> {
     // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
-    const unsubscribe: Callback<ISubmittableResult> = await transaction
-        .signAndSend(
-            signer, { nonce: -1 }, (result) => txCallback(unsubscribe, result, api, eventContainer)
-        ) as Callback<ISubmittableResult>;
-}
+    const { unsubscribe, result } = await new Promise((resolve) => {
+        let unsubscribe: () => void;
+        // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
+        // signAndSend: Promise<() => void>
+        // signAndSend -> signAndSend resolves (we set unsubscribe) -> callback is called
+        transaction
+            .signAndSend(signer, { nonce: -1 }, (result: ISubmittableResult) => resolve({ unsubscribe, result }))
+            .then((u: () => void) => (unsubscribe = u));
+    });
 
-function txCallback(
-    unsubscribe: Callback<ISubmittableResult>,
-    result: ISubmittableResult,
-    api: ApiPromise,
-    eventContainer?: EventContainer
-) {
-    if (!result.status.isFinalized) {
-        return;
-    }
-    if (result.status.isFinalized) {
-        console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-        unsubscribe(result);
-        printEvents(result.events, api);
-        if (eventContainer) {
-            eventContainer.events = result.events;
-        }
-    }
+    console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+    unsubscribe(result);
+    printEvents(result.events, api);
+    return result.events;
 }
 
 function printEvents(events: EventRecord[], api: ApiPromise) {

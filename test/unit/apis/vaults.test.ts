@@ -37,12 +37,10 @@ describe("vaultsAPI", () => {
 
             const exchangeRateTx = api.tx.exchangeRateOracle.setExchangeRate(1);
             await sendLoggedTx(exchangeRateTx, bob, api);
-            await delay(delayMs);
 
             const bobBTCAddress = "BF3408F6C0DEC0879F7C1D4D0A5E8813FC0DB569";
             const registerBobVaultTx = api.tx.vaultRegistry.registerVault(10, bobBTCAddress);
             await sendLoggedTx(registerBobVaultTx, bob, api);
-            await delay(delayMs);
 
             const charlieBTCAddress = "66c7060feb882664ae62ffad0051fe843e318e85";
             const registerCharlieVaultTx = api.tx.vaultRegistry.registerVault(0, charlieBTCAddress);

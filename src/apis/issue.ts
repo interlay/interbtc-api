@@ -85,10 +85,9 @@ export class DefaultIssueAPI implements IssueAPI {
             griefingCollateral = await this.getGriefingCollateral();
         }
         const requestIssueTx = this.api.tx.issue.requestIssue(amount, vault.id, griefingCollateral);
-        await sendLoggedTx(requestIssueTx, this.account, this.api, this);
-        await delay(delayMs);
+        const events = await sendLoggedTx(requestIssueTx, this.account, this.api);
 
-        const hash = this.getIssueIdFromEvents(this.events);
+        const hash = this.getIssueIdFromEvents(events);
         return { hash, vault };
     }
 
@@ -98,10 +97,8 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx);
-        await sendLoggedTx(executeIssueTx, this.account, this.api, this);
-        await delay(delayMs);
-
-        return this.isExecutionSucessful(this.events);
+        const events = await sendLoggedTx(executeIssueTx, this.account, this.api);
+        return this.isExecutionSucessful(events);
     }
 
     async cancel(issueId: H256): Promise<void> {
@@ -110,8 +107,7 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
-        await sendLoggedTx(cancelIssueTx, this.account, this.api, this);
-        await delay(delayMs);
+        await sendLoggedTx(cancelIssueTx, this.account, this.api);
     }
 
     async list(): Promise<IssueRequest[]> {

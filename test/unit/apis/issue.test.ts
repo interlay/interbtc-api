@@ -36,12 +36,10 @@ describe("issue", () => {
 
             const exchangeRateTx = api.tx.exchangeRateOracle.setExchangeRate(1);
             await sendLoggedTx(exchangeRateTx, bob, api);
-            await delay(delayMs);
 
             const bobBTCAddress = "0xbf3408f6c0dec0879f7c1d4d0a5e8813fc0db569";
             const registerVaultTx = api.tx.vaultRegistry.registerVault(6, bobBTCAddress);
             await sendLoggedTx(registerVaultTx, bob, api);
-            await delay(delayMs);
         });
     });
 
