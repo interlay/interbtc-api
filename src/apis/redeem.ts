@@ -6,7 +6,7 @@ import { Bytes, u32 } from "@polkadot/types/primitive";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { pagedIterator } from "../../src/utils";
+import { pagedIterator } from "../utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 

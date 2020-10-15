@@ -6,7 +6,7 @@ import { Bytes, u32 } from "@polkadot/types/primitive";
 import { Callback, ISubmittableResult } from "@polkadot/types/types";
 import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
-import { pagedIterator } from "../../src/utils";
+import { pagedIterator } from "../utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -75,7 +75,7 @@ export class DefaultIssueAPI implements IssueAPI {
         // - issue.RequestIssue
         // - system.ExtrinsicSuccess
         this.printEvents(events);
-        
+
         for (const { event: { method, section, data } } of events) {
             if (section == "issue" && method == "RequestIssue") {
                 const hash = this.api.createType("Hash", data[0]);
