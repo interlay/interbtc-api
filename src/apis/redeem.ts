@@ -3,7 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
-import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
+import { EventRecord } from "@polkadot/types/interfaces/system";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { pagedIterator } from "../utils";
@@ -28,35 +28,6 @@ export class DefaultRedeemAPI {
         this.vaults = new DefaultVaultsAPI(api);
     }
 
-    private printEvents(events: EventRecord[]): void {
-        let foundErrorEvent = false;
-        events.forEach(({ event }) => {
-            event.data.forEach(async (eventData: any) => {
-                if (eventData.isModule) {
-                    try {
-                        const parsedEventData = eventData as DispatchError;
-                        const decoded = await this.api.registry.findMetaError(parsedEventData.asModule);
-                        const { documentation, name, section } = decoded;
-                        if (documentation) {
-                            console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
-                        } else {
-                            console.log(`\t${section}.${name}`);
-                        }
-                        foundErrorEvent = true;
-                    } catch (err) {
-                        console.log("\tCould not find transaction failure details.");
-                    }
-
-                }
-            });
-        });
-        if (!foundErrorEvent) {
-            events.forEach(({ phase, event: { data, method, section } }) => {
-                console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
-            });
-        }
-    }
-
     // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>`
     // isn't recognized by type checker
     private txCallback(unsubscribe: any, result: ISubmittableResult) {
@@ -69,8 +40,6 @@ export class DefaultRedeemAPI {
     }
 
     private getRedeemIdFromEvents(events: EventRecord[]): Hash {
-        this.printEvents(events);
-
         for (const { event: { method, section, data } } of events) {
             if (section == "redeem" && method == "RequestRedeem") {
                 const hash = this.api.createType("Hash", data[0]);

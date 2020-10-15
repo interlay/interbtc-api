@@ -7,9 +7,9 @@ import { assert } from "../../chai";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
 import { Keyring } from "@polkadot/api";
-import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
-import { ISubmittableResult } from "@polkadot/types/types";
 import { ImportMock } from "ts-mock-imports";
+import { sendLoggedTx } from "../../../src/utils";
+
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -27,47 +27,6 @@ describe("issue", () => {
     let alice: KeyringPair;
     let bob: KeyringPair;
     const defaultEndpoint = "ws://127.0.0.1:9944";
-    let events: EventRecord[] = [];
-
-    function txCallback(unsubscribe: any, result: ISubmittableResult) {
-        if (result.status.isFinalized) {
-            console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-            events = result.events;
-            unsubscribe();
-        }
-    }
-
-    function printEvents(testType: string, events: EventRecord[]) {
-        console.log(`\n${testType} events:`);
-
-        let foundErrorEvent = false;
-        events.forEach(({ event }) => {
-            event.data.forEach(async (eventData: any) => {
-                if (eventData.isModule) {
-                    try {
-                        const parsedEventData = eventData as DispatchError;
-                        const decoded = await api.registry.findMetaError(parsedEventData.asModule);
-                        const { documentation, name, section } = decoded;
-                        if (documentation) {
-                            console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
-                        } else {
-                            console.log(`\t${section}.${name}`);
-                        }
-                        foundErrorEvent = true;
-                    } catch (err) {
-                        console.log("\tCould not find transaction failure details.");
-                    }
-
-                }
-            });
-        });
-
-        if (!foundErrorEvent) {
-            events.forEach(({ phase, event: { data, method, section } }) => {
-                console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
-            });
-        }
-    }
 
     describe.skip("exchangeRateOracle", () => {
         it("should setExchangeRate", async () => {
@@ -75,16 +34,12 @@ describe("issue", () => {
             keyring = new Keyring({ type: "sr25519" });
             bob = keyring.addFromUri("//Bob");
 
-            let unsubscribe: any = await api.tx.exchangeRateOracle.setExchangeRate(1)
-                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
-            await delay(delayMs);
-            printEvents("setExchangeRate", events);
+            const exchangeRateTx = api.tx.exchangeRateOracle.setExchangeRate(1);
+            await sendLoggedTx(exchangeRateTx, bob, api);
 
             const bobBTCAddress = "0xbf3408f6c0dec0879f7c1d4d0a5e8813fc0db569";
-            unsubscribe = await api.tx.vaultRegistry.registerVault(6, bobBTCAddress)
-                .signAndSend(bob, (result) => txCallback(unsubscribe, result));
-            await delay(delayMs);
-            printEvents("registerVault", events);
+            const registerVaultTx = api.tx.vaultRegistry.registerVault(6, bobBTCAddress);
+            await sendLoggedTx(registerVaultTx, bob, api);
         });
     });
 
@@ -123,6 +78,17 @@ describe("issue", () => {
             }
             assert.equal(requestCount, sentRequests);
         });
+
+        it("should retrieve hash from request", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            bob = keyring.addFromUri("//Bob");
+            alice = keyring.addFromUri("//Alice");
+            issueAPI.setAccount(alice);
+            const bobVaultId = api.createType("AccountId", bob.address);
+            const amount = api.createType("Balance", 1);
+            const requestResult = await issueAPI.request(amount, bobVaultId);
+            assert.isTrue(requestResult.hash.length > 0);
+        });
     });
 
     describe.skip("execute", () => {
@@ -153,7 +119,6 @@ describe("issue", () => {
             const bobVaultId = api.createType("AccountId", bob.address);
             const requestResult = await issueAPI.request(amount, bobVaultId);
             txHash = requestResult.hash;
-            printEvents("requestIssue", issueAPI.events);
         });
 
         it("should consider execution successful if `isExecutionSucessful` returns true", async () => {
@@ -245,10 +210,7 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("Balance", 1);
             await issueAPI.request(amount);
-            printEvents("requestIssue", issueAPI.events);
-
             await issueAPI.cancel(issueAPI.requestHash);
-            printEvents("cancelIssueRequest", issueAPI.events);
         });
     });
 });
