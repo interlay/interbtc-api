@@ -11,7 +11,7 @@ import { defaultEndpoint } from "../../config";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-describe("issue", () => {
+describe.skip("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let keyring: Keyring;

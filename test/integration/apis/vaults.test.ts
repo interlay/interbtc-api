@@ -9,7 +9,7 @@ import { PolkaBTC, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 
-describe("vaultsAPI", () => {
+describe.skip("vaultsAPI", () => {
     let bob: KeyringPair;
     let charlie: KeyringPair;
     let api: ApiPromise;

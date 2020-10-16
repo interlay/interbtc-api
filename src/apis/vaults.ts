@@ -4,7 +4,7 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { pagedIterator } from "../utils";
+import { pagedIterator } from "../../src/utils";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
@@ -28,7 +28,7 @@ export class DefaultVaultsAPI {
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
-        return pagedIterator<Vault>(this.api.query.issue.issueRequests, perPage);
+        return pagedIterator<Vault>(this.api.query.vaultRegistry.vaults, perPage);
     }
 
     get(vaultId: AccountId): Promise<Vault> {
