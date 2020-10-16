@@ -4,9 +4,8 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-import { ISubmittableResult } from "@polkadot/types/types";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { pagedIterator } from "../utils";
+import { pagedIterator, sendLoggedTx } from "../utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -26,17 +25,6 @@ export class DefaultRedeemAPI {
 
     constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
-    }
-
-    // using type `any` because `SubmittableResultSubscription<ApiType extends ApiTypes>`
-    // isn't recognized by type checker
-    private txCallback(unsubscribe: any, result: ISubmittableResult) {
-        if (result.status.isFinalized) {
-            console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-            this.requestHash = result.status.asFinalized;
-            this.events = result.events;
-            unsubscribe();
-        }
     }
 
     private getRedeemIdFromEvents(events: EventRecord[]): Hash {
@@ -63,12 +51,9 @@ export class DefaultRedeemAPI {
             vault = await this.vaults.get(vaultId);
         }
 
-        const unsubscribe: any = await this.api.tx.redeem
-            .requestRedeem(amount, btcAddress, vault.id)
-            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
-        await delay(delayMs);
-
-        const hash = this.getRedeemIdFromEvents(this.events);
+        const requestRedeemTx = this.api.tx.redeem.requestRedeem(amount, btcAddress, vault.id);
+        const events = await sendLoggedTx(requestRedeemTx, this.account, this.api);
+        const hash = this.getRedeemIdFromEvents(events);
         return { hash, vault };
     }
 
@@ -76,10 +61,8 @@ export class DefaultRedeemAPI {
         if (!this.account) {
             throw new Error("cannot execute without setting account");
         }
-        const unsubscribe: any = await this.api.tx.redeem
-            .executeRedeem(redeemId, txId, txBlockHeight, merkleProof, rawTx)
-            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
-        await delay(delayMs);
+        const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, txBlockHeight, merkleProof, rawTx);
+        await sendLoggedTx(executeRedeemTx, this.account, this.api);
     }
 
     async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
@@ -91,10 +74,8 @@ export class DefaultRedeemAPI {
         // `false` = retry Redeem with another Vault.
         // `true` = accept reimbursement in polkaBTC
         const reimburseValue = reimburse ? reimburse : false;
-        const unsubscribe: any = await this.api.tx.redeem
-            .cancelRedeem(redeemId, reimburseValue)
-            .signAndSend(this.account, { nonce: -1 }, (result) => this.txCallback(unsubscribe, result));
-        await delay(delayMs);
+        const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
+        await sendLoggedTx(cancelRedeemTx, this.account, this.api);
     }
 
     async list(): Promise<Redeem[]> {
@@ -109,10 +90,4 @@ export class DefaultRedeemAPI {
     setAccount(account?: AddressOrPair): void {
         this.account = account;
     }
-}
-
-const delayMs = 25000;
-
-function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
 }
