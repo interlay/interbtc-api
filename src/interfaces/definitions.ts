@@ -128,6 +128,25 @@ export default {
             status_update_id: "U256",
             approve: "bool",
         },
+        IssueRequest: {
+            vault: "AccountId",
+            opentime: "BlockNumber",
+            griefing_collateral: "DOT",
+            amount: "PolkaBTC",
+            requester: "AccountId",
+            btc_address: "H160",
+            completed: "bool",
+        },
+        RedeemRequest: {
+            vault: "AccountId",
+            opentime: "BlockNumber",
+            amount_polka_btc: "PolkaBTC",
+            amount_btc: "PolkaBTC",
+            amount_dot: "DOT",
+            premium_dot: "DOT",
+            redeemer: "AccountId",
+            btc_address: "H160",
+        },
     },
     rpc: {
         vaultRegistry: {
@@ -204,5 +223,29 @@ export default {
                 type: "",
             },
         },
+        issue: {
+            getIssueRequests: {
+                description: "Get all issue requests for a particular account",
+                params: [
+                    {
+                        name: "account_id",
+                        type: "AccountId",
+                    },
+                ],
+                type: "Vec<(H256, IssueRequest)>",
+            },
+        },
+        redeem: {
+            getRedeemRequests: {
+                description: "Get all redeem requests for a particular account",
+                params: [
+                    {
+                        name: "account_id",
+                        type: "AccountId",
+                    },
+                ],
+                type: "Vec<(H256, RedeemRequest)>",
+            },
+        }
     },
 };

@@ -22,7 +22,6 @@ export interface IssueAPI {
 export class DefaultIssueAPI implements IssueAPI {
     private vaults: VaultsAPI;
     requestHash: Hash;
-    events: EventRecord[] = [];
 
     constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
@@ -126,10 +125,4 @@ export class DefaultIssueAPI implements IssueAPI {
     setAccount(account?: AddressOrPair): void {
         this.account = account;
     }
-}
-
-const delayMs = 25000;
-
-function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
 }

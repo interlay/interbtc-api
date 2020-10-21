@@ -71,7 +71,7 @@ describe("stakedRelayerAPI", () => {
             assert.isDefined(latestBTCBlockHeightFromBTCRelay);
         });
 
-        it("should getMonitoredVaultsCollateralizationRate", async () => {
+        it.skip("should getMonitoredVaultsCollateralizationRate", async () => {
             const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
             assert.isDefined(monitoredVaultsCollateralizationRate);
         });
