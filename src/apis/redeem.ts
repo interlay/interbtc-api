@@ -83,6 +83,12 @@ export class DefaultRedeemAPI {
         return redeemRequests.map((v) => v[1]);
     }
 
+    async listForUser(account: AccountId): Promise<[H256, Redeem][]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const customAPIRPC = this.api.rpc as any;
+        return customAPIRPC.redeem.getRedeemRequests(account);
+    }
+
     getPagedIterator(perPage: number): AsyncGenerator<Redeem[]> {
         return pagedIterator<Redeem>(this.api.query.redeem.redeemRequests, perPage);
     }

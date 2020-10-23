@@ -114,6 +114,12 @@ export class DefaultIssueAPI implements IssueAPI {
         return issueRequests.map((v) => v[1]);
     }
 
+    async listForUser(account: AccountId): Promise<[H256, IssueRequest][]> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const customAPIRPC = this.api.rpc as any;
+        return customAPIRPC.issue.getIssueRequests(account);
+    }
+
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
         return pagedIterator<IssueRequest>(this.api.query.issue.issueRequests, perPage);
     }
