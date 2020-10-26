@@ -1,13 +1,15 @@
-import { PolkaBTC, Vault } from "../interfaces/default";
+import { PolkaBTC, Vault, Issue as IssueRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
 import { pagedIterator } from "../utils";
+import { DefaultIssueAPI } from "./issue";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
+    listIssueRequests(vaultId: AccountId): Promise<IssueRequest[]>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getCollateralization(vaultId: AccountId): Promise<number>;
@@ -18,13 +20,28 @@ export interface VaultsAPI {
 }
 
 export class DefaultVaultsAPI {
+    private issueAPI!: DefaultIssueAPI;
     granularity = 5;
 
-    constructor(private api: ApiPromise) { }
+    constructor(private api: ApiPromise) { 
+    }
 
     async list(): Promise<Vault[]> {
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
         return vaultsMap.map((v) => v[1]);
+    }
+
+    async listIssueRequests(vaultId: AccountId): Promise<IssueRequest[]> {
+        // cannot instantiate issueAPI in the constructor, because that would create a dependency loop,
+        // since issueAPI also instantiates the vaultsAPI in its constructor
+        if (!this.issueAPI) {
+            this.issueAPI = new DefaultIssueAPI(this.api);
+        }
+        const allIssueRequests = await this.issueAPI.list();
+
+        const issueRequestsWithCurrentVault = 
+            allIssueRequests.filter((issueRequest) => (issueRequest.vault.eq(vaultId)));
+        return issueRequestsWithCurrentVault;
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {

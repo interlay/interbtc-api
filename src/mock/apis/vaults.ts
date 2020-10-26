@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault } from "../../interfaces/default";
+import { IssueRequest, PolkaBTC, Vault } from "../../interfaces/default";
 import { AccountId, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -10,6 +10,8 @@ import { VaultsAPI } from "../../apis/vaults";
 export class MockVaultsAPI implements VaultsAPI {
     async list(): Promise<Vault[]> {
         const registry = new TypeRegistry();
+
+        // random value
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
         return Promise.resolve([
             <Vault>{
@@ -29,6 +31,11 @@ export class MockVaultsAPI implements VaultsAPI {
                 banned_until: new Option(registry, "BlockNumber", new BN(11938)),
             },
         ]);
+    }
+
+    async listIssueRequests(_vaultId: AccountId): Promise<IssueRequest[]> {
+        // Empty for now, as it is difficult to mock IssueRequests
+        return Promise.resolve([ ]);
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<Vault[]> {
