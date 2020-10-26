@@ -1,14 +1,10 @@
 import {
     GetAddressResponse,
-    GetParachainStatusResponse,
-    GetStatusUpdateRequest,
-    GetStatusUpdateResponse,
     RegisterStakedRelayerRequest,
     SuggestStatusUpdateRequest,
     VoteOnStatusUpdateRequest,
     StatusCode,
     ErrorCode,
-    StatusUpdate,
     H256Le,
 } from "../interfaces/default";
 import { u256 } from "@polkadot/types/primitive";
@@ -75,9 +71,6 @@ export class StakedRelayerClient {
 
     constr: {
         GetAddressResponse: Constructor<GetAddressResponse>;
-        GetParachainStatusResponse: Constructor<GetParachainStatusResponse>;
-        GetStatusUpdateRequest: Constructor<GetStatusUpdateRequest>;
-        GetStatusUpdateResponse: Constructor<GetStatusUpdateResponse>;
         RegisterStakedRelayerRequest: Constructor<RegisterStakedRelayerRequest>;
         SuggestStatusUpdateRequest: Constructor<SuggestStatusUpdateRequest>;
         VoteOnStatusUpdateRequest: Constructor<VoteOnStatusUpdateRequest>;
@@ -93,9 +86,6 @@ export class StakedRelayerClient {
 
         this.constr = {
             GetAddressResponse: this.registry.createClass("GetAddressResponse"),
-            GetParachainStatusResponse: this.registry.createClass("GetParachainStatusResponse"),
-            GetStatusUpdateRequest: this.registry.createClass("GetStatusUpdateRequest"),
-            GetStatusUpdateResponse: this.registry.createClass("GetStatusUpdateResponse"),
             RegisterStakedRelayerRequest: this.registry.createClass("RegisterStakedRelayerRequest"),
             SuggestStatusUpdateRequest: this.registry.createClass("SuggestStatusUpdateRequest"),
             VoteOnStatusUpdateRequest: this.registry.createClass("VoteOnStatusUpdateRequest"),
@@ -118,19 +108,6 @@ export class StakedRelayerClient {
         const response = await post(this.url, "get_address");
         const result = new this.constr["GetAddressResponse"](this.registry, response.result);
         return result.address.toString();
-    }
-
-    async getParachainStatus(): Promise<StatusCode> {
-        const response = await post(this.url, "get_parachain_status");
-        const result = new this.constr["GetParachainStatusResponse"](this.registry, response.result);
-        return result.status;
-    }
-
-    async getStatusUpdate(status_update_id: number): Promise<StatusUpdate> {
-        const request = new this.constr["GetStatusUpdateRequest"](this.registry, { status_update_id });
-        const response = await post(this.url, "get_status_update", [request.toHex()]);
-        const result = new this.constr["GetStatusUpdateResponse"](this.registry, response.result);
-        return result.status;
     }
 
     async registerStakedRelayer(stake: number): Promise<void> {
