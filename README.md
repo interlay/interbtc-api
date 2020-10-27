@@ -36,7 +36,7 @@ yarn test:unit
 Run the parachain (or indeed any Substrate node) and download the metadata:
 
 ```bash
-curl -H "Content-Type: application/json" -d '{"id":"1", "jsonrpc":"2.0", "method": "state_getMetadata", "params":[]}' http://localhost:9933 > src/json/edgeware.json
+curl -H "Content-Type: application/json" -d '{"id":"1", "jsonrpc":"2.0", "method": "state_getMetadata", "params":[]}' http://localhost:9933 > src/json/parachain.json
 ```
 
 ## Usage

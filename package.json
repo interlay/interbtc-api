@@ -19,7 +19,7 @@
     "fix:lint": "eslint . --ext .ts --fix",
     "ci:test": "run-s build test:lint test:unit",
     "generate:defs": "ts-node --skip-project node_modules/.bin/polkadot-types-from-defs --package @interlay/polkabtc/interfaces --input ./src/interfaces",
-    "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/polkabtc/interfaces --endpoint ./src/json/edgeware.json --output ./src/interfaces",
+    "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/polkabtc/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "test": "run-s build test:*",
     "test:lint": "eslint src --ext .ts",
     "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts",
@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@interlay/esplora-btc-api": "^0.1.7",
+    "@interlay/polkabtc-types": "^0.1.1",
     "@types/big.js": "^4.0.5",
     "big.js": "^6.0.1",
     "bitcoinjs-lib": "^5.2.0",
