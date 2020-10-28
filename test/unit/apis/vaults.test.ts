@@ -67,9 +67,9 @@ describe("vaultsAPI", () => {
             })];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sinon.stub(DefaultIssueAPI.prototype, <any>"list").returns(Promise.resolve(issueRequests));
-        const issueRequestsWithCurrentVault = await vaultsAPI.listIssueRequests(
+        const issueRequestsWithCurrentVault = await vaultsAPI.mapForVault(
             new GenericAccountId(registry, decodedAccountId)
         );
-        assert.equal(issueRequestsWithCurrentVault.length, 2);
+        assert.equal(issueRequestsWithCurrentVault.size, 1);
     });
 });

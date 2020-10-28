@@ -33,9 +33,34 @@ export class MockVaultsAPI implements VaultsAPI {
         ]);
     }
 
-    async listIssueRequests(_vaultId: AccountId): Promise<IssueRequest[]> {
+    async listPaged(): Promise<Vault[]> {
+        const registry = new TypeRegistry();
+
+        // random value
+        const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+        return Promise.resolve([
+            <Vault>{
+                id: new GenericAccountId(registry, decodedAccountId),
+                to_be_issued_tokens: new BN(120) as PolkaBTC,
+                issued_tokens: new BN(330) as PolkaBTC,
+                to_be_redeemed_tokens: new BN(5) as PolkaBTC,
+                btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
+                banned_until: new Option(registry, "BlockNumber", new BN(10908)),
+            },
+            <Vault>{
+                id: new GenericAccountId(registry, decodedAccountId),
+                to_be_issued_tokens: new BN(220) as PolkaBTC,
+                issued_tokens: new BN(430) as PolkaBTC,
+                to_be_redeemed_tokens: new BN(12) as PolkaBTC,
+                btc_address: new U8aFixed(registry, "78443543fdsf") as H160,
+                banned_until: new Option(registry, "BlockNumber", new BN(11938)),
+            },
+        ]);
+    }
+
+    async mapForVault(_vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>> {
         // Empty for now, as it is difficult to mock IssueRequests
-        return Promise.resolve([ ]);
+        return Promise.resolve(new Map<AccountId, IssueRequest[]>());
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<Vault[]> {
