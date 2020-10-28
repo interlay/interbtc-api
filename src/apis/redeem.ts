@@ -1,4 +1,4 @@
-import { PolkaBTC, Redeem, Vault, H256Le } from "../interfaces/default";
+import { PolkaBTC, Redeem, Vault, H256Le, RedeemRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
@@ -28,7 +28,9 @@ export class DefaultRedeemAPI {
     }
 
     private getRedeemIdFromEvents(events: EventRecord[]): Hash {
-        for (const { event: { method, section, data } } of events) {
+        for (const {
+            event: { method, section, data },
+        } of events) {
             if (section == "redeem" && method == "RequestRedeem") {
                 const hash = this.api.createType("Hash", data[0]);
                 return hash;
@@ -81,6 +83,15 @@ export class DefaultRedeemAPI {
     async list(): Promise<Redeem[]> {
         const redeemRequests = await this.api.query.redeem.redeemRequests.entries();
         return redeemRequests.map((v) => v[1]);
+    }
+
+    async mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const customAPIRPC = this.api.rpc as any;
+        const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getRedeemRequests(account);
+        const mapForUser: Map<H256, RedeemRequest> = new Map<H256, RedeemRequest>();
+        redeemRequestPairs.forEach((redeemRequestPair) => mapForUser.set(redeemRequestPair[0], redeemRequestPair[1]));
+        return mapForUser;
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Redeem[]> {
