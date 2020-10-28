@@ -3,7 +3,7 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes, u32 } from "@polkadot/types/primitive";
-import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
+import { DOT, H256Le, IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import { pagedIterator, sendLoggedTx } from "../utils";
 
