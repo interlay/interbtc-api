@@ -60,19 +60,16 @@ describe("vaultsAPI", () => {
 
         // random value
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
-        const issueRequests = [
-            <IssueRequest> <unknown>{
+        const issueRequests = [<IssueRequest>(<unknown>{
                 vault: new GenericAccountId(registry, decodedAccountId),
-            },
-            <IssueRequest> <unknown>{
+            }), <IssueRequest>(<unknown>{
                 vault: new GenericAccountId(registry, decodedAccountId),
-            }
-        ];
+            })];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sinon.stub(DefaultIssueAPI.prototype, <any>"list").returns(Promise.resolve(issueRequests))
-        const issueRequestsWithCurrentVault = 
-            await vaultsAPI.listIssueRequests(new GenericAccountId(registry, decodedAccountId));
+        sinon.stub(DefaultIssueAPI.prototype, <any>"list").returns(Promise.resolve(issueRequests));
+        const issueRequestsWithCurrentVault = await vaultsAPI.listIssueRequests(
+            new GenericAccountId(registry, decodedAccountId)
+        );
         assert.equal(issueRequestsWithCurrentVault.length, 2);
     });
-
 });
