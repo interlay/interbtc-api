@@ -114,10 +114,13 @@ export class DefaultIssueAPI implements IssueAPI {
         return issueRequests.map((v) => v[1]);
     }
 
-    async listForUser(account: AccountId): Promise<[H256, IssueRequest][]> {
+    async mapForUser(account: AccountId): Promise<Map<H256, IssueRequest>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
-        return customAPIRPC.issue.getIssueRequests(account);
+        const issueRequestPairs: [H256, IssueRequest][] = customAPIRPC.issue.getIssueRequests(account);
+        const mapForUser: Map<H256, IssueRequest> = new Map<H256, IssueRequest>();
+        issueRequestPairs.forEach((issueRequestPair) => mapForUser.set(issueRequestPair[0], issueRequestPair[1]));
+        return mapForUser;
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
