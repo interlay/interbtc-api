@@ -6,3 +6,4 @@ export { OracleAPI } from "./oracle";
 export { BTCCoreAPI } from "./btc-core";
 export { CollateralAPI } from "./collateral";
 export { TreasuryAPI } from "./treasury";
+export { ConstantsAPI } from "./constants";
