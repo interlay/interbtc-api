@@ -74,6 +74,7 @@ export default class Mock implements ProviderInterface {
         system_name: (): string => "mockClient",
         system_properties: (): Record<string, number | string> => ({ ss58Format: 42 }),
         system_version: (): string => "9.8.7",
+        system_health: (): any => this.registry.createType("Health"),
     };
 
     public subscriptions: MockStateSubscriptions = SUBSCRIPTIONS.reduce((subs, name): MockStateSubscriptions => {
@@ -117,6 +118,7 @@ export default class Mock implements ProviderInterface {
         if (this.interval) {
             clearInterval(this.interval);
         }
+        this.emitter.emit("disconnected");
         this.emitter.removeAllListeners();
     }
 
