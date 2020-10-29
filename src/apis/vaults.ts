@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, Issue as IssueRequest } from "../interfaces/default";
+import { PolkaBTC, Vault, IssueRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
