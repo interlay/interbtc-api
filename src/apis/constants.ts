@@ -7,9 +7,7 @@ import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
 export interface ConstantsAPI {
     getDotExistentialDeposit(): Balance;
-    getIssuePeriod(): BlockNumber;
     getPolkaBtcExistentialDeposit(): Balance;
-    getReplacePeriod(): BlockNumber;
     getStakedRelayersMaturityPeriod(): BlockNumber;
     getStakedRelayersMinimumDeposit(): DOT;
     getStakedRelayersMinimumParticipants(): u64;
@@ -34,16 +32,8 @@ export class DefaultConstantsAPI implements ConstantsAPI {
         return this.api.consts.dot.existentialDeposit;
     }
 
-    getIssuePeriod(): BlockNumber {
-        return this.api.consts.issue.issuePeriod;
-    }
-
     getPolkaBtcExistentialDeposit(): Balance {
         return this.api.consts.polkaBtc.existentialDeposit;
-    }
-
-    getReplacePeriod(): BlockNumber {
-        return this.api.consts.replace.replacePeriod;
     }
 
     getStakedRelayersMaturityPeriod(): BlockNumber {
@@ -105,5 +95,4 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     getTransactionWeightToFee(): Vec<WeightToFeeCoefficient> {
         return this.api.consts.transactionPayment.weightToFee;
     }
-
 }

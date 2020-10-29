@@ -26,23 +26,9 @@ describe("Constants", function () {
         });
     });
 
-    describe("getIssuePeriod", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getIssuePeriod();
-            assert.isDefined(returnValue);
-        });
-    });
-
     describe("getPolkaBtcExistentialDeposit", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getPolkaBtcExistentialDeposit();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getReplacePeriod", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getReplacePeriod();
             assert.isDefined(returnValue);
         });
     });
