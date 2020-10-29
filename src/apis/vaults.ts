@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, IssueRequest } from "../interfaces/default";
+import { PolkaBTC, Vault, IssueRequest, RedeemRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
@@ -6,11 +6,13 @@ import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
 import { pagedIterator } from "../utils";
 import { DefaultIssueAPI } from "./issue";
+import { DefaultRedeemAPI } from "./redeem";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
     listPaged(): Promise<Vault[]>;
-    mapForVault(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>>;
+    mapIssueRequests(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>>;
+    mapRedeemRequests(vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getCollateralization(vaultId: AccountId): Promise<number>;
@@ -22,6 +24,7 @@ export interface VaultsAPI {
 
 export class DefaultVaultsAPI {
     private issueAPI!: DefaultIssueAPI;
+    private redeemAPI!: DefaultRedeemAPI;
     granularity = 5;
 
     constructor(private api: ApiPromise) {}
@@ -36,9 +39,17 @@ export class DefaultVaultsAPI {
         return vaultsMap.map((v) => v[1]);
     }
 
-    async mapForVault(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>> {
-        // cannot instantiate issueAPI in the constructor, because that would create a dependency loop,
-        // since issueAPI also instantiates the vaultsAPI in its constructor
+    /**
+     * Fetch the issue requests associated with a vault
+     *
+     * @remarks
+     * Cannot instantiate issueAPI in the constructor, because that would create a dependency loop,
+     * since issueAPI also instantiates the vaultsAPI in its constructor
+     *
+     * @param vaultId - The AccountId of the vault used to filter issue requests
+     * @returns A map with a single key, from the vault AccountId to issue requests involving said vault
+     */
+    async mapIssueRequests(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>> {
         if (!this.issueAPI) {
             this.issueAPI = new DefaultIssueAPI(this.api);
         }
@@ -46,6 +57,28 @@ export class DefaultVaultsAPI {
 
         const issueRequestsWithCurrentVault = allIssueRequests.filter((issueRequest) => issueRequest.vault.eq(vaultId));
         return new Map([[vaultId, issueRequestsWithCurrentVault]]);
+    }
+
+    /**
+     * Fetch the redeem requests associated with a vault
+     *
+     * @remarks
+     * Cannot instantiate redeemAPI in the constructor, because that would create a dependency loop,
+     * since redeemAPI also instantiates the vaultsAPI in its constructor
+     *
+     * @param vaultId - The AccountId of the vault used to filter redeem requests
+     * @returns A map with a single key, from the vault AccountId to redeem requests involving said vault
+     */
+    async mapRedeemRequests(vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>> {
+        if (!this.redeemAPI) {
+            this.redeemAPI = new DefaultRedeemAPI(this.api);
+        }
+        const allRedeemRequests = await this.redeemAPI.list();
+
+        const redeemRequestsWithCurrentVault = allRedeemRequests.filter((redeemRequest) =>
+            redeemRequest.vault.eq(vaultId)
+        );
+        return new Map([[vaultId, redeemRequestsWithCurrentVault]]);
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
