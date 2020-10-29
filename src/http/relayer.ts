@@ -1,8 +1,8 @@
 import {
-    GetAddressResponse,
-    RegisterStakedRelayerRequest,
-    SuggestStatusUpdateRequest,
-    VoteOnStatusUpdateRequest,
+    GetAddressJsonRpcResponse,
+    RegisterStakedRelayerJsonRpcRequest,
+    SuggestStatusUpdateJsonRpcRequest,
+    VoteOnStatusUpdateJsonRpcRequest,
     StatusCode,
     ErrorCode,
     H256Le,
@@ -12,83 +12,31 @@ import { getAPITypes } from "../factory";
 import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
-import fetch, { RequestInfo } from "node-fetch";
+import { JsonRpcClient } from "./client";
 
-type RequestParams = Array<string> | undefined;
-type JsonRpcId = number | string;
-
-export interface JsonRpcRequest {
-    jsonrpc: string;
-    method: string;
-    params: RequestParams;
-    id?: JsonRpcId | null;
-}
-
-export interface JsonRpcError {
-    code: number;
-    message: string;
-    data?: any;
-}
-
-export interface JsonRpcResponse {
-    jsonrpc: string;
-    result?: string;
-    error?: JsonRpcError;
-    id?: JsonRpcId | null;
-}
-
-async function post(request: RequestInfo, method: string, params?: RequestParams): Promise<JsonRpcResponse> {
-    const id = Math.random().toString(16).substring(7);
-    const body: JsonRpcRequest = {
-        jsonrpc: "2.0",
-        id,
-        method,
-        params,
-    };
-    const httpResponse = await fetch(request, {
-        method: "POST",
-        body: JSON.stringify(body),
-        headers: {
-            "Content-Type": "application/json",
-        },
-    });
-
-    const jsonResponse: JsonRpcResponse = await httpResponse.json();
-    if (jsonResponse.id != id) {
-        throw new Error("Invalid id in JsonRpcResponse");
-    }
-
-    if (!httpResponse.ok) {
-        throw new Error(jsonResponse.error?.message);
-    }
-
-    return jsonResponse;
-}
-
-export class StakedRelayerClient {
-    url: string;
+export class StakedRelayerClient extends JsonRpcClient {
     registry: TypeRegistry;
 
     constr: {
-        GetAddressResponse: Constructor<GetAddressResponse>;
-        RegisterStakedRelayerRequest: Constructor<RegisterStakedRelayerRequest>;
-        SuggestStatusUpdateRequest: Constructor<SuggestStatusUpdateRequest>;
-        VoteOnStatusUpdateRequest: Constructor<VoteOnStatusUpdateRequest>;
+        GetAddressJsonRpcResponse: Constructor<GetAddressJsonRpcResponse>;
+        RegisterStakedRelayerJsonRpcRequest: Constructor<RegisterStakedRelayerJsonRpcRequest>;
+        SuggestStatusUpdateJsonRpcRequest: Constructor<SuggestStatusUpdateJsonRpcRequest>;
+        VoteOnStatusUpdateJsonRpcRequest: Constructor<VoteOnStatusUpdateJsonRpcRequest>;
         StatusCode: Constructor<StatusCode>;
         ErrorCode: Constructor<ErrorCode>;
         H256Le: Constructor<H256Le>;
     };
 
     constructor(url: string) {
-        this.url = url;
+        super(url);
         this.registry = new TypeRegistry();
         this.registry.register(getAPITypes());
 
         this.constr = {
-            GetAddressResponse: this.registry.createClass("GetAddressResponse"),
-            RegisterStakedRelayerRequest: this.registry.createClass("RegisterStakedRelayerRequest"),
-            SuggestStatusUpdateRequest: this.registry.createClass("SuggestStatusUpdateRequest"),
-            VoteOnStatusUpdateRequest: this.registry.createClass("VoteOnStatusUpdateRequest"),
+            GetAddressJsonRpcResponse: this.registry.createClass("GetAddressJsonRpcResponse"),
+            RegisterStakedRelayerJsonRpcRequest: this.registry.createClass("RegisterStakedRelayerJsonRpcRequest"),
+            SuggestStatusUpdateJsonRpcRequest: this.registry.createClass("SuggestStatusUpdateJsonRpcRequest"),
+            VoteOnStatusUpdateJsonRpcRequest: this.registry.createClass("VoteOnStatusUpdateJsonRpcRequest"),
             StatusCode: this.registry.createClass("StatusCode"),
             ErrorCode: this.registry.createClass("ErrorCode"),
             H256Le: this.registry.createClass("H256Le"),
@@ -105,18 +53,18 @@ export class StakedRelayerClient {
     }
 
     async getAddress(): Promise<string> {
-        const response = await post(this.url, "get_address");
-        const result = new this.constr["GetAddressResponse"](this.registry, response.result);
+        const response = await this.post("get_address");
+        const result = new this.constr["GetAddressJsonRpcResponse"](this.registry, response.result);
         return result.address.toString();
     }
 
     async registerStakedRelayer(stake: number): Promise<void> {
-        const request = new this.constr["RegisterStakedRelayerRequest"](this.registry, { stake: new BN(stake) });
-        await post(this.url, "register_staked_relayer", [request.toHex()]);
+        const request = new this.constr["RegisterStakedRelayerJsonRpcRequest"](this.registry, { stake: new BN(stake) });
+        await this.post("register_staked_relayer", [request.toHex()]);
     }
 
     async deregisterStakedRelayer(): Promise<void> {
-        await post(this.url, "deregister_staked_relayer");
+        await this.post("deregister_staked_relayer");
     }
 
     async suggestStatusUpdate(
@@ -127,7 +75,7 @@ export class StakedRelayerClient {
         removeError?: ErrorCode,
         block_hash?: H256Le
     ): Promise<void> {
-        const request = new this.constr["SuggestStatusUpdateRequest"](this.registry, {
+        const request = new this.constr["SuggestStatusUpdateJsonRpcRequest"](this.registry, {
             deposit: new BN(deposit),
             status_code: statusCode,
             add_error: addError,
@@ -135,7 +83,7 @@ export class StakedRelayerClient {
             block_hash,
             message,
         });
-        await post(this.url, "suggest_status_update", [request.toHex()]);
+        await this.post("suggest_status_update", [request.toHex()]);
     }
 
     suggestInvalidBlock(deposit: number, hash: string, message: string): Promise<void> {
@@ -146,10 +94,10 @@ export class StakedRelayerClient {
     }
 
     async voteOnStatusUpdate(status_update_id: u256, approve: boolean): Promise<void> {
-        const request = new this.constr["VoteOnStatusUpdateRequest"](this.registry, {
+        const request = new this.constr["VoteOnStatusUpdateJsonRpcRequest"](this.registry, {
             status_update_id,
             approve,
         });
-        await post(this.url, "vote_on_status_update", [request.toHex()]);
+        await this.post("vote_on_status_update", [request.toHex()]);
     }
 }
