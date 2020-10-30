@@ -63,6 +63,10 @@ export class MockIssueAPI implements IssueAPI {
         ]);
     }
 
+    mapForUser(_account: AccountId): Promise<Map<H256, IssueRequest>> {
+        return Promise.resolve(new Map<H256, IssueRequest>());
+    }
+
     getPagedIterator(_perPage: number): AsyncGenerator<IssueRequest[]> {
         return {} as AsyncGenerator<IssueRequest[]>;
     }

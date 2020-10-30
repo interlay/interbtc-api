@@ -17,6 +17,7 @@ export interface IssueAPI {
     getGriefingCollateral(): Promise<DOT>;
     list(): Promise<IssueRequest[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
+    mapForUser(account: AccountId): Promise<Map<H256, IssueRequest>>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {

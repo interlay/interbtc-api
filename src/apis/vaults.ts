@@ -13,6 +13,7 @@ export interface VaultsAPI {
     listPaged(): Promise<Vault[]>;
     mapIssueRequests(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>>;
     mapRedeemRequests(vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>>;
+    mapReplaceRequests(vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getCollateralization(vaultId: AccountId): Promise<number>;

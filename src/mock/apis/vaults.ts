@@ -1,4 +1,4 @@
-import { IssueRequest, PolkaBTC, RedeemRequest, Vault } from "../../interfaces/default";
+import { IssueRequest, PolkaBTC, RedeemRequest, ReplaceRequest, Vault } from "../../interfaces/default";
 import { AccountId, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -66,6 +66,11 @@ export class MockVaultsAPI implements VaultsAPI {
     async mapRedeemRequests(_vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>> {
         // Empty for now, as it is difficult to mock RedeemRequest
         return Promise.resolve(new Map<AccountId, RedeemRequest[]>());
+    }
+
+    async mapReplaceRequests(_vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>> {
+        // Empty for now, as it is difficult to mock ReplaceRequest
+        return Promise.resolve(new Map<AccountId, ReplaceRequest[]>());
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<Vault[]> {
