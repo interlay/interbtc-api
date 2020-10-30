@@ -3,7 +3,7 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes, u32 } from "@polkadot/types/primitive";
-import { DOT, H256Le, Issue as IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
+import { DOT, H256Le, IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import { pagedIterator, sendLoggedTx } from "../utils";
 
@@ -112,6 +112,15 @@ export class DefaultIssueAPI implements IssueAPI {
     async list(): Promise<IssueRequest[]> {
         const issueRequests = await this.api.query.issue.issueRequests.entries();
         return issueRequests.map((v) => v[1]);
+    }
+
+    async mapForUser(account: AccountId): Promise<Map<H256, IssueRequest>> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const customAPIRPC = this.api.rpc as any;
+        const issueRequestPairs: [H256, IssueRequest][] = customAPIRPC.issue.getIssueRequests(account);
+        const mapForUser: Map<H256, IssueRequest> = new Map<H256, IssueRequest>();
+        issueRequestPairs.forEach((issueRequestPair) => mapForUser.set(issueRequestPair[0], issueRequestPair[1]));
+        return mapForUser;
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {

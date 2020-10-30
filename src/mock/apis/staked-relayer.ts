@@ -4,7 +4,7 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import BN from "bn.js";
 import { U8aFixed, UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
-
+import { GenericAccountId } from "@polkadot/types/generic";
 import { StakedRelayerAPI } from "../../apis/staked-relayer";
 
 export class MockStakedRelayerAPI implements StakedRelayerAPI {
@@ -17,6 +17,15 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
                 stake: new BN(11.9) as DOT,
             },
         ];
+    }
+
+    async map(): Promise<Map<AccountId, ActiveStakedRelayer>> {
+        const registry = new TypeRegistry();
+        const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+        return new Map([
+            [new GenericAccountId(registry, decodedAccountId), <ActiveStakedRelayer>{ stake: new BN(10.2) as DOT }],
+            [new GenericAccountId(registry, decodedAccountId), <ActiveStakedRelayer>{ stake: new BN(11.9) as DOT }],
+        ]);
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {

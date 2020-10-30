@@ -1,10 +1,10 @@
-import { Issue as IssueRequest, Vault, Redeem, ActiveStakedRelayer } from "../interfaces/default";
+import { IssueRequest, Vault, RedeemRequest, ActiveStakedRelayer } from "../interfaces/default";
 import { AugmentedQuery, PaginationOptions } from "@polkadot/api/types";
 import { StorageKey } from "@polkadot/types/primitive";
 import { Codec, Observable, CodecArg } from "@polkadot/types/types";
 import { QueryableStorageEntry, ApiTypes } from "@polkadot/api/types";
 
-export type PolkadotCodecType = IssueRequest | Redeem | Vault | ActiveStakedRelayer;
+export type PolkadotCodecType = IssueRequest | RedeemRequest | Vault | ActiveStakedRelayer;
 
 export async function* pagedIterator<T extends PolkadotCodecType>(
     polkadotListings: AugmentedQuery<ApiTypes, (arg: CodecArg) => Observable<T>> & QueryableStorageEntry<ApiTypes>,
@@ -30,9 +30,10 @@ async function listPaged<T extends PolkadotCodecType>(
     startKey?: StorageKey
 ): Promise<[StorageKey, Codec][]> {
     const start = startKey ? startKey.toHex() : undefined;
-    return await polkadotListings.entriesPaged(
-        { pageSize: perPage, startKey: start } as PaginationOptions
-    ) as [StorageKey, Codec][];
+    return (await polkadotListings.entriesPaged({ pageSize: perPage, startKey: start } as PaginationOptions)) as [
+        StorageKey,
+        Codec
+    ][];
 }
 
 async function nextPageLength<T extends PolkadotCodecType>(
@@ -41,13 +42,14 @@ async function nextPageLength<T extends PolkadotCodecType>(
     perPage: number,
     startKey?: StorageKey
 ): Promise<number> {
-    // requesting ENTRIES using the last key as a cut-off point throws a substrate 
+    // requesting ENTRIES using the last key as a cut-off point throws a substrate
     // error however, requesting KEYS with the last key only returns an empty array
     // the latter method can be used to check if all entries were "consumed"
     let keys: StorageKey[] = [];
     const start = startKey ? startKey.toHex() : undefined;
-    keys = await polkadotListings.keysPaged(
-        { pageSize: perPage, startKey: start } as PaginationOptions
-    ) as StorageKey[];
+    keys = (await polkadotListings.keysPaged({
+        pageSize: perPage,
+        startKey: start,
+    } as PaginationOptions)) as StorageKey[];
     return keys.length;
 }

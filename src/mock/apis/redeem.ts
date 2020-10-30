@@ -1,4 +1,4 @@
-import { PolkaBTC, Redeem, Vault, DOT, H256Le } from "../../interfaces/default";
+import { PolkaBTC, RedeemRequest, Vault, DOT, H256Le } from "../../interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, BlockNumber, H160, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
@@ -23,12 +23,12 @@ export class MockRedeemAPI implements RedeemAPI {
         return Promise.resolve({ hash: <Hash>{}, vault: <Vault>{} });
     }
 
-    async list(): Promise<Redeem[]> {
+    async list(): Promise<RedeemRequest[]> {
         const registry = new TypeRegistry();
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 
         return Promise.resolve([
-            <Redeem>{
+            <RedeemRequest>{
                 vault: new GenericAccountId(registry, decodedAccountId),
                 opentime: new BN(10908) as BlockNumber,
                 amount_polka_btc: new BN(4141) as PolkaBTC,
@@ -38,7 +38,7 @@ export class MockRedeemAPI implements RedeemAPI {
                 redeemer: new GenericAccountId(registry, decodedAccountId),
                 btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
             },
-            <Redeem>{
+            <RedeemRequest>{
                 vault: new GenericAccountId(registry, decodedAccountId),
                 opentime: new BN(11208) as BlockNumber,
                 amount_polka_btc: new BN(400) as PolkaBTC,
@@ -51,8 +51,8 @@ export class MockRedeemAPI implements RedeemAPI {
         ]);
     }
 
-    getPagedIterator(_perPage: number): AsyncGenerator<Redeem[]> {
-        return {} as AsyncGenerator<Redeem[]>;
+    getPagedIterator(_perPage: number): AsyncGenerator<RedeemRequest[]> {
+        return {} as AsyncGenerator<RedeemRequest[]>;
     }
 
     setAccount(_account?: AddressOrPair): void {

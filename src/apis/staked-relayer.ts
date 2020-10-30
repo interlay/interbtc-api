@@ -8,6 +8,7 @@ import { pagedIterator } from "../utils";
 
 export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
+    map(): Promise<Map<AccountId, ActiveStakedRelayer>>;
     getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]>;
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
@@ -32,6 +33,22 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     async list(): Promise<ActiveStakedRelayer[]> {
         const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
         return activeStakedRelayersMap.map((v) => v[1]);
+    }
+
+    async map(): Promise<Map<AccountId, ActiveStakedRelayer>> {
+        const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
+        const activeStakedRelayerPairs: [
+            AccountId,
+            ActiveStakedRelayer
+        ][] = activeStakedRelayers.map((activeStakedRelayer) => [
+            this.api.createType("AccountId", activeStakedRelayer[0]),
+            activeStakedRelayer[1],
+        ]);
+        const activeStakedRelayersMap: Map<AccountId, ActiveStakedRelayer> = new Map<AccountId, ActiveStakedRelayer>();
+        activeStakedRelayerPairs.forEach((activeStakedRelayerPair) =>
+            activeStakedRelayersMap.set(activeStakedRelayerPair[0], activeStakedRelayerPair[1])
+        );
+        return activeStakedRelayersMap;
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {

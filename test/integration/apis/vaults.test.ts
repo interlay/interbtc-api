@@ -34,29 +34,6 @@ describe("vaultsAPI", () => {
         return api.disconnect();
     });
 
-    it("should getIssuedPolkaBTCAmount", async () => {
-        sinon.stub(vaultsAPI, "get").returns(Promise.resolve(<Vault>{ issued_tokens: new BN(100) as PolkaBTC }));
-        const vaultId = <AccountId>{};
-        const issuedPolkaBTCAmount: PolkaBTC = await vaultsAPI.getIssuedPolkaBTCAmount(vaultId);
-        assert.equal(issuedPolkaBTCAmount.toNumber(), 100);
-    });
-
-    it("should compute totalIssuedPolkaBTCAmount with nonzero sum", async () => {
-        const mockIssuedPolkaBTCAmount: PolkaBTC[] = [1, 2, 3].map((x) => numberToPolkaBTC(x));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sinon.stub(vaultsAPI, <any>"getIssuedPolkaBTCAmounts").returns(Promise.resolve(mockIssuedPolkaBTCAmount));
-        const totalIssuedPolkaBTCAmount: BN = await vaultsAPI.getTotalIssuedPolkaBTCAmount();
-        assert.equal(totalIssuedPolkaBTCAmount.toNumber(), 6);
-    });
-
-    it("should compute totalIssuedPolkaBTCAmount with zero sum", async () => {
-        const mockIssuedPolkaBTCAmount: PolkaBTC[] = [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sinon.stub(vaultsAPI, <any>"getIssuedPolkaBTCAmounts").returns(Promise.resolve(mockIssuedPolkaBTCAmount));
-        const totalIssuedPolkaBTCAmount = await vaultsAPI.getTotalIssuedPolkaBTCAmount();
-        assert.equal(totalIssuedPolkaBTCAmount.toNumber(), 0);
-    });
-
     it("should select random vault for issue", async () => {
         const polkaBTCCollateral = api.createType("PolkaBTC", 0);
         const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);

@@ -8,7 +8,6 @@ import { ActiveStakedRelayer, DOT } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 
-
 describe("stakedRelayerAPI", () => {
     function numberToDOT(x: number): DOT {
         return new BN(x) as DOT;
@@ -60,6 +59,11 @@ describe("stakedRelayerAPI", () => {
         //     const feesEarned = await stakedRelayerAPI.getFeesEarned();
         //     assert.notEqual(typeof(feesEarned), undefined);
         // });
+
+        it("should listIncludingIds", async () => {
+            const latestBTCBlockFromBTCRelay = await stakedRelayerAPI.map();
+            assert.isDefined(latestBTCBlockFromBTCRelay);
+        });
 
         it("should getLatestBTCBlockFromBTCRelay", async () => {
             const latestBTCBlockFromBTCRelay = await stakedRelayerAPI.getLatestBTCBlockFromBTCRelay();
