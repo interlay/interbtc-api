@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, IssueRequest, RedeemRequest } from "../interfaces/default";
+import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
@@ -13,6 +13,7 @@ export interface VaultsAPI {
     listPaged(): Promise<Vault[]>;
     mapIssueRequests(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>>;
     mapRedeemRequests(vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>>;
+    mapReplaceRequests(vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getCollateralization(vaultId: AccountId): Promise<number>;
@@ -79,6 +80,24 @@ export class DefaultVaultsAPI {
             redeemRequest.vault.eq(vaultId)
         );
         return new Map([[vaultId, redeemRequestsWithCurrentVault]]);
+    }
+
+    /**
+     * Fetch the replace requests associated with a vault. In the returned requests,
+     * the vault is either the replaced or the replacing one.
+     *
+     * @param vaultId - The AccountId of the vault used to filter replace requests
+     * @returns A map with a single key, from the vault AccountId to replace requests involving said vault
+     */
+    async mapReplaceRequests(vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>> {
+        const customAPIRPC = this.api.rpc as any;
+        try {
+            const oldVaultReplaceRequests = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
+            const newVaultReplaceRequests = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
+            return new Map([[vaultId, [...oldVaultReplaceRequests, ...newVaultReplaceRequests]]]);
+        } catch (e) {
+            return Promise.reject("Error during replace request retrieval");
+        }
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {

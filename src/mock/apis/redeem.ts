@@ -5,7 +5,6 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import { U8aFixed } from "@polkadot/types/codec";
-
 import { RedeemAPI } from "../../apis/redeem";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -49,6 +48,10 @@ export class MockRedeemAPI implements RedeemAPI {
                 btc_address: new U8aFixed(registry, "321321321321321") as H160,
             },
         ]);
+    }
+
+    async mapForUser(_account: AccountId): Promise<Map<H256, RedeemRequest>> {
+        return Promise.resolve(new Map<H256, RedeemRequest>());
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<RedeemRequest[]> {
