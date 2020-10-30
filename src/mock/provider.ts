@@ -113,7 +113,6 @@ export default class Mock implements ProviderInterface {
     }
 
     public async disconnect(): Promise<void> {
-        console.log("DISCONNECT");
         this.connected = false;
         if (this.interval) {
             clearInterval(this.interval);
