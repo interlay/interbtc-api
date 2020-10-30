@@ -1,11 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { AccountId } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
-import sinon from "sinon";
 import { DefaultVaultsAPI } from "../../../src/apis/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
-import { PolkaBTC, Vault } from "../../../src/interfaces/default";
+import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 

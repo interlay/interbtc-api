@@ -16,6 +16,7 @@ export interface RedeemAPI {
     cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
     setAccount(account?: AddressOrPair): void;
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
+    mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>>;
 }
 
 export class DefaultRedeemAPI {
