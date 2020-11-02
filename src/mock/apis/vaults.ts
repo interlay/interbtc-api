@@ -113,4 +113,8 @@ export class MockVaultsAPI implements VaultsAPI {
     async getCollateralization(_vaultId: AccountId): Promise<number> {
         return 2.0;
     }
+    
+    async getTotalCollateralization(): Promise<number> {
+        return 5.2;
+    }
 }

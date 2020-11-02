@@ -17,6 +17,7 @@ export interface VaultsAPI {
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getCollateralization(vaultId: AccountId): Promise<number>;
+    getTotalCollateralization(): Promise<number>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
@@ -108,10 +109,34 @@ export class DefaultVaultsAPI {
         return this.api.query.vaultRegistry.vaults(vaultId);
     }
 
+    /**
+     * Get the collateralization of a single vault measured by the amount of issued PolkaBTC
+     * divided by the total locked DOT collateral.
+     * 
+     * @param vaultId the vault account id
+     * @returns the vault collateralization
+     */
     async getCollateralization(vaultId: AccountId): Promise<number> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
+            return this.scaleUsingParachainGranularity(collateralization);
+        } catch (e) {
+            return Promise.reject("Error during collateralization computation");
+        }
+    }
+
+
+    /**
+     * Get the total system collateralization measured by the amount of issued PolkaBTC
+     * divided by the total locked DOT collateral.
+     * 
+     * @returns the total system collateralization
+     */
+    async getTotalCollateralization(): Promise<number> {
+        const customAPIRPC = this.api.rpc as any;
+        try {
+            const collateralization = await customAPIRPC.vaultRegistry.getTotalCollateralization();
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
             return Promise.reject("Error during collateralization computation");
