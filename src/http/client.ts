@@ -1,4 +1,4 @@
-import fetch, { RequestInfo } from "node-fetch";
+import fetch from "cross-fetch";
 
 type RequestParams = Array<string> | undefined;
 type JsonRpcId = number | string;

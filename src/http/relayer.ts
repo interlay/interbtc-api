@@ -1,5 +1,5 @@
 import {
-    GetAddressJsonRpcResponse,
+    AccountIdJsonRpcResponse,
     RegisterStakedRelayerJsonRpcRequest,
     SuggestStatusUpdateJsonRpcRequest,
     VoteOnStatusUpdateJsonRpcRequest,
@@ -18,7 +18,7 @@ export class StakedRelayerClient extends JsonRpcClient {
     registry: TypeRegistry;
 
     constr: {
-        GetAddressJsonRpcResponse: Constructor<GetAddressJsonRpcResponse>;
+        AccountIdJsonRpcResponse: Constructor<AccountIdJsonRpcResponse>;
         RegisterStakedRelayerJsonRpcRequest: Constructor<RegisterStakedRelayerJsonRpcRequest>;
         SuggestStatusUpdateJsonRpcRequest: Constructor<SuggestStatusUpdateJsonRpcRequest>;
         VoteOnStatusUpdateJsonRpcRequest: Constructor<VoteOnStatusUpdateJsonRpcRequest>;
@@ -33,7 +33,7 @@ export class StakedRelayerClient extends JsonRpcClient {
         this.registry.register(getAPITypes());
 
         this.constr = {
-            GetAddressJsonRpcResponse: this.registry.createClass("GetAddressJsonRpcResponse"),
+            AccountIdJsonRpcResponse: this.registry.createClass("AccountIdJsonRpcResponse"),
             RegisterStakedRelayerJsonRpcRequest: this.registry.createClass("RegisterStakedRelayerJsonRpcRequest"),
             SuggestStatusUpdateJsonRpcRequest: this.registry.createClass("SuggestStatusUpdateJsonRpcRequest"),
             VoteOnStatusUpdateJsonRpcRequest: this.registry.createClass("VoteOnStatusUpdateJsonRpcRequest"),
@@ -43,19 +43,19 @@ export class StakedRelayerClient extends JsonRpcClient {
         };
     }
 
-    async connected(): Promise<boolean> {
+    async isConnected(): Promise<boolean> {
         try {
-            await this.getAddress();
+            await this.getAccountId();
             return true;
         } catch (error) {
             return false;
         }
     }
 
-    async getAddress(): Promise<string> {
-        const response = await this.post("get_address");
-        const result = new this.constr["GetAddressJsonRpcResponse"](this.registry, response.result);
-        return result.address.toString();
+    async getAccountId(): Promise<string> {
+        const response = await this.post("account_id");
+        const result = new this.constr["AccountIdJsonRpcResponse"](this.registry, response.result);
+        return result.account_id.toString();
     }
 
     async registerStakedRelayer(stake: number): Promise<void> {
