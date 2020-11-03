@@ -1,8 +1,9 @@
 import {
+    AccountIdJsonRpcResponse,
     ReplaceRequestJsonRpcRequest,
     RegisterVaultJsonRpcRequest,
     ChangeCollateralJsonRpcRequest,
-    SetBtcAddressJsonRpcRequest,
+    UpdateBtcAddressJsonRpcRequest,
     WithdrawReplaceJsonRpcRequest,
 } from "../interfaces/default";
 import { H160, H256 } from "@polkadot/types/interfaces/runtime";
@@ -16,10 +17,11 @@ export class VaultClient extends JsonRpcClient {
     registry: TypeRegistry;
 
     constr: {
+        AccountIdJsonRpcResponse: Constructor<AccountIdJsonRpcResponse>;
         ReplaceRequestJsonRpcRequest: Constructor<ReplaceRequestJsonRpcRequest>;
         RegisterVaultJsonRpcRequest: Constructor<RegisterVaultJsonRpcRequest>;
         ChangeCollateralJsonRpcRequest: Constructor<ChangeCollateralJsonRpcRequest>;
-        SetBtcAddressJsonRpcRequest: Constructor<SetBtcAddressJsonRpcRequest>;
+        UpdateBtcAddressJsonRpcRequest: Constructor<UpdateBtcAddressJsonRpcRequest>;
         WithdrawReplaceJsonRpcRequest: Constructor<WithdrawReplaceJsonRpcRequest>;
         H160: Constructor<H160>;
         H256: Constructor<H256>;
@@ -31,14 +33,30 @@ export class VaultClient extends JsonRpcClient {
         this.registry.register(getAPITypes());
 
         this.constr = {
+            AccountIdJsonRpcResponse: this.registry.createClass("AccountIdJsonRpcResponse"),
             ReplaceRequestJsonRpcRequest: this.registry.createClass("ReplaceRequestJsonRpcRequest"),
             RegisterVaultJsonRpcRequest: this.registry.createClass("RegisterVaultJsonRpcRequest"),
             ChangeCollateralJsonRpcRequest: this.registry.createClass("ChangeCollateralJsonRpcRequest"),
-            SetBtcAddressJsonRpcRequest: this.registry.createClass("SetBtcAddressJsonRpcRequest"),
+            UpdateBtcAddressJsonRpcRequest: this.registry.createClass("UpdateBtcAddressJsonRpcRequest"),
             WithdrawReplaceJsonRpcRequest: this.registry.createClass("WithdrawReplaceJsonRpcRequest"),
             H160: this.registry.createClass("H160"),
             H256: this.registry.createClass("H256"),
         };
+    }
+
+    async isConnected(): Promise<boolean> {
+        try {
+            await this.getAccountId();
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async getAccountId(): Promise<string> {
+        const response = await this.post("account_id");
+        const result = new this.constr["AccountIdJsonRpcResponse"](this.registry, response.result);
+        return result.account_id.toString();
     }
 
     async requestReplace(amount: number, griefingCollateral: number): Promise<void> {
@@ -72,9 +90,9 @@ export class VaultClient extends JsonRpcClient {
         await this.post("withdraw_collateral", [request.toHex()]);
     }
 
-    async setBtcAddress(hash: string): Promise<void> {
+    async updateBtcAddress(hash: string): Promise<void> {
         const btcAddress = new this.constr["H160"](this.registry, hash);
-        const request = new this.constr["SetBtcAddressJsonRpcRequest"](this.registry, {
+        const request = new this.constr["UpdateBtcAddressJsonRpcRequest"](this.registry, {
             address: btcAddress,
         });
         await this.post("set_btc_address", [request.toHex()]);

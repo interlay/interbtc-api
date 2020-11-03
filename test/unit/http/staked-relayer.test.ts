@@ -15,7 +15,7 @@ describe("stakedRelayerClient", async () => {
     it("should reject response without json response body", async () => {
         const scope = nock(defaultEndpoint).post("/").reply(200, {});
 
-        const result = stakedRelayerClient.getAddress();
+        const result = stakedRelayerClient.getAccountId();
         await expect(result).to.be.rejected;
 
         scope.isDone();
@@ -27,7 +27,7 @@ describe("stakedRelayerClient", async () => {
             id: "invalid",
         });
 
-        const result = stakedRelayerClient.getAddress();
+        const result = stakedRelayerClient.getAccountId();
         await expect(result).to.be.rejectedWith("Invalid id in JsonRpcResponse");
 
         scope.isDone();
@@ -50,13 +50,13 @@ describe("stakedRelayerClient", async () => {
                 }
             );
 
-        const result = stakedRelayerClient.getAddress();
+        const result = stakedRelayerClient.getAccountId();
         await expect(result).to.be.rejectedWith("Something went wrong");
 
         scope.isDone();
     });
 
-    it("should successfully decode getAddress response", async () => {
+    it("should successfully decode getAccountId response", async () => {
         const scope = nock(defaultEndpoint)
             .post("/")
             .reply(
@@ -71,7 +71,7 @@ describe("stakedRelayerClient", async () => {
                 }
             );
 
-        const result = await stakedRelayerClient.getAddress();
+        const result = await stakedRelayerClient.getAccountId();
         expect(result).to.eq("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
 
         scope.isDone();
