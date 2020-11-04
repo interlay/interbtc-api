@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest } from "../interfaces/default";
+import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
@@ -16,7 +16,7 @@ export interface VaultsAPI {
     mapReplaceRequests(vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
-    getCollateralization(vaultId: AccountId): Promise<number>;
+    getCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number>;
     getTotalCollateralization(): Promise<number>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
@@ -112,25 +112,27 @@ export class DefaultVaultsAPI {
     /**
      * Get the collateralization of a single vault measured by the amount of issued PolkaBTC
      * divided by the total locked DOT collateral.
-     * 
+     *
      * @param vaultId the vault account id
+     * @param newCollateral use this instead of the vault's actual collateral
      * @returns the vault collateralization
      */
-    async getCollateralization(vaultId: AccountId): Promise<number> {
+    async getCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number> {
         const customAPIRPC = this.api.rpc as any;
         try {
-            const collateralization = await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
+            const collateralization = newCollateral
+                ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(vaultId, newCollateral)
+                : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
             return Promise.reject("Error during collateralization computation");
         }
     }
 
-
     /**
      * Get the total system collateralization measured by the amount of issued PolkaBTC
      * divided by the total locked DOT collateral.
-     * 
+     *
      * @returns the total system collateralization
      */
     async getTotalCollateralization(): Promise<number> {
