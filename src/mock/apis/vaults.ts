@@ -1,4 +1,4 @@
-import { IssueRequest, PolkaBTC, RedeemRequest, ReplaceRequest, Vault } from "../../interfaces/default";
+import { IssueRequest, PolkaBTC, RedeemRequest, ReplaceRequest, Vault, DOT } from "../../interfaces/default";
 import { AccountId, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -110,10 +110,10 @@ export class MockVaultsAPI implements VaultsAPI {
         return new BN(0) as PolkaBTC;
     }
 
-    async getCollateralization(_vaultId: AccountId): Promise<number> {
+    async getCollateralization(_vaultId: AccountId, _newCollateral?: DOT): Promise<number> {
         return 2.0;
     }
-    
+
     async getTotalCollateralization(): Promise<number> {
         return 5.2;
     }
