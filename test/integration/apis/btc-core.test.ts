@@ -68,4 +68,14 @@ describe("BTCCore", function () {
             assert.deepEqual(raw_tx, raw);
         });
     });
+
+    describe("getTxByOpcode", () => {
+        it("should return correct tx id", async () => {
+            const opcode = "How is everyone!";
+            const txid = await btcCore.getTxIdByOpcode(opcode);
+            assert.strictEqual(txid, "1037930f242763567b7c163e0db4b8e679934aa6317386a455cb6984c81f022d");
+        });
+    });
+
+    
 });
