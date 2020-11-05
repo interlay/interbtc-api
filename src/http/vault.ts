@@ -59,7 +59,7 @@ export class VaultClient extends JsonRpcClient {
         return result.account_id.toString();
     }
 
-    async requestReplace(amount: number, griefingCollateral: number): Promise<void> {
+    async requestReplace(amount: string, griefingCollateral: string): Promise<void> {
         const request = new this.constr["ReplaceRequestJsonRpcRequest"](this.registry, {
             amount: new BN(amount),
             griefing_collateral: new BN(griefingCollateral),
@@ -67,7 +67,7 @@ export class VaultClient extends JsonRpcClient {
         await this.post("request_replace", [request.toHex()]);
     }
 
-    async registerVault(collateral: number, hash: string): Promise<void> {
+    async registerVault(collateral: string, hash: string): Promise<void> {
         const btcAddress = new this.constr["H160"](this.registry, hash);
         const request = new this.constr["RegisterVaultJsonRpcRequest"](this.registry, {
             collateral: new BN(collateral),
@@ -76,14 +76,14 @@ export class VaultClient extends JsonRpcClient {
         await this.post("register_vault", [request.toHex()]);
     }
 
-    async lockAdditionalCollateral(amount: number): Promise<void> {
+    async lockAdditionalCollateral(amount: string): Promise<void> {
         const request = new this.constr["ChangeCollateralJsonRpcRequest"](this.registry, {
             amount: new BN(amount),
         });
         await this.post("lock_additional_collateral", [request.toHex()]);
     }
 
-    async withdrawCollateral(amount: number): Promise<void> {
+    async withdrawCollateral(amount: string): Promise<void> {
         const request = new this.constr["ChangeCollateralJsonRpcRequest"](this.registry, {
             amount: new BN(amount),
         });
