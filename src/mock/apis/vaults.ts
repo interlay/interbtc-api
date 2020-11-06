@@ -1,4 +1,4 @@
-import { IssueRequest, PolkaBTC, RedeemRequest, ReplaceRequest, Vault, DOT } from "../../interfaces/default";
+import { IssueRequest, PolkaBTC, RedeemRequest, ReplaceRequest, Vault, DOT, Wallet } from "../../interfaces/default";
 import { AccountId, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -19,7 +19,9 @@ export class MockVaultsAPI implements VaultsAPI {
                 to_be_issued_tokens: new BN(120) as PolkaBTC,
                 issued_tokens: new BN(330) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(5) as PolkaBTC,
-                btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
+                wallet: new (registry.createClass("Wallet"))(registry, {
+                    address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
+                }),
                 banned_until: new Option(registry, "BlockNumber", new BN(10908)),
             },
             <Vault>{
@@ -27,7 +29,9 @@ export class MockVaultsAPI implements VaultsAPI {
                 to_be_issued_tokens: new BN(220) as PolkaBTC,
                 issued_tokens: new BN(430) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(12) as PolkaBTC,
-                btc_address: new U8aFixed(registry, "78443543fdsf") as H160,
+                wallet: new (registry.createClass("Wallet"))(registry, {
+                    address: new U8aFixed(registry, "78443543fdsf") as H160,
+                }),
                 banned_until: new Option(registry, "BlockNumber", new BN(11938)),
             },
         ]);
@@ -44,7 +48,9 @@ export class MockVaultsAPI implements VaultsAPI {
                 to_be_issued_tokens: new BN(120) as PolkaBTC,
                 issued_tokens: new BN(330) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(5) as PolkaBTC,
-                btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
+                wallet: new (registry.createClass("Wallet"))(registry, {
+                    address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
+                }),
                 banned_until: new Option(registry, "BlockNumber", new BN(10908)),
             },
             <Vault>{
@@ -52,7 +58,9 @@ export class MockVaultsAPI implements VaultsAPI {
                 to_be_issued_tokens: new BN(220) as PolkaBTC,
                 issued_tokens: new BN(430) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(12) as PolkaBTC,
-                btc_address: new U8aFixed(registry, "78443543fdsf") as H160,
+                wallet: new (registry.createClass("Wallet"))(registry, {
+                    address: new U8aFixed(registry, "78443543fdsf") as H160,
+                }),
                 banned_until: new Option(registry, "BlockNumber", new BN(11938)),
             },
         ]);
