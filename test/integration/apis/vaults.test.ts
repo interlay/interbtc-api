@@ -56,11 +56,11 @@ describe("vaultsAPI", () => {
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {
         const charlieId = api.createType("AccountId", charlie.address);
-        assert.isRejected(vaultsAPI.getCollateralization(charlieId));
+        assert.isRejected(vaultsAPI.getVaultCollateralization(charlieId));
     });
 
     it("should fail to get total collateralization when no tokens are issued", async () => {
-        assert.isRejected(vaultsAPI.getTotalCollateralization());
+        assert.isRejected(vaultsAPI.getSystemCollateralization());
     });
 
     it("should get vault theft flag", async () => {
