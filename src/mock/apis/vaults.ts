@@ -4,6 +4,7 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed, Option } from "@polkadot/types/codec";
 import BN from "bn.js";
+import { UInt } from "@polkadot/types/codec";
 
 import { VaultsAPI } from "../../apis/vaults";
 
@@ -124,5 +125,10 @@ export class MockVaultsAPI implements VaultsAPI {
 
     async getSystemCollateralization(): Promise<number> {
         return 5.2;
+    }
+
+    async getRequiredCollateralForVault(_vaultId: AccountId): Promise<DOT> {
+        const registry = new TypeRegistry();
+        return new UInt(registry, 100) as DOT;
     }
 }

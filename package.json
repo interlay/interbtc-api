@@ -1,6 +1,6 @@
 {
   "name": "@interlay/polkabtc",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "JavaScript library to interact with PolkaBTC",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@interlay/esplora-btc-api": "^0.3.3",
-    "@interlay/polkabtc-types": "^0.1.11",
+    "@interlay/polkabtc-types": "^0.1.12",
     "@types/big.js": "^4.0.5",
     "big.js": "^6.0.1",
     "bitcoinjs-lib": "^5.2.0",
