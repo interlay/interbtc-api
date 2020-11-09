@@ -31,14 +31,14 @@ export function createPolkadotAPI(endpoint: string, autoConnect?: number | false
 
 export async function createPolkabtcAPI(
     endpoint: string,
-    mainnet: boolean = false,
+    network: string = "mainnet",
     autoConnect?: number | false | undefined
 ): Promise<PolkaBTCAPI> {
     const api = await createPolkadotAPI(endpoint, autoConnect);
     if (endpoint == "mock") {
         return new MockPolkaBTCAPI(api);
     }
-    return new DefaultPolkaBTCAPI(api, mainnet);
+    return new DefaultPolkaBTCAPI(api, network);
 }
 
 export function getAPITypes(): RegistryTypes {

@@ -6,30 +6,30 @@ const mainnetApiBasePath = "https://blockstream.info/api";
 const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
 
 export type TxStatus = {
-    confirmed: boolean,
-    confirmations: number,
-}
+    confirmed: boolean;
+    confirmations: number;
+};
 
 export type TxOutput = {
-    scriptpubkey: string,
-    scriptpubkeyAsm: string,
-    scriptpubkeyType: string,
-    scriptpubkeyAddress: string,
-    value: number
-}
+    scriptpubkey: string;
+    scriptpubkeyAsm: string;
+    scriptpubkeyType: string;
+    scriptpubkeyAddress: string;
+    value: number;
+};
 
 export type TxInput = {
-    txId: string,
-    vout: number,
-    isCoinbase: boolean,
-    scriptsig: string,
-    scriptsigAsm: string,
-    innerRedeemscriptAsm: string,
-    innerWitnessscriptAsm: string,
-    sequence: number,
-    witness: string[],
-    prevout: TxOutput
-}
+    txId: string;
+    vout: number;
+    isCoinbase: boolean;
+    scriptsig: string;
+    scriptsigAsm: string;
+    innerRedeemscriptAsm: string;
+    innerWitnessscriptAsm: string;
+    sequence: number;
+    witness: string[];
+    prevout: TxOutput;
+};
 
 export interface BTCCoreAPI {
     getLatestBlock(): Promise<string>;
@@ -46,8 +46,18 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     private txApi: TxApi;
     private scripthashApi: ScripthashApi;
 
-    constructor(mainnet: boolean = true) {
-        const basePath = mainnet ? mainnetApiBasePath : testnetApiBasePath;
+    constructor(network: string = "mainnet") {
+        let basePath = "";
+        switch (network) {
+        case "mainnet":
+            basePath = mainnetApiBasePath;
+            break;
+        case "testnet":
+            basePath = testnetApiBasePath;
+            break;
+        default:
+            basePath = network;
+        }
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
         this.scripthashApi = new ScripthashApi({ basePath });
@@ -69,7 +79,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     async getTransactionStatus(txid: string): Promise<TxStatus> {
         const status = {
             confirmed: false,
-            confirmations: 0,        
+            confirmations: 0,
         };
         const txStatus = await this.getTxStatus(txid);
         const latest_block_height = await this.getLatestBlockHeight();
@@ -87,11 +97,11 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     }
 
     getRawTransaction(txid: string): Promise<Buffer> {
-        return this.getData(this.txApi.getTxRaw(txid, {responseType: "arraybuffer"}));
+        return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
     }
 
     /**
-     * Fetch Bitcoin transaction ID based on OP_RETURN field. 
+     * Fetch Bitcoin transaction ID based on OP_RETURN field.
      * Throw an error unless there is exactly one transaction with the given opcode.
      *
      * @remarks
@@ -102,10 +112,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      */
     async getTxIdByOpcode(opreturn: string): Promise<string> {
         const data = Buffer.from(opreturn, "utf8");
-        const opreturnBuffer = bitcoinjs.script.compile([
-            bitcoinjs.opcodes.OP_RETURN,
-            data
-        ]);
+        const opreturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
         const hash = bitcoinjs.crypto.sha256(opreturnBuffer).toString("hex");
 
         let txs: Transaction[] = [];
@@ -118,7 +125,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         if (!txs.length) {
             return Promise.reject("No transaction id found");
         }
-        if(txs.length > 1) {
+        if (txs.length > 1) {
             return Promise.reject("OP_RETURN collision detected");
         }
 

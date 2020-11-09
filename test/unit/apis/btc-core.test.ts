@@ -19,7 +19,7 @@ describe.skip("btc-core", () => {
 
     beforeEach(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
-        btcCore = new DefaultBTCCoreAPI(false);
+        btcCore = new DefaultBTCCoreAPI("testnet");
     });
 
     after(() => {
@@ -39,5 +39,4 @@ describe.skip("btc-core", () => {
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([undefined, undefined]));
         assert.isRejected(btcCore.getTxIdByOpcode("random"));
     });
-
 });
