@@ -16,8 +16,8 @@ export interface VaultsAPI {
     mapReplaceRequests(vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
-    getCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number>;
-    getTotalCollateralization(): Promise<number>;
+    getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined>;
+    getSystemCollateralization(): Promise<number | undefined>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
@@ -109,6 +109,10 @@ export class DefaultVaultsAPI {
         return this.api.query.vaultRegistry.vaults(vaultId);
     }
 
+    private isNoTokensIssuedError(e: Error): boolean {
+        return e.message.includes("NoTokensIssued");
+    } 
+
     /**
      * Get the collateralization of a single vault measured by the amount of issued PolkaBTC
      * divided by the total locked DOT collateral.
@@ -117,7 +121,7 @@ export class DefaultVaultsAPI {
      * @param newCollateral use this instead of the vault's actual collateral
      * @returns the vault collateralization
      */
-    async getCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number> {
+    async getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = newCollateral
@@ -125,6 +129,12 @@ export class DefaultVaultsAPI {
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
+            if (this.isNoTokensIssuedError(e)) {
+                // Undefined collateralization is handled as infinite collateralization
+                // in the UI. If no tokens have been issued, the `collateralFunds / issuedFunds` ratio
+                // divides by zero, which means collateralization is infinite.
+                return Promise.resolve(undefined);
+            }
             return Promise.reject("Error during collateralization computation");
         }
     }
@@ -135,12 +145,15 @@ export class DefaultVaultsAPI {
      *
      * @returns the total system collateralization
      */
-    async getTotalCollateralization(): Promise<number> {
+    async getSystemCollateralization(): Promise<number | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = await customAPIRPC.vaultRegistry.getTotalCollateralization();
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
+            if (this.isNoTokensIssuedError(e)) {
+                return Promise.resolve(undefined);
+            }
             return Promise.reject("Error during collateralization computation");
         }
     }
