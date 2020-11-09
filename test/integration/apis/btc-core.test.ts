@@ -14,7 +14,7 @@ describe("BTCCore", function () {
 
     beforeEach(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
-        btcCore = new DefaultBTCCoreAPI(false);
+        btcCore = new DefaultBTCCoreAPI("testnet");
     });
 
     afterEach(async () => {
@@ -60,8 +60,16 @@ describe("BTCCore", function () {
     describe("getRawTransaction", () => {
         it("should return correct raw tx", async () => {
             // eslint-disable-next-line max-len
-            const raw = new Buffer(
-                "020000000001012a489eaa754d9aaf5198627d79e9234dba945436503aa445c1b82d6bc194c3270100000000ffffffff0280380100000000001600145601eeffa54c8b7e306c0b3a50c48121c42d09be8d4e030000000000160014a528e6f91766262e3d1b22e52af342f55b2d551c0247304402206fdaa5186ff79740b0fc2848f3ee40b48aa0cbdf9000304fbe6d35d7b1ee0c3602202cf90c73b0b834c8cc78c0b9e988bc2c5781fa617551c8cb5aa7b555efe7ab0a012102170f80797baa55d091f85e38a7b463c56905c09ef6024e83039037be5cd7550900000000",
+            const raw = Buffer.from(
+                "020000000001012a489eaa754d9aaf5198627d79e9234dba945436" +
+                    "503aa445c1b82d6bc194c3270100000000ffffffff028038010000" +
+                    "0000001600145601eeffa54c8b7e306c0b3a50c48121c42d09be8d" +
+                    "4e030000000000160014a528e6f91766262e3d1b22e52af342f55b" +
+                    "2d551c0247304402206fdaa5186ff79740b0fc2848f3ee40b48aa0" +
+                    "cbdf9000304fbe6d35d7b1ee0c3602202cf90c73b0b834c8cc78c0" +
+                    "b9e988bc2c5781fa617551c8cb5aa7b555efe7ab0a012102170f80" +
+                    "797baa55d091f85e38a7b463c56905c09ef6024e83039037be5cd7" +
+                    "550900000000",
                 "hex"
             );
             const raw_tx = await btcCore.getRawTransaction(txid);
@@ -76,6 +84,4 @@ describe("BTCCore", function () {
             assert.strictEqual(txid, "1037930f242763567b7c163e0db4b8e679934aa6317386a455cb6984c81f022d");
         });
     });
-
-    
 });

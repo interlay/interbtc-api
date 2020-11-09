@@ -40,14 +40,14 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
 
-    constructor(readonly api: ApiPromise, mainnet: boolean = true, private _account?: AddressOrPair) {
+    constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
         this.issue = new DefaultIssueAPI(api, _account);
         this.redeem = new DefaultRedeemAPI(api, _account);
         this.stakedRelayer = new DefaultStakedRelayerAPI(api);
         this.relayer = new StakedRelayerClient("");
         this.oracle = new DefaultOracleAPI(api);
-        this.btcCore = new DefaultBTCCoreAPI(mainnet);
+        this.btcCore = new DefaultBTCCoreAPI(network);
         this.collateral = new DefaultCollateralAPI(api);
         this.treasury = new DefaultTreasuryAPI(api);
     }
