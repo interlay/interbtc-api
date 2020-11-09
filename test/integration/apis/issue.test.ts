@@ -42,8 +42,8 @@ describe("issue", () => {
             const requests = await issueAPI.mapForUser(aliceAccountId);
 
             assert.isEmpty(requests);
-        })
-    })
+        });
+    });
 
     describe("request", () => {
         it("should fail if no account is set", () => {

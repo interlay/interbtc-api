@@ -111,7 +111,7 @@ export class DefaultVaultsAPI {
 
     private isNoTokensIssuedError(e: Error): boolean {
         return e.message.includes("NoTokensIssued");
-    } 
+    }
 
     /**
      * Get the collateralization of a single vault measured by the amount of issued PolkaBTC

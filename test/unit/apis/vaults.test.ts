@@ -62,10 +62,10 @@ describe("vaultsAPI", () => {
 
     it("should correctly construct IssueRequest map", async () => {
         const issueRequests = [<IssueRequest>(<unknown>{
-                vault: new GenericAccountId(registry, decodedAccountId),
-            }), <IssueRequest>(<unknown>{
-                vault: new GenericAccountId(registry, decodedAccountId),
-            })];
+            vault: new GenericAccountId(registry, decodedAccountId),
+        }), <IssueRequest>(<unknown>{
+            vault: new GenericAccountId(registry, decodedAccountId),
+        })];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sinon.stub(DefaultIssueAPI.prototype, <any>"list").returns(Promise.resolve(issueRequests));
         const issueRequestsWithCurrentVault = await vaultsAPI.mapIssueRequests(
@@ -76,10 +76,10 @@ describe("vaultsAPI", () => {
 
     it("should correctly construct RedeemRequest map", async () => {
         const redeemRequests = [<RedeemRequest>(<unknown>{
-                vault: new GenericAccountId(registry, decodedAccountId),
-            }), <RedeemRequest>(<unknown>{
-                vault: new GenericAccountId(registry, decodedAccountId),
-            })];
+            vault: new GenericAccountId(registry, decodedAccountId),
+        }), <RedeemRequest>(<unknown>{
+            vault: new GenericAccountId(registry, decodedAccountId),
+        })];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sinon.stub(DefaultRedeemAPI.prototype, <any>"list").returns(Promise.resolve(redeemRequests));
         const redeemRequestsWithCurrentVault = await vaultsAPI.mapRedeemRequests(
