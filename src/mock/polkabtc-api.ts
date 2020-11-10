@@ -9,6 +9,7 @@ import {
     StakedRelayerAPI,
     OracleAPI,
     BTCCoreAPI,
+    BTCRelayAPI,
     CollateralAPI,
     TreasuryAPI,
 } from "../apis";
@@ -20,6 +21,7 @@ import { PolkaBTCAPI } from "../polkabtc-api";
 import { StakedRelayerClient } from "../http";
 import { MockOracleAPI } from "./apis/oracle";
 import { MockBTCCoreAPI } from "./apis/btc-core";
+import { MockBTCRelayAPI } from "./apis/btc-relay";
 import { MockCollateralAPI } from "./apis/collateral";
 import { MockTreasuryAPI } from "./apis/treasury";
 
@@ -31,6 +33,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly relayer: StakedRelayerClient;
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
+    public readonly btcRelay: BTCRelayAPI;
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
 
@@ -42,6 +45,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.relayer = new StakedRelayerClient("");
         this.oracle = new MockOracleAPI();
         this.btcCore = new MockBTCCoreAPI();
+        this.btcRelay = new MockBTCRelayAPI();
         this.collateral = new MockCollateralAPI();
         this.treasury = new MockTreasuryAPI();
     }

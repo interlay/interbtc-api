@@ -11,6 +11,7 @@ import { DefaultVaultsAPI, VaultsAPI } from "./apis/vaults";
 import { DefaultCollateralAPI, CollateralAPI } from "./apis/collateral";
 import { DefaultTreasuryAPI, TreasuryAPI } from "./apis/treasury";
 import { StakedRelayerClient } from "./http";
+import { BTCRelayAPI, DefaultBTCRelayAPI } from "./apis/btc-relay";
 
 export * from "./factory";
 
@@ -37,6 +38,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly relayer: StakedRelayerClient;
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
+    public readonly btcRelay: BTCRelayAPI;
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
 
@@ -48,6 +50,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.relayer = new StakedRelayerClient("");
         this.oracle = new DefaultOracleAPI(api);
         this.btcCore = new DefaultBTCCoreAPI(network);
+        this.btcRelay = new DefaultBTCRelayAPI(api, this.btcCore);
         this.collateral = new DefaultCollateralAPI(api);
         this.treasury = new DefaultTreasuryAPI(api);
     }

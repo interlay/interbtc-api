@@ -1,8 +1,8 @@
-import { DOT, ActiveStakedRelayer, H256Le, StatusCode, Vault, StatusUpdate } from "../../interfaces/default";
-import { u128, u32, u256 } from "@polkadot/types/primitive";
+import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate } from "../../interfaces/default";
+import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
-import { U8aFixed, UInt } from "@polkadot/types/codec";
+import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { StakedRelayerAPI } from "../../apis/staked-relayer";
@@ -60,16 +60,6 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
 
     async getFeesEarned(_activeStakedRelayerId: AccountId): Promise<DOT> {
         return new BN(120.6) as DOT;
-    }
-
-    async getLatestBTCBlockFromBTCRelay(): Promise<H256Le> {
-        const registry = new TypeRegistry();
-        return new U8aFixed(registry, "00000000000f6499c8547227") as H256Le;
-    }
-
-    async getLatestBTCBlockHeightFromBTCRelay(): Promise<u32> {
-        const registry = new TypeRegistry();
-        return new UInt(registry, 1835342) as u32;
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {
