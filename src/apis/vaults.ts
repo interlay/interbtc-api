@@ -97,8 +97,8 @@ export class DefaultVaultsAPI {
             const oldVaultReplaceRequests = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
             const newVaultReplaceRequests = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
             return new Map([[vaultId, [...oldVaultReplaceRequests, ...newVaultReplaceRequests]]]);
-        } catch (e) {
-            return Promise.reject("Error during replace request retrieval");
+        } catch (err) {
+            return Promise.reject(`Error during replace request retrieval: ${err}`);
         }
     }
 
@@ -160,7 +160,7 @@ export class DefaultVaultsAPI {
     }
 
     /**
-     * Get the amount of collateral required for the given vault to be at the 
+     * Get the amount of collateral required for the given vault to be at the
      * current SecureCollateralThreshold with the current exchange rate
      *
      * @param vaultId the vault account id
