@@ -1,5 +1,5 @@
-import { DOT, ActiveStakedRelayer, H256Le, StatusCode, Vault, StatusUpdate } from "../interfaces/default";
-import { u128, u32, u256 } from "@polkadot/types/primitive";
+import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate } from "../interfaces/default";
+import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
@@ -14,8 +14,6 @@ export interface StakedRelayerAPI {
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
     getTotalStakedDOTAmount(): Promise<DOT>;
     getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT>;
-    getLatestBTCBlockFromBTCRelay(): Promise<H256Le>;
-    getLatestBTCBlockHeightFromBTCRelay(): Promise<u32>;
     getMonitoredVaultsCollateralizationRate(): Promise<Vault[]>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
@@ -81,14 +79,6 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
 
     async getFeesEarned(_activeStakedRelayerId: AccountId): Promise<DOT> {
         return new BN(0) as DOT;
-    }
-
-    async getLatestBTCBlockFromBTCRelay(): Promise<H256Le> {
-        return await this.api.query.btcRelay.bestBlock();
-    }
-
-    async getLatestBTCBlockHeightFromBTCRelay(): Promise<u32> {
-        return await this.api.query.btcRelay.bestBlockHeight();
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {

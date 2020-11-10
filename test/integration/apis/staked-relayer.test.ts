@@ -65,16 +65,6 @@ describe("stakedRelayerAPI", () => {
             assert.isDefined(latestBTCBlockFromBTCRelay);
         });
 
-        it("should getLatestBTCBlockFromBTCRelay", async () => {
-            const latestBTCBlockFromBTCRelay = await stakedRelayerAPI.getLatestBTCBlockFromBTCRelay();
-            assert.isDefined(latestBTCBlockFromBTCRelay);
-        });
-
-        it("should getLatestBTCBlockHeightFromBTCRelay", async () => {
-            const latestBTCBlockHeightFromBTCRelay = await stakedRelayerAPI.getLatestBTCBlockHeightFromBTCRelay();
-            assert.isDefined(latestBTCBlockHeightFromBTCRelay);
-        });
-
         it.skip("should getMonitoredVaultsCollateralizationRate", async () => {
             const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
             assert.isDefined(monitoredVaultsCollateralizationRate);

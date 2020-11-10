@@ -4,6 +4,7 @@ export { RedeemAPI } from "./redeem";
 export { StakedRelayerAPI } from "./staked-relayer";
 export { OracleAPI } from "./oracle";
 export { BTCCoreAPI } from "./btc-core";
+export { BTCRelayAPI } from "./btc-relay";
 export { CollateralAPI } from "./collateral";
 export { TreasuryAPI } from "./treasury";
 export { ConstantsAPI } from "./constants";

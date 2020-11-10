@@ -18,6 +18,7 @@ export interface VaultsAPI {
     get(vaultId: AccountId): Promise<Vault>;
     getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined>;
     getSystemCollateralization(): Promise<number | undefined>;
+    getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
@@ -96,8 +97,8 @@ export class DefaultVaultsAPI {
             const oldVaultReplaceRequests = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
             const newVaultReplaceRequests = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
             return new Map([[vaultId, [...oldVaultReplaceRequests, ...newVaultReplaceRequests]]]);
-        } catch (e) {
-            return Promise.reject("Error during replace request retrieval");
+        } catch (err) {
+            return Promise.reject(`Error during replace request retrieval: ${err}`);
         }
     }
 
@@ -117,6 +118,9 @@ export class DefaultVaultsAPI {
      * Get the collateralization of a single vault measured by the amount of issued PolkaBTC
      * divided by the total locked DOT collateral.
      *
+     * @remarks Undefined collateralization is handled as infinite collateralization in the UI.
+     * If no tokens have been issued, the `collateralFunds / issuedFunds` ratio divides by zero,
+     * which means collateralization is infinite.
      * @param vaultId the vault account id
      * @param newCollateral use this instead of the vault's actual collateral
      * @returns the vault collateralization
@@ -130,9 +134,6 @@ export class DefaultVaultsAPI {
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
-                // Undefined collateralization is handled as infinite collateralization
-                // in the UI. If no tokens have been issued, the `collateralFunds / issuedFunds` ratio
-                // divides by zero, which means collateralization is infinite.
                 return Promise.resolve(undefined);
             }
             return Promise.reject("Error during collateralization computation");
@@ -155,6 +156,23 @@ export class DefaultVaultsAPI {
                 return Promise.resolve(undefined);
             }
             return Promise.reject("Error during collateralization computation");
+        }
+    }
+
+    /**
+     * Get the amount of collateral required for the given vault to be at the
+     * current SecureCollateralThreshold with the current exchange rate
+     *
+     * @param vaultId the vault account id
+     * @returns the required collateral the vault needs to deposit to stay
+     * above the threshold limit
+     */
+    async getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT> {
+        const customAPIRPC = this.api.rpc as any;
+        try {
+            return await customAPIRPC.vaultRegistry.getRequiredCollateralForVault(vaultId);
+        } catch (e) {
+            return Promise.reject((e as Error).message);
         }
     }
 
