@@ -51,7 +51,7 @@ export class JsonRpcClient {
             throw new Error("Invalid id in JsonRpcResponse");
         }
 
-        if (!httpResponse.ok) {
+        if (jsonResponse.error || !httpResponse.ok) {
             throw new Error(jsonResponse.error?.message);
         }
 
