@@ -58,6 +58,22 @@ export class MockRedeemAPI implements RedeemAPI {
         return {} as AsyncGenerator<RedeemRequest[]>;
     }
 
+    async getRequestById(_redeemId: string | Uint8Array | H256): Promise<RedeemRequest> {
+        const registry = new TypeRegistry();
+        const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+
+        return <RedeemRequest>{
+            vault: new GenericAccountId(registry, decodedAccountId),
+            opentime: new BN(11208) as BlockNumber,
+            amount_polka_btc: new BN(400) as PolkaBTC,
+            amount_btc: new BN(411) as PolkaBTC,
+            amount_dot: new BN(709) as DOT,
+            premium_dot: new BN(10) as DOT,
+            redeemer: new GenericAccountId(registry, decodedAccountId),
+            btc_address: new U8aFixed(registry, "321321321321321") as H160,
+        };
+    }
+
     setAccount(_account?: AddressOrPair): void {
         return;
     }
