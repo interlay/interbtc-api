@@ -13,8 +13,8 @@ import { MockStateSubscriptions, MockStateSubscriptionCallback, MockStateDb } fr
 import BN from "bn.js";
 import EventEmitter from "eventemitter3";
 import Metadata from "@polkadot/metadata/Metadata";
-import Decorated from "@polkadot/metadata/Decorated";
-import rpcMetadata from "@polkadot/metadata/Metadata/static";
+import Decorated from "@polkadot/metadata/decorate";
+import rpcMetadata from "@polkadot/metadata/static";
 
 import jsonrpc from "@polkadot/types/interfaces/jsonrpc";
 import testKeyring from "@polkadot/keyring/testing";
@@ -186,7 +186,7 @@ export default class Mock implements ProviderInterface {
         let newHead = this.makeBlockHeader();
         let counter = -1;
         const metadata = new Metadata(this.registry, rpcMetadata);
-        const decorated = new Decorated(this.registry, metadata);
+        const decorated = Decorated(this.registry, metadata);
 
         // Do something every 1 seconds
         this.interval = setInterval((): void => {

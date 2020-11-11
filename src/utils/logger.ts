@@ -10,14 +10,15 @@ export async function sendLoggedTx(
     api: ApiPromise
 ): Promise<EventRecord[]> {
     // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
-    const { unsubscribe, result } = await new Promise((resolve) => {
+    const { unsubscribe, result } = await new Promise((resolve, reject) => {
         let unsubscribe: () => void;
         // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
         // signAndSend: Promise<() => void>
         // signAndSend -> signAndSend resolves (we set unsubscribe) -> callback is called
         transaction
             .signAndSend(signer, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
-            .then((u: () => void) => (unsubscribe = u));
+            .then((u: () => void) => (unsubscribe = u))
+            .catch((error) => reject(error));
 
         function callback(callbackObject: { unsubscribe: () => void; result: any }): void {
             // could log events here as they are being emitted
