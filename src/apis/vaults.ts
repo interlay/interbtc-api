@@ -1,6 +1,6 @@
 import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { AccountId, H256 } from "@polkadot/types/interfaces";
+import { AccountId } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
@@ -50,18 +50,16 @@ export class DefaultVaultsAPI {
      * since issueAPI also instantiates the vaultsAPI in its constructor
      *
      * @param vaultId - The AccountId of the vault used to filter issue requests
-     * @returns A map with issue ids to issue requests involving said vault
+     * @returns A map with a single key, from the vault AccountId to issue requests involving said vault
      */
-    async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequest>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
-        try {
-            const issueRequestPairs: [H256, IssueRequest][] = await customAPIRPC.issue.getVaultIssueRequests(vaultId);
-
-            return new Map(issueRequestPairs);
-        } catch (err) {
-            return Promise.reject(`Error during issue request retrieval: ${err}`);
+    async mapIssueRequests(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>> {
+        if (!this.issueAPI) {
+            this.issueAPI = new DefaultIssueAPI(this.api);
         }
+        const allIssueRequests = await this.issueAPI.list();
+
+        const issueRequestsWithCurrentVault = allIssueRequests.filter((issueRequest) => issueRequest.vault.eq(vaultId));
+        return new Map([[vaultId, issueRequestsWithCurrentVault]]);
     }
 
     /**
@@ -72,18 +70,18 @@ export class DefaultVaultsAPI {
      * since redeemAPI also instantiates the vaultsAPI in its constructor
      *
      * @param vaultId - The AccountId of the vault used to filter redeem requests
-     * @returns A map with redeem ids to redeem requests involving said vault
+     * @returns A map with a single key, from the vault AccountId to redeem requests involving said vault
      */
-    async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequest>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
-        try {
-            const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getVaultRedeemRequests(vaultId);
-
-            return new Map(redeemRequestPairs);
-        } catch (err) {
-            return Promise.reject(`Error during redeem request retrieval: ${err}`);
+    async mapRedeemRequests(vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>> {
+        if (!this.redeemAPI) {
+            this.redeemAPI = new DefaultRedeemAPI(this.api);
         }
+        const allRedeemRequests = await this.redeemAPI.list();
+
+        const redeemRequestsWithCurrentVault = allRedeemRequests.filter((redeemRequest) =>
+            redeemRequest.vault.eq(vaultId)
+        );
+        return new Map([[vaultId, redeemRequestsWithCurrentVault]]);
     }
 
     /**
@@ -91,14 +89,14 @@ export class DefaultVaultsAPI {
      * the vault is either the replaced or the replacing one.
      *
      * @param vaultId - The AccountId of the vault used to filter replace requests
-     * @returns A map with replace ids to replace requests involving said vault as new vault and old vault
+     * @returns A map with a single key, from the vault AccountId to replace requests involving said vault
      */
-    async mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequest>> {
+    async mapReplaceRequests(vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>> {
         const customAPIRPC = this.api.rpc as any;
         try {
-            const oldVaultReplaceRequests: [H256, ReplaceRequest][] = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
-            const newVaultReplaceRequests: [H256, ReplaceRequest][] = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
-            return new Map([...oldVaultReplaceRequests, ...newVaultReplaceRequests]);
+            const oldVaultReplaceRequests = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
+            const newVaultReplaceRequests = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
+            return new Map([[vaultId, [...oldVaultReplaceRequests, ...newVaultReplaceRequests]]]);
         } catch (err) {
             return Promise.reject(`Error during replace request retrieval: ${err}`);
         }
