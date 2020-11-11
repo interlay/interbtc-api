@@ -78,4 +78,28 @@ describe("vaultsAPI", () => {
             curr = await requestsIterator.next();
         }
     });
+
+    it("should list issue request by a vault", async () => {
+        const bobId = api.createType("AccountId", bob.address);
+        const issueRequests = await vaultsAPI.mapIssueRequests(bobId);
+        issueRequests.forEach((request) => {
+            assert.equal(request.vault, bobId);
+        });
+    });
+
+    it("should list redeem request by a vault", async () => {
+        const bobId = api.createType("AccountId", bob.address);
+        const redeemRequests = await vaultsAPI.mapRedeemRequests(bobId);
+        redeemRequests.forEach((request) => {
+            assert.equal(request.vault, bobId);
+        });
+    });
+
+    it("should list issue request by a vault", async () => {
+        const bobId = api.createType("AccountId", bob.address);
+        const replaceRequests = await vaultsAPI.mapReplaceRequests(bobId);
+        replaceRequests.forEach((request) => {
+            assert.equal(request.old_vault, bobId);
+        });
+    });
 });
