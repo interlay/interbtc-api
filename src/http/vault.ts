@@ -95,7 +95,7 @@ export class VaultClient extends JsonRpcClient {
         const request = new this.constr["UpdateBtcAddressJsonRpcRequest"](this.registry, {
             address: btcAddress,
         });
-        await this.post("set_btc_address", [request.toHex()]);
+        await this.post("update_btc_address", [request.toHex()]);
     }
 
     async withdrawReplace(replace_id: string): Promise<void> {
