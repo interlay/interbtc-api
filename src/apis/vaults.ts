@@ -106,8 +106,12 @@ export class DefaultVaultsAPI {
         return pagedIterator<Vault>(this.api.query.vaultRegistry.vaults, perPage);
     }
 
-    get(vaultId: AccountId): Promise<Vault> {
-        return this.api.query.vaultRegistry.vaults(vaultId);
+    async get(vaultId: AccountId): Promise<Vault> {
+        const vault = await this.api.query.vaultRegistry.vaults(vaultId);
+        if (!vaultId.eq(vault.id)) {
+            throw new Error(`No vault registered with id ${vaultId}`);
+        }
+        return vault;
     }
 
     private isNoTokensIssuedError(e: Error): boolean {
