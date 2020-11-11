@@ -17,6 +17,7 @@ export interface RedeemAPI {
     setAccount(account?: AddressOrPair): void;
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>>;
+    getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequest>;
 }
 
 export class DefaultRedeemAPI {
@@ -97,6 +98,10 @@ export class DefaultRedeemAPI {
 
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]> {
         return pagedIterator<RedeemRequest>(this.api.query.redeem.redeemRequests, perPage);
+    }
+
+    getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequest> {
+        return this.api.query.redeem.redeemRequests(redeemId);
     }
 
     setAccount(account?: AddressOrPair): void {
