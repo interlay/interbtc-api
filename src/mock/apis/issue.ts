@@ -70,4 +70,19 @@ export class MockIssueAPI implements IssueAPI {
     getPagedIterator(_perPage: number): AsyncGenerator<IssueRequest[]> {
         return {} as AsyncGenerator<IssueRequest[]>;
     }
+
+    async getRequestById(_issueId: string | Uint8Array | H256): Promise<IssueRequest> {
+        const registry = new TypeRegistry();
+        const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
+
+        return <IssueRequest>{
+            vault: new GenericAccountId(registry, decodedAccountId1),
+            amount: new BN(4510) as PolkaBTC,
+            opentime: new BN(11938) as BlockNumber,
+            btc_address: new U8aFixed(registry, "321321321321321") as H160,
+            completed: new bool(registry, true),
+            requester: new GenericAccountId(registry, decodedAccountId1),
+            griefing_collateral: new BN(76) as DOT,
+        };
+    }
 }

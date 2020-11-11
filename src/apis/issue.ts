@@ -18,6 +18,7 @@ export interface IssueAPI {
     list(): Promise<IssueRequest[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequest>>;
+    getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequest>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
@@ -130,6 +131,10 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async getGriefingCollateral(): Promise<DOT> {
         return this.api.query.issue.issueGriefingCollateral();
+    }
+
+    getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequest> {
+        return this.api.query.issue.issueRequests(issueId);
     }
 
     setAccount(account?: AddressOrPair): void {
