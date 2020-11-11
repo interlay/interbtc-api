@@ -11,9 +11,9 @@ import { DefaultRedeemAPI } from "./redeem";
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
     listPaged(): Promise<Vault[]>;
-    mapIssueRequests(vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>>;
-    mapRedeemRequests(vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>>;
-    mapReplaceRequests(vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>>;
+    mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequest>>;
+    mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequest>>;
+    mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequest>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined>;

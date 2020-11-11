@@ -1,5 +1,5 @@
 import { IssueRequest, PolkaBTC, RedeemRequest, ReplaceRequest, Vault, DOT, Wallet } from "../../interfaces/default";
-import { AccountId, H160 } from "@polkadot/types/interfaces";
+import { AccountId, H256, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed, Option } from "@polkadot/types/codec";
@@ -67,19 +67,19 @@ export class MockVaultsAPI implements VaultsAPI {
         ]);
     }
 
-    async mapIssueRequests(_vaultId: AccountId): Promise<Map<AccountId, IssueRequest[]>> {
+    async mapIssueRequests(_vaultId: AccountId): Promise<Map<H256, IssueRequest>> {
         // Empty for now, as it is difficult to mock IssueRequests
-        return Promise.resolve(new Map<AccountId, IssueRequest[]>());
+        return Promise.resolve(new Map<H256, IssueRequest>());
     }
 
-    async mapRedeemRequests(_vaultId: AccountId): Promise<Map<AccountId, RedeemRequest[]>> {
+    async mapRedeemRequests(_vaultId: AccountId): Promise<Map<H256, RedeemRequest>> {
         // Empty for now, as it is difficult to mock RedeemRequest
-        return Promise.resolve(new Map<AccountId, RedeemRequest[]>());
+        return Promise.resolve(new Map<H256, RedeemRequest>());
     }
 
-    async mapReplaceRequests(_vaultId: AccountId): Promise<Map<AccountId, ReplaceRequest[]>> {
+    async mapReplaceRequests(_vaultId: AccountId): Promise<Map<H256, ReplaceRequest>> {
         // Empty for now, as it is difficult to mock ReplaceRequest
-        return Promise.resolve(new Map<AccountId, ReplaceRequest[]>());
+        return Promise.resolve(new Map<H256, ReplaceRequest>());
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<Vault[]> {
