@@ -36,6 +36,14 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return Promise.resolve(<ActiveStakedRelayer>{});
     }
 
+    async isStakedRelayerActive(_stakedRelayerId: AccountId): Promise<boolean> {
+        return true;
+    }
+
+    async isStakedRelayerInactive(_stakedRelayerId: AccountId): Promise<boolean> {
+        return false;
+    }
+
     async getStakedDOTAmount(_activeStakedRelayerId: AccountId): Promise<DOT> {
         return Promise.resolve(new BN(101456) as DOT);
     }
