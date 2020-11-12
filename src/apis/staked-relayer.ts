@@ -11,6 +11,8 @@ export interface StakedRelayerAPI {
     map(): Promise<Map<AccountId, ActiveStakedRelayer>>;
     getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]>;
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer>;
+    isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean>;
+    isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
     getTotalStakedDOTAmount(): Promise<DOT>;
     getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT>;
@@ -55,6 +57,16 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
 
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {
         return this.api.query.stakedRelayers.activeStakedRelayers(activeStakedRelayerId);
+    }
+
+    async isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean> {
+        const active = await this.api.query.stakedRelayers.activeStakedRelayers(stakedRelayerId);
+        return active.stake.gt(new BN(0));
+    }
+
+    async isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean> {
+        const inactive = await this.api.query.stakedRelayers.inactiveStakedRelayers(stakedRelayerId);
+        return inactive.stake.gt(new BN(0));
     }
 
     async getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT> {
