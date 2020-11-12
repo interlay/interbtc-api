@@ -17,3 +17,29 @@ export function getP2WPKHFromH160(hash: H160, network: bitcoin.Network): string 
     }
     return btcAddress;
 }
+
+interface Payable {
+    hash?: Buffer;
+    address?: string;
+}
+
+function decode<P extends Payable, O>(p: P, f: (payment: P, options?: O) => P): string | undefined {
+    try {
+        const pay = f(p);
+        return pay.hash ? "0x" + pay.hash.toString("hex") : "";
+    } catch (err) {
+        return undefined;
+    }
+}
+
+function decodeAddress(address: string, network: bitcoin.Network) {
+    return (
+        decode({ address, network }, bitcoin.payments.p2sh) ||
+        decode({ address, network }, bitcoin.payments.p2pkh) ||
+        decode({ address, network }, bitcoin.payments.p2wpkh)
+    );
+}
+
+export function getH160FromP2WPKH(address: string, network: bitcoin.Network): string | undefined {
+    return decodeAddress(address, network);
+}
