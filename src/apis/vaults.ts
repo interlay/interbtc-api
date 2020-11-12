@@ -7,6 +7,7 @@ import { u128 } from "@polkadot/types/primitive";
 import { pagedIterator } from "../utils";
 import { DefaultIssueAPI } from "./issue";
 import { DefaultRedeemAPI } from "./redeem";
+import { BalanceWrapper } from "../interfaces/default";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
@@ -78,7 +79,9 @@ export class DefaultVaultsAPI {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
         try {
-            const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getVaultRedeemRequests(vaultId);
+            const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getVaultRedeemRequests(
+                vaultId
+            );
 
             return new Map(redeemRequestPairs);
         } catch (err) {
@@ -96,8 +99,14 @@ export class DefaultVaultsAPI {
     async mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequest>> {
         const customAPIRPC = this.api.rpc as any;
         try {
-            const oldVaultReplaceRequests: [H256, ReplaceRequest][] = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
-            const newVaultReplaceRequests: [H256, ReplaceRequest][] = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
+            const oldVaultReplaceRequests: [
+                H256,
+                ReplaceRequest
+            ][] = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
+            const newVaultReplaceRequests: [
+                H256,
+                ReplaceRequest
+            ][] = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
             return new Map([...oldVaultReplaceRequests, ...newVaultReplaceRequests]);
         } catch (err) {
             return Promise.reject(`Error during replace request retrieval: ${err}`);
@@ -134,15 +143,24 @@ export class DefaultVaultsAPI {
     async getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
-            const collateralization = newCollateral
-                ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(vaultId, newCollateral)
-                : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
+            let collateralization;
+            if (newCollateral) {
+                const newCollateralWrapped = {
+                    amount: this.api.createType("Text", newCollateral.toString(10)),
+                } as BalanceWrapper;
+                collateralization = await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
+                    vaultId,
+                    newCollateralWrapped
+                );
+            } else {
+                collateralization = await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
+            }
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
             }
-            return Promise.reject("Error during collateralization computation");
+            return Promise.reject(`Error during collateralization computation: ${(e as Error).message}`);
         }
     }
 
