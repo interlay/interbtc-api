@@ -1,6 +1,6 @@
 import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { AccountId, H256 } from "@polkadot/types/interfaces";
+import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
@@ -143,18 +143,12 @@ export class DefaultVaultsAPI {
     async getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
-            let collateralization;
-            if (newCollateral) {
-                const newCollateralWrapped = {
-                    amount: this.api.createType("Text", newCollateral.toString(10)),
-                } as BalanceWrapper;
-                collateralization = await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
+            const collateralization = newCollateral
+                ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
                     vaultId,
-                    newCollateralWrapped
-                );
-            } else {
-                collateralization = await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
-            }
+                    this.wrapCurrency(newCollateral)
+                )
+                : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
@@ -194,7 +188,8 @@ export class DefaultVaultsAPI {
     async getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT> {
         const customAPIRPC = this.api.rpc as any;
         try {
-            return await customAPIRPC.vaultRegistry.getRequiredCollateralForVault(vaultId);
+            const dotWrapper: BalanceWrapper = await customAPIRPC.vaultRegistry.getRequiredCollateralForVault(vaultId);
+            return this.unwrapCurrency(dotWrapper) as DOT;
         } catch (e) {
             return Promise.reject((e as Error).message);
         }
@@ -226,7 +221,7 @@ export class DefaultVaultsAPI {
         try {
             // eslint-disable-next-line max-len
             const firstVaultWithSufficientCollateral = await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientCollateral(
-                btc
+                this.wrapCurrency(btc)
             );
             return firstVaultWithSufficientCollateral;
         } catch (e) {
@@ -238,7 +233,7 @@ export class DefaultVaultsAPI {
         const customAPIRPC = this.api.rpc as any;
         try {
             const firstVaultWithSufficientTokens = await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientTokens(
-                btc
+                this.wrapCurrency(btc)
             );
             return firstVaultWithSufficientTokens;
         } catch (e) {
@@ -253,5 +248,15 @@ export class DefaultVaultsAPI {
 
     private scaleUsingParachainGranularity(value: u128): number {
         return value.toNumber() / Math.pow(10, this.granularity);
+    }
+
+    private wrapCurrency(amount: Balance): BalanceWrapper {
+        return {
+            amount: this.api.createType("Text", amount.toString(10)),
+        } as BalanceWrapper;
+    }
+
+    private unwrapCurrency(wrappedBalance: BalanceWrapper): Balance {
+        return this.api.createType("Balance", wrappedBalance.amount.toString());
     }
 }
