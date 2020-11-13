@@ -77,4 +77,9 @@ export class MockRedeemAPI implements RedeemAPI {
     setAccount(_account?: AddressOrPair): void {
         return;
     }
+
+    subscribeToRedeemExpiry(_callback: (requestRedeemId: string) => void): Promise<() => void> {
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        return Promise.resolve(() => {});
+    }
 }
