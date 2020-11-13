@@ -22,6 +22,7 @@ export interface RedeemAPI {
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>>;
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequest>;
+    subscribeToRedeemExpiry(callback: (requestRedeemId: string) => void): Promise<() => void>;
 }
 
 export class DefaultRedeemAPI {
