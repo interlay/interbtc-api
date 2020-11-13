@@ -7,4 +7,5 @@ export { BTCCoreAPI } from "./btc-core";
 export { BTCRelayAPI } from "./btc-relay";
 export { CollateralAPI } from "./collateral";
 export { TreasuryAPI } from "./treasury";
+export { SystemAPI } from "./system";
 export { ConstantsAPI } from "./constants";

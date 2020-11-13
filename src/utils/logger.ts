@@ -8,7 +8,7 @@ export async function sendLoggedTx(
     transaction: SubmittableExtrinsic<"promise">,
     signer: AddressOrPair,
     api: ApiPromise
-): Promise<EventRecord[]> {
+): Promise<ISubmittableResult> {
     // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
     const { unsubscribe, result } = await new Promise((resolve, reject) => {
         let unsubscribe: () => void;
@@ -20,12 +20,13 @@ export async function sendLoggedTx(
             .then((u: () => void) => (unsubscribe = u))
             .catch((error) => reject(error));
 
-        function callback(callbackObject: { unsubscribe: () => void; result: any }): void {
+        function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
             // could log events here as they are being emitted
             // using callbackObject.result.events
             // noting that sometimes several events are
             // emitted at once
-            if (callbackObject.result.status.isFinalized) {
+            const status = callbackObject.result.status;
+            if (status.isFinalized) {
                 resolve(callbackObject);
             }
         }
@@ -34,7 +35,7 @@ export async function sendLoggedTx(
     console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
     unsubscribe(result);
     printEvents(result.events, api);
-    return result.events;
+    return result;
 }
 
 function printEvents(events: EventRecord[], api: ApiPromise) {
