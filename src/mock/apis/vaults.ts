@@ -1,4 +1,12 @@
-import { IssueRequest, PolkaBTC, RedeemRequest, ReplaceRequest, Vault, DOT, Wallet } from "../../interfaces/default";
+import {
+    IssueRequest,
+    PolkaBTC,
+    RedeemRequest,
+    ReplaceRequest,
+    Vault,
+    DOT,
+    BalanceWrapper,
+} from "../../interfaces/default";
 import { AccountId, H256, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
