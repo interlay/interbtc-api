@@ -8,6 +8,7 @@ import { DefaultOracleAPI, OracleAPI } from "./apis/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./apis/redeem";
 import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "./apis/staked-relayer";
 import { DefaultVaultsAPI, VaultsAPI } from "./apis/vaults";
+import { DefaultSystemAPI, SystemAPI } from "./apis/system";
 import { DefaultCollateralAPI, CollateralAPI } from "./apis/collateral";
 import { DefaultTreasuryAPI, TreasuryAPI } from "./apis/treasury";
 import { StakedRelayerClient } from "./http";
@@ -27,6 +28,7 @@ export interface PolkaBTCAPI {
     readonly btcRelay: BTCRelayAPI;
     readonly collateral: CollateralAPI;
     readonly treasury: TreasuryAPI;
+    readonly system: SystemAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
@@ -42,6 +44,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly btcRelay: BTCRelayAPI;
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
+    public readonly system: SystemAPI;
 
     constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
@@ -54,6 +57,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.btcRelay = new DefaultBTCRelayAPI(api, this.btcCore);
         this.collateral = new DefaultCollateralAPI(api);
         this.treasury = new DefaultTreasuryAPI(api);
+        this.system = new DefaultSystemAPI(api);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

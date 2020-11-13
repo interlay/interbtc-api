@@ -86,9 +86,9 @@ export class DefaultIssueAPI implements IssueAPI {
             griefingCollateral = await this.getGriefingCollateral();
         }
         const requestIssueTx = this.api.tx.issue.requestIssue(amount, vault.id, griefingCollateral);
-        const events = await sendLoggedTx(requestIssueTx, this.account, this.api);
+        const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
 
-        const hash = this.getIssueIdFromEvents(events);
+        const hash = this.getIssueIdFromEvents(result.events);
         return { hash, vault };
     }
 
@@ -98,8 +98,8 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx);
-        const events = await sendLoggedTx(executeIssueTx, this.account, this.api);
-        return this.isExecutionSucessful(events);
+        const result = await sendLoggedTx(executeIssueTx, this.account, this.api);
+        return this.isExecutionSucessful(result.events);
     }
 
     async cancel(issueId: H256): Promise<void> {
