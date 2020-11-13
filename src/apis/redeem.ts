@@ -1,11 +1,15 @@
 import { PolkaBTC, RedeemRequest, Vault, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
+import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { pagedIterator, sendLoggedTx } from "../utils";
+import { BlockNumber } from "@polkadot/types/interfaces/runtime";
+import { DefaultSystemAPI, SystemAPI } from "./system";
+import StorageKey from "@polkadot/types/primitive/StorageKey";
+import { stripHexPrefix } from "../utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -22,14 +26,16 @@ export interface RedeemAPI {
 
 export class DefaultRedeemAPI {
     private vaults: VaultsAPI;
+    private system: SystemAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
     constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
+        this.system = new DefaultSystemAPI(api);
     }
 
-    private getRedeemIdFromEvents(events: EventRecord[]): Hash {
+    private getRedeemHashFromEvents(events: EventRecord[]): Hash {
         for (const {
             event: { method, section, data },
         } of events) {
@@ -56,8 +62,8 @@ export class DefaultRedeemAPI {
         }
 
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amount, btcAddress, vault.id);
-        const events = await sendLoggedTx(requestRedeemTx, this.account, this.api);
-        const hash = this.getRedeemIdFromEvents(events);
+        const result = await sendLoggedTx(requestRedeemTx, this.account, this.api);
+        const hash = this.getRedeemHashFromEvents(result.events);
         return { hash, vault };
     }
 
@@ -87,6 +93,15 @@ export class DefaultRedeemAPI {
         return redeemRequests.map((v) => v[1]);
     }
 
+    private storageKeyToIdString(s: StorageKey): string {
+        return s.args.map((k) => k.toString())[0];
+    }
+
+    async listWithId(): Promise<[string, RedeemRequest][]> {
+        const redeemRequests = await this.api.query.redeem.redeemRequests.entries();
+        return redeemRequests.map((v) => [this.storageKeyToIdString(v[0]), v[1]]);
+    }
+
     async mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
@@ -94,6 +109,24 @@ export class DefaultRedeemAPI {
         const mapForUser: Map<H256, RedeemRequest> = new Map<H256, RedeemRequest>();
         redeemRequestPairs.forEach((redeemRequestPair) => mapForUser.set(redeemRequestPair[0], redeemRequestPair[1]));
         return mapForUser;
+    }
+
+    async subscribeToRedeemExpiry(callback: (requestRedeemId: string) => void): Promise<() => void> {
+        const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
+            const redeemRequestsWithId = await this.listWithId();
+            const redeemPeriod = await this.getRedeemPeriod();
+            const currentParachainBlockHeight = header.number.toBn();
+            for(const [id, redeemRequest] of redeemRequestsWithId) {
+                if (redeemRequest.opentime.add(redeemPeriod).gte(currentParachainBlockHeight)) {
+                    callback(stripHexPrefix(id));
+                }
+            }
+        });
+        return unsubscribe;
+    }
+
+    async getRedeemPeriod(): Promise<BlockNumber> {
+        return await this.api.query.redeem.redeemPeriod();
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]> {

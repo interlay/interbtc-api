@@ -12,6 +12,7 @@ import {
     BTCRelayAPI,
     CollateralAPI,
     TreasuryAPI,
+    SystemAPI
 } from "../apis";
 import { MockIssueAPI } from "./apis/issue";
 import { MockRedeemAPI } from "./apis/redeem";
@@ -24,6 +25,7 @@ import { MockBTCCoreAPI } from "./apis/btc-core";
 import { MockBTCRelayAPI } from "./apis/btc-relay";
 import { MockCollateralAPI } from "./apis/collateral";
 import { MockTreasuryAPI } from "./apis/treasury";
+import { MockSystemAPI } from "./apis/system";
 
 export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
@@ -36,6 +38,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly btcRelay: BTCRelayAPI;
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
+    public readonly system: SystemAPI;
 
     constructor(readonly api: ApiPromise, private _account?: AddressOrPair) {
         this.vaults = new MockVaultsAPI();
@@ -48,6 +51,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.btcRelay = new MockBTCRelayAPI();
         this.collateral = new MockCollateralAPI();
         this.treasury = new MockTreasuryAPI();
+        this.system = new MockSystemAPI();
     }
 
     setAccount(account: AddressOrPair, _signer?: Signer): void {
