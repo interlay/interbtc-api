@@ -22,7 +22,7 @@ export interface RedeemAPI {
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>>;
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequest>;
-    subscribeToRedeemExpiry(callback: (requestRedeemId: string) => void): Promise<() => void>;
+    subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
 }
 
 export class DefaultRedeemAPI {
@@ -41,12 +41,13 @@ export class DefaultRedeemAPI {
             event: { method, section, data },
         } of events) {
             if (section == "redeem" && method == method) {
+                // the redeem id as H256 is always the first item of the event
                 const hash = this.api.createType("Hash", data[0]);
                 return hash;
             }
         }
 
-        throw new Error("Request transaction failed");
+        throw new Error("Transaction failed");
     }
 
     async request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult> {
@@ -68,7 +69,13 @@ export class DefaultRedeemAPI {
         return { hash, vault };
     }
 
-    async execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
+    async execute(
+        redeemId: H256,
+        txId: H256Le,
+        txBlockHeight: u32,
+        merkleProof: Bytes,
+        rawTx: Bytes
+    ): Promise<boolean> {
         if (!this.account) {
             throw new Error("cannot execute without setting account");
         }
@@ -104,15 +111,6 @@ export class DefaultRedeemAPI {
         return redeemRequests.map((v) => v[1]);
     }
 
-    private storageKeyToIdString(s: StorageKey): string {
-        return s.args.map((k) => k.toString())[0];
-    }
-
-    async listWithId(): Promise<[string, RedeemRequest][]> {
-        const redeemRequests = await this.api.query.redeem.redeemRequests.entries();
-        return redeemRequests.map((v) => [this.storageKeyToIdString(v[0]), v[1]]);
-    }
-
     async mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
@@ -122,16 +120,19 @@ export class DefaultRedeemAPI {
         return mapForUser;
     }
 
-    async subscribeToRedeemExpiry(callback: (requestRedeemId: string) => void): Promise<() => void> {
+    async subscribeToRedeemExpiry(
+        account: AccountId,
+        callback: (requestRedeemId: string) => void
+    ): Promise<() => void> {
         const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
-            const redeemRequestsWithId = await this.listWithId();
+            const redeemRequests = await this.mapForUser(account);
             const redeemPeriod = await this.getRedeemPeriod();
             const currentParachainBlockHeight = header.number.toBn();
-            for(const [id, redeemRequest] of redeemRequestsWithId) {
-                if (redeemRequest.opentime.add(redeemPeriod).gte(currentParachainBlockHeight)) {
-                    callback(stripHexPrefix(id));
+            redeemRequests.forEach((request, id) => {
+                if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight)) {
+                    callback(stripHexPrefix(id.toString()));
                 }
-            }
+            });
         });
         return unsubscribe;
     }
