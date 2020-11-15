@@ -17,7 +17,7 @@ import Decorated from "@polkadot/metadata/decorate";
 import rpcMetadata from "@polkadot/metadata/static";
 
 import jsonrpc from "@polkadot/types/interfaces/jsonrpc";
-import testKeyring from "@polkadot/keyring/testing";
+import { createTestKeyring } from "@polkadot/keyring/testing";
 import { bnToU8a, logger, u8aToHex } from "@polkadot/util";
 import { randomAsU8a } from "@polkadot/util-crypto";
 
@@ -36,7 +36,7 @@ const SUBSCRIPTIONS: string[] = Array.prototype.concat.apply(
     )
 ) as string[];
 
-const keyring = testKeyring({ type: "ed25519" });
+const keyring = createTestKeyring({ type: "ed25519" });
 const l = logger("api-mock");
 
 /**
