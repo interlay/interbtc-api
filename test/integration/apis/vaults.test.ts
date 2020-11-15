@@ -83,7 +83,7 @@ describe("vaultsAPI", () => {
         const bobId = api.createType("AccountId", bob.address);
         const issueRequests = await vaultsAPI.mapIssueRequests(bobId);
         issueRequests.forEach((request) => {
-            assert.equal(request.vault, bobId);
+            assert.deepEqual(request.vault, bobId);
         });
     });
 
@@ -91,15 +91,15 @@ describe("vaultsAPI", () => {
         const bobId = api.createType("AccountId", bob.address);
         const redeemRequests = await vaultsAPI.mapRedeemRequests(bobId);
         redeemRequests.forEach((request) => {
-            assert.equal(request.vault, bobId);
+            assert.deepEqual(request.vault, bobId);
         });
     });
 
-    it("should list issue request by a vault", async () => {
+    it("should list replace request by a vault", async () => {
         const bobId = api.createType("AccountId", bob.address);
         const replaceRequests = await vaultsAPI.mapReplaceRequests(bobId);
         replaceRequests.forEach((request) => {
-            assert.equal(request.old_vault, bobId);
+            assert.deepEqual(request.old_vault, bobId);
         });
     });
 });

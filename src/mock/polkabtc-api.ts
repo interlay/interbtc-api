@@ -12,7 +12,7 @@ import {
     BTCRelayAPI,
     CollateralAPI,
     TreasuryAPI,
-    SystemAPI
+    SystemAPI,
 } from "../apis";
 import { MockIssueAPI } from "./apis/issue";
 import { MockRedeemAPI } from "./apis/redeem";

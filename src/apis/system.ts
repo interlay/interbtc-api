@@ -11,5 +11,4 @@ export class DefaultSystemAPI implements SystemAPI {
     async getCurrentBlockNumber(): Promise<BlockNumber> {
         return await this.api.query.system.number();
     }
-    
 }
