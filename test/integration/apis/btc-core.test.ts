@@ -4,7 +4,7 @@ import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { createPolkadotAPI } from "../../../src/factory";
 import { defaultEndpoint } from "../../config";
 
-describe("BTCCore", function () {
+describe("BTCCore testnet", function () {
     this.timeout(10000); // API can be slightly slow
 
     const txid = "0af83672b9f80f2ad53218a8f67899ea07d7da4f07a16ba2c954030895a91d9a";
@@ -79,9 +79,35 @@ describe("BTCCore", function () {
 
     describe("getTxByOpcode", () => {
         it("should return correct tx id", async () => {
-            const opcode = "How is everyone!";
+            // uses testnet tx: https://blockstream.info/testnet/tx/cac50845f700c97b0e9f0232d2e876e93d384cd93cfa9dc2bf7883ba202237d4?expand
+            const opcode = "8703723a787b0f989110b49fd5e1cf1c2571525d564bf384b5aa9e340c9ad8bd";
             const txid = await btcCore.getTxIdByOpcode(opcode);
-            assert.strictEqual(txid, "1037930f242763567b7c163e0db4b8e679934aa6317386a455cb6984c81f022d");
+            assert.strictEqual(txid, "cac50845f700c97b0e9f0232d2e876e93d384cd93cfa9dc2bf7883ba202237d4");
+        });
+    });
+});
+
+describe("BTCCore regtest", function () {
+    this.timeout(10000); // API can be slightly slow
+
+    let api: ApiPromise;
+    let btcCore: BTCCoreAPI;
+
+    beforeEach(async () => {
+        api = await createPolkadotAPI(defaultEndpoint);
+        btcCore = new DefaultBTCCoreAPI("http://localhost:3002");
+    });
+
+    afterEach(async () => {
+        await api.disconnect();
+    });
+
+    describe("getTxByOpcode", () => {
+        it("should return correct tx id", async () => {
+            // FIXME: generate bitcoin transaction with OP_RETURN value
+            const opReturnValue = "2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b";
+            const txid = await btcCore.getTxIdByOpcode(opReturnValue);
+            assert.strictEqual(txid, "829874a7649f6081779071446b8195a550c83431bab4fb9b529a6668ba2f3e22");
         });
     });
 });

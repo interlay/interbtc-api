@@ -105,13 +105,16 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      * Throw an error unless there is exactly one transaction with the given opcode.
      *
      * @remarks
-     * Performs the lookup using an external service, Esplora
+     * Performs the lookup using an external service, Esplora. Requires the input string to be a hex
      *
      * @param opreturn - data string used for matching the OP_CODE of Bitcoin transactions
      * @returns A Bitcoin transaction ID
      */
     async getTxIdByOpcode(opreturn: string): Promise<string> {
-        const data = Buffer.from(opreturn, "utf8");
+        const data = Buffer.from(opreturn, "hex");
+        if (data.length !== 32) {
+            return Promise.reject("Requires a 32 byte hash as OP_RETURN");
+        }
         const opreturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
         const hash = bitcoinjs.crypto.sha256(opreturnBuffer).toString("hex");
 
