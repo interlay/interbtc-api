@@ -16,8 +16,8 @@ export type RequestResult = { hash: Hash; vault: Vault };
 export interface RedeemAPI {
     list(): Promise<RedeemRequest[]>;
     request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult>;
-    execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
-    cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
+    execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
+    cancel(redeemId: H256, reimburse?: boolean): Promise<boolean>;
     setAccount(account?: AddressOrPair): void;
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>>;
@@ -36,11 +36,11 @@ export class DefaultRedeemAPI {
         this.system = new DefaultSystemAPI(api);
     }
 
-    private getRedeemHashFromEvents(events: EventRecord[]): Hash {
+    private getRedeemHashFromEvents(events: EventRecord[], method: string): Hash {
         for (const {
             event: { method, section, data },
         } of events) {
-            if (section == "redeem" && method == "RequestRedeem") {
+            if (section == "redeem" && method == method) {
                 const hash = this.api.createType("Hash", data[0]);
                 return hash;
             }
@@ -64,19 +64,24 @@ export class DefaultRedeemAPI {
 
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amount, btcAddress, vault.id);
         const result = await sendLoggedTx(requestRedeemTx, this.account, this.api);
-        const hash = this.getRedeemHashFromEvents(result.events);
+        const hash = this.getRedeemHashFromEvents(result.events, "RequestRedeem");
         return { hash, vault };
     }
 
-    async execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
+    async execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
         if (!this.account) {
             throw new Error("cannot execute without setting account");
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, txBlockHeight, merkleProof, rawTx);
-        await sendLoggedTx(executeRedeemTx, this.account, this.api);
+        const result = await sendLoggedTx(executeRedeemTx, this.account, this.api);
+        const hash = this.getRedeemHashFromEvents(result.events, "ExecuteRedeem");
+        if (hash) {
+            return true;
+        }
+        return false;
     }
 
-    async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
+    async cancel(redeemId: H256, reimburse?: boolean): Promise<boolean> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -86,7 +91,12 @@ export class DefaultRedeemAPI {
         // `true` = accept reimbursement in polkaBTC
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
-        await sendLoggedTx(cancelRedeemTx, this.account, this.api);
+        const result = await sendLoggedTx(cancelRedeemTx, this.account, this.api);
+        const hash = this.getRedeemHashFromEvents(result.events, "CancelRedeem");
+        if (hash) {
+            return true;
+        }
+        return false;
     }
 
     async list(): Promise<RedeemRequest[]> {

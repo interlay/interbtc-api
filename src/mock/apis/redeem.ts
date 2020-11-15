@@ -10,11 +10,11 @@ import { RedeemAPI } from "../../apis/redeem";
 export type RequestResult = { hash: Hash; vault: Vault };
 
 export class MockRedeemAPI implements RedeemAPI {
-    execute(_redeemId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
+    execute(_redeemId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 
-    cancel(_redeemId: H256, _reimburse?: boolean): Promise<void> {
+    cancel(_redeemId: H256, _reimburse?: boolean): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 
