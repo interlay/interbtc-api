@@ -97,16 +97,14 @@ describe.skip("redeem", () => {
         });
 
         it("should send 'executeRedeem' transaction after obtaining 'requestRedeem' response", async () => {
-            // The test does not check for the succesful termination of 'execute'.
-            // Instead, it checks that the API call can be bundled into a transaction
-            // and published on-chain without any errors being thrown.
             redeemAPI.setAccount(alice);
             const requestHash: H256 = requestResult.hash;
             const txId: H256Le = requestHash;
             const txBlockHeight: u32 = new UInt(registry, 1);
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
-            await redeemAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
+            const result = await redeemAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
+            assert.isTrue(result);
         });
     });
 
@@ -117,7 +115,22 @@ describe.skip("redeem", () => {
             redeemAPI.setAccount(alice);
             const amount = api.createType("PolkaBTC", 11);
             requestResult = await redeemAPI.request(amount, randomDecodedAccountId);
-            await redeemAPI.cancel(requestResult.hash);
+            const result = await redeemAPI.cancel(requestResult.hash);
+            // FIXME: assumes redeem request is not expired. Add logic to check if it is expired
+            assert.isFalse(result);
+        });
+
+        it("should get expired redeem requests", async () => {
+            redeemAPI.setAccount(alice);
+            const aliceId = api.createType("AccountId", alice.address);
+
+            // FIXME: add expired redeem request for callback to be called
+            const redeemExpired = (_redeemId: string) => {
+                setTimeout(() => {
+                    assert.isTrue(false);
+                }, 1000);
+            };
+            redeemAPI.subscribeToRedeemExpiry(aliceId, redeemExpired);
         });
     });
 });

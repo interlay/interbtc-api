@@ -10,11 +10,11 @@ import { RedeemAPI } from "../../apis/redeem";
 export type RequestResult = { hash: Hash; vault: Vault };
 
 export class MockRedeemAPI implements RedeemAPI {
-    execute(_redeemId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
+    execute(_redeemId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 
-    cancel(_redeemId: H256, _reimburse?: boolean): Promise<void> {
+    cancel(_redeemId: H256, _reimburse?: boolean): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 
@@ -78,7 +78,7 @@ export class MockRedeemAPI implements RedeemAPI {
         return;
     }
 
-    subscribeToRedeemExpiry(_callback: (requestRedeemId: string) => void): Promise<() => void> {
+    subscribeToRedeemExpiry(_account: AccountId, _callback: (requestRedeemId: string) => void): Promise<() => void> {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         return Promise.resolve(() => {});
     }
