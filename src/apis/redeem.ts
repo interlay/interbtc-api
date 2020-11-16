@@ -8,7 +8,6 @@ import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { DefaultSystemAPI, SystemAPI } from "./system";
-import StorageKey from "@polkadot/types/primitive/StorageKey";
 import { stripHexPrefix } from "../utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -23,6 +22,7 @@ export interface RedeemAPI {
     mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>>;
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequest>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
+    getDustValue(): Promise<PolkaBTC>;
 }
 
 export class DefaultRedeemAPI {
@@ -139,6 +139,10 @@ export class DefaultRedeemAPI {
 
     async getRedeemPeriod(): Promise<BlockNumber> {
         return await this.api.query.redeem.redeemPeriod();
+    }
+
+    async getDustValue(): Promise<PolkaBTC> {
+        return await this.api.query.redeem.redeemBtcDustValue();
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]> {

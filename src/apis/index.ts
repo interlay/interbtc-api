@@ -9,3 +9,4 @@ export { CollateralAPI } from "./collateral";
 export { TreasuryAPI } from "./treasury";
 export { SystemAPI } from "./system";
 export { ConstantsAPI } from "./constants";
+export { ReplaceAPI } from "./replace";

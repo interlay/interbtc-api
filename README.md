@@ -58,9 +58,9 @@ To emit transactions, an `account` has to be set.
 The account should be an instance of `AddressOrPair`.
 
 ```typescript
-import testKeyring from "@polkadot/keyring/testing";
-const keyring = testKeyring();
-const keypair = keypair.getPairs()[0];
+import { createTestKeyring } from "@polkadot/keyring/testing";
+const keyring = createTestKeyring();
+const keypair = keyring.getPairs()[0];
 polkaBTC.setAccount(keypair);
 ```
 
@@ -68,7 +68,7 @@ The different functionalities are then exposed through the `PolkaBTCAPI` instanc
 
 ## Testing without a running BTC-Parachain
 
-For testing purposes, you can mock the BTC-Parachain and use a mock endpoint that emulates the behavior of the BTC-Parachain. 
+For testing purposes, you can mock the BTC-Parachain and use a mock endpoint that emulates the behavior of the BTC-Parachain.
 
 ```typescript
 import { createPolkabtcAPI } from "@interlay/polkabtc";
