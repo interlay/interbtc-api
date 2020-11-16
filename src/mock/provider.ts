@@ -12,8 +12,8 @@ import { MockStateSubscriptions, MockStateSubscriptionCallback, MockStateDb } fr
 
 import BN from "bn.js";
 import EventEmitter from "eventemitter3";
-import Metadata from "@polkadot/metadata/Metadata";
-import Decorated from "@polkadot/metadata/decorate";
+import { Metadata } from "@polkadot/metadata/Metadata";
+import { expandMetadata } from "@polkadot/metadata/decorate";
 import rpcMetadata from "@polkadot/metadata/static";
 
 import jsonrpc from "@polkadot/types/interfaces/jsonrpc";
@@ -186,7 +186,7 @@ export default class Mock implements ProviderInterface {
         let newHead = this.makeBlockHeader();
         let counter = -1;
         const metadata = new Metadata(this.registry, rpcMetadata);
-        const decorated = Decorated(this.registry, metadata);
+        const expandedMetadata = expandMetadata(this.registry, metadata);
 
         // Do something every 1 seconds
         this.interval = setInterval((): void => {
@@ -199,11 +199,11 @@ export default class Mock implements ProviderInterface {
 
             // increment the balances and nonce for each account
             keyring.getPairs().forEach(({ publicKey }, index): void => {
-                this.setStateBn(decorated.query.system.account(publicKey), newHead.number.toBn().addn(index));
+                this.setStateBn(expandedMetadata.query.system.account(publicKey), newHead.number.toBn().addn(index));
             });
 
             // set the timestamp for the current block
-            this.setStateBn(decorated.query.timestamp.now(), Math.floor(Date.now() / 1000));
+            this.setStateBn(expandedMetadata.query.timestamp.now(), Math.floor(Date.now() / 1000));
             this.updateSubs("chain_subscribeNewHead", newHead);
 
             // We emit connected/disconnected at intervals

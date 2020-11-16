@@ -74,6 +74,10 @@ export class MockRedeemAPI implements RedeemAPI {
         };
     }
 
+    async getDustValue(): Promise<PolkaBTC> {
+        return Promise.resolve(new BN(1) as PolkaBTC);
+    }
+
     setAccount(_account?: AddressOrPair): void {
         return;
     }
