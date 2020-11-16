@@ -13,6 +13,7 @@ import {
     CollateralAPI,
     TreasuryAPI,
     SystemAPI,
+    ReplaceAPI,
 } from "../apis";
 import { MockIssueAPI } from "./apis/issue";
 import { MockRedeemAPI } from "./apis/redeem";
@@ -26,6 +27,7 @@ import { MockBTCRelayAPI } from "./apis/btc-relay";
 import { MockCollateralAPI } from "./apis/collateral";
 import { MockTreasuryAPI } from "./apis/treasury";
 import { MockSystemAPI } from "./apis/system";
+import { MockReplaceAPI } from "./apis/replace";
 
 export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
@@ -39,6 +41,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
     public readonly system: SystemAPI;
+    public readonly replace: ReplaceAPI;
 
     constructor(readonly api: ApiPromise, private _account?: AddressOrPair) {
         this.vaults = new MockVaultsAPI();
@@ -52,6 +55,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.collateral = new MockCollateralAPI();
         this.treasury = new MockTreasuryAPI();
         this.system = new MockSystemAPI();
+        this.replace = new MockReplaceAPI();
     }
 
     setAccount(account: AddressOrPair, _signer?: Signer): void {
