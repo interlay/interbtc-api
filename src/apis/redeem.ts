@@ -27,13 +27,11 @@ export interface RedeemAPI {
 
 export class DefaultRedeemAPI {
     private vaults: VaultsAPI;
-    private system: SystemAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
     constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api);
-        this.system = new DefaultSystemAPI(api);
     }
 
     private getRedeemHashFromEvents(events: EventRecord[], method: string): Hash {
@@ -124,12 +122,14 @@ export class DefaultRedeemAPI {
         account: AccountId,
         callback: (requestRedeemId: string) => void
     ): Promise<() => void> {
+        const expired = new Set();
         const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
             const redeemRequests = await this.mapForUser(account);
             const redeemPeriod = await this.getRedeemPeriod();
             const currentParachainBlockHeight = header.number.toBn();
             redeemRequests.forEach((request, id) => {
-                if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight)) {
+                if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
+                    expired.add(id);
                     callback(stripHexPrefix(id.toString()));
                 }
             });
