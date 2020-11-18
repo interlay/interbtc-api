@@ -11,6 +11,7 @@ export interface BTCRelayAPI {
     getLatestBlock(): Promise<H256Le>;
     getLatestBlockHeight(): Promise<u32>;
     verifyTransactionInclusion(txid: string, confirmations?: number, insecure?: boolean): Promise<void>;
+    getParachainBlockHeight(): Promise<BlockNumber>;
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {

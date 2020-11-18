@@ -20,6 +20,7 @@ export interface IssueAPI {
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequest>>;
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequest>;
+    getIssuePeriod(): Promise<BlockNumber>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
