@@ -2,6 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { BTCCoreAPI } from "./btc-core";
 import { u32 } from "@polkadot/types/primitive";
 import { H256Le } from "../interfaces/default";
+import { BlockNumber } from "@polkadot/types/interfaces";
 
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 
@@ -25,6 +26,10 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
 
     async getLatestBlockHeight(): Promise<u32> {
         return await this.api.query.btcRelay.bestBlockHeight();
+    }
+
+    async getParachainBlockHeight(): Promise<BlockNumber> {
+        return (await this.api.query.btcRelay.parachainHeight() as BlockNumber);
     }
 
     async verifyTransactionInclusion(
