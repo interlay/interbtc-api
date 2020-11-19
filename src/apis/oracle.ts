@@ -4,8 +4,10 @@ import { BTreeSet } from "@polkadot/types/codec";
 import { AccountId } from "@polkadot/types/interfaces";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { u128 } from "@polkadot/types/primitive";
+import { BTC_IN_SAT, DOT_IN_PLANCK } from "../utils";
+import Big from "big.js";
 
-const defaultFeedName = "BTC/DOT";
+const defaultFeedName = "DOT/BTC";
 const granularity = 5;
 
 export type OracleInfo = {
@@ -45,6 +47,7 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
+    // return the BTC to DOT exchange rate
     async getExchangeRate(): Promise<number> {
         const rawRate = await this.api.query.exchangeRateOracle.exchangeRate();
         return this.convertExchangeRate(rawRate);
@@ -83,7 +86,11 @@ export class DefaultOracleAPI implements OracleAPI {
         return new Date(moment.toNumber());
     }
 
+    // Converts the raw exchange rate (planck to satoshi) into
+    // DOT to BTC
     private convertExchangeRate(rate: u128): number {
-        return rate.toNumber() / Math.pow(10, granularity);
+        const rateBN = new Big(rate.toString());
+        const divisor = new Big(Math.pow(10, granularity) * (DOT_IN_PLANCK / BTC_IN_SAT));
+        return parseFloat(rateBN.div(divisor).toString());
     }
 }
