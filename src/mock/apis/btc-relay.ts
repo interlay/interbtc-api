@@ -3,6 +3,8 @@ import { u32 } from "@polkadot/types/primitive";
 import { H256Le } from "../../interfaces/default";
 import { U8aFixed, UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
+import BN = require("bn.js");
+import { BlockNumber } from "@polkadot/types/interfaces";
 
 export class MockBTCRelayAPI implements BTCRelayAPI {
     async getStableBitcoinConfirmations(): Promise<number> {
@@ -17,6 +19,10 @@ export class MockBTCRelayAPI implements BTCRelayAPI {
     async getLatestBlockHeight(): Promise<u32> {
         const registry = new TypeRegistry();
         return new UInt(registry, 1835342) as u32;
+    }
+
+    async getParachainBlockHeight(): Promise<BlockNumber> {
+        return Promise.resolve(new BN(20000) as BlockNumber);
     }
 
     async verifyTransactionInclusion(
