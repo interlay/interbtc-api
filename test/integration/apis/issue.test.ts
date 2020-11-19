@@ -130,12 +130,12 @@ describe("issue", () => {
 
     describe("check getIssuePeriod method ", () => {
         it("getIssuePeriod", async () => {
-            issueAPI.setAccount(alice);
             try {
+                issueAPI.setAccount(alice);
                 const period = await issueAPI.getIssuePeriod();
                 expect(period.toString()).equal("100800");
             } catch (error){
-                console.log("greska", error);
+                console.log(error);
             }
         });
     });

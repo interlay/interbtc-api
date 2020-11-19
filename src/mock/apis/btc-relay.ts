@@ -3,8 +3,6 @@ import { u32 } from "@polkadot/types/primitive";
 import { H256Le } from "../../interfaces/default";
 import { U8aFixed, UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
-import BN = require("bn.js");
-import { BlockNumber } from "@polkadot/types/interfaces";
 
 export class MockBTCRelayAPI implements BTCRelayAPI {
     async getStableBitcoinConfirmations(): Promise<number> {
