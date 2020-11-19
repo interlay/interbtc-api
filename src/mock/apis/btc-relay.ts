@@ -21,10 +21,6 @@ export class MockBTCRelayAPI implements BTCRelayAPI {
         return new UInt(registry, 1835342) as u32;
     }
 
-    async getParachainBlockHeight(): Promise<BlockNumber> {
-        return Promise.resolve(new BN(20000) as BlockNumber);
-    }
-
     async verifyTransactionInclusion(
         _txid: string,
         _confirmations: number = DEFAULT_STABLE_CONFIRMATIONS,

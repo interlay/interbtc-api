@@ -132,7 +132,7 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getIssuePeriod(): Promise<BlockNumber> {
-        return (await this.api.query.issue.getIssuePeriod() as BlockNumber);
+        return (await this.api.query.issue.issuePeriod() as BlockNumber);
     }
 
     async getGriefingCollateral(): Promise<DOT> {

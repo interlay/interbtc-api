@@ -6,7 +6,7 @@ import { ImportMock } from "ts-mock-imports";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault } from "../../../src/interfaces/default";
-import { assert } from "../../chai";
+import { assert, expect } from "../../chai";
 import { defaultEndpoint } from "../../config";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -125,6 +125,18 @@ describe("issue", () => {
             const amount = api.createType("Balance", 1);
             await issueAPI.request(amount);
             await issueAPI.cancel(issueAPI.requestHash);
+        });
+    });
+
+    describe("check getIssuePeriod method ", () => {
+        it("getIssuePeriod", async () => {
+            issueAPI.setAccount(alice);
+            try {
+                const period = await issueAPI.getIssuePeriod();
+                expect(period.toString()).equal("100800");
+            } catch (error){
+                console.log("greska", error);
+            }
         });
     });
 
