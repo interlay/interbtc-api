@@ -63,6 +63,10 @@ export class MockIssueAPI implements IssueAPI {
         ]);
     }
 
+    getIssuePeriod(): Promise<BlockNumber> {
+        return Promise.resolve(new BN(200) as BlockNumber);
+    }
+
     mapForUser(_account: AccountId): Promise<Map<H256, IssueRequest>> {
         return Promise.resolve(new Map<H256, IssueRequest>());
     }
