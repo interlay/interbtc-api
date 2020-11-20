@@ -1,6 +1,7 @@
-import { BlockApi, Status, TxApi, ScripthashApi, Transaction } from "@interlay/esplora-btc-api";
+import { BlockApi, Status, TxApi, ScripthashApi, Transaction, VOut } from "@interlay/esplora-btc-api";
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
+import { btcToSat } from "../utils/currency";
 
 const mainnetApiBasePath = "https://blockstream.info/api";
 const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
@@ -38,7 +39,7 @@ export interface BTCCoreAPI {
     getTransactionStatus(txid: string): Promise<TxStatus>;
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
     getRawTransaction(txid: string): Promise<Buffer>;
-    getTxIdByOpcode(opcode: string): Promise<string>;
+    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
@@ -101,22 +102,26 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     }
 
     /**
-     * Fetch Bitcoin transaction ID based on OP_RETURN field.
+     * Fetch the first bitcoin transaction ID based on the OP_RETURN field, recipient and amount.
      * Throw an error unless there is exactly one transaction with the given opcode.
      *
      * @remarks
      * Performs the lookup using an external service, Esplora. Requires the input string to be a hex
      *
-     * @param opreturn - data string used for matching the OP_CODE of Bitcoin transactions
+     * @param opReturn - Data string used for matching the OP_CODE of Bitcoin transactions
+     * @param recipientAddress - Match the receiving address of a transaction that contains said op_return
+     * @param amountAsBTC - Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
+     * This parameter is only considered if `recipientAddress` is defined.
+     *
      * @returns A Bitcoin transaction ID
      */
-    async getTxIdByOpcode(opreturn: string): Promise<string> {
-        const data = Buffer.from(opreturn, "hex");
+    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string> {
+        const data = Buffer.from(opReturn, "hex");
         if (data.length !== 32) {
             return Promise.reject("Requires a 32 byte hash as OP_RETURN");
         }
-        const opreturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
-        const hash = bitcoinjs.crypto.sha256(opreturnBuffer).toString("hex");
+        const opReturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
+        const hash = bitcoinjs.crypto.sha256(opReturnBuffer).toString("hex");
 
         let txs: Transaction[] = [];
         try {
@@ -125,14 +130,32 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
             console.log(`Error during tx lookup by OP_RETURN: ${e}`);
         }
 
-        if (!txs.length) {
-            return Promise.reject("No transaction id found");
+        for (const tx of txs) {
+            if (tx.vout === undefined) {
+                continue;
+            }
+            for (const vout of tx.vout) {
+                if (this.txOutputHasRecipientAndAmount(vout, recipientAddress, amountAsBTC)) {
+                    return tx.txid;
+                }
+            }
         }
-        if (txs.length > 1) {
-            return Promise.reject("OP_RETURN collision detected");
-        }
+        return Promise.reject("No transaction id found");
+    }
 
-        return txs[0].txid;
+    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amountAsBTC?: string): boolean {
+        if (recipientAddress) {
+            if (recipientAddress !== vout.scriptpubkey_address) {
+                return false;
+            }
+            if (amountAsBTC) {
+                const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
+                if (vout.value === undefined || expectedBtcAsSatoshi > vout.value) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private getTxStatus(txid: string): Promise<Status> {
