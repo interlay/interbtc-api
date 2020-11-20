@@ -32,11 +32,11 @@ describe.skip("btc-core", () => {
 
     it("should reject getTxByOpcode if query returns empty array", async () => {
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([]));
-        assert.isRejected(btcCore.getTxIdByOpcode("random"));
+        assert.isRejected(btcCore.getTxIdByOpReturn("random"));
     });
 
     it("should reject getTxByOpcode if query returns array longer than 1", async () => {
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([undefined, undefined]));
-        assert.isRejected(btcCore.getTxIdByOpcode("random"));
+        assert.isRejected(btcCore.getTxIdByOpReturn("random"));
     });
 });
