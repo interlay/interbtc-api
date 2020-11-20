@@ -149,8 +149,8 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
                 return false;
             }
             if (amountAsBTC) {
-                const amountAsSatoshi = btcToSat(amountAsBTC);
-                if (amountAsSatoshi !== vout.value?.toString()) {
+                const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
+                if (vout.value === undefined || expectedBtcAsSatoshi > vout.value) {
                     return false;
                 }
             }

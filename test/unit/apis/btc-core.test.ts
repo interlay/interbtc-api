@@ -2,12 +2,11 @@ import { ApiPromise } from "@polkadot/api";
 import sinon from "sinon";
 import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
-import { defaultEndpoint } from "../../config";
 import { BTCCoreAPI } from "../../../src/apis";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
+import { Transaction, VOut } from "@interlay/esplora-btc-api";
 
-// fails to disconnect from the api
-describe.skip("btc-core", () => {
+describe("btc-core", () => {
     let api: ApiPromise;
     let btcCore: BTCCoreAPI;
     let sandbox: sinon.SinonSandbox;
@@ -18,7 +17,6 @@ describe.skip("btc-core", () => {
     });
 
     beforeEach(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
         btcCore = new DefaultBTCCoreAPI("testnet");
     });
 
@@ -30,13 +28,35 @@ describe.skip("btc-core", () => {
         sandbox.restore();
     });
 
-    it("should reject getTxByOpcode if query returns empty array", async () => {
+    it("should reject getTxIdByOpReturn if query returns empty array", async () => {
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([]));
-        assert.isRejected(btcCore.getTxIdByOpReturn("random"));
+        assert.isRejected(
+            btcCore.getTxIdByOpReturn("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b")
+        );
     });
 
-    it("should reject getTxByOpcode if query returns array longer than 1", async () => {
+    it("should reject getTxIdByOpReturn if no found tx has outputs", async () => {
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([undefined, undefined]));
-        assert.isRejected(btcCore.getTxIdByOpReturn("random"));
+        assert.isRejected(
+            btcCore.getTxIdByOpReturn("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b")
+        );
+    });
+
+    it("should return the first tx when using getTxIdByOpReturn if esplora returns array longer than 1", async () => {
+        const txs = [
+            {
+                txid: "tx1",
+                version: 1,
+                vout: [{} as VOut],
+            } as Transaction,
+            {
+                txid: "tx2",
+                version: 1,
+                vout: [{} as VOut],
+            } as Transaction,
+        ];
+        sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve(txs));
+        const tx = await btcCore.getTxIdByOpReturn("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b");
+        assert.strictEqual(tx, txs[0].txid);
     });
 });
