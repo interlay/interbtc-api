@@ -127,7 +127,7 @@ export class MockVaultsAPI implements VaultsAPI {
         return new BN(0) as PolkaBTC;
     }
 
-    async getVaultCollateralization(_vaultId: AccountId, _newCollateral?: DOT): Promise<number> {
+    async getVaultCollateralization(_vaultId: AccountId, _newCollateral?: DOT, _onlyIssued = false): Promise<number> {
         return 2.0;
     }
 
