@@ -5,8 +5,6 @@ import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
 import { pagedIterator } from "../utils";
-import { DefaultIssueAPI } from "./issue";
-import { DefaultRedeemAPI } from "./redeem";
 import { BalanceWrapper } from "../interfaces/default";
 
 export interface VaultsAPI {
@@ -17,7 +15,7 @@ export interface VaultsAPI {
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequest>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
-    getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined>;
+    getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT, onlyIssued?: boolean): Promise<number | undefined>;
     getSystemCollateralization(): Promise<number | undefined>;
     getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
@@ -27,8 +25,6 @@ export interface VaultsAPI {
 }
 
 export class DefaultVaultsAPI {
-    private issueAPI!: DefaultIssueAPI;
-    private redeemAPI!: DefaultRedeemAPI;
     granularity = 5;
 
     constructor(private api: ApiPromise) {}
@@ -46,10 +42,6 @@ export class DefaultVaultsAPI {
     /**
      * Fetch the issue requests associated with a vault
      *
-     * @remarks
-     * Cannot instantiate issueAPI in the constructor, because that would create a dependency loop,
-     * since issueAPI also instantiates the vaultsAPI in its constructor
-     *
      * @param vaultId - The AccountId of the vault used to filter issue requests
      * @returns A map with issue ids to issue requests involving said vault
      */
@@ -58,7 +50,6 @@ export class DefaultVaultsAPI {
         const customAPIRPC = this.api.rpc as any;
         try {
             const issueRequestPairs: [H256, IssueRequest][] = await customAPIRPC.issue.getVaultIssueRequests(vaultId);
-
             return new Map(issueRequestPairs);
         } catch (err) {
             return Promise.reject(`Error during issue request retrieval: ${err}`);
@@ -67,10 +58,6 @@ export class DefaultVaultsAPI {
 
     /**
      * Fetch the redeem requests associated with a vault
-     *
-     * @remarks
-     * Cannot instantiate redeemAPI in the constructor, because that would create a dependency loop,
-     * since redeemAPI also instantiates the vaultsAPI in its constructor
      *
      * @param vaultId - The AccountId of the vault used to filter redeem requests
      * @returns A map with redeem ids to redeem requests involving said vault
@@ -82,7 +69,6 @@ export class DefaultVaultsAPI {
             const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getVaultRedeemRequests(
                 vaultId
             );
-
             return new Map(redeemRequestPairs);
         } catch (err) {
             return Promise.reject(`Error during redeem request retrieval: ${err}`);
@@ -138,17 +124,24 @@ export class DefaultVaultsAPI {
      * which means collateralization is infinite.
      * @param vaultId the vault account id
      * @param newCollateral use this instead of the vault's actual collateral
+     * @param onlyIssued optional, defaults to `false`. Specifies whether the collateralization
+     * should only include the issued tokens, leaving out unsettled ("to-be-issued") tokens
      * @returns the vault collateralization
      */
-    async getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT): Promise<number | undefined> {
+    async getVaultCollateralization(
+        vaultId: AccountId,
+        newCollateral?: DOT,
+        onlyIssued = false
+    ): Promise<number | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = newCollateral
                 ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
                     vaultId,
-                    this.wrapCurrency(newCollateral)
+                    this.wrapCurrency(newCollateral),
+                    onlyIssued
                 )
-                : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId);
+                : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
             return this.scaleUsingParachainGranularity(collateralization);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
