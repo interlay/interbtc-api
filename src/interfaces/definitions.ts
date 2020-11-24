@@ -1,2 +1,2 @@
 import definitions from "@interlay/polkabtc-types";
-export default definitions;
+export default { types: definitions.types[0].types, rpc: definitions.rpc };
