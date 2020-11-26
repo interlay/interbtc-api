@@ -22,6 +22,7 @@ export interface VaultsAPI {
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
     selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
+    getSecureCollateralThreshold(): Promise<u128>;
 }
 
 export class DefaultVaultsAPI {
@@ -207,6 +208,10 @@ export class DefaultVaultsAPI {
             return issuedTokens.reduce(sumReducer);
         }
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
+    }
+
+    async getSecureCollateralThreshold(): Promise<u128> {
+        return await this.api.query.vaultRegistry.secureCollateralThreshold();
     }
 
     async selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId> {

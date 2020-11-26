@@ -102,4 +102,10 @@ describe("vaultsAPI", () => {
             assert.deepEqual(request.old_vault, bobId);
         });
     });
+
+    it("should get the secure collateral threshold", async () => {
+        const flaggedForTheft = await vaultsAPI.getSecureCollateralThreshold();
+        const zeroU128 = api.createType("u128", 0);
+        assert.isTrue(flaggedForTheft.gt(zeroU128));
+    });
 });
