@@ -6,7 +6,6 @@ import {
     Vault,
     DOT,
 } from "../../interfaces/default";
-import { u128 } from "@polkadot/types/primitive";
 import { AccountId, H256, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -140,8 +139,8 @@ export class MockVaultsAPI implements VaultsAPI {
         return new UInt(registry, 100) as DOT;
     }
 
-    async getSecureCollateralThreshold(): Promise<u128> {
-        const registry = new TypeRegistry();
-        return new UInt(registry, 100) as u128;
+    async getIssuablePolkaBTC(): Promise<string> {
+        return "500";
     }
+
 }

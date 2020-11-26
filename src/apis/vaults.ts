@@ -6,6 +6,8 @@ import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
 import { pagedIterator } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
+import { DefaultCollateralAPI } from "./collateral";
+import { DefaultOracleAPI } from "./oracle";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
@@ -22,7 +24,7 @@ export interface VaultsAPI {
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
     selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
-    getSecureCollateralThreshold(): Promise<u128>;
+    getIssuablePolkaBTC(): Promise<string>;
 }
 
 export class DefaultVaultsAPI {
@@ -210,8 +212,18 @@ export class DefaultVaultsAPI {
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
     }
 
-    async getSecureCollateralThreshold(): Promise<u128> {
+    private async getSecureCollateralThreshold(): Promise<u128> {
         return await this.api.query.vaultRegistry.secureCollateralThreshold();
+    }
+
+    async getIssuablePolkaBTC(): Promise<string> {
+        const collateral = new DefaultCollateralAPI(this.api);
+        const totalLockedDot = await collateral.totalLockedDOT();
+        const oracle = new DefaultOracleAPI(this.api);
+        const exchangeRate = await oracle.getExchangeRate();
+        const exchangeRateU128 = this.api.createType("u128", exchangeRate);
+        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
+        return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
 
     async selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId> {
