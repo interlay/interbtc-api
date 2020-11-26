@@ -7,6 +7,13 @@ import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { StakedRelayerAPI } from "../../apis/staked-relayer";
 
+function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
+    const registry = new TypeRegistry();
+    const statusCode = new (registry.createClass("StatusCode"))(registry, { error: true });
+    const statusUpdate = new (registry.createClass("StatusUpdate"))(registry, { statusCode });
+    return { id: new UInt(registry, 0), statusUpdate: statusUpdate };
+}
+
 export class MockStakedRelayerAPI implements StakedRelayerAPI {
     async list(): Promise<ActiveStakedRelayer[]> {
         return [
@@ -96,10 +103,15 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return [[new BN(11208) as BlockNumber, 5, 5]];
     }
 
+    async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
+        return [createStatusUpdate()];
+    }
+
+    async getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
+        return [createStatusUpdate()];
+    }
+
     async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const registry = new TypeRegistry();
-        const statusCode = new (registry.createClass("StatusCode"))(registry, { error: true });
-        const statusUpdate = new (registry.createClass("StatusUpdate"))(registry, { statusCode });
-        return [{ id: new UInt(registry, 0), statusUpdate: statusUpdate }];
+        return [createStatusUpdate()];
     }
 }
