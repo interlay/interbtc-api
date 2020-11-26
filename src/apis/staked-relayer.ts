@@ -39,13 +39,14 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
 
     async map(): Promise<Map<AccountId, ActiveStakedRelayer>> {
         const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
-        const activeStakedRelayerPairs: [
-            AccountId,
-            ActiveStakedRelayer
-        ][] = activeStakedRelayers.map((activeStakedRelayer) => [
-            this.api.createType("AccountId", activeStakedRelayer[0]),
-            activeStakedRelayer[1],
-        ]);
+        const activeStakedRelayerPairs: [AccountId, ActiveStakedRelayer][] = activeStakedRelayers.map(
+            (activeStakedRelayer) => {
+                return [
+                    this.api.createType("AccountId", activeStakedRelayer[0].args[0].toU8a()),
+                    activeStakedRelayer[1],
+                ];
+            }
+        );
         const activeStakedRelayersMap: Map<AccountId, ActiveStakedRelayer> = new Map<AccountId, ActiveStakedRelayer>();
         activeStakedRelayerPairs.forEach((activeStakedRelayerPair) =>
             activeStakedRelayersMap.set(activeStakedRelayerPair[0], activeStakedRelayerPair[1])
