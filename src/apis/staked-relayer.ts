@@ -20,6 +20,8 @@ export interface StakedRelayerAPI {
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>>;
+    getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
+    getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
 }
 
@@ -118,20 +120,24 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         ]);
     }
 
+    async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
+        const result = await this.api.query.stakedRelayers.activeStatusUpdates.entries();
+        return result.map(([key, value]) => {
+            return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
+        });
+    }
+
+    async getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
+        const result = await this.api.query.stakedRelayers.inactiveStatusUpdates.entries();
+        return result.map(([key, value]) => {
+            return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
+        });
+    }
+
     async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
         // TODO: page this so we don't fetch ALL status updates at once
-        const activeStatusUpdates = await this.api.query.stakedRelayers.activeStatusUpdates.entries().then((result) =>
-            result.map(([key, value]) => {
-                return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
-            })
-        );
-        const inactiveStatusUpdates = await this.api.query.stakedRelayers.inactiveStatusUpdates
-            .entries()
-            .then((result) =>
-                result.map(([key, value]) => {
-                    return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
-                })
-            );
+        const activeStatusUpdates = await this.getAllActiveStatusUpdates();
+        const inactiveStatusUpdates = await this.getAllInactiveStatusUpdates();
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
 }
