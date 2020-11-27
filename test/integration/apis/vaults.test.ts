@@ -102,4 +102,11 @@ describe("vaultsAPI", () => {
             assert.deepEqual(request.old_vault, bobId);
         });
     });
+
+    it("should get the issuable PolkaBTC", async () => {
+        const issuablePolkaBtc = await vaultsAPI.getIssuablePolkaBTC();
+        const issuablePolkaBtcU128 = api.createType("u128", issuablePolkaBtc);
+        const zeroU128 = api.createType("u128", 0);
+        assert.isTrue(issuablePolkaBtcU128.eq(zeroU128));
+    });
 });

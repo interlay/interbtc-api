@@ -5,7 +5,6 @@ import {
     ReplaceRequest,
     Vault,
     DOT,
-    BalanceWrapper,
 } from "../../interfaces/default";
 import { AccountId, H256, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
@@ -139,4 +138,9 @@ export class MockVaultsAPI implements VaultsAPI {
         const registry = new TypeRegistry();
         return new UInt(registry, 100) as DOT;
     }
+
+    async getIssuablePolkaBTC(): Promise<string> {
+        return "500";
+    }
+
 }
