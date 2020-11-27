@@ -1,0 +1,1 @@
+export const PERCENTAGE_GRANULARITY = 3;
