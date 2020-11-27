@@ -4,8 +4,11 @@ import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { pagedIterator } from "../utils";
+import { pagedIterator, planckToDOT } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
+import { DefaultCollateralAPI } from "./collateral";
+import { DefaultOracleAPI } from "./oracle";
+import Big from "big.js";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
@@ -22,6 +25,7 @@ export interface VaultsAPI {
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
     selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
+    getIssuablePolkaBTC(): Promise<string>;
 }
 
 export class DefaultVaultsAPI {
@@ -207,6 +211,22 @@ export class DefaultVaultsAPI {
             return issuedTokens.reduce(sumReducer);
         }
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
+    }
+
+    private async getSecureCollateralThreshold(): Promise<Big> {
+        const secureCollateralThresholdU128 = await this.api.query.vaultRegistry.secureCollateralThreshold();
+        return new Big(secureCollateralThresholdU128.toString());
+    }
+
+    async getIssuablePolkaBTC(): Promise<string> {
+        const collateral = new DefaultCollateralAPI(this.api);
+        const totalLockedDotAsPlanck = await collateral.totalLockedDOT();
+        const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
+        const oracle = new DefaultOracleAPI(this.api);
+        const exchangeRate = await oracle.getExchangeRate();
+        const exchangeRateU128 = new Big(exchangeRate);
+        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
+        return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
 
     async selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId> {
