@@ -8,7 +8,7 @@ import { pagedIterator, planckToDOT } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI } from "./oracle";
-import BN from "bn.js";
+import Big from "big.js";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
@@ -213,17 +213,18 @@ export class DefaultVaultsAPI {
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
     }
 
-    private async getSecureCollateralThreshold(): Promise<u128> {
-        return await this.api.query.vaultRegistry.secureCollateralThreshold();
+    private async getSecureCollateralThreshold(): Promise<Big> {
+        const secureCollateralThresholdU128 = await this.api.query.vaultRegistry.secureCollateralThreshold();
+        return new Big(secureCollateralThresholdU128.toString());
     }
 
     async getIssuablePolkaBTC(): Promise<string> {
         const collateral = new DefaultCollateralAPI(this.api);
         const totalLockedDotAsPlanck = await collateral.totalLockedDOT();
-        const totalLockedDot = new BN(totalLockedDotAsPlanck);
+        const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
-        const exchangeRateU128 = new BN(exchangeRate);
+        const exchangeRateU128 = new Big(exchangeRate);
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
         return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
