@@ -4,10 +4,11 @@ import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { pagedIterator } from "../utils";
+import { pagedIterator, planckToDOT } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI } from "./oracle";
+import BN from "bn.js";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
@@ -218,10 +219,11 @@ export class DefaultVaultsAPI {
 
     async getIssuablePolkaBTC(): Promise<string> {
         const collateral = new DefaultCollateralAPI(this.api);
-        const totalLockedDot = await collateral.totalLockedDOT();
+        const totalLockedDotAsPlanck = await collateral.totalLockedDOT();
+        const totalLockedDot = new BN(totalLockedDotAsPlanck);
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
-        const exchangeRateU128 = this.api.createType("u128", exchangeRate);
+        const exchangeRateU128 = new BN(exchangeRate);
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
         return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
