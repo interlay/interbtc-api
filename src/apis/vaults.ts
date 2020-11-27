@@ -4,7 +4,7 @@ import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { pagedIterator, planckToDOT } from "../utils";
+import { pagedIterator, PERCENTAGE_GRANULARITY, planckToDOT } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI } from "./oracle";
@@ -18,7 +18,11 @@ export interface VaultsAPI {
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequest>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
-    getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT, onlyIssued?: boolean): Promise<number | undefined>;
+    getVaultCollateralization(
+        vaultId: AccountId,
+        newCollateral?: DOT,
+        onlyIssued?: boolean
+    ): Promise<number | undefined>;
     getSystemCollateralization(): Promise<number | undefined>;
     getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
@@ -225,7 +229,10 @@ export class DefaultVaultsAPI {
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
         const exchangeRateU128 = new Big(exchangeRate);
-        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
+        let secureCollateralThreshold = await this.getSecureCollateralThreshold();
+
+        // scale by (PERCENTAGE_GRANULARITY + 2) to go from e.g. 200_000 to 2
+        secureCollateralThreshold = secureCollateralThreshold.div(Math.pow(10, PERCENTAGE_GRANULARITY + 2));
         return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
 
