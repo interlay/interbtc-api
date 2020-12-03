@@ -4,7 +4,7 @@ import { ConstantsAPI, DefaultConstantsAPI } from "../../../src/apis/constants";
 import { createPolkadotAPI } from "../../../src/factory";
 import { defaultEndpoint } from "../../config";
 
-describe("Constants", function () {
+describe.skip("Constants", function () {
     this.timeout(10000); // API can be slightly slow
 
     let api: ApiPromise;

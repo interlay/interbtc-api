@@ -13,15 +13,19 @@ import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
+import { DefaultIssueAPI } from "../../../src/apis/issue";
+import { broadcastOpReturnTx, btcToSat } from "../../../src/utils";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-describe.skip("redeem", () => {
+describe("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
+    let issueAPI: DefaultIssueAPI;
     let api: ApiPromise;
     let keyring: Keyring;
     // alice is the root account
     let alice: KeyringPair;
+    let dave: KeyringPair;
     const registry: TypeRegistry = new TypeRegistry();
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
     let requestResult: RequestResult;
@@ -34,6 +38,7 @@ describe.skip("redeem", () => {
 
     beforeEach(() => {
         redeemAPI = new DefaultRedeemAPI(api);
+        issueAPI = new DefaultIssueAPI(api);
         sinon.stub(redeemAPI, <any>"vaults").get(() => {
             return {
                 selectRandomVaultRedeem() {
@@ -56,31 +61,28 @@ describe.skip("redeem", () => {
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
 
-        it("should page listed requests", async () => {
-            // requires PolkaBTC to have already been issued
-            const bob = keyring.addFromUri("//Bob");
-            redeemAPI.setAccount(alice);
-            const bobVaultId = api.createType("AccountId", bob.address);
-            const sentRequests = 4;
-            for (let i = 0; i < sentRequests; i++) {
-                const amount = api.createType("Balance", i);
-                await redeemAPI.request(amount, randomDecodedAccountId, bobVaultId);
-            }
+        it("should redeem", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            dave = keyring.addFromUri("//Dave");
+            issueAPI.setAccount(alice);
+            const amount = api.createType("Balance", 10);
+            const requestResult = await issueAPI.request(amount);
+            console.log("finalized request issue");
+            assert.isTrue(requestResult.hash.length > 0);
 
-            const listingsPerPage = 2;
-            const requestsIterator = redeemAPI.getPagedIterator(listingsPerPage);
-            let curr = await requestsIterator.next();
-            let requestCount = 0;
-            while (!curr.done) {
-                requestCount += curr.value.length;
-                assert.isTrue(curr.value.length <= listingsPerPage);
-                curr = await requestsIterator.next();
-            }
-            assert.equal(requestCount, sentRequests);
+            const amountAsSatoshiString = btcToSat(amount.toString());
+            await broadcastOpReturnTx(Number(amountAsSatoshiString), requestResult.hash.toString());
+
+            redeemAPI.setAccount(alice);
+            const redeemAmount = api.createType("Balance", 5);
+            const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
+            const daveVaultId = api.createType("AccountId", dave.address);
+            await redeemAPI.request(redeemAmount, btcAddress, daveVaultId);
         });
     });
 
-    describe("execute", () => {
+    describe.skip("execute", () => {
         it("should fail if no account is set", () => {
             const redeemId: H256 = <H256>{};
             const txId: H256Le = <H256Le>{};
@@ -108,7 +110,7 @@ describe.skip("redeem", () => {
         });
     });
 
-    describe("cancel", () => {
+    describe.skip("cancel", () => {
         let requestResult: RequestResult;
 
         it("should cancel a request", async () => {
