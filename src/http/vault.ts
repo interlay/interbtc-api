@@ -2,16 +2,19 @@ import {
     AccountIdJsonRpcResponse,
     ReplaceRequestJsonRpcRequest,
     RegisterVaultJsonRpcRequest,
+    RegisterVaultJsonRpcResponse,
     ChangeCollateralJsonRpcRequest,
-    UpdateBtcAddressJsonRpcRequest,
+    UpdateBtcAddressJsonRpcResponse,
     WithdrawReplaceJsonRpcRequest,
+    BtcAddress,
 } from "../interfaces/default";
-import { H160, H256 } from "@polkadot/types/interfaces/runtime";
+import { H256 } from "@polkadot/types/interfaces/runtime";
 import { getAPITypes } from "../factory";
 import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 import { JsonRpcClient } from "./client";
+import { bitcoin, encodeBtcAddress } from "../utils/bitcoin";
 
 export class VaultClient extends JsonRpcClient {
     registry: TypeRegistry;
@@ -20,10 +23,10 @@ export class VaultClient extends JsonRpcClient {
         AccountIdJsonRpcResponse: Constructor<AccountIdJsonRpcResponse>;
         ReplaceRequestJsonRpcRequest: Constructor<ReplaceRequestJsonRpcRequest>;
         RegisterVaultJsonRpcRequest: Constructor<RegisterVaultJsonRpcRequest>;
+        RegisterVaultJsonRpcResponse: Constructor<RegisterVaultJsonRpcResponse>;
         ChangeCollateralJsonRpcRequest: Constructor<ChangeCollateralJsonRpcRequest>;
-        UpdateBtcAddressJsonRpcRequest: Constructor<UpdateBtcAddressJsonRpcRequest>;
+        UpdateBtcAddressJsonRpcResponse: Constructor<UpdateBtcAddressJsonRpcResponse>;
         WithdrawReplaceJsonRpcRequest: Constructor<WithdrawReplaceJsonRpcRequest>;
-        H160: Constructor<H160>;
         H256: Constructor<H256>;
     };
 
@@ -36,10 +39,10 @@ export class VaultClient extends JsonRpcClient {
             AccountIdJsonRpcResponse: this.registry.createClass("AccountIdJsonRpcResponse"),
             ReplaceRequestJsonRpcRequest: this.registry.createClass("ReplaceRequestJsonRpcRequest"),
             RegisterVaultJsonRpcRequest: this.registry.createClass("RegisterVaultJsonRpcRequest"),
+            RegisterVaultJsonRpcResponse: this.registry.createClass("RegisterVaultJsonRpcResponse"),
             ChangeCollateralJsonRpcRequest: this.registry.createClass("ChangeCollateralJsonRpcRequest"),
-            UpdateBtcAddressJsonRpcRequest: this.registry.createClass("UpdateBtcAddressJsonRpcRequest"),
+            UpdateBtcAddressJsonRpcResponse: this.registry.createClass("UpdateBtcAddressJsonRpcResponse"),
             WithdrawReplaceJsonRpcRequest: this.registry.createClass("WithdrawReplaceJsonRpcRequest"),
-            H160: this.registry.createClass("H160"),
             H256: this.registry.createClass("H256"),
         };
     }
@@ -67,13 +70,13 @@ export class VaultClient extends JsonRpcClient {
         await this.post("request_replace", [request.toHex()]);
     }
 
-    async registerVault(collateral: string, hash: string): Promise<void> {
-        const btcAddress = new this.constr["H160"](this.registry, hash);
+    async registerVault(collateral: string, network: bitcoin.Network): Promise<string> {
         const request = new this.constr["RegisterVaultJsonRpcRequest"](this.registry, {
             collateral: new BN(collateral),
-            btc_address: btcAddress,
         });
-        await this.post("register_vault", [request.toHex()]);
+        const response = await this.post("register_vault", [request.toHex()]);
+        const result = new this.constr["RegisterVaultJsonRpcResponse"](this.registry, response.result);
+        return encodeBtcAddress(result.address, network);
     }
 
     async lockAdditionalCollateral(amount: string): Promise<void> {
@@ -90,12 +93,10 @@ export class VaultClient extends JsonRpcClient {
         await this.post("withdraw_collateral", [request.toHex()]);
     }
 
-    async updateBtcAddress(hash: string): Promise<void> {
-        const btcAddress = new this.constr["H160"](this.registry, hash);
-        const request = new this.constr["UpdateBtcAddressJsonRpcRequest"](this.registry, {
-            address: btcAddress,
-        });
-        await this.post("update_btc_address", [request.toHex()]);
+    async updateBtcAddress(network: bitcoin.Network): Promise<string> {
+        const response = await this.post("update_btc_address");
+        const result = new this.constr["UpdateBtcAddressJsonRpcResponse"](this.registry, response.result);
+        return encodeBtcAddress(result.address, network);
     }
 
     async withdrawReplace(replace_id: string): Promise<void> {

@@ -13,7 +13,7 @@ const granularity = 5;
 export type OracleInfo = {
     exchangeRate: number;
     feed: string;
-    name: string;
+    names: Array<string>;
     online: boolean;
     lastUpdate: Date;
 };
@@ -22,7 +22,7 @@ export interface OracleAPI {
     getExchangeRate(): Promise<number>;
     getFeed(): Promise<string>;
     getLastExchangeRateTime(): Promise<Date>;
-    getOracleName(): Promise<string>;
+    getOracleNames(): Promise<Array<string>>;
     isOnline(): Promise<boolean>;
     getInfo(): Promise<OracleInfo>;
 }
@@ -33,17 +33,16 @@ export class DefaultOracleAPI implements OracleAPI {
     async getInfo(): Promise<OracleInfo> {
         const results = await this.api.queryMulti([
             this.api.query.exchangeRateOracle.exchangeRate,
-            this.api.query.exchangeRateOracle.authorizedOracle,
             this.api.query.exchangeRateOracle.lastExchangeRateTime,
             this.api.query.security.errors,
         ]);
-        const name = await this.api.query.exchangeRateOracle.oracleNames(<AccountId>results[1]);
+        const names = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
         return {
             exchangeRate: this.convertExchangeRate(<u128>results[0]),
             feed: await this.getFeed(),
-            name: name.toUtf8(),
-            online: !this.hasOracleError(<BTreeSet<ErrorCode>>results[3]),
-            lastUpdate: this.convertMoment(<Moment>results[2]),
+            names: names.map((v) => v[1].toUtf8()),
+            online: !this.hasOracleError(<BTreeSet<ErrorCode>>results[2]),
+            lastUpdate: this.convertMoment(<Moment>results[1]),
         };
     }
 
@@ -53,10 +52,9 @@ export class DefaultOracleAPI implements OracleAPI {
         return this.convertExchangeRate(rawRate);
     }
 
-    async getOracleName(): Promise<string> {
-        const accountId = await this.api.query.exchangeRateOracle.authorizedOracle();
-        const rawName = await this.api.query.exchangeRateOracle.oracleNames(accountId);
-        return rawName.toUtf8();
+    async getOracleNames(): Promise<Array<string>> {
+        const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
+        return oracles.map((v) => v[1].toUtf8());
     }
 
     getFeed(): Promise<string> {

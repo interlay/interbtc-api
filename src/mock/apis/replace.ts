@@ -1,8 +1,8 @@
 import { ReplaceAPI } from "@interlay/polkabtc/apis";
 import { BlockNumber } from "@polkadot/types/interfaces";
 import { PolkaBTC, DOT } from "@interlay/polkabtc/interfaces/default";
-import { ReplaceRequest } from "@interlay/polkabtc/interfaces";
 import BN from "bn.js";
+import { ReplaceRequestExt } from "../../apis/replace";
 
 export class MockReplaceAPI implements ReplaceAPI {
     async getBtcDustValue(): Promise<PolkaBTC> {
@@ -17,11 +17,11 @@ export class MockReplaceAPI implements ReplaceAPI {
         return Promise.resolve(new BN(12) as BlockNumber);
     }
 
-    async list(): Promise<ReplaceRequest[]> {
+    async list(): Promise<ReplaceRequestExt[]> {
         return Promise.resolve([]);
     }
 
-    async listWithId(): Promise<[string, ReplaceRequest][]> {
+    async listWithId(): Promise<[string, ReplaceRequestExt][]> {
         return Promise.resolve([]);
     }
 }

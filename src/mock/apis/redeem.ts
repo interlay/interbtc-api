@@ -1,16 +1,15 @@
 import { PolkaBTC, RedeemRequest, Vault, DOT, H256Le } from "../../interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { AccountId, Hash, BlockNumber, H160, H256 } from "@polkadot/types/interfaces";
+import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
-import { U8aFixed } from "@polkadot/types/codec";
-import { RedeemAPI } from "../../apis/redeem";
+import { RedeemAPI, RedeemRequestExt } from "../../apis/redeem";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
 export class MockRedeemAPI implements RedeemAPI {
-    execute(_redeemId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
+    execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 
@@ -18,16 +17,16 @@ export class MockRedeemAPI implements RedeemAPI {
         throw new Error("Method not implemented.");
     }
 
-    async request(_amount: PolkaBTC, _btcAddress: string, _vaultId?: AccountId): Promise<RequestResult> {
+    async request(_amount: PolkaBTC, _btcAddressEnc: string, _vaultId?: AccountId): Promise<RequestResult> {
         return Promise.resolve({ hash: <Hash>{}, vault: <Vault>{} });
     }
 
-    async list(): Promise<RedeemRequest[]> {
+    async list(): Promise<RedeemRequestExt[]> {
         const registry = new TypeRegistry();
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 
         return Promise.resolve([
-            <RedeemRequest>{
+            <RedeemRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId),
                 opentime: new BN(10908) as BlockNumber,
                 amount_polka_btc: new BN(4141) as PolkaBTC,
@@ -35,9 +34,9 @@ export class MockRedeemAPI implements RedeemAPI {
                 amount_dot: new BN(7090) as DOT,
                 premium_dot: new BN(140) as DOT,
                 redeemer: new GenericAccountId(registry, decodedAccountId),
-                btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
+                btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
             },
-            <RedeemRequest>{
+            <RedeemRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId),
                 opentime: new BN(11208) as BlockNumber,
                 amount_polka_btc: new BN(400) as PolkaBTC,
@@ -45,24 +44,24 @@ export class MockRedeemAPI implements RedeemAPI {
                 amount_dot: new BN(709) as DOT,
                 premium_dot: new BN(10) as DOT,
                 redeemer: new GenericAccountId(registry, decodedAccountId),
-                btc_address: new U8aFixed(registry, "321321321321321") as H160,
+                btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
             },
         ]);
     }
 
-    async mapForUser(_account: AccountId): Promise<Map<H256, RedeemRequest>> {
-        return Promise.resolve(new Map<H256, RedeemRequest>());
+    async mapForUser(_account: AccountId): Promise<Map<H256, RedeemRequestExt>> {
+        return Promise.resolve(new Map<H256, RedeemRequestExt>());
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<RedeemRequest[]> {
         return {} as AsyncGenerator<RedeemRequest[]>;
     }
 
-    async getRequestById(_redeemId: string | Uint8Array | H256): Promise<RedeemRequest> {
+    async getRequestById(_redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt> {
         const registry = new TypeRegistry();
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 
-        return <RedeemRequest>{
+        return <RedeemRequestExt>{
             vault: new GenericAccountId(registry, decodedAccountId),
             opentime: new BN(11208) as BlockNumber,
             amount_polka_btc: new BN(400) as PolkaBTC,
@@ -70,7 +69,7 @@ export class MockRedeemAPI implements RedeemAPI {
             amount_dot: new BN(709) as DOT,
             premium_dot: new BN(10) as DOT,
             redeemer: new GenericAccountId(registry, decodedAccountId),
-            btc_address: new U8aFixed(registry, "321321321321321") as H160,
+            btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
         };
     }
 
