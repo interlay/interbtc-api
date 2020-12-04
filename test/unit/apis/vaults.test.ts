@@ -10,6 +10,7 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { TypeRegistry } from "@polkadot/types";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { DefaultRedeemAPI } from "../../../src/apis/redeem";
+import { networks } from "bitcoinjs-lib";
 
 describe("vaultsAPI", () => {
     let api: ApiPromise;
@@ -29,8 +30,8 @@ describe("vaultsAPI", () => {
     });
 
     beforeEach(async () => {
-        vaultsAPI = new DefaultVaultsAPI(api);
-        issueAPI = new DefaultIssueAPI(api);
+        vaultsAPI = new DefaultVaultsAPI(api, networks.regtest);
+        issueAPI = new DefaultIssueAPI(api, networks.regtest);
     });
 
     after(() => {

@@ -1,18 +1,13 @@
-import {
-    IssueRequest,
-    PolkaBTC,
-    RedeemRequest,
-    ReplaceRequest,
-    Vault,
-    DOT,
-} from "../../interfaces/default";
+import { PolkaBTC, Vault, DOT } from "../../interfaces/default";
 import { AccountId, H256, H160 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed, Option } from "@polkadot/types/codec";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
-
+import { IssueRequestExt } from "../../apis/issue";
+import { RedeemRequestExt } from "../../apis/redeem";
+import { ReplaceRequestExt } from "../../apis/replace";
 import { VaultsAPI } from "../../apis/vaults";
 
 export class MockVaultsAPI implements VaultsAPI {
@@ -74,19 +69,19 @@ export class MockVaultsAPI implements VaultsAPI {
         ]);
     }
 
-    async mapIssueRequests(_vaultId: AccountId): Promise<Map<H256, IssueRequest>> {
+    async mapIssueRequests(_vaultId: AccountId): Promise<Map<H256, IssueRequestExt>> {
         // Empty for now, as it is difficult to mock IssueRequests
-        return Promise.resolve(new Map<H256, IssueRequest>());
+        return Promise.resolve(new Map<H256, IssueRequestExt>());
     }
 
-    async mapRedeemRequests(_vaultId: AccountId): Promise<Map<H256, RedeemRequest>> {
+    async mapRedeemRequests(_vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>> {
         // Empty for now, as it is difficult to mock RedeemRequest
-        return Promise.resolve(new Map<H256, RedeemRequest>());
+        return Promise.resolve(new Map<H256, RedeemRequestExt>());
     }
 
-    async mapReplaceRequests(_vaultId: AccountId): Promise<Map<H256, ReplaceRequest>> {
+    async mapReplaceRequests(_vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
         // Empty for now, as it is difficult to mock ReplaceRequest
-        return Promise.resolve(new Map<H256, ReplaceRequest>());
+        return Promise.resolve(new Map<H256, ReplaceRequestExt>());
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<Vault[]> {
@@ -142,5 +137,4 @@ export class MockVaultsAPI implements VaultsAPI {
     async getIssuablePolkaBTC(): Promise<string> {
         return "500";
     }
-
 }

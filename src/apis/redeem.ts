@@ -5,33 +5,51 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { pagedIterator, sendLoggedTx } from "../utils";
+import { decodeBtcAddress, encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { DefaultSystemAPI, SystemAPI } from "./system";
 import { stripHexPrefix } from "../utils";
+import { Network } from "bitcoinjs-lib";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
+export interface RedeemRequestExt extends Omit<RedeemRequest, "btc_address"> {
+    // network encoded btc address
+    btc_address: string;
+}
+
+export function encodeRedeemRequest(req: RedeemRequest, network: Network): RedeemRequestExt {
+    const { btc_address, ...obj } = req;
+    return Object.assign(
+        {
+            btc_address: encodeBtcAddress(btc_address, network),
+        },
+        obj
+    ) as RedeemRequestExt;
+}
+
 export interface RedeemAPI {
-    list(): Promise<RedeemRequest[]>;
-    request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult>;
-    execute(redeemId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
+    list(): Promise<RedeemRequestExt[]>;
+    request(amount: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult>;
+    execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(redeemId: H256, reimburse?: boolean): Promise<boolean>;
     setAccount(account?: AddressOrPair): void;
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
-    mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>>;
-    getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequest>;
+    mapForUser(account: AccountId): Promise<Map<H256, RedeemRequestExt>>;
+    getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
 }
 
 export class DefaultRedeemAPI {
     private vaults: VaultsAPI;
+    private btcNetwork: Network;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {
-        this.vaults = new DefaultVaultsAPI(api);
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.btcNetwork = btcNetwork;
     }
 
     private getRedeemHashFromEvents(events: EventRecord[], method: string): Hash {
@@ -48,7 +66,7 @@ export class DefaultRedeemAPI {
         throw new Error("Transaction failed");
     }
 
-    async request(amount: PolkaBTC, btcAddress: string, vaultId?: AccountId): Promise<RequestResult> {
+    async request(amount: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -61,23 +79,18 @@ export class DefaultRedeemAPI {
             vault = await this.vaults.get(vaultId);
         }
 
+        const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amount, btcAddress, vault.id);
         const result = await sendLoggedTx(requestRedeemTx, this.account, this.api);
         const hash = this.getRedeemHashFromEvents(result.events, "RequestRedeem");
         return { hash, vault };
     }
 
-    async execute(
-        redeemId: H256,
-        txId: H256Le,
-        txBlockHeight: u32,
-        merkleProof: Bytes,
-        rawTx: Bytes
-    ): Promise<boolean> {
+    async execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
         if (!this.account) {
             throw new Error("cannot execute without setting account");
         }
-        const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, txBlockHeight, merkleProof, rawTx);
+        const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
         const result = await sendLoggedTx(executeRedeemTx, this.account, this.api);
         const hash = this.getRedeemHashFromEvents(result.events, "ExecuteRedeem");
         if (hash) {
@@ -104,17 +117,19 @@ export class DefaultRedeemAPI {
         return false;
     }
 
-    async list(): Promise<RedeemRequest[]> {
+    async list(): Promise<RedeemRequestExt[]> {
         const redeemRequests = await this.api.query.redeem.redeemRequests.entries();
-        return redeemRequests.map((v) => v[1]);
+        return redeemRequests.map((v) => encodeRedeemRequest(v[1], this.btcNetwork));
     }
 
-    async mapForUser(account: AccountId): Promise<Map<H256, RedeemRequest>> {
+    async mapForUser(account: AccountId): Promise<Map<H256, RedeemRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
         const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getRedeemRequests(account);
-        const mapForUser: Map<H256, RedeemRequest> = new Map<H256, RedeemRequest>();
-        redeemRequestPairs.forEach((redeemRequestPair) => mapForUser.set(redeemRequestPair[0], redeemRequestPair[1]));
+        const mapForUser: Map<H256, RedeemRequestExt> = new Map<H256, RedeemRequestExt>();
+        redeemRequestPairs.forEach((redeemRequestPair) =>
+            mapForUser.set(redeemRequestPair[0], encodeRedeemRequest(redeemRequestPair[1], this.btcNetwork))
+        );
         return mapForUser;
     }
 
@@ -149,8 +164,8 @@ export class DefaultRedeemAPI {
         return pagedIterator<RedeemRequest>(this.api.query.redeem.redeemRequests, perPage);
     }
 
-    getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequest> {
-        return this.api.query.redeem.redeemRequests(redeemId);
+    async getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt> {
+        return encodeRedeemRequest(await this.api.query.redeem.redeemRequests(redeemId), this.btcNetwork);
     }
 
     setAccount(account?: AddressOrPair): void {

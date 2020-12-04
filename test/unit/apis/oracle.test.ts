@@ -23,8 +23,9 @@ describe("oracle", () => {
             exchangeRateOracle: {
                 exchangeRate: () => Promise.resolve(new BN(exchangeRate)),
                 lastExchangeRateTime: () => Promise.resolve(timestamp),
-                authorizedOracle: () => 1,
-                oracleNames: (_accountId: AccountId) => new Raw(registry, "test"),
+                authorizedOracles: {
+                    entries: () => Promise.resolve([[1, new Raw(registry, "test")]]),
+                },
             },
             security: {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,7 +87,7 @@ describe("oracle", () => {
 
     describe("oracleName", () => {
         it("should return name", () => {
-            return assert.eventually.equal(oracle.getOracleName(), "test");
+            return assert.eventually.deepEqual(oracle.getOracleNames(), ["test"]);
         });
     });
 
@@ -96,6 +97,6 @@ describe("oracle", () => {
             const planck_to_sat = 38552318793;
             const dot_to_btc = oracleProto.convertExchangeRate(planck_to_sat);
             return assert.equal(dot_to_btc, 3855.2318793);
-        })
-    })
+        });
+    });
 });

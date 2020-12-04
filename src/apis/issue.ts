@@ -2,33 +2,51 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-import { Bytes, u32 } from "@polkadot/types/primitive";
+import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
-import { pagedIterator, sendLoggedTx } from "../utils";
+import { encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
+import { Network } from "bitcoinjs-lib";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
+export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
+    // network encoded btc address
+    btc_address: string;
+}
+
+export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRequestExt {
+    const { btc_address, ...obj } = req;
+    return Object.assign(
+        {
+            btc_address: encodeBtcAddress(btc_address, network),
+        },
+        obj
+    ) as IssueRequestExt;
+}
+
 export interface IssueAPI {
     request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
-    execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
+    execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
     getGriefingCollateral(): Promise<DOT>;
-    list(): Promise<IssueRequest[]>;
+    list(): Promise<IssueRequestExt[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
-    mapForUser(account: AccountId): Promise<Map<H256, IssueRequest>>;
-    getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequest>;
+    mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
+    getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
     getIssuePeriod(): Promise<BlockNumber>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
     private vaults: VaultsAPI;
+    private btcNetwork: Network;
     requestHash: Hash;
 
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {
-        this.vaults = new DefaultVaultsAPI(api);
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.btcNetwork = btcNetwork;
         this.requestHash = this.api.createType("Hash");
     }
 
@@ -94,12 +112,12 @@ export class DefaultIssueAPI implements IssueAPI {
         return { hash, vault };
     }
 
-    async execute(issueId: H256, txId: H256Le, txBlockHeight: u32, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
+    async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
 
-        const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, txBlockHeight, merkleProof, rawTx);
+        const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
         const result = await sendLoggedTx(executeIssueTx, this.account, this.api);
         return this.isExecutionSucessful(result.events);
     }
@@ -113,17 +131,19 @@ export class DefaultIssueAPI implements IssueAPI {
         await sendLoggedTx(cancelIssueTx, this.account, this.api);
     }
 
-    async list(): Promise<IssueRequest[]> {
+    async list(): Promise<IssueRequestExt[]> {
         const issueRequests = await this.api.query.issue.issueRequests.entries();
-        return issueRequests.map((v) => v[1]);
+        return issueRequests.map((v) => v[1]).map((req: IssueRequest) => encodeIssueRequest(req, this.btcNetwork));
     }
 
-    async mapForUser(account: AccountId): Promise<Map<H256, IssueRequest>> {
+    async mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
         const issueRequestPairs: [H256, IssueRequest][] = await customAPIRPC.issue.getIssueRequests(account);
-        const mapForUser: Map<H256, IssueRequest> = new Map<H256, IssueRequest>();
-        issueRequestPairs.forEach((issueRequestPair) => mapForUser.set(issueRequestPair[0], issueRequestPair[1]));
+        const mapForUser: Map<H256, IssueRequestExt> = new Map<H256, IssueRequestExt>();
+        issueRequestPairs.forEach((issueRequestPair) =>
+            mapForUser.set(issueRequestPair[0], encodeIssueRequest(issueRequestPair[1], this.btcNetwork))
+        );
         return mapForUser;
     }
 
@@ -132,15 +152,15 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getIssuePeriod(): Promise<BlockNumber> {
-        return (await this.api.query.issue.issuePeriod() as BlockNumber);
+        return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
     async getGriefingCollateral(): Promise<DOT> {
         return this.api.query.issue.issueGriefingCollateral();
     }
 
-    getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequest> {
-        return this.api.query.issue.issueRequests(issueId);
+    async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {
+        return encodeIssueRequest(await this.api.query.issue.issueRequests(issueId), this.btcNetwork);
     }
 
     setAccount(account?: AddressOrPair): void {

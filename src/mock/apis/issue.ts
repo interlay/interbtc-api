@@ -1,16 +1,15 @@
-import { DOT, IssueRequest, PolkaBTC, H256Le, Vault } from "../../interfaces/default";
+import { DOT, IssueRequest, PolkaBTC, H256Le, Vault, BtcAddress } from "../../interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { AccountId, H256, H160, BlockNumber, Hash } from "@polkadot/types/interfaces";
-import { Bytes, u32, bool } from "@polkadot/types/primitive";
+import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
+import { Bytes, bool } from "@polkadot/types/primitive";
 import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
-
-import { IssueAPI, RequestResult } from "../../apis/issue";
+import { IssueAPI, RequestResult, IssueRequestExt } from "../../apis/issue";
 
 export class MockIssueAPI implements IssueAPI {
-    execute(_issueId: H256, _txId: H256Le, _txBlockHeight: u32, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
+    execute(_issueId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
         return Promise.resolve(true);
     }
 
@@ -36,26 +35,26 @@ export class MockIssueAPI implements IssueAPI {
         return Promise.resolve(new BN(100) as DOT);
     }
 
-    list(): Promise<IssueRequest[]> {
+    list(): Promise<IssueRequestExt[]> {
         const registry = new TypeRegistry();
         const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
         const decodedAccountId2 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D6";
 
         return Promise.resolve([
-            <IssueRequest>{
+            <IssueRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId1),
                 amount: new BN(600) as PolkaBTC,
                 opentime: new BN(10908) as BlockNumber,
-                btc_address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
+                btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
                 completed: new bool(registry, true),
                 requester: new GenericAccountId(registry, decodedAccountId1),
                 griefing_collateral: new BN(10) as DOT,
             },
-            <IssueRequest>{
+            <IssueRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId2),
                 amount: new BN(4510) as PolkaBTC,
                 opentime: new BN(11938) as BlockNumber,
-                btc_address: new U8aFixed(registry, "321321321321321") as H160,
+                btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
                 completed: new bool(registry, true),
                 requester: new GenericAccountId(registry, decodedAccountId2),
                 griefing_collateral: new BN(76) as DOT,
@@ -67,23 +66,23 @@ export class MockIssueAPI implements IssueAPI {
         return Promise.resolve(new BN(200) as BlockNumber);
     }
 
-    mapForUser(_account: AccountId): Promise<Map<H256, IssueRequest>> {
-        return Promise.resolve(new Map<H256, IssueRequest>());
+    mapForUser(_account: AccountId): Promise<Map<H256, IssueRequestExt>> {
+        return Promise.resolve(new Map<H256, IssueRequestExt>());
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<IssueRequest[]> {
         return {} as AsyncGenerator<IssueRequest[]>;
     }
 
-    async getRequestById(_issueId: string | Uint8Array | H256): Promise<IssueRequest> {
+    async getRequestById(_issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {
         const registry = new TypeRegistry();
         const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
 
-        return <IssueRequest>{
+        return <IssueRequestExt>{
             vault: new GenericAccountId(registry, decodedAccountId1),
             amount: new BN(4510) as PolkaBTC,
             opentime: new BN(11938) as BlockNumber,
-            btc_address: new U8aFixed(registry, "321321321321321") as H160,
+            btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
             completed: new bool(registry, true),
             requester: new GenericAccountId(registry, decodedAccountId1),
             griefing_collateral: new BN(76) as DOT,

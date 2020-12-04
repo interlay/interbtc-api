@@ -9,13 +9,17 @@ import { BalanceWrapper } from "../interfaces/default";
 import { DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI } from "./oracle";
 import Big from "big.js";
+import { IssueRequestExt, encodeIssueRequest } from "./issue";
+import { RedeemRequestExt, encodeRedeemRequest } from "./redeem";
+import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
+import { Network } from "bitcoinjs-lib";
 
 export interface VaultsAPI {
     list(): Promise<Vault[]>;
     listPaged(): Promise<Vault[]>;
-    mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequest>>;
-    mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequest>>;
-    mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequest>>;
+    mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>>;
+    mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>>;
+    mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
     getVaultCollateralization(
@@ -34,8 +38,11 @@ export interface VaultsAPI {
 
 export class DefaultVaultsAPI {
     granularity = 5;
+    private btcNetwork: Network;
 
-    constructor(private api: ApiPromise) {}
+    constructor(private api: ApiPromise, btcNetwork: Network) {
+        this.btcNetwork = btcNetwork;
+    }
 
     async list(): Promise<Vault[]> {
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
@@ -53,12 +60,12 @@ export class DefaultVaultsAPI {
      * @param vaultId - The AccountId of the vault used to filter issue requests
      * @returns A map with issue ids to issue requests involving said vault
      */
-    async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequest>> {
+    async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
         try {
             const issueRequestPairs: [H256, IssueRequest][] = await customAPIRPC.issue.getVaultIssueRequests(vaultId);
-            return new Map(issueRequestPairs);
+            return new Map(issueRequestPairs.map(([id, req]) => [id, encodeIssueRequest(req, this.btcNetwork)]));
         } catch (err) {
             return Promise.reject(`Error during issue request retrieval: ${err}`);
         }
@@ -70,14 +77,14 @@ export class DefaultVaultsAPI {
      * @param vaultId - The AccountId of the vault used to filter redeem requests
      * @returns A map with redeem ids to redeem requests involving said vault
      */
-    async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequest>> {
+    async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
         try {
             const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getVaultRedeemRequests(
                 vaultId
             );
-            return new Map(redeemRequestPairs);
+            return new Map(redeemRequestPairs.map(([id, req]) => [id, encodeRedeemRequest(req, this.btcNetwork)]));
         } catch (err) {
             return Promise.reject(`Error during redeem request retrieval: ${err}`);
         }
@@ -90,18 +97,24 @@ export class DefaultVaultsAPI {
      * @param vaultId - The AccountId of the vault used to filter replace requests
      * @returns A map with replace ids to replace requests involving said vault as new vault and old vault
      */
-    async mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequest>> {
+    async mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const oldVaultReplaceRequests: [
                 H256,
                 ReplaceRequest
             ][] = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
+            const oldVaultReplaceRequestsExt = oldVaultReplaceRequests.map(
+                ([id, req]) => [id, encodeReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
+            );
             const newVaultReplaceRequests: [
                 H256,
                 ReplaceRequest
             ][] = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
-            return new Map([...oldVaultReplaceRequests, ...newVaultReplaceRequests]);
+            const newVaultReplaceRequestsExt = newVaultReplaceRequests.map(
+                ([id, req]) => [id, encodeReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
+            );
+            return new Map([...oldVaultReplaceRequestsExt, ...newVaultReplaceRequestsExt]);
         } catch (err) {
             return Promise.reject(`Error during replace request retrieval: ${err}`);
         }

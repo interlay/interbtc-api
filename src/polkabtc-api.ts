@@ -14,8 +14,20 @@ import { DefaultTreasuryAPI, TreasuryAPI } from "./apis/treasury";
 import { StakedRelayerClient } from "./http";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./apis/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./apis/replace";
+import { Network, networks } from "bitcoinjs-lib";
 
 export * from "./factory";
+
+function getBitcoinNetwork(network: string = "mainnet"): Network {
+    switch (network) {
+    case "mainnet":
+        return networks.bitcoin;
+    case "testnet":
+        return networks.testnet;
+    default:
+        return networks.regtest;
+    }
+}
 
 export interface PolkaBTCAPI {
     readonly api: ApiPromise;
@@ -50,10 +62,11 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly replace: ReplaceAPI;
 
     constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
-        this.vaults = new DefaultVaultsAPI(api);
-        this.issue = new DefaultIssueAPI(api, _account);
-        this.redeem = new DefaultRedeemAPI(api, _account);
-        this.stakedRelayer = new DefaultStakedRelayerAPI(api);
+        const btcNetwork = getBitcoinNetwork(network);
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, _account);
+        this.redeem = new DefaultRedeemAPI(api, btcNetwork, _account);
+        this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork);
         this.relayer = new StakedRelayerClient("");
         this.oracle = new DefaultOracleAPI(api);
         this.btcCore = new DefaultBTCCoreAPI(network);
@@ -61,7 +74,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.collateral = new DefaultCollateralAPI(api);
         this.treasury = new DefaultTreasuryAPI(api);
         this.system = new DefaultSystemAPI(api);
-        this.replace = new DefaultReplaceAPI(api);
+        this.replace = new DefaultReplaceAPI(api, btcNetwork);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

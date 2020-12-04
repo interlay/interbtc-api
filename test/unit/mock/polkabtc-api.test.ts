@@ -2,6 +2,7 @@ import { createPolkabtcAPI } from "../../../src/factory";
 import { PolkaBTCAPI } from "../../../src/polkabtc-api";
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { assert } from "../../chai";
+import { networks } from "bitcoinjs-lib";
 
 describe.skip("PolkaBTCAPIMock", () => {
     let polkaBTC: PolkaBTCAPI;
