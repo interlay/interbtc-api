@@ -3,11 +3,14 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { H256, Hash } from "@polkadot/types/interfaces";
 import { Bytes, u32 } from "@polkadot/types/primitive";
 import { ImportMock } from "ts-mock-imports";
+import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault } from "../../../src/interfaces/default";
+import { btcToSat, getP2WPKHFromH160, stripHexPrefix } from "../../../src/utils";
 import { assert, expect } from "../../chai";
 import { defaultEndpoint } from "../../config";
+import * as bitcoin from "bitcoinjs-lib";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -46,13 +49,13 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("request", () => {
+    describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(issueAPI.request(amount));
         });
 
-        it("should retrieve hash from request", async () => {
+        it("should request issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
@@ -63,7 +66,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("execute", () => {
+    describe("execute", () => {
         let txHash: Hash;
 
         it("should fail if no account is set", () => {
@@ -98,6 +101,43 @@ describe("issue", () => {
             ImportMock.mockFunction(issueAPI, "isExecutionSucessful", false);
             const isExecutionCorrect = await issueAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx);
             assert.isFalse(isExecutionCorrect);
+        });
+
+        it("should request and execute issue", async () => {
+            const btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+            btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+            const initialBalance = await btcCore.getBalance();
+            const blocksToMine = 3;
+            const blockMiningReward = 50;
+            const projectedMaxFees = 0.15;
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            dave = keyring.addFromUri("//Dave");
+
+            // request issue
+            issueAPI.setAccount(alice);
+            const amountAsBtcString = "1";
+            const amountAsSatoshiString = btcToSat(amountAsBtcString);
+            const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
+            const requestResult = await issueAPI.request(amountAsSatoshi);
+            assert.isTrue(requestResult.hash.length > 0);
+
+            // send btc tx
+            const data = stripHexPrefix(requestResult.hash.toString());
+            const vaultBtcAddress = getP2WPKHFromH160(requestResult.vault.wallet.address, bitcoin.networks.regtest);
+            if (vaultBtcAddress === undefined) {
+                throw new Error("Undefined vault address returned from RequestIssue");
+            }
+            const txData = await btcCore.broadcastOpReturnTx(vaultBtcAddress, amountAsBtcString, data);
+            await btcCore.mineBlocks(blocksToMine);
+
+            // check issuing worked
+            const finalBalance = await btcCore.getBalance();
+            const finalBalanceWithoutMiningRewards = finalBalance - blocksToMine * blockMiningReward;
+            assert.isTrue(
+                Math.abs(initialBalance - finalBalanceWithoutMiningRewards) <=
+                    Number(amountAsBtcString) + projectedMaxFees
+            );
         });
     });
 

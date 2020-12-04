@@ -2,6 +2,7 @@ import { BlockApi, Status, TxApi, ScripthashApi, Transaction, VOut } from "@inte
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
+const Client = require("bitcoin-core");
 
 const mainnetApiBasePath = "https://blockstream.info/api";
 const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
@@ -46,22 +47,41 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     private blockApi: BlockApi;
     private txApi: TxApi;
     private scripthashApi: ScripthashApi;
+    private client: typeof Client;
 
     constructor(network: string = "mainnet") {
         let basePath = "";
         switch (network) {
-        case "mainnet":
-            basePath = mainnetApiBasePath;
-            break;
-        case "testnet":
-            basePath = testnetApiBasePath;
-            break;
-        default:
-            basePath = network;
+            case "mainnet":
+                basePath = mainnetApiBasePath;
+                break;
+            case "testnet":
+                basePath = testnetApiBasePath;
+                break;
+            default:
+                basePath = network;
         }
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
         this.scripthashApi = new ScripthashApi({ basePath });
+    }
+
+    initializeClientConnection(
+        network: string,
+        host: string,
+        username: string,
+        password: string,
+        port: string,
+        wallet: string
+    ) {
+        this.client = new Client({
+            network: network,
+            host: host,
+            username: username,
+            password: password,
+            port: port,
+            wallet: wallet,
+        });
     }
 
     getLatestBlock(): Promise<string> {
@@ -74,6 +94,10 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
 
     getMerkleProof(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
+    }
+
+    async broadcastRawTransaction(hex: string): Promise<AxiosResponse<string>> {
+        return await this.txApi.postTx(hex);
     }
 
     // returns the confirmation status and number of confirmations of a tx
@@ -165,4 +189,44 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     getData<T>(response: Promise<AxiosResponse<T>>): Promise<T> {
         return response.then((v) => v.data);
     }
+
+    async broadcastOpReturnTx(
+        receiver: string,
+        amount: string,
+        data: string
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }> {
+        if (!this.client) {
+            throw new Error("Client needs to be initialized before usage");
+        }
+        let paidOutput = {} as any;
+        paidOutput[receiver] = amount;
+        const raw = await this.client.command("createrawtransaction", [], [{ data: data }, paidOutput]);
+        const funded = await this.client.command("fundrawtransaction", raw);
+        const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
+        const response = await this.broadcastRawTransaction(signed.hex);
+        await delay(1000);
+        const txid = response.data;
+        return {
+            txid: txid,
+            rawTx: signed.hex,
+        };
+    }
+
+    async mineBlocks(n: number) {
+        const newWalletAddress = await this.client.command("getnewaddress");
+        const minedTxs = await this.client.command("generatetoaddress", n, newWalletAddress);
+        const relayPeriodWithBuffer = 6500;
+        await delay(n * relayPeriodWithBuffer);
+    }
+
+    async getBalance() {
+        return await this.client.command("getbalance");
+    }
+}
+
+function delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
