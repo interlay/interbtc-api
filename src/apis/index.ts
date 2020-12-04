@@ -1,6 +1,6 @@
 export { VaultsAPI } from "./vaults";
-export { IssueAPI } from "./issue";
-export { RedeemAPI } from "./redeem";
+export { IssueAPI, IssueRequestExt } from "./issue";
+export { RedeemAPI, RedeemRequestExt } from "./redeem";
 export { StakedRelayerAPI } from "./staked-relayer";
 export { OracleAPI } from "./oracle";
 export { BTCCoreAPI } from "./btc-core";
@@ -9,4 +9,4 @@ export { CollateralAPI } from "./collateral";
 export { TreasuryAPI } from "./treasury";
 export { SystemAPI } from "./system";
 export { ConstantsAPI } from "./constants";
-export { ReplaceAPI } from "./replace";
+export { ReplaceAPI, ReplaceRequestExt } from "./replace";

@@ -6,7 +6,7 @@ export class MockOracleAPI implements OracleAPI {
         const oracle_info: OracleInfo = {
             exchangeRate: await this.getExchangeRate(),
             feed: await this.getFeed(),
-            name: await this.getOracleName(),
+            names: await this.getOracleNames(),
             online: await this.isOnline(),
             lastUpdate: await this.getLastExchangeRateTime(),
         };
@@ -18,8 +18,8 @@ export class MockOracleAPI implements OracleAPI {
         return Promise.resolve(20);
     }
 
-    getOracleName(): Promise<string> {
-        return Promise.resolve("ChainLink");
+    getOracleNames(): Promise<Array<string>> {
+        return Promise.resolve(["ChainLink"]);
     }
 
     getFeed(): Promise<string> {

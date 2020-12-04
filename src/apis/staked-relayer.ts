@@ -5,6 +5,7 @@ import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
 import { pagedIterator } from "../utils";
+import { Network } from "bitcoinjs-lib";
 
 export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
@@ -28,8 +29,8 @@ export interface StakedRelayerAPI {
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     private vaults: VaultsAPI;
 
-    constructor(private api: ApiPromise) {
-        this.vaults = new DefaultVaultsAPI(api);
+    constructor(private api: ApiPromise, btcNetwork: Network) {
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
     }
 
     async list(): Promise<ActiveStakedRelayer[]> {
