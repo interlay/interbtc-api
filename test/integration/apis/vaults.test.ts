@@ -8,7 +8,7 @@ import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 
-describe.skip("vaultsAPI", () => {
+describe("vaultsAPI", () => {
     let bob: KeyringPair;
     let charlie: KeyringPair;
     let api: ApiPromise;
