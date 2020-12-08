@@ -81,14 +81,14 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     constructor(network: string = "mainnet") {
         let basePath = "";
         switch (network) {
-        case "mainnet":
-            basePath = mainnetApiBasePath;
-            break;
-        case "testnet":
-            basePath = testnetApiBasePath;
-            break;
-        default:
-            basePath = network;
+            case "mainnet":
+                basePath = mainnetApiBasePath;
+                break;
+            case "testnet":
+                basePath = testnetApiBasePath;
+                break;
+            default:
+                basePath = network;
         }
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
@@ -113,14 +113,24 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         });
     }
 
+    /**
+     * @returns The block hash of the latest Bitcoin block
+     */
     getLatestBlock(): Promise<string> {
         return this.getData(this.blockApi.getLastBlockHash());
     }
 
+    /**
+     * @returns The height of the latest Bitcoin block
+     */
     getLatestBlockHeight(): Promise<number> {
         return this.getData(this.blockApi.getLastBlockHeight());
     }
 
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The merkle inclusion proof for the transaction using bitcoind's merkleblock format.
+     */
     getMerkleProof(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
     }
@@ -129,7 +139,10 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return await this.txApi.postTx(hex);
     }
 
-    // returns the confirmation status and number of confirmations of a tx
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns A TxStatus object, containing the confirmation status and number of confirmations
+     */
     async getTransactionStatus(txid: string): Promise<TxStatus> {
         const status = {
             confirmed: false,
@@ -146,10 +159,18 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return status;
     }
 
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The height of the block the transaction was included in. If the block has not been confirmed, returns undefined.
+     */
     async getTransactionBlockHeight(txid: string): Promise<number | undefined> {
         return (await this.getTxStatus(txid)).block_height;
     }
 
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The raw transaction data, represented as a Buffer object
+     */
     getRawTransaction(txid: string): Promise<Buffer> {
         return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
     }
