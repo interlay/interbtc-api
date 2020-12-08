@@ -7,6 +7,7 @@ import { createPolkadotAPI } from "../../../src/factory";
 import { ActiveStakedRelayer, DOT } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
+import * as bitcoin from "bitcoinjs-lib";
 
 describe("stakedRelayerAPI", () => {
     function numberToDOT(x: number): DOT {
@@ -22,7 +23,7 @@ describe("stakedRelayerAPI", () => {
         });
 
         beforeEach(() => {
-            stakedRelayerAPI = new DefaultStakedRelayerAPI(api);
+            stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoin.networks.regtest);
         });
 
         after(() => {

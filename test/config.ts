@@ -1,1 +1,1 @@
-export const defaultEndpoint = "ws://localhost:9944";
+export const defaultEndpoint = "ws://0.0.0.0:9944";

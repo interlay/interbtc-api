@@ -7,10 +7,11 @@ import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault } from "../../../src/interfaces/default";
-import { btcToSat, getP2WPKHFromH160, stripHexPrefix } from "../../../src/utils";
+import { btcToSat, encodeBtcAddress, stripHexPrefix } from "../../../src/utils";
 import { assert, expect } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
+import { delay } from "../../helpers";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -33,7 +34,7 @@ describe("issue", () => {
     });
 
     beforeEach(() => {
-        issueAPI = new DefaultIssueAPI(api);
+        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
     });
 
     after(async () => {
@@ -44,8 +45,8 @@ describe("issue", () => {
         it("should list all issue requests", async () => {
             const aliceAccountId = api.createType("AccountId", alice.address);
             const requests = await issueAPI.mapForUser(aliceAccountId);
-
-            assert.isEmpty(requests);
+            // There should be a single request after the docker-compose setup
+            assert.isTrue(requests.size === 1);
         });
     });
 
@@ -72,10 +73,9 @@ describe("issue", () => {
         it("should fail if no account is set", () => {
             const issueId: H256 = <H256>{};
             const txId: H256Le = <H256Le>{};
-            const txBlockHeight: u32 = <u32>{};
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
-            assert.isRejected(issueAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx));
+            assert.isRejected(issueAPI.execute(issueId, txId, merkleProof, rawTx));
         });
 
         it("should request if account is set", async () => {
@@ -88,18 +88,18 @@ describe("issue", () => {
         });
 
         it("should consider execution successful if `isExecutionSucessful` returns true", async () => {
-            const { issueId, txId, txBlockHeight, merkleProof, rawTx } = makeExecutionData();
+            const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
             ImportMock.mockFunction(issueAPI, "isExecutionSucessful", true);
-            const isExecutionCorrect = await issueAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx);
+            const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isTrue(isExecutionCorrect);
         });
 
         it("should consider execution failed if `isExecutionSucessful` returns false", async () => {
-            const { issueId, txId, txBlockHeight, merkleProof, rawTx } = makeExecutionData();
+            const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
             ImportMock.mockFunction(issueAPI, "isExecutionSucessful", false);
-            const isExecutionCorrect = await issueAPI.execute(issueId, txId, txBlockHeight, merkleProof, rawTx);
+            const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isFalse(isExecutionCorrect);
         });
 
@@ -116,7 +116,7 @@ describe("issue", () => {
 
             // request issue
             issueAPI.setAccount(alice);
-            const amountAsBtcString = "1";
+            const amountAsBtcString = "0.001";
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi);
@@ -124,7 +124,7 @@ describe("issue", () => {
 
             // send btc tx
             const data = stripHexPrefix(requestResult.hash.toString());
-            const vaultBtcAddress = getP2WPKHFromH160(requestResult.vault.wallet.address, bitcoin.networks.regtest);
+            const vaultBtcAddress = encodeBtcAddress(requestResult.vault.wallet.address, bitcoin.networks.regtest);
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
@@ -141,12 +141,35 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("cancel", () => {
-        it("should cancel a request", async () => {
+    describe("cancel", () => {
+        it("should cancel a request issue", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            dave = keyring.addFromUri("//Dave");
+
+            let activeIssueRequests = await issueAPI.list();
+            activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
+            const initialIssueRequests = activeIssueRequests.length;
+
+            // request issue
             issueAPI.setAccount(alice);
-            const amount = api.createType("Balance", 1);
-            await issueAPI.request(amount);
-            await issueAPI.cancel(issueAPI.requestHash);
+            const amountAsBtcString = "0.001";
+            const amountAsSatoshiString = btcToSat(amountAsBtcString);
+            const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
+            const requestResult = await issueAPI.request(amountAsSatoshi);
+            assert.isTrue(requestResult.hash.length > 0);
+
+            await delay(60000);
+            // Before cancelling, there should be 1 outstanding request
+            activeIssueRequests = await issueAPI.list();
+            activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
+            assert.isTrue(activeIssueRequests.length === initialIssueRequests + 1);
+            await issueAPI.cancel(requestResult.hash);
+
+            // After cancelling, there should be no outstanding request
+            activeIssueRequests = await issueAPI.list();
+            activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
+            assert.isTrue(activeIssueRequests.length === initialIssueRequests);
         });
     });
 
@@ -155,7 +178,7 @@ describe("issue", () => {
             try {
                 issueAPI.setAccount(alice);
                 const period = await issueAPI.getIssuePeriod();
-                expect(period.toString()).equal("100800");
+                expect(period.toString()).equal("3");
             } catch (error) {
                 console.log(error);
             }
@@ -165,7 +188,6 @@ describe("issue", () => {
     type ExecutionData = {
         issueId: H256;
         txId: H256Le;
-        txBlockHeight: u32;
         merkleProof: Bytes;
         rawTx: Bytes;
     };
@@ -179,7 +201,6 @@ describe("issue", () => {
                 106, 174, 205, 77, 120, 69, 217, 253, 57, 140, 255, 196, 198, 144, 61, 18, 248
             ]
         ) as H256Le;
-        const txBlockHeight: u32 = api.createType("u32", 2);
         const merkleProof: Bytes = api.createType(
             "Bytes",
             // prettier-ignore
@@ -212,6 +233,6 @@ describe("issue", () => {
                 0, 0, 0, 0
             ]
         );
-        return { issueId, txId, txBlockHeight, merkleProof, rawTx };
+        return { issueId, txId, merkleProof, rawTx };
     }
 });

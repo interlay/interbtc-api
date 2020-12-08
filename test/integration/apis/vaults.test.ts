@@ -6,6 +6,7 @@ import { createPolkadotAPI } from "../../../src/factory";
 import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
+import * as bitcoin from "bitcoinjs-lib";
 
 describe.skip("vaultsAPI", () => {
     let bob: KeyringPair;
@@ -25,7 +26,7 @@ describe.skip("vaultsAPI", () => {
     });
 
     beforeEach(async () => {
-        vaultsAPI = new DefaultVaultsAPI(api);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoin.networks.regtest);
     });
 
     after(() => {

@@ -1,20 +1,17 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { TypeRegistry } from "@polkadot/types";
-import { UInt } from "@polkadot/types/codec";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { H256, Hash, AccountId } from "@polkadot/types/interfaces";
-import { Bytes, u32 } from "@polkadot/types/primitive";
-import { ImportMock } from "ts-mock-imports";
+import { Bytes } from "@polkadot/types/primitive";
 import { DefaultRedeemAPI } from "../../../src/apis/redeem";
 import sinon from "sinon";
-import * as DefaultVaultsAPI from "../../../src/apis/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
-import { btcToSat, getP2WPKHFromH160, satToBTC, stripHexPrefix } from "../../../src/utils";
+import { btcToSat, stripHexPrefix, encodeBtcAddress } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 
@@ -39,8 +36,8 @@ describe("redeem", () => {
     });
 
     beforeEach(() => {
-        redeemAPI = new DefaultRedeemAPI(api);
-        issueAPI = new DefaultIssueAPI(api);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest);
+        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
         sinon.stub(redeemAPI, <any>"vaults").get(() => {
             return {
                 selectRandomVaultRedeem() {
@@ -66,10 +63,7 @@ describe("redeem", () => {
         it("should request and execute issue, request redeem", async () => {
             const btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
             btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-            const initialBalance = await btcCore.getBalance();
             const blocksToMine = 3;
-            const blockMiningReward = 50;
-            const projectedMaxFees = 0.15;
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             dave = keyring.addFromUri("//Dave");
@@ -84,7 +78,7 @@ describe("redeem", () => {
 
             // send btc tx
             const data = stripHexPrefix(requestResult.hash.toString());
-            const vaultBtcAddress = getP2WPKHFromH160(requestResult.vault.wallet.address, bitcoin.networks.regtest);
+            const vaultBtcAddress = encodeBtcAddress(requestResult.vault.wallet.address, bitcoin.networks.regtest);
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
@@ -122,7 +116,7 @@ describe("redeem", () => {
 
             // send btc tx
             const data = stripHexPrefix(requestResult.hash.toString());
-            const vaultBtcAddress = getP2WPKHFromH160(requestResult.vault.wallet.address, bitcoin.networks.regtest);
+            const vaultBtcAddress = encodeBtcAddress(requestResult.vault.wallet.address, bitcoin.networks.regtest);
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
@@ -149,10 +143,9 @@ describe("redeem", () => {
         it("should fail if no account is set", () => {
             const redeemId: H256 = <H256>{};
             const txId: H256Le = <H256Le>{};
-            const txBlockHeight: u32 = <u32>{};
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
-            assert.isRejected(redeemAPI.execute(redeemId, txId, txBlockHeight, merkleProof, rawTx));
+            assert.isRejected(redeemAPI.execute(redeemId, txId, merkleProof, rawTx));
         });
 
         it("should request if account is set", async () => {
@@ -165,10 +158,9 @@ describe("redeem", () => {
             redeemAPI.setAccount(alice);
             const requestHash: H256 = requestResult.hash;
             const txId: H256Le = requestHash;
-            const txBlockHeight: u32 = new UInt(registry, 1);
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
-            const result = await redeemAPI.execute(requestHash, txId, txBlockHeight, merkleProof, rawTx);
+            const result = await redeemAPI.execute(requestHash, txId, merkleProof, rawTx);
             assert.isTrue(result);
         });
     });

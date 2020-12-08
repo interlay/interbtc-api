@@ -28,9 +28,9 @@ describe("OracleAPI", () => {
     describe("getInfo", () => {
         it("should return oracle info", async () => {
             const info = await oracle.getInfo();
-            assert.equal(info.name, "Bob");
+            assert.equal(info.names[0], "Bob");
             assert.isTrue(info.online);
-            assert.equal(info.feed, "BTC/DOT");
+            assert.equal(info.feed, "DOT/BTC");
         });
     });
 
