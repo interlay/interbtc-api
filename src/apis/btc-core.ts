@@ -2,6 +2,9 @@ import { BlockApi, Status, TxApi, ScripthashApi, Transaction, VOut } from "@inte
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
+
+// disabling linting as `bitcoin-core` has no types, causing the import to fail
+// eslint-disable-next-line
 const Client = require("bitcoin-core");
 
 const mainnetApiBasePath = "https://blockstream.info/api";
@@ -52,14 +55,14 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     constructor(network: string = "mainnet") {
         let basePath = "";
         switch (network) {
-            case "mainnet":
-                basePath = mainnetApiBasePath;
-                break;
-            case "testnet":
-                basePath = testnetApiBasePath;
-                break;
-            default:
-                basePath = network;
+        case "mainnet":
+            basePath = mainnetApiBasePath;
+            break;
+        case "testnet":
+            basePath = testnetApiBasePath;
+            break;
+        default:
+            basePath = network;
         }
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
@@ -201,7 +204,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         if (!this.client) {
             throw new Error("Client needs to be initialized before usage");
         }
-        let paidOutput = {} as any;
+        const paidOutput = {} as any;
         paidOutput[receiver] = amount;
         const raw = await this.client.command("createrawtransaction", [], [{ data: data }, paidOutput]);
         const funded = await this.client.command("fundrawtransaction", raw);
