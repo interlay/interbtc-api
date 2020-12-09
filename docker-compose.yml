@@ -104,9 +104,9 @@ services:
             - |
                 echo "Sleeping..."
                 sleep 3
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-issue-period --period=3
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-redeem-period --period=3
-                
+                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-issue-period --period=50
+                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-redeem-period --period=50
+
                 # wait for the vault to register
                 sleep 9
                 ALICE_ADDRESS=bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc

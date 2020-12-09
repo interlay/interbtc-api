@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { H256, Hash } from "@polkadot/types/interfaces";
-import { Bytes, u32 } from "@polkadot/types/primitive";
+import { Bytes } from "@polkadot/types/primitive";
 import { ImportMock } from "ts-mock-imports";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
@@ -12,12 +12,17 @@ import { assert, expect } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { delay } from "../../helpers";
+import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
+import BN from "bn.js";
+import { fail } from "assert";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
 describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
+    let treasuryAPI: DefaultTreasuryAPI;
+
     let keyring: Keyring;
 
     // alice is the root account
@@ -27,6 +32,7 @@ describe("issue", () => {
 
     before(async function () {
         api = await createPolkadotAPI(defaultEndpoint);
+        treasuryAPI = new DefaultTreasuryAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
@@ -106,10 +112,8 @@ describe("issue", () => {
         it("should request and execute issue", async () => {
             const btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
             btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-            const initialBalance = await btcCore.getBalance();
+            let initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
-            const blockMiningReward = 50;
-            const projectedMaxFees = 0.15;
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             dave = keyring.addFromUri("//Dave");
@@ -118,6 +122,9 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const amountAsBtcString = "0.001";
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
+            if (amountAsSatoshiString === undefined) {
+                fail();
+            }
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi);
             assert.isTrue(requestResult.hash.length > 0);
@@ -132,12 +139,8 @@ describe("issue", () => {
             await btcCore.mineBlocks(blocksToMine);
 
             // check issuing worked
-            const finalBalance = await btcCore.getBalance();
-            const finalBalanceWithoutMiningRewards = finalBalance - blocksToMine * blockMiningReward;
-            assert.isTrue(
-                Math.abs(initialBalance - finalBalanceWithoutMiningRewards) <=
-                    Number(amountAsBtcString) + projectedMaxFees
-            );
+            let finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+            assert.isTrue(finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)));
         });
     });
 
@@ -159,17 +162,18 @@ describe("issue", () => {
             const requestResult = await issueAPI.request(amountAsSatoshi);
             assert.isTrue(requestResult.hash.length > 0);
 
-            await delay(60000);
             // Before cancelling, there should be 1 outstanding request
             activeIssueRequests = await issueAPI.list();
             activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
             assert.isTrue(activeIssueRequests.length === initialIssueRequests + 1);
+
+            await delay(310000);
             await issueAPI.cancel(requestResult.hash);
 
             // After cancelling, there should be no outstanding request
             activeIssueRequests = await issueAPI.list();
             activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
-            assert.isTrue(activeIssueRequests.length === initialIssueRequests);
+            assert.isBelow(activeIssueRequests.length, initialIssueRequests);
         });
     });
 
@@ -178,7 +182,7 @@ describe("issue", () => {
             try {
                 issueAPI.setAccount(alice);
                 const period = await issueAPI.getIssuePeriod();
-                expect(period.toString()).equal("3");
+                expect(period.toString()).equal("50");
             } catch (error) {
                 console.log(error);
             }

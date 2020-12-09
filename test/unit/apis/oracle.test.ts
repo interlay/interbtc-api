@@ -95,7 +95,7 @@ describe("oracle", () => {
         it("should return the correct rate", () => {
             const oracleProto = Object.getPrototypeOf(oracle);
             const planck_to_sat = 38552318793;
-            const dot_to_btc = oracleProto.convertExchangeRate(planck_to_sat);
+            const dot_to_btc = oracleProto.convertFromRawExchangeRate(planck_to_sat);
             return assert.equal(dot_to_btc, 3855.2318793);
         });
     });

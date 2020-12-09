@@ -14,12 +14,15 @@ import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { btcToSat, stripHexPrefix, encodeBtcAddress } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
+import { delay } from "../../helpers";
+import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
 describe("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
     let issueAPI: DefaultIssueAPI;
+    let treasuryAPI: DefaultTreasuryAPI;
     let api: ApiPromise;
     let keyring: Keyring;
     // alice is the root account
@@ -38,6 +41,7 @@ describe("redeem", () => {
     beforeEach(() => {
         redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest);
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+        treasuryAPI = new DefaultTreasuryAPI(api);
         sinon.stub(redeemAPI, <any>"vaults").get(() => {
             return {
                 selectRandomVaultRedeem() {
@@ -84,10 +88,11 @@ describe("redeem", () => {
             }
             const txData = await btcCore.broadcastOpReturnTx(vaultBtcAddress, amountAsBtcString, data);
             await btcCore.mineBlocks(blocksToMine);
+            await delay(10000);
 
             // redeem
             redeemAPI.setAccount(alice);
-            const redeemAmountAsBtcString = "0.05";
+            const redeemAmountAsBtcString = "0.09";
             const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
@@ -122,10 +127,11 @@ describe("redeem", () => {
             }
             const txData = await btcCore.broadcastOpReturnTx(vaultBtcAddress, amountAsBtcString, data);
             await btcCore.mineBlocks(blocksToMine);
+            await delay(60000);
 
             // redeem
             redeemAPI.setAccount(alice);
-            const redeemAmountAsBtcString = "0.05";
+            const redeemAmountAsBtcString = "0.09";
             const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
@@ -136,58 +142,6 @@ describe("redeem", () => {
             const finalBalance = await btcCore.getBalance();
             const finalBalanceWithoutMiningRewards = finalBalance - blocksToMine * blockMiningReward;
             assert.isTrue(Math.abs(initialBalance - finalBalanceWithoutMiningRewards) <= projectedMaxFees);
-        });
-    });
-
-    describe.skip("execute", () => {
-        it("should fail if no account is set", () => {
-            const redeemId: H256 = <H256>{};
-            const txId: H256Le = <H256Le>{};
-            const merkleProof: Bytes = <Bytes>{};
-            const rawTx: Bytes = <Bytes>{};
-            assert.isRejected(redeemAPI.execute(redeemId, txId, merkleProof, rawTx));
-        });
-
-        it("should request if account is set", async () => {
-            redeemAPI.setAccount(alice);
-            const amount = api.createType("PolkaBTC", 10);
-            requestResult = await redeemAPI.request(amount, randomDecodedAccountId);
-        });
-
-        it("should send 'executeRedeem' transaction after obtaining 'requestRedeem' response", async () => {
-            redeemAPI.setAccount(alice);
-            const requestHash: H256 = requestResult.hash;
-            const txId: H256Le = requestHash;
-            const merkleProof: Bytes = <Bytes>{};
-            const rawTx: Bytes = <Bytes>{};
-            const result = await redeemAPI.execute(requestHash, txId, merkleProof, rawTx);
-            assert.isTrue(result);
-        });
-    });
-
-    describe.skip("cancel", () => {
-        let requestResult: RequestResult;
-
-        it("should cancel a request", async () => {
-            redeemAPI.setAccount(alice);
-            const amount = api.createType("PolkaBTC", 11);
-            requestResult = await redeemAPI.request(amount, randomDecodedAccountId);
-            const result = await redeemAPI.cancel(requestResult.hash);
-            // FIXME: assumes redeem request is not expired. Add logic to check if it is expired
-            assert.isFalse(result);
-        });
-
-        it("should get expired redeem requests", async () => {
-            redeemAPI.setAccount(alice);
-            const aliceId = api.createType("AccountId", alice.address);
-
-            // FIXME: add expired redeem request for callback to be called
-            const redeemExpired = (_redeemId: string) => {
-                setTimeout(() => {
-                    assert.isTrue(false);
-                }, 1000);
-            };
-            redeemAPI.subscribeToRedeemExpiry(aliceId, redeemExpired);
         });
     });
 });
