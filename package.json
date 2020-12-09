@@ -17,7 +17,7 @@
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint --fix . --ext .ts",
-    "ci:test": "run-s build test:lint test:unit",
+    "ci:test": "run-s build test:lint test:unit test:integration",
     "generate:defs": "ts-node --skip-project node_modules/.bin/polkadot-types-from-defs --package @interlay/polkabtc/interfaces --input ./src/interfaces",
     "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/polkabtc/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "test": "run-s build test:*",
