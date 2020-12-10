@@ -124,14 +124,6 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return 20;
     }
 
-    async getScore(_stakedRelayerId: AccountId): Promise<string> {
-        return "302";
-    }
-
-    async getTotalScore(): Promise<string> {
-        return "1090";
-    }
-
     async getTotalReward(): Promise<string> {
         return "205";
     }

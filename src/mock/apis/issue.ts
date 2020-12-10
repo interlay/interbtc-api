@@ -89,7 +89,7 @@ export class MockIssueAPI implements IssueAPI {
         };
     }
 
-    async getFeesToPay(_account: AccountId): Promise<DOT> {
-        return new BN(11) as DOT;
+    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
+        return new BN(11) as PolkaBTC;
     }
 }

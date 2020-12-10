@@ -38,7 +38,7 @@ export interface RedeemAPI {
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
-    getFeesToPay(account: AccountId): Promise<DOT>;
+    getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
 }
 
 export class DefaultRedeemAPI {
@@ -152,8 +152,8 @@ export class DefaultRedeemAPI {
         return unsubscribe;
     }
 
-    async getFeesToPay(_account: AccountId): Promise<DOT> {
-        return this.api.createType("DOT", 8);
+    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
+        return this.api.createType("PolkaBTC", 8);
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

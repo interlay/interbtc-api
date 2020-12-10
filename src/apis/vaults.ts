@@ -39,7 +39,7 @@ export interface VaultsAPI {
     getFees(vaultId: AccountId): Promise<PolkaBTC>;
     getAPY(vaultId: AccountId): Promise<string>;
     getSLA(vaultId: AccountId): Promise<number>;
-    getSlashableCollateral(vaultId: AccountId): Promise<string>;
+    getSlashableCollateral(vaultId: AccountId, amount: PolkaBTC): Promise<string>;
 }
 
 export class DefaultVaultsAPI {
@@ -316,21 +316,14 @@ export class DefaultVaultsAPI {
         return 62;
     }
 
-    async getSlashableCollateral(vaultId: AccountId): Promise<string> {
-        const liquidationThreshold = await this.getLiquidationCollateralThreshold();
-        const premiumRedeemThreshold = await this.getPremiumRedeemThreshold();
-        const targetSLA = this.api.createType("u128", 99);
-        const actualSLANumber = await this.getSLA(vaultId);
-        const actualSLA = this.api.createType("u128", actualSLANumber);
+    async getMaxSLA(): Promise<number> {
+        // TODO: get real value from backend
+        return 99;
+    }
 
-        //  (LiquidationThreshold - PremiumRedeemThreshold) / SLATarget * SLA + LiquidationThreshold
-        // The following works under left-associativity of function calls (left-to-right evaluation), which TS/JS have
-        return liquidationThreshold
-            .sub(premiumRedeemThreshold)
-            .div(targetSLA)
-            .mul(actualSLA)
-            .add(liquidationThreshold)
-            .toString();
+    async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
+        // TODO: get real value from backend
+        return "123";
     }
 
     private scaleUsingParachainGranularity(value: u128): number {

@@ -86,7 +86,7 @@ export class MockRedeemAPI implements RedeemAPI {
         return Promise.resolve(() => {});
     }
 
-    async getFeesToPay(_account: AccountId): Promise<DOT> {
-        return new BN(8) as DOT;
+    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
+        return new BN(8) as PolkaBTC;
     }
 }

@@ -162,7 +162,7 @@ export class MockVaultsAPI implements VaultsAPI {
         return 62;
     }
 
-    async getSlashableCollateral(vaultId: AccountId): Promise<string> {
+    async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
         return "55.325";
     }
 }

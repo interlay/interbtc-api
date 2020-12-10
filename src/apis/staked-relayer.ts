@@ -26,8 +26,6 @@ export interface StakedRelayerAPI {
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getFees(stakedRelayerId: AccountId): Promise<PolkaBTC>;
     getSLA(stakedRelayerId: AccountId): Promise<number>;
-    getScore(stakedRelayerId: AccountId): Promise<string>;
-    getTotalScore(): Promise<string>;
     getTotalReward(): Promise<string>;
     getReward(stakedRelayerId: AccountId): Promise<string>;
 }
@@ -159,28 +157,17 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return 20;
     }
 
-    async getScore(stakedRelayerId: AccountId): Promise<string> {
-        const stake = await this.getStakedDOTAmount(stakedRelayerId);
-        const slaNumber = await this.getSLA(stakedRelayerId);
-        const sla = this.api.createType("u128", slaNumber);
-        return sla.mul(stake).toString();
-    }
-
-    async getTotalScore(): Promise<string> {
-        return "1090";
+    async getMaxSLA(): Promise<number> {
+        // TODO: get real value from backend
+        return 99;
     }
 
     async getTotalReward(): Promise<string> {
+        // TODO: get real value from backend
         return "205";
     }
 
-    async getReward(stakedRelayerId: AccountId): Promise<string> {
-        const scoreString = await this.getScore(stakedRelayerId);
-        const score = this.api.createType("u128", scoreString);
-        const totalScoreString = await this.getTotalScore();
-        const totalScore = this.api.createType("u128", totalScoreString);
-        const totalRewardString = await this.getTotalReward();
-        const totalReward = this.api.createType("u128", totalRewardString);
-        return totalReward.div(totalScore).mul(score).toString();
+    async getReward(_stakedRelayerId: AccountId): Promise<string> {
+        return "15.33";
     }
 }
