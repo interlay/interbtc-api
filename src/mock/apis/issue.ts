@@ -88,4 +88,8 @@ export class MockIssueAPI implements IssueAPI {
             griefing_collateral: new BN(76) as DOT,
         };
     }
+
+    async getFeesToPay(_account: AccountId): Promise<DOT> {
+        return new BN(11) as DOT;
+    }
 }

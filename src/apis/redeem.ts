@@ -1,13 +1,12 @@
-import { PolkaBTC, RedeemRequest, Vault, H256Le } from "../interfaces/default";
+import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
-import { Bytes, u32 } from "@polkadot/types/primitive";
+import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { decodeBtcAddress, encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
-import { DefaultSystemAPI, SystemAPI } from "./system";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
 
@@ -39,6 +38,7 @@ export interface RedeemAPI {
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
+    getFeesToPay(account: AccountId): Promise<DOT>;
 }
 
 export class DefaultRedeemAPI {
@@ -150,6 +150,10 @@ export class DefaultRedeemAPI {
             });
         });
         return unsubscribe;
+    }
+
+    async getFeesToPay(_account: AccountId): Promise<DOT> {
+        return this.api.createType("DOT", 8);
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

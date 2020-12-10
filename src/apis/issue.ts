@@ -37,6 +37,7 @@ export interface IssueAPI {
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
     getIssuePeriod(): Promise<BlockNumber>;
+    getFeesToPay(account: AccountId): Promise<DOT>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
@@ -145,6 +146,10 @@ export class DefaultIssueAPI implements IssueAPI {
             mapForUser.set(issueRequestPair[0], encodeIssueRequest(issueRequestPair[1], this.btcNetwork))
         );
         return mapForUser;
+    }
+
+    async getFeesToPay(_account: AccountId): Promise<DOT> {
+        return this.api.createType("DOT", 11);
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {

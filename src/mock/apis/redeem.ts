@@ -85,4 +85,8 @@ export class MockRedeemAPI implements RedeemAPI {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         return Promise.resolve(() => {});
     }
+
+    async getFeesToPay(_account: AccountId): Promise<DOT> {
+        return new BN(8) as DOT;
+    }
 }

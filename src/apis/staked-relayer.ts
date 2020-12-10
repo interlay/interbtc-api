@@ -1,4 +1,4 @@
-import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate } from "../interfaces/default";
+import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC } from "../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
@@ -24,6 +24,12 @@ export interface StakedRelayerAPI {
     getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
+    getFees(stakedRelayerId: AccountId): Promise<PolkaBTC>;
+    getSLA(stakedRelayerId: AccountId): Promise<number>;
+    getScore(stakedRelayerId: AccountId): Promise<string>;
+    getTotalScore(): Promise<string>;
+    getTotalReward(): Promise<string>;
+    getReward(stakedRelayerId: AccountId): Promise<string>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -141,5 +147,40 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         const activeStatusUpdates = await this.getAllActiveStatusUpdates();
         const inactiveStatusUpdates = await this.getAllInactiveStatusUpdates();
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
+    }
+
+    async getFees(_stakedRelayerId: AccountId): Promise<PolkaBTC> {
+        // TODO: get real value from backend
+        return this.api.createType("FixedU128", 103) as PolkaBTC;
+    }
+
+    async getSLA(_stakedRelayerId: AccountId): Promise<number> {
+        // TODO: get real value from backend
+        return 20;
+    }
+
+    async getScore(stakedRelayerId: AccountId): Promise<string> {
+        const stake = await this.getStakedDOTAmount(stakedRelayerId);
+        const slaNumber = await this.getSLA(stakedRelayerId);
+        const sla = this.api.createType("u128", slaNumber);
+        return sla.mul(stake).toString();
+    }
+
+    async getTotalScore(): Promise<string> {
+        return "1090";
+    }
+
+    async getTotalReward(): Promise<string> {
+        return "205";
+    }
+
+    async getReward(stakedRelayerId: AccountId): Promise<string> {
+        const scoreString = await this.getScore(stakedRelayerId);
+        const score = this.api.createType("u128", scoreString);
+        const totalScoreString = await this.getTotalScore();
+        const totalScore = this.api.createType("u128", totalScoreString);
+        const totalRewardString = await this.getTotalReward();
+        const totalReward = this.api.createType("u128", totalRewardString);
+        return totalReward.div(totalScore).mul(score).toString();
     }
 }
