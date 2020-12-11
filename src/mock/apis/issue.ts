@@ -88,4 +88,12 @@ export class MockIssueAPI implements IssueAPI {
             griefing_collateral: new BN(76) as DOT,
         };
     }
+
+    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
+        return new BN(11) as PolkaBTC;
+    }
+
+    async getFeePercentage(): Promise<number> {
+        return 5.3;
+    }
 }

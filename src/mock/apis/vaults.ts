@@ -9,6 +9,7 @@ import { IssueRequestExt } from "../../apis/issue";
 import { RedeemRequestExt } from "../../apis/redeem";
 import { ReplaceRequestExt } from "../../apis/replace";
 import { VaultsAPI } from "../../apis/vaults";
+import { u128 } from "@polkadot/types/primitive";
 
 export class MockVaultsAPI implements VaultsAPI {
     async list(): Promise<Vault[]> {
@@ -136,5 +137,41 @@ export class MockVaultsAPI implements VaultsAPI {
 
     async getIssuablePolkaBTC(): Promise<string> {
         return "500";
+    }
+
+    async getLiquidationCollateralThreshold(): Promise<u128> {
+        const registry = new TypeRegistry();
+        return new UInt(registry, 110000) as u128;
+    }
+
+    async getPremiumRedeemThreshold(): Promise<u128> {
+        const registry = new TypeRegistry();
+        return new UInt(registry, 120000) as u128;
+    }
+
+    async getFees(_vaultId: AccountId): Promise<PolkaBTC> {
+        const registry = new TypeRegistry();
+        return new UInt(registry, 368) as PolkaBTC;
+    }
+
+    async getAPY(_vaultId: AccountId): Promise<string> {
+        return "3.23988247";
+    }
+
+    async getSLA(_vaultId: AccountId): Promise<number> {
+        return 62;
+    }
+
+    async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
+        return "55.325";
+    }
+
+    async getMaxSLA(): Promise<number> {
+        return 99;
+    }
+
+    async getPunishmentFee(): Promise<DOT> {
+        const registry = new TypeRegistry();
+        return new UInt(registry, 368) as DOT;
     }
 }
