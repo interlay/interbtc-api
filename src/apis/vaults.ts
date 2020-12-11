@@ -6,7 +6,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
 import { pagedIterator, PERCENTAGE_GRANULARITY, planckToDOT } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
-import { DefaultCollateralAPI } from "./collateral";
+import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI } from "./oracle";
 import Big from "big.js";
 import { IssueRequestExt, encodeIssueRequest } from "./issue";
@@ -34,14 +34,24 @@ export interface VaultsAPI {
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
     selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
     getIssuablePolkaBTC(): Promise<string>;
+    getLiquidationCollateralThreshold(): Promise<u128>;
+    getPremiumRedeemThreshold(): Promise<u128>;
+    getFees(vaultId: AccountId): Promise<PolkaBTC>;
+    getAPY(vaultId: AccountId): Promise<string>;
+    getSLA(vaultId: AccountId): Promise<number>;
+    getMaxSLA(): Promise<number>;
+    getSlashableCollateral(vaultId: AccountId, amount: PolkaBTC): Promise<string>;
+    getPunishmentFee(): Promise<DOT>;
 }
 
 export class DefaultVaultsAPI {
     granularity = 5;
     private btcNetwork: Network;
+    collateralAPI: CollateralAPI;
 
     constructor(private api: ApiPromise, btcNetwork: Network) {
         this.btcNetwork = btcNetwork;
+        this.collateralAPI = new DefaultCollateralAPI(this.api);
     }
 
     async list(): Promise<Vault[]> {
@@ -236,8 +246,7 @@ export class DefaultVaultsAPI {
     }
 
     async getIssuablePolkaBTC(): Promise<string> {
-        const collateral = new DefaultCollateralAPI(this.api);
-        const totalLockedDotAsPlanck = await collateral.totalLockedDOT();
+        const totalLockedDotAsPlanck = await this.collateralAPI.totalLockedDOT();
         const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
@@ -277,6 +286,50 @@ export class DefaultVaultsAPI {
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
         const theftReports = await this.api.query.stakedRelayers.theftReports(vaultId);
         return theftReports.isEmpty;
+    }
+
+    async getLiquidationCollateralThreshold(): Promise<u128> {
+        return await this.api.query.vaultRegistry.liquidationCollateralThreshold();
+    }
+
+    async getPremiumRedeemThreshold(): Promise<u128> {
+        return await this.api.query.vaultRegistry.premiumRedeemThreshold();
+    }
+
+    async getFees(_vaultId: AccountId): Promise<PolkaBTC> {
+        // TODO: get real value from backend
+        return this.api.createType("FixedU128", 368) as PolkaBTC;
+    }
+
+    async getAPY(vaultId: AccountId): Promise<string> {
+        const fees = await this.getFees(vaultId);
+        // TODO: convert from PolkaBTC to USD
+        const feesInUSD = fees;
+
+        const lockedDot = await this.collateralAPI.balanceLockedDOT(vaultId);
+        // TODO convert from DOT to USD
+        const lockedUsdValue = lockedDot;
+
+        return feesInUSD.div(lockedUsdValue).toString();
+    }
+
+    async getSLA(_vaultId: AccountId): Promise<number> {
+        // TODO: get real value from backend
+        return 62;
+    }
+
+    async getMaxSLA(): Promise<number> {
+        // TODO: get real value from backend
+        return 99;
+    }
+
+    async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
+        // TODO: get real value from backend
+        return "123";
+    }
+
+    async getPunishmentFee(): Promise<DOT> {
+        return this.api.query.vaultRegistry.punishmentFee();
     }
 
     private scaleUsingParachainGranularity(value: u128): number {

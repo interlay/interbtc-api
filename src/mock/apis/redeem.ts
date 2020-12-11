@@ -85,4 +85,12 @@ export class MockRedeemAPI implements RedeemAPI {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         return Promise.resolve(() => {});
     }
+
+    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
+        return new BN(8) as PolkaBTC;
+    }
+
+    async getFeePercentage(): Promise<number> {
+        return 4.4;
+    }
 }

@@ -93,4 +93,12 @@ export class MockIssueAPI implements IssueAPI {
     isExecutionSucessful(_events: EventRecord[]): boolean {
         return false;
     }
+    
+    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
+        return new BN(11) as PolkaBTC;
+    }
+
+    async getFeePercentage(): Promise<number> {
+        return 5.3;
+    }
 }
