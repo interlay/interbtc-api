@@ -41,6 +41,7 @@ export interface VaultsAPI {
     getSLA(vaultId: AccountId): Promise<number>;
     getMaxSLA(): Promise<number>;
     getSlashableCollateral(vaultId: AccountId, amount: PolkaBTC): Promise<string>;
+    getPunishmentFee(): Promise<DOT>;
 }
 
 export class DefaultVaultsAPI {
@@ -325,6 +326,10 @@ export class DefaultVaultsAPI {
     async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
         // TODO: get real value from backend
         return "123";
+    }
+
+    async getPunishmentFee(): Promise<DOT> {
+        return this.api.query.vaultRegistry.punishmentFee();
     }
 
     private scaleUsingParachainGranularity(value: u128): number {

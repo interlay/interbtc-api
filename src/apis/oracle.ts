@@ -4,8 +4,9 @@ import { BTreeSet } from "@polkadot/types/codec";
 import { AccountId } from "@polkadot/types/interfaces";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { u128 } from "@polkadot/types/primitive";
-import { BTC_IN_SAT, DOT_IN_PLANCK } from "../utils";
+import { BTC_IN_SAT, DOT_IN_PLANCK, sendLoggedTx } from "../utils";
 import Big from "big.js";
+import { AddressOrPair } from "@polkadot/api/types";
 
 const defaultFeedName = "DOT/BTC";
 const granularity = 5;
@@ -25,10 +26,12 @@ export interface OracleAPI {
     getOracleNames(): Promise<Array<string>>;
     isOnline(): Promise<boolean>;
     getInfo(): Promise<OracleInfo>;
+    setExchangeRate(exchangeRate: string): Promise<void>;
+    setAccount(account?: AddressOrPair): void;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
-    constructor(private api: ApiPromise) {}
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {}
 
     async getInfo(): Promise<OracleInfo> {
         const results = await this.api.queryMulti([
@@ -38,7 +41,7 @@ export class DefaultOracleAPI implements OracleAPI {
         ]);
         const names = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
         return {
-            exchangeRate: this.convertExchangeRate(<u128>results[0]),
+            exchangeRate: this.convertFromRawExchangeRate(<u128>results[0]),
             feed: await this.getFeed(),
             names: names.map((v) => v[1].toUtf8()),
             online: !this.hasOracleError(<BTreeSet<ErrorCode>>results[2]),
@@ -49,7 +52,15 @@ export class DefaultOracleAPI implements OracleAPI {
     // return the BTC to DOT exchange rate
     async getExchangeRate(): Promise<number> {
         const rawRate = await this.api.query.exchangeRateOracle.exchangeRate();
-        return this.convertExchangeRate(rawRate);
+        return this.convertFromRawExchangeRate(rawRate);
+    }
+
+    async setExchangeRate(exchangeRate: string): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot set exchange rate without setting account");
+        }
+        const tx = this.api.tx.exchangeRateOracle.setExchangeRate(exchangeRate);
+        const result = await sendLoggedTx(tx, this.account, this.api);
     }
 
     async getOracleNames(): Promise<Array<string>> {
@@ -86,9 +97,13 @@ export class DefaultOracleAPI implements OracleAPI {
 
     // Converts the raw exchange rate (planck to satoshi) into
     // DOT to BTC
-    private convertExchangeRate(rate: u128): number {
+    private convertFromRawExchangeRate(rate: u128): number {
         const rateBN = new Big(rate.toString());
         const divisor = new Big(Math.pow(10, granularity) * (DOT_IN_PLANCK / BTC_IN_SAT));
         return parseFloat(rateBN.div(divisor).toString());
+    }
+
+    setAccount(account?: AddressOrPair): void {
+        this.account = account;
     }
 }

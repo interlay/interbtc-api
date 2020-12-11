@@ -100,26 +100,33 @@ describe("BTCCore testnet", function () {
 });
 
 describe("BTCCore regtest", function () {
-    this.timeout(10000); // API can be slightly slow
+    this.timeout(100000);
 
     let api: ApiPromise;
     let btcCore: BTCCoreAPI;
 
     beforeEach(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
-        btcCore = new DefaultBTCCoreAPI("http://localhost:3002");
+        btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
     });
 
     afterEach(async () => {
         await api.disconnect();
     });
 
-    describe("getTxByOpcode", () => {
+    describe("getTxByOpreturn", () => {
         it("should return correct tx id", async () => {
-            // FIXME: generate bitcoin transaction with OP_RETURN value
-            const opReturnValue = "2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b";
-            const txid = await btcCore.getTxIdByOpReturn(opReturnValue);
-            assert.strictEqual(txid, "829874a7649f6081779071446b8195a550c83431bab4fb9b529a6668ba2f3e22");
+            btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+            const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
+            const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
+            const amountAsBtcString = "0.00029";
+            const txData = await btcCore.sendBtcTxAndMine(recipientAddress, amountAsBtcString, opReturnValue, 6);
+            const txid = await btcCore.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
+            assert.strictEqual(txid, txData.txid);
         });
     });
+
+    function delay(ms: number) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
 });

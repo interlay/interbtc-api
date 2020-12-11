@@ -37,6 +37,7 @@ export interface IssueAPI {
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
     getIssuePeriod(): Promise<BlockNumber>;
+    isExecutionSucessful(events: EventRecord[]): boolean;
     getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
     getFeePercentage(): Promise<number>;
 }
@@ -71,8 +72,27 @@ export class DefaultIssueAPI implements IssueAPI {
         throw new Error("Request transaction failed");
     }
 
+    isRequestSucessful(events: EventRecord[]): boolean {
+        // A successful `execute` produces the following events:
+        // - dot.Reserved
+        // - collateral.LockCollateral
+        // - vaultRegistry.IncreaseToBeIssuedTokens
+        // - issue.ExecuteIssue
+        // - system.ExtrinsicSuccess
+
+        for (const {
+            event: { method, section },
+        } of events) {
+            if (section == "issue" && method == "RequestIssue") {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     isExecutionSucessful(events: EventRecord[]): boolean {
-        // A successful `execute` produces five events:
+        // A successful `execute` produces the following events:
         // - vaultRegistry.IssueTokens
         // - system.NewAccount
         // - polkaBtc.Endowed
@@ -109,6 +129,10 @@ export class DefaultIssueAPI implements IssueAPI {
         }
         const requestIssueTx = this.api.tx.issue.requestIssue(amount, vault.id, griefingCollateral);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
+
+        if (!this.isRequestSucessful(result.events)) {
+            throw new Error("Request failed");
+        }
 
         const hash = this.getIssueIdFromEvents(result.events);
         return { hash, vault };

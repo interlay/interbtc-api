@@ -7,6 +7,7 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
 import { IssueAPI, RequestResult, IssueRequestExt } from "../../apis/issue";
+import { EventRecord } from "@polkadot/types/interfaces/system";
 
 export class MockIssueAPI implements IssueAPI {
     execute(_issueId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
@@ -89,6 +90,10 @@ export class MockIssueAPI implements IssueAPI {
         };
     }
 
+    isExecutionSucessful(_events: EventRecord[]): boolean {
+        return false;
+    }
+    
     async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
         return new BN(11) as PolkaBTC;
     }

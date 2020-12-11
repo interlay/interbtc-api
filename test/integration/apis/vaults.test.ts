@@ -6,10 +6,12 @@ import { createPolkadotAPI } from "../../../src/factory";
 import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
+import * as bitcoin from "bitcoinjs-lib";
 
 describe("vaultsAPI", () => {
     let bob: KeyringPair;
     let charlie: KeyringPair;
+    let dave: KeyringPair;
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
 
@@ -22,10 +24,11 @@ describe("vaultsAPI", () => {
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
         charlie = keyring.addFromUri("//Charlie");
+        dave = keyring.addFromUri("//Dave");
     });
 
     beforeEach(async () => {
-        vaultsAPI = new DefaultVaultsAPI(api);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoin.networks.regtest);
     });
 
     after(() => {
@@ -35,7 +38,7 @@ describe("vaultsAPI", () => {
     it("should select random vault for issue", async () => {
         const polkaBTCCollateral = api.createType("PolkaBTC", 0);
         const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
-        assert.equal(randomVault.toHuman(), bob.address);
+        assert.isTrue(randomVault.toHuman() === dave.address || randomVault.toHuman() === charlie.address);
     });
 
     it("should fail if no vault for issuing is found", async () => {
@@ -46,7 +49,7 @@ describe("vaultsAPI", () => {
     it("should select random vault for redeem", async () => {
         const polkaBTCCollateral = api.createType("PolkaBTC", 0);
         const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
-        assert.equal(randomVault.toHuman(), bob.address);
+        assert.isTrue(randomVault.toHuman() === dave.address || randomVault.toHuman() === charlie.address);
     });
 
     it("should fail if no vault for redeeming is found", async () => {
@@ -107,6 +110,6 @@ describe("vaultsAPI", () => {
         const issuablePolkaBtc = await vaultsAPI.getIssuablePolkaBTC();
         const issuablePolkaBtcU128 = api.createType("u128", issuablePolkaBtc);
         const zeroU128 = api.createType("u128", 0);
-        assert.isTrue(issuablePolkaBtcU128.eq(zeroU128));
+        assert.isTrue(issuablePolkaBtcU128.gt(zeroU128));
     });
 });
