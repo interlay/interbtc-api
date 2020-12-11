@@ -39,6 +39,7 @@ export interface RedeemAPI {
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
     getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
+    getFeePercentage(): Promise<number>;
 }
 
 export class DefaultRedeemAPI {
@@ -154,6 +155,11 @@ export class DefaultRedeemAPI {
 
     async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
         return this.api.createType("PolkaBTC", 8);
+    }
+
+    async getFeePercentage(): Promise<number> {
+        // TODO: get real value from backend
+        return 4.4;
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

@@ -26,6 +26,7 @@ export interface StakedRelayerAPI {
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getFees(stakedRelayerId: AccountId): Promise<PolkaBTC>;
     getSLA(stakedRelayerId: AccountId): Promise<number>;
+    getMaxSLA(): Promise<number>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {

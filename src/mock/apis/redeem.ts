@@ -89,4 +89,8 @@ export class MockRedeemAPI implements RedeemAPI {
     async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
         return new BN(8) as PolkaBTC;
     }
+
+    async getFeePercentage(): Promise<number> {
+        return 4.4;
+    }
 }

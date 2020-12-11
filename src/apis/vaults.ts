@@ -39,6 +39,7 @@ export interface VaultsAPI {
     getFees(vaultId: AccountId): Promise<PolkaBTC>;
     getAPY(vaultId: AccountId): Promise<string>;
     getSLA(vaultId: AccountId): Promise<number>;
+    getMaxSLA(): Promise<number>;
     getSlashableCollateral(vaultId: AccountId, amount: PolkaBTC): Promise<string>;
 }
 

@@ -165,4 +165,13 @@ export class MockVaultsAPI implements VaultsAPI {
     async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
         return "55.325";
     }
+
+    async getMaxSLA(): Promise<number> {
+        return 99;
+    }
+
+    async getPunishmentFee(): Promise<DOT> {
+        const registry = new TypeRegistry();
+        return new UInt(registry, 368) as DOT;
+    }
 }

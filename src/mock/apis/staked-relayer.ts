@@ -123,4 +123,8 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
     async getSLA(_stakedRelayerId: AccountId): Promise<number> {
         return 20;
     }
+
+    async getMaxSLA(): Promise<number> {
+        return 99;
+    }
 }
