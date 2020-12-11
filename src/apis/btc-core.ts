@@ -3,6 +3,10 @@ import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
 
+// disabling linting as `bitcoin-core` has no types, causing the import to fail
+// eslint-disable-next-line
+const Client = require("bitcoin-core");
+
 const mainnetApiBasePath = "https://blockstream.info/api";
 const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
 
@@ -40,12 +44,39 @@ export interface BTCCoreAPI {
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
     getRawTransaction(txid: string): Promise<Buffer>;
     getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
+    broadcastOpReturnTx(
+        receiver: string,
+        amount: string,
+        data: string
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }>;
+    initializeClientConnection(
+        network: string,
+        host: string,
+        username: string,
+        password: string,
+        port: string,
+        wallet: string
+    ): void;
+    mineBlocks(n: number): Promise<void>;
+    sendBtcTxAndMine(
+        recipient: string,
+        amount: string,
+        data: string,
+        blocksToMine: number
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
     private blockApi: BlockApi;
     private txApi: TxApi;
     private scripthashApi: ScripthashApi;
+    private client: typeof Client;
 
     constructor(network: string = "mainnet") {
         let basePath = "";
@@ -64,6 +95,24 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         this.scripthashApi = new ScripthashApi({ basePath });
     }
 
+    initializeClientConnection(
+        network: string,
+        host: string,
+        username: string,
+        password: string,
+        port: string,
+        wallet: string
+    ): void {
+        this.client = new Client({
+            network: network,
+            host: host,
+            username: username,
+            password: password,
+            port: port,
+            wallet: wallet,
+        });
+    }
+
     getLatestBlock(): Promise<string> {
         return this.getData(this.blockApi.getLastBlockHash());
     }
@@ -74,6 +123,10 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
 
     getMerkleProof(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
+    }
+
+    async broadcastRawTransaction(hex: string): Promise<AxiosResponse<string>> {
+        return await this.txApi.postTx(hex);
     }
 
     // returns the confirmation status and number of confirmations of a tx
@@ -165,4 +218,59 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     getData<T>(response: Promise<AxiosResponse<T>>): Promise<T> {
         return response.then((v) => v.data);
     }
+
+    async sendBtcTxAndMine(
+        recipient: string,
+        amount: string,
+        data: string,
+        blocksToMine: number
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }> {
+        const tx = await this.broadcastOpReturnTx(recipient, amount, data);
+        await this.mineBlocks(blocksToMine);
+        return tx;
+    }
+
+    async broadcastOpReturnTx(
+        recipient: string,
+        amount: string,
+        data: string
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }> {
+        if (!this.client) {
+            throw new Error("Client needs to be initialized before usage");
+        }
+        const paidOutput = {} as any;
+        paidOutput[recipient] = amount;
+        const raw = await this.client.command("createrawtransaction", [], [{ data: data }, paidOutput]);
+        const funded = await this.client.command("fundrawtransaction", raw);
+        const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
+        const response = await this.broadcastRawTransaction(signed.hex);
+        const txid = response.data;
+        return {
+            txid: txid,
+            rawTx: signed.hex,
+        };
+    }
+
+    async mineBlocks(n: number): Promise<void> {
+        const newWalletAddress = await this.client.command("getnewaddress");
+        const minedTxs = await this.client.command("generatetoaddress", n, newWalletAddress);
+        // A block is relayed every 6000ms by the staked-relayer.
+        // Wait an additional 100ms to be sure
+        const relayPeriodWithBuffer = 6100;
+        await delay(n * relayPeriodWithBuffer);
+    }
+
+    async getBalance() {
+        return await this.client.command("getbalance");
+    }
+}
+
+function delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }

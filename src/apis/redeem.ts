@@ -1,13 +1,12 @@
-import { PolkaBTC, RedeemRequest, Vault, H256Le } from "../interfaces/default";
+import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
-import { Bytes, u32 } from "@polkadot/types/primitive";
+import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { decodeBtcAddress, encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
-import { DefaultSystemAPI, SystemAPI } from "./system";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
 
@@ -39,6 +38,8 @@ export interface RedeemAPI {
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
+    getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
+    getFeePercentage(): Promise<number>;
 }
 
 export class DefaultRedeemAPI {
@@ -66,6 +67,37 @@ export class DefaultRedeemAPI {
         throw new Error("Transaction failed");
     }
 
+    isRequestSucessful(events: EventRecord[]): boolean {
+        // A successful `execute` produces the following events:
+        // - vaultRegistry.IncreaseToBeRedeemedTokens
+        // - polkaBtc.Reserved
+        // - treasury.Lock
+        // - redeem.RequestRedeem
+        // - system.ExtrinsicSuccess
+
+        for (const {
+            event: { method, section },
+        } of events) {
+            if (section == "redeem" && method == "RequestRedeem") {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    isExecutionSucessful(events: EventRecord[]): boolean {
+        for (const {
+            event: { method, section },
+        } of events) {
+            if (section == "redeem" && method == "ExecuteRedeem") {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     async request(amount: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
@@ -82,6 +114,9 @@ export class DefaultRedeemAPI {
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amount, btcAddress, vault.id);
         const result = await sendLoggedTx(requestRedeemTx, this.account, this.api);
+        if (!this.isRequestSucessful(result.events)) {
+            throw new Error("Request failed");
+        }
         const hash = this.getRedeemHashFromEvents(result.events, "RequestRedeem");
         return { hash, vault };
     }
@@ -92,6 +127,9 @@ export class DefaultRedeemAPI {
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
         const result = await sendLoggedTx(executeRedeemTx, this.account, this.api);
+        if (!this.isExecutionSucessful(result.events)) {
+            throw new Error("Execution failed");
+        }
         const hash = this.getRedeemHashFromEvents(result.events, "ExecuteRedeem");
         if (hash) {
             return true;
@@ -150,6 +188,15 @@ export class DefaultRedeemAPI {
             });
         });
         return unsubscribe;
+    }
+
+    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
+        return this.api.createType("PolkaBTC", 8);
+    }
+
+    async getFeePercentage(): Promise<number> {
+        // TODO: get real value from backend
+        return 4.4;
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

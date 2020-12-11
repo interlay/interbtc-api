@@ -1,3 +1,4 @@
+import { AddressOrPair } from "@polkadot/api/types";
 import { OracleAPI } from "../../apis";
 import { OracleInfo } from "../../apis/oracle";
 
@@ -32,5 +33,13 @@ export class MockOracleAPI implements OracleAPI {
 
     isOnline(): Promise<boolean> {
         return Promise.resolve(true);
+    }
+
+    async setExchangeRate(exchangeRate: string): Promise<void> {
+        return;
+    }
+
+    async setAccount(account: AddressOrPair): Promise<void> {
+        return;
     }
 }

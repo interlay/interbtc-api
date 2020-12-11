@@ -1,4 +1,4 @@
-import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate } from "../interfaces/default";
+import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC } from "../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
@@ -24,6 +24,9 @@ export interface StakedRelayerAPI {
     getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
+    getFees(stakedRelayerId: AccountId): Promise<PolkaBTC>;
+    getSLA(stakedRelayerId: AccountId): Promise<number>;
+    getMaxSLA(): Promise<number>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -142,4 +145,20 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         const inactiveStatusUpdates = await this.getAllInactiveStatusUpdates();
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
+
+    async getFees(_stakedRelayerId: AccountId): Promise<PolkaBTC> {
+        // TODO: get real value from backend
+        return this.api.createType("FixedU128", 103) as PolkaBTC;
+    }
+
+    async getSLA(_stakedRelayerId: AccountId): Promise<number> {
+        // TODO: get real value from backend
+        return 20;
+    }
+
+    async getMaxSLA(): Promise<number> {
+        // TODO: get real value from backend
+        return 99;
+    }
+
 }
