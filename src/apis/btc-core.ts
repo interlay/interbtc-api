@@ -44,6 +44,32 @@ export interface BTCCoreAPI {
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
     getRawTransaction(txid: string): Promise<Buffer>;
     getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
+    broadcastOpReturnTx(
+        receiver: string,
+        amount: string,
+        data: string
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }>;
+    initializeClientConnection(
+        network: string,
+        host: string,
+        username: string,
+        password: string,
+        port: string,
+        wallet: string
+    ): void;
+    mineBlocks(n: number): Promise<void>;
+    sendBtcTxAndMine(
+        recipient: string,
+        amount: string,
+        data: string,
+        blocksToMine: number
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
@@ -76,7 +102,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         password: string,
         port: string,
         wallet: string
-    ) {
+    ): void {
         this.client = new Client({
             network: network,
             host: host,
@@ -193,8 +219,22 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return response.then((v) => v.data);
     }
 
+    async sendBtcTxAndMine(
+        recipient: string,
+        amount: string,
+        data: string,
+        blocksToMine: number
+    ): Promise<{
+        txid: string;
+        rawTx: string;
+    }> {
+        const tx = await this.broadcastOpReturnTx(recipient, amount, data);
+        await this.mineBlocks(blocksToMine);
+        return tx;
+    }
+
     async broadcastOpReturnTx(
-        receiver: string,
+        recipient: string,
         amount: string,
         data: string
     ): Promise<{
@@ -205,12 +245,11 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
             throw new Error("Client needs to be initialized before usage");
         }
         const paidOutput = {} as any;
-        paidOutput[receiver] = amount;
+        paidOutput[recipient] = amount;
         const raw = await this.client.command("createrawtransaction", [], [{ data: data }, paidOutput]);
         const funded = await this.client.command("fundrawtransaction", raw);
         const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
         const response = await this.broadcastRawTransaction(signed.hex);
-        await delay(1000);
         const txid = response.data;
         return {
             txid: txid,
@@ -218,10 +257,12 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         };
     }
 
-    async mineBlocks(n: number) {
+    async mineBlocks(n: number): Promise<void> {
         const newWalletAddress = await this.client.command("getnewaddress");
         const minedTxs = await this.client.command("generatetoaddress", n, newWalletAddress);
-        const relayPeriodWithBuffer = 6500;
+        // A block is relayed every 6000ms by the staked-relayer.
+        // Wait an additional 100ms to be sure
+        const relayPeriodWithBuffer = 6100;
         await delay(n * relayPeriodWithBuffer);
     }
 

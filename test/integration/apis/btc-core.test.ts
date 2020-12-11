@@ -76,20 +76,57 @@ describe("BTCCore testnet", function () {
             assert.deepEqual(raw_tx, raw);
         });
     });
+
+    describe("getTxByOpcode", () => {
+        it("should return correct tx id", async () => {
+            // uses testnet tx: https://blockstream.info/testnet/tx/cac50845f700c97b0e9f0232d2e876e93d384cd93cfa9dc2bf7883ba202237d4?expand
+            const opcode = "8703723a787b0f989110b49fd5e1cf1c2571525d564bf384b5aa9e340c9ad8bd";
+            const txid = await btcCore.getTxIdByOpReturn(opcode);
+            assert.strictEqual(txid, "cac50845f700c97b0e9f0232d2e876e93d384cd93cfa9dc2bf7883ba202237d4");
+        });
+
+        it("should return correct tx id when called with amount and receiver", async () => {
+            // uses an op_return that is part of 2 testnet polkaBTC txs, but
+            // only the first one has the queried `amount` parameter
+            // https://blockstream.info/testnet/tx/f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91?expand
+            // https://blockstream.info/testnet/tx/4b1900dc48aaa9fa84a340e94aa21d20b54371d19ea6b8edd68a558cd36afdd0?expand
+            const opReturn = "1165adb125d9703328a37f18b5f8c35732c97a3cd2aab2ead6f28054fd023105";
+            const receiverAddress = "tb1qr959hr9t8zd96w3cqke40da4czqfgmwl0yn5mq";
+            const amountAsBTC = "0.00088";
+            const txid = await btcCore.getTxIdByOpReturn(opReturn, receiverAddress, amountAsBTC);
+            assert.strictEqual(txid, "f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
+        });
+    });
 });
 
 describe("BTCCore regtest", function () {
-    this.timeout(10000); // API can be slightly slow
+    this.timeout(100000);
 
     let api: ApiPromise;
     let btcCore: BTCCoreAPI;
 
     beforeEach(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
-        btcCore = new DefaultBTCCoreAPI("http://localhost:3002");
+        btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
     });
 
     afterEach(async () => {
         await api.disconnect();
     });
+
+    describe("getTxByOpreturn", () => {
+        it("should return correct tx id", async () => {
+            btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+            const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
+            const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
+            const amountAsBtcString = "0.00029";
+            const txData = await btcCore.sendBtcTxAndMine(recipientAddress, amountAsBtcString, opReturnValue, 6);
+            const txid = await btcCore.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
+            assert.strictEqual(txid, txData.txid);
+        });
+    });
+
+    function delay(ms: number) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
 });

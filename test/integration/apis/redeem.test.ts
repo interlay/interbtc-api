@@ -14,7 +14,6 @@ import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { btcToSat, stripHexPrefix, encodeBtcAddress } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
-import { delay } from "../../helpers";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -27,7 +26,7 @@ describe("redeem", () => {
     let keyring: Keyring;
     // alice is the root account
     let alice: KeyringPair;
-    let dave: KeyringPair;
+    let charlie: KeyringPair;
     const registry: TypeRegistry = new TypeRegistry();
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
     let requestResult: RequestResult;
@@ -64,20 +63,19 @@ describe("redeem", () => {
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
 
-        it("should request and execute issue, request redeem", async () => {
+        async function requestAndCallRedeem(blocksToMine: number) {
             const btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
             btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-            const blocksToMine = 3;
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
-            dave = keyring.addFromUri("//Dave");
+            charlie = keyring.addFromUri("//Charlie");
 
             // request issue
             issueAPI.setAccount(alice);
             const amountAsBtcString = "0.1";
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-            const requestResult = await issueAPI.request(amountAsSatoshi);
+            const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
             assert.isTrue(requestResult.hash.length > 0);
 
             // send btc tx
@@ -86,9 +84,7 @@ describe("redeem", () => {
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
-            const txData = await btcCore.broadcastOpReturnTx(vaultBtcAddress, amountAsBtcString, data);
-            await btcCore.mineBlocks(blocksToMine);
-            await delay(10000);
+            const txData = await btcCore.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, data, blocksToMine);
 
             // redeem
             redeemAPI.setAccount(alice);
@@ -96,52 +92,23 @@ describe("redeem", () => {
             const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-            const daveVaultId = api.createType("AccountId", dave.address);
-            await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, daveVaultId);
+            const vaultId = api.createType("AccountId", charlie.address);
+            await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
+        }
+
+        it("should request and execute issue, request redeem", async () => {
+            const blocksToMine = 3;
+            await requestAndCallRedeem(blocksToMine);
         });
 
         it("should request and execute issue, request (and wait for execute) redeem", async () => {
-            const btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
-            btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-            const initialBalance = await btcCore.getBalance();
+            const initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
-            const blockMiningReward = 50;
-            const projectedMaxFees = 0.15;
-            keyring = new Keyring({ type: "sr25519" });
-            alice = keyring.addFromUri("//Alice");
-            dave = keyring.addFromUri("//Dave");
-
-            // request issue
-            issueAPI.setAccount(alice);
-            const amountAsBtcString = "0.1";
-            const amountAsSatoshiString = btcToSat(amountAsBtcString);
-            const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-            const requestResult = await issueAPI.request(amountAsSatoshi);
-            assert.isTrue(requestResult.hash.length > 0);
-
-            // send btc tx
-            const data = stripHexPrefix(requestResult.hash.toString());
-            const vaultBtcAddress = encodeBtcAddress(requestResult.vault.wallet.address, bitcoin.networks.regtest);
-            if (vaultBtcAddress === undefined) {
-                throw new Error("Undefined vault address returned from RequestIssue");
-            }
-            const txData = await btcCore.broadcastOpReturnTx(vaultBtcAddress, amountAsBtcString, data);
-            await btcCore.mineBlocks(blocksToMine);
-            await delay(60000);
-
-            // redeem
-            redeemAPI.setAccount(alice);
-            const redeemAmountAsBtcString = "0.09";
-            const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
-            const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
-            const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-            const daveVaultId = api.createType("AccountId", dave.address);
-            await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, daveVaultId);
+            requestAndCallRedeem(blocksToMine);
 
             // check redeeming worked
-            const finalBalance = await btcCore.getBalance();
-            const finalBalanceWithoutMiningRewards = finalBalance - blocksToMine * blockMiningReward;
-            assert.isTrue(Math.abs(initialBalance - finalBalanceWithoutMiningRewards) <= projectedMaxFees);
+            const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+            assert.equal(initialBalance.toString(), finalBalance.toString());
         });
     });
 });

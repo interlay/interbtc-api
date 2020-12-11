@@ -7,6 +7,7 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
 import { IssueAPI, RequestResult, IssueRequestExt } from "../../apis/issue";
+import { EventRecord } from "@polkadot/types/interfaces/system";
 
 export class MockIssueAPI implements IssueAPI {
     execute(_issueId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
@@ -87,5 +88,9 @@ export class MockIssueAPI implements IssueAPI {
             requester: new GenericAccountId(registry, decodedAccountId1),
             griefing_collateral: new BN(76) as DOT,
         };
+    }
+
+    isExecutionSucessful(_events: EventRecord[]): boolean {
+        return false;
     }
 }

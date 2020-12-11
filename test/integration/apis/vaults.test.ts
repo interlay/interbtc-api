@@ -38,7 +38,7 @@ describe("vaultsAPI", () => {
     it("should select random vault for issue", async () => {
         const polkaBTCCollateral = api.createType("PolkaBTC", 0);
         const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
-        assert.equal(randomVault.toHuman(), dave.address);
+        assert.isTrue(randomVault.toHuman() === dave.address || randomVault.toHuman() === charlie.address);
     });
 
     it("should fail if no vault for issuing is found", async () => {
@@ -49,7 +49,7 @@ describe("vaultsAPI", () => {
     it("should select random vault for redeem", async () => {
         const polkaBTCCollateral = api.createType("PolkaBTC", 0);
         const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
-        assert.equal(randomVault.toHuman(), dave.address);
+        assert.isTrue(randomVault.toHuman() === dave.address || randomVault.toHuman() === charlie.address);
     });
 
     it("should fail if no vault for redeeming is found", async () => {
