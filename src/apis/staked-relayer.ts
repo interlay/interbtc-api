@@ -26,8 +26,6 @@ export interface StakedRelayerAPI {
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getFees(stakedRelayerId: AccountId): Promise<PolkaBTC>;
     getSLA(stakedRelayerId: AccountId): Promise<number>;
-    getTotalReward(): Promise<string>;
-    getReward(stakedRelayerId: AccountId): Promise<string>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -162,12 +160,4 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return 99;
     }
 
-    async getTotalReward(): Promise<string> {
-        // TODO: get real value from backend
-        return "205";
-    }
-
-    async getReward(_stakedRelayerId: AccountId): Promise<string> {
-        return "15.33";
-    }
 }
