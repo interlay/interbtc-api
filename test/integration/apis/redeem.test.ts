@@ -57,7 +57,7 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    describe("request", () => {
+    describe.skip("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
