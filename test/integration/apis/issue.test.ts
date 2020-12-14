@@ -75,7 +75,7 @@ describe("issue", () => {
         });
     });
 
-    describe("execute", () => {
+    describe.skip("execute", () => {
         let txHash: Hash;
 
         it("should fail if no account is set", () => {
@@ -120,7 +120,7 @@ describe("issue", () => {
         });
     });
 
-    describe("cancel", () => {
+    describe.skip("cancel", () => {
         it("should cancel a request issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
