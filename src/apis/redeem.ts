@@ -203,7 +203,7 @@ export class DefaultRedeemAPI {
         const issueFeeBig = new Big(redeemFee.toString());
         const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
         const scaledFee = issueFeeBig.div(divisor);
-        return Number(scaledFee.toString())
+        return Number(scaledFee.toString());
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {
