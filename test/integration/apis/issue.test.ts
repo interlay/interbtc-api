@@ -153,8 +153,22 @@ describe("issue", () => {
         });
     });
 
+    describe("fees", () => {
+        it("should getFeesToPay", async () => {
+            const amount = "2";
+            const amountAsBalance = api.createType("Balance", amount);
+            const feesToPay = await issueAPI.getFeesToPay(amountAsBalance);
+            assert.equal(feesToPay, "0.01");
+        });
+
+        it("should getFeePercentage", async () => {
+            const feePercentage = await issueAPI.getFeePercentage();
+            assert.equal(feePercentage, 0.005);
+        });
+    });
+
     describe("check getIssuePeriod method ", () => {
-        it("getIssuePeriod", async () => {
+        it("should getIssuePeriod", async () => {
             try {
                 issueAPI.setAccount(alice);
                 const period = await issueAPI.getIssuePeriod();

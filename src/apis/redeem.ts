@@ -5,10 +5,11 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
-import { BlockNumber, FixedI128 } from "@polkadot/types/interfaces/runtime";
+import { decodeBtcAddress, encodeBtcAddress, FixedI128_SCALING_FACTOR, pagedIterator, sendLoggedTx } from "../utils";
+import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -38,7 +39,7 @@ export interface RedeemAPI {
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
-    getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
+    getFeesToPay(amount: PolkaBTC): Promise<string>;
     getFeePercentage(): Promise<number>;
 }
 
@@ -190,12 +191,19 @@ export class DefaultRedeemAPI {
         return unsubscribe;
     }
 
-    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
-        return this.api.createType("PolkaBTC", 8);
+    async getFeesToPay(amount: PolkaBTC): Promise<string> {
+        const feePercentage = await this.getFeePercentage();
+        const feePercentageBN = new Big(feePercentage);
+        const amountBig = new Big(amount.toString());
+        return amountBig.mul(feePercentageBN).toString();
     }
 
     async getFeePercentage(): Promise<number> {
-        return (await this.api.query.fee.redeemFee()).toNumber();
+        const redeemFee = await this.api.query.fee.redeemFee();
+        const issueFeeBig = new Big(redeemFee.toString());
+        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const scaledFee = issueFeeBig.div(divisor);
+        return Number(scaledFee.toString())
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

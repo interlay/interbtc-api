@@ -166,8 +166,8 @@ export class MockVaultsAPI implements VaultsAPI {
         return "55.325";
     }
 
-    async getMaxSLA(): Promise<number> {
-        return 99;
+    async getMaxSLA(): Promise<string> {
+        return "100";
     }
 
     async getPunishmentFee(): Promise<DOT> {

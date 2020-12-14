@@ -8,6 +8,8 @@ import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import { encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
+import { FixedI128_SCALING_FACTOR } from "../utils/";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -38,7 +40,7 @@ export interface IssueAPI {
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
     getIssuePeriod(): Promise<BlockNumber>;
     isExecutionSucessful(events: EventRecord[]): boolean;
-    getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
+    getFeesToPay(amount: PolkaBTC): Promise<string>;
     getFeePercentage(): Promise<number>;
 }
 
@@ -173,13 +175,19 @@ export class DefaultIssueAPI implements IssueAPI {
         return mapForUser;
     }
 
-    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
-        // TODO: get real value from backend
-        return this.api.createType("PolkaBTC", 11);
+    async getFeesToPay(amount: PolkaBTC): Promise<string> {
+        const feePercentage = await this.getFeePercentage();
+        const feePercentageBN = new Big(feePercentage);
+        const amountBig = new Big(amount.toString());
+        return amountBig.mul(feePercentageBN).toString();
     }
 
     async getFeePercentage(): Promise<number> {
-        return (await this.api.query.fee.issueFee()).toNumber();
+        const issueFee = await this.api.query.fee.issueFee();
+        const issueFeeBig = new Big(issueFee.toString());
+        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const scaledFee = issueFeeBig.div(divisor);
+        return Number(scaledFee.toString());
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {

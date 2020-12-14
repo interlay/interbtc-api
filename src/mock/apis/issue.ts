@@ -94,8 +94,8 @@ export class MockIssueAPI implements IssueAPI {
         return false;
     }
     
-    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
-        return new BN(11) as PolkaBTC;
+    async getFeesToPay(_amount: PolkaBTC): Promise<string> {
+        return "0.01";
     }
 
     async getFeePercentage(): Promise<number> {

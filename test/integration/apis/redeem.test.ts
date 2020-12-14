@@ -3,7 +3,6 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { H256, Hash, AccountId } from "@polkadot/types/interfaces";
-import { Bytes } from "@polkadot/types/primitive";
 import { DefaultRedeemAPI } from "../../../src/apis/redeem";
 import sinon from "sinon";
 import { createPolkadotAPI } from "../../../src/factory";
@@ -109,6 +108,20 @@ describe("redeem", () => {
             // check redeeming worked
             const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             assert.equal(initialBalance.toString(), finalBalance.toString());
+        });
+    });
+
+    describe("fees", () => {
+        it("should getFeesToPay", async () => {
+            const amount = "2";
+            const amountAsBalance = api.createType("Balance", amount);
+            const feesToPay = await redeemAPI.getFeesToPay(amountAsBalance);
+            assert.equal(feesToPay, "0.01");
+        });
+
+        it("should getFeePercentage", async () => {
+            const feePercentage = await redeemAPI.getFeePercentage();
+            assert.equal(feePercentage, 0.005);
         });
     });
 });

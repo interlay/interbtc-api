@@ -1,15 +1,14 @@
 import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
-import { AccountId } from "@polkadot/types/interfaces";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { u128 } from "@polkadot/types/primitive";
-import { BTC_IN_SAT, DOT_IN_PLANCK, sendLoggedTx } from "../utils";
+import { sendLoggedTx } from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
 const defaultFeedName = "DOT/BTC";
-const granularity = 5;
+const granularity = 2;
 
 export type OracleInfo = {
     exchangeRate: number;
@@ -49,7 +48,7 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
-    // return the BTC to DOT exchange rate
+    // return the DOT/BTC exchange rate
     async getExchangeRate(): Promise<number> {
         const rawRate = await this.api.query.exchangeRateOracle.exchangeRate();
         return this.convertFromRawExchangeRate(rawRate);
@@ -99,7 +98,7 @@ export class DefaultOracleAPI implements OracleAPI {
     // DOT to BTC
     private convertFromRawExchangeRate(rate: u128): number {
         const rateBN = new Big(rate.toString());
-        const divisor = new Big(Math.pow(10, granularity) * (DOT_IN_PLANCK / BTC_IN_SAT));
+        const divisor = new Big(Math.pow(10, granularity));
         return parseFloat(rateBN.div(divisor).toString());
     }
 
