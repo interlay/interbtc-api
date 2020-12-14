@@ -1,4 +1,4 @@
-import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT } from "../interfaces/default";
+import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT,  } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
@@ -6,7 +6,7 @@ import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { decodeBtcAddress, encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
-import { BlockNumber } from "@polkadot/types/interfaces/runtime";
+import { BlockNumber, FixedI128 } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
 
@@ -195,8 +195,7 @@ export class DefaultRedeemAPI {
     }
 
     async getFeePercentage(): Promise<number> {
-        // TODO: get real value from backend
-        return 4.4;
+        return (await this.api.query.fee.redeemFee()).toNumber();
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

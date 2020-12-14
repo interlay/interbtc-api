@@ -179,8 +179,7 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getFeePercentage(): Promise<number> {
-        // TODO: get real value from backend
-        return 5.3;
+        return (await this.api.query.fee.issueFee()).toNumber();
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
@@ -192,7 +191,7 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getGriefingCollateral(): Promise<DOT> {
-        return this.api.query.issue.issueGriefingCollateral();
+        return this.api.query.fee.issueGriefingCollateral();
     }
 
     async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {

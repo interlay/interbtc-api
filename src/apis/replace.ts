@@ -40,7 +40,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async getGriefingCollateral(): Promise<DOT> {
-        return await this.api.query.replace.replaceGriefingCollateral();
+        return await this.api.query.fee.replaceGriefingCollateral();
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {

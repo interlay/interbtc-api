@@ -329,7 +329,7 @@ export class DefaultVaultsAPI {
     }
 
     async getPunishmentFee(): Promise<DOT> {
-        return this.api.query.vaultRegistry.punishmentFee();
+        return this.api.query.fee.punishmentFee();
     }
 
     private scaleUsingParachainGranularity(value: u128): number {

@@ -151,9 +151,8 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return this.api.createType("FixedU128", 103) as PolkaBTC;
     }
 
-    async getSLA(_stakedRelayerId: AccountId): Promise<number> {
-        // TODO: get real value from backend
-        return 20;
+    async getSLA(stakedRelayerId: AccountId): Promise<number> {
+        return (await this.api.query.sla.relayerSla(stakedRelayerId)).toNumber();
     }
 
     async getMaxSLA(): Promise<number> {
