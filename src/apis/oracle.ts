@@ -3,12 +3,12 @@ import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { u128 } from "@polkadot/types/primitive";
-import { sendLoggedTx } from "../utils";
+import { BTC_IN_SAT, DOT_IN_PLANCK, sendLoggedTx } from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
 const defaultFeedName = "DOT/BTC";
-const granularity = 2;
+const granularity = 5;
 
 export type OracleInfo = {
     exchangeRate: number;
@@ -98,7 +98,7 @@ export class DefaultOracleAPI implements OracleAPI {
     // DOT to BTC
     private convertFromRawExchangeRate(rate: u128): number {
         const rateBN = new Big(rate.toString());
-        const divisor = new Big(Math.pow(10, granularity));
+        const divisor = new Big(Math.pow(10, granularity) * (DOT_IN_PLANCK / BTC_IN_SAT));
         return parseFloat(rateBN.div(divisor).toString());
     }
 
