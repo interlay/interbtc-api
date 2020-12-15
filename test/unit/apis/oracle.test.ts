@@ -49,7 +49,7 @@ describe("oracle", () => {
 
     describe("getExchangeRate", () => {
         it("should scale exchange rate", () => {
-            return assert.eventually.equal(oracle.getExchangeRate(), 30);
+            return assert.eventually.equal(oracle.getExchangeRate(), 3000000);
         });
     });
 
@@ -96,7 +96,7 @@ describe("oracle", () => {
             const oracleProto = Object.getPrototypeOf(oracle);
             const planck_to_sat = 38552318793;
             const dot_to_btc = oracleProto.convertFromRawExchangeRate(planck_to_sat);
-            return assert.equal(dot_to_btc, 3855.2318793);
+            return assert.equal(dot_to_btc, 385523187.93);
         });
     });
 });

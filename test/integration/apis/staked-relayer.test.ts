@@ -14,21 +14,22 @@ describe("stakedRelayerAPI", () => {
         return new BN(x) as DOT;
     }
 
+    let api: ApiPromise;
+    let stakedRelayerAPI: StakedRelayerAPI;
+
+    before(async () => {
+        api = await createPolkadotAPI(defaultEndpoint);
+    });
+
+    beforeEach(() => {
+        stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoin.networks.regtest);
+    });
+
+    after(async () => {
+        api.disconnect();
+    });
+
     describe("request", () => {
-        let api: ApiPromise;
-        let stakedRelayerAPI: StakedRelayerAPI;
-
-        before(async () => {
-            api = await createPolkadotAPI(defaultEndpoint);
-        });
-
-        beforeEach(() => {
-            stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoin.networks.regtest);
-        });
-
-        after(() => {
-            return api.disconnect();
-        });
 
         it("should getStakedDOTAmount", async () => {
             sinon
@@ -99,6 +100,13 @@ describe("stakedRelayerAPI", () => {
                 assert.isTrue(curr.value.length <= listingsPerPage);
                 curr = await requestsIterator.next();
             }
+        });
+    });
+
+    describe.skip("sla", () => {
+        it("should getMaxSLA", async () => {
+            const feesToPay = await stakedRelayerAPI.getMaxSLA();
+            assert.equal(feesToPay, "100");
         });
     });
 });

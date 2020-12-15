@@ -115,16 +115,15 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return [createStatusUpdate()];
     }
 
-    async getFees(_stakedRelayerId: AccountId): Promise<PolkaBTC> {
-        const registry = new TypeRegistry();
-        return new UInt(registry, 103) as PolkaBTC;
+    async getFees(_stakedRelayerId: string): Promise<string> {
+        return "10.22";
     }
 
-    async getSLA(_stakedRelayerId: AccountId): Promise<number> {
-        return 20;
+    async getSLA(_stakedRelayerId: string): Promise<string> {
+        return "20";
     }
 
-    async getMaxSLA(): Promise<number> {
-        return 99;
+    async getMaxSLA(): Promise<string> {
+        return "100";
     }
 }

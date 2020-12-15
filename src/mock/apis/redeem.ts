@@ -86,11 +86,11 @@ export class MockRedeemAPI implements RedeemAPI {
         return Promise.resolve(() => {});
     }
 
-    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
-        return new BN(8) as PolkaBTC;
+    async getFeesToPay(_amount: string): Promise<string> {
+        return "0.08";
     }
 
-    async getFeePercentage(): Promise<number> {
-        return 4.4;
+    async getFeePercentage(): Promise<string> {
+        return "4.4";
     }
 }
