@@ -1,11 +1,12 @@
-import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC } from "../interfaces/default";
+import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC, FixedPoint } from "../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { pagedIterator } from "../utils";
+import { FixedI128_SCALING_FACTOR, pagedIterator } from "../utils";
 import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
 
 export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
@@ -24,9 +25,9 @@ export interface StakedRelayerAPI {
     getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
-    getFees(stakedRelayerId: AccountId): Promise<PolkaBTC>;
-    getSLA(stakedRelayerId: AccountId): Promise<number>;
-    getMaxSLA(): Promise<number>;
+    getFees(stakedRelayerId: string): Promise<string>;
+    getSLA(stakedRelayerId: string): Promise<string>;
+    getMaxSLA(): Promise<string>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -146,19 +147,23 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
 
-    async getFees(_stakedRelayerId: AccountId): Promise<PolkaBTC> {
-        // TODO: get real value from backend
-        return this.api.createType("FixedU128", 103) as PolkaBTC;
+    async getFees(stakedRelayerId: string): Promise<string> {
+        // TODO: integration test using docker-compose setup
+        const parseId = this.api.createType("AccountId", stakedRelayerId);
+        return (await this.api.query.fee.totalRewards(parseId)).toString();
     }
 
-    async getSLA(_stakedRelayerId: AccountId): Promise<number> {
-        // TODO: get real value from backend
-        return 20;
+    async getSLA(stakedRelayerId: string): Promise<string> {
+        // TODO: integration test using docker-compose setup
+        const parseId = this.api.createType("AccountId", stakedRelayerId);
+        return (await this.api.query.sla.relayerSla(parseId)).toString();
     }
 
-    async getMaxSLA(): Promise<number> {
-        // TODO: get real value from backend
-        return 99;
+    async getMaxSLA(): Promise<string> {
+        const maxSLA = await this.api.query.sla.relayerTargetSla();
+        const maxSlaBig = new Big(maxSLA.toString());
+        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        return maxSlaBig.div(divisor).toString();
     }
 
 }

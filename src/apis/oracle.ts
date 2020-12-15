@@ -1,7 +1,6 @@
 import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
-import { AccountId } from "@polkadot/types/interfaces";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { u128 } from "@polkadot/types/primitive";
 import { BTC_IN_SAT, DOT_IN_PLANCK, sendLoggedTx } from "../utils";
@@ -49,7 +48,7 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
-    // return the BTC to DOT exchange rate
+    // return the DOT/BTC exchange rate
     async getExchangeRate(): Promise<number> {
         const rawRate = await this.api.query.exchangeRateOracle.exchangeRate();
         return this.convertFromRawExchangeRate(rawRate);

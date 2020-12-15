@@ -1,14 +1,15 @@
-import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT } from "../interfaces/default";
+import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT,  } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
+import { decodeBtcAddress, encodeBtcAddress, FixedI128_SCALING_FACTOR, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -38,8 +39,8 @@ export interface RedeemAPI {
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
-    getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
-    getFeePercentage(): Promise<number>;
+    getFeesToPay(amount: string): Promise<string>;
+    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultRedeemAPI {
@@ -190,13 +191,19 @@ export class DefaultRedeemAPI {
         return unsubscribe;
     }
 
-    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
-        return this.api.createType("PolkaBTC", 8);
+    async getFeesToPay(amount: string): Promise<string> {
+        const feePercentage = await this.getFeePercentage();
+        const feePercentageBN = new Big(feePercentage);
+        const amountBig = new Big(amount);
+        return amountBig.mul(feePercentageBN).toString();
     }
 
-    async getFeePercentage(): Promise<number> {
-        // TODO: get real value from backend
-        return 4.4;
+    async getFeePercentage(): Promise<string> {
+        const redeemFee = await this.api.query.fee.redeemFee();
+        const issueFeeBig = new Big(redeemFee.toString());
+        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const scaledFee = issueFeeBig.div(divisor);
+        return scaledFee.toString();
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

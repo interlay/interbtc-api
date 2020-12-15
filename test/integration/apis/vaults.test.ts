@@ -112,4 +112,11 @@ describe("vaultsAPI", () => {
         const zeroU128 = api.createType("u128", 0);
         assert.isTrue(issuablePolkaBtcU128.gt(zeroU128));
     });
+
+    describe.skip("sla", () => {
+        it("should getMaxSLA", async () => {
+            const feesToPay = await vaultsAPI.getMaxSLA();
+            assert.equal(feesToPay, "100");
+        });
+    });
 });

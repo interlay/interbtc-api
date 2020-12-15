@@ -8,6 +8,8 @@ import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import { encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
+import { FixedI128_SCALING_FACTOR } from "../utils/";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -38,8 +40,8 @@ export interface IssueAPI {
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
     getIssuePeriod(): Promise<BlockNumber>;
     isExecutionSucessful(events: EventRecord[]): boolean;
-    getFeesToPay(amount: PolkaBTC): Promise<PolkaBTC>;
-    getFeePercentage(): Promise<number>;
+    getFeesToPay(amount: string): Promise<string>;
+    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
@@ -173,14 +175,19 @@ export class DefaultIssueAPI implements IssueAPI {
         return mapForUser;
     }
 
-    async getFeesToPay(_amount: PolkaBTC): Promise<PolkaBTC> {
-        // TODO: get real value from backend
-        return this.api.createType("PolkaBTC", 11);
+    async getFeesToPay(amount: string): Promise<string> {
+        const feePercentage = await this.getFeePercentage();
+        const feePercentageBN = new Big(feePercentage);
+        const amountBig = new Big(amount);
+        return amountBig.mul(feePercentageBN).toString();
     }
 
-    async getFeePercentage(): Promise<number> {
-        // TODO: get real value from backend
-        return 5.3;
+    async getFeePercentage(): Promise<string> {
+        const issueFee = await this.api.query.fee.issueFee();
+        const issueFeeBig = new Big(issueFee.toString());
+        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const scaledFee = issueFeeBig.div(divisor);
+        return scaledFee.toString();
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
@@ -192,7 +199,7 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getGriefingCollateral(): Promise<DOT> {
-        return this.api.query.issue.issueGriefingCollateral();
+        return this.api.query.fee.issueGriefingCollateral();
     }
 
     async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {
