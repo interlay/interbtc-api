@@ -309,7 +309,7 @@ export class DefaultVaultsAPI {
         const fees = await this.getFees(vaultId);
         const feesBig = new Big(fees.toString());
         const dotToBtcRate = await this.oracleAPI.getExchangeRate();
-        const feesInDot = feesBig.div(new Big(dotToBtcRate));
+        const feesInDot = feesBig.mul(new Big(dotToBtcRate));
         const parsedVaultId = this.api.createType("AccountId", vaultId);
         const lockedDot = await this.collateralAPI.balanceLockedDOT(parsedVaultId);
         const lockedDotBig = new Big(lockedDot.toString());

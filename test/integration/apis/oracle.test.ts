@@ -39,10 +39,11 @@ describe("OracleAPI", () => {
     describe("setExchangeRate", () => {
         it("should set exchange rate", async () => {
             const exchangeRateToSet = 1;
+            const exchangeRateGranularity = 5;
             const exchangeRateTx = api.tx.exchangeRateOracle.setExchangeRate(exchangeRateToSet);
             await sendLoggedTx(exchangeRateTx, bob, api);
             const exchangeRate = await oracle.getExchangeRate();
-            assert.equal(exchangeRateToSet, exchangeRate);
+            assert.equal(exchangeRateToSet / Math.pow(10, exchangeRateGranularity), exchangeRate);
         });
     });
 });
