@@ -94,11 +94,11 @@ export class MockIssueAPI implements IssueAPI {
         return false;
     }
     
-    async getFeesToPay(_amount: PolkaBTC): Promise<string> {
+    async getFeesToPay(_amount: string): Promise<string> {
         return "0.01";
     }
 
-    async getFeePercentage(): Promise<number> {
-        return 5.3;
+    async getFeePercentage(): Promise<string> {
+        return "5.3";
     }
 }

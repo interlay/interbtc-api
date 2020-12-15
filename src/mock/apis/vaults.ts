@@ -149,20 +149,19 @@ export class MockVaultsAPI implements VaultsAPI {
         return new UInt(registry, 120000) as u128;
     }
 
-    async getFees(_vaultId: AccountId): Promise<PolkaBTC> {
-        const registry = new TypeRegistry();
-        return new UInt(registry, 368) as PolkaBTC;
+    async getFees(_vaultId: string): Promise<string> {
+        return "368";
     }
 
-    async getAPY(_vaultId: AccountId): Promise<string> {
+    async getAPY(_vaultId: string): Promise<string> {
         return "3.23988247";
     }
 
-    async getSLA(_vaultId: AccountId): Promise<number> {
-        return 62;
+    async getSLA(_vaultId: string): Promise<string> {
+        return "62";
     }
 
-    async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
+    async getSlashableCollateral(_vaultId: string, _amount: string): Promise<string> {
         return "55.325";
     }
 
@@ -170,8 +169,7 @@ export class MockVaultsAPI implements VaultsAPI {
         return "100";
     }
 
-    async getPunishmentFee(): Promise<DOT> {
-        const registry = new TypeRegistry();
-        return new UInt(registry, 368) as DOT;
+    async getPunishmentFee(): Promise<string> {
+        return "368";
     }
 }

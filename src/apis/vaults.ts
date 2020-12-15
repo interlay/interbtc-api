@@ -36,12 +36,12 @@ export interface VaultsAPI {
     getIssuablePolkaBTC(): Promise<string>;
     getLiquidationCollateralThreshold(): Promise<u128>;
     getPremiumRedeemThreshold(): Promise<u128>;
-    getFees(vaultId: AccountId): Promise<PolkaBTC>;
-    getAPY(vaultId: AccountId): Promise<string>;
-    getSLA(vaultId: AccountId): Promise<number>;
+    getFees(vaultId: string): Promise<string>;
+    getAPY(vaultId: string): Promise<string>;
+    getSLA(vaultId: string): Promise<string>;
     getMaxSLA(): Promise<string>;
-    getSlashableCollateral(vaultId: AccountId, amount: PolkaBTC): Promise<string>;
-    getPunishmentFee(): Promise<DOT>;
+    getSlashableCollateral(vaultId: string, amount: string): Promise<string>;
+    getPunishmentFee(): Promise<string>;
 }
 
 export class DefaultVaultsAPI {
@@ -298,25 +298,28 @@ export class DefaultVaultsAPI {
         return await this.api.query.vaultRegistry.premiumRedeemThreshold();
     }
 
-    async getFees(vaultId: AccountId): Promise<PolkaBTC> {
+    async getFees(vaultId: string): Promise<string> {
         // TODO: integration test using docker-compose setup
-        return await this.api.query.fee.totalRewards(vaultId);
+        const parsedId = this.api.createType("AccountId", vaultId);
+        return (await this.api.query.fee.totalRewards(parsedId)).toString();
     }
 
-    async getAPY(vaultId: AccountId): Promise<string> {
+    async getAPY(vaultId: string): Promise<string> {
         // TODO: integration test using docker-compose setup
         const fees = await this.getFees(vaultId);
         const feesBig = new Big(fees.toString());
         const dotToBtcRate = await this.oracleAPI.getExchangeRate();
         const feesInDot = feesBig.div(new Big(dotToBtcRate));
-        const lockedDot = await this.collateralAPI.balanceLockedDOT(vaultId);
+        const parsedVaultId = this.api.createType("AccountId", vaultId);
+        const lockedDot = await this.collateralAPI.balanceLockedDOT(parsedVaultId);
         const lockedDotBig = new Big(lockedDot.toString());
         return feesInDot.div(lockedDotBig).toString();
     }
 
-    async getSLA(vaultId: AccountId): Promise<number> {
+    async getSLA(vaultId: string): Promise<string> {
         // TODO: integration test using docker-compose setup
-        return (await this.api.query.sla.vaultSla(vaultId)).toNumber();
+        const parsedId = this.api.createType("AccountId", vaultId);
+        return (await this.api.query.sla.vaultSla(parsedId)).toString();
     }
 
     async getMaxSLA(): Promise<string> {
@@ -326,13 +329,13 @@ export class DefaultVaultsAPI {
         return maxSlaBig.div(divisor).toString();
     }
 
-    async getSlashableCollateral(_vaultId: AccountId, _amount: PolkaBTC): Promise<string> {
+    async getSlashableCollateral(_vaultId: string, _amount: string): Promise<string> {
         // TODO: get real value from backend
         return "123";
     }
 
-    async getPunishmentFee(): Promise<DOT> {
-        return this.api.query.fee.punishmentFee();
+    async getPunishmentFee(): Promise<string> {
+        return (await this.api.query.fee.punishmentFee()).toString();
     }
 
     private scaleUsingParachainGranularity(value: u128): number {

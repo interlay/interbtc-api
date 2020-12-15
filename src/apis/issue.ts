@@ -40,8 +40,8 @@ export interface IssueAPI {
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
     getIssuePeriod(): Promise<BlockNumber>;
     isExecutionSucessful(events: EventRecord[]): boolean;
-    getFeesToPay(amount: PolkaBTC): Promise<string>;
-    getFeePercentage(): Promise<number>;
+    getFeesToPay(amount: string): Promise<string>;
+    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
@@ -175,19 +175,19 @@ export class DefaultIssueAPI implements IssueAPI {
         return mapForUser;
     }
 
-    async getFeesToPay(amount: PolkaBTC): Promise<string> {
+    async getFeesToPay(amount: string): Promise<string> {
         const feePercentage = await this.getFeePercentage();
         const feePercentageBN = new Big(feePercentage);
-        const amountBig = new Big(amount.toString());
+        const amountBig = new Big(amount);
         return amountBig.mul(feePercentageBN).toString();
     }
 
-    async getFeePercentage(): Promise<number> {
+    async getFeePercentage(): Promise<string> {
         const issueFee = await this.api.query.fee.issueFee();
         const issueFeeBig = new Big(issueFee.toString());
         const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
         const scaledFee = issueFeeBig.div(divisor);
-        return Number(scaledFee.toString());
+        return scaledFee.toString();
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {

@@ -113,7 +113,7 @@ describe("vaultsAPI", () => {
         assert.isTrue(issuablePolkaBtcU128.gt(zeroU128));
     });
 
-    describe("sla", () => {
+    describe.skip("sla", () => {
         it("should getMaxSLA", async () => {
             const feesToPay = await vaultsAPI.getMaxSLA();
             assert.equal(feesToPay, "100");

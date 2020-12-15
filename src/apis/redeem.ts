@@ -39,8 +39,8 @@ export interface RedeemAPI {
     getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
-    getFeesToPay(amount: PolkaBTC): Promise<string>;
-    getFeePercentage(): Promise<number>;
+    getFeesToPay(amount: string): Promise<string>;
+    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultRedeemAPI {
@@ -191,19 +191,19 @@ export class DefaultRedeemAPI {
         return unsubscribe;
     }
 
-    async getFeesToPay(amount: PolkaBTC): Promise<string> {
+    async getFeesToPay(amount: string): Promise<string> {
         const feePercentage = await this.getFeePercentage();
         const feePercentageBN = new Big(feePercentage);
-        const amountBig = new Big(amount.toString());
+        const amountBig = new Big(amount);
         return amountBig.mul(feePercentageBN).toString();
     }
 
-    async getFeePercentage(): Promise<number> {
+    async getFeePercentage(): Promise<string> {
         const redeemFee = await this.api.query.fee.redeemFee();
         const issueFeeBig = new Big(redeemFee.toString());
         const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
         const scaledFee = issueFeeBig.div(divisor);
-        return Number(scaledFee.toString());
+        return scaledFee.toString();
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {

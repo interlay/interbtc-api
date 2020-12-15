@@ -103,7 +103,7 @@ describe("stakedRelayerAPI", () => {
         });
     });
 
-    describe("sla", () => {
+    describe.skip("sla", () => {
         it("should getMaxSLA", async () => {
             const feesToPay = await stakedRelayerAPI.getMaxSLA();
             assert.equal(feesToPay, "100");

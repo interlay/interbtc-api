@@ -25,8 +25,8 @@ export interface StakedRelayerAPI {
     getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
-    getFees(stakedRelayerId: AccountId): Promise<PolkaBTC>;
-    getSLA(stakedRelayerId: AccountId): Promise<number>;
+    getFees(stakedRelayerId: string): Promise<string>;
+    getSLA(stakedRelayerId: string): Promise<string>;
     getMaxSLA(): Promise<string>;
 }
 
@@ -147,14 +147,16 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
 
-    async getFees(stakedRelayerId: AccountId): Promise<PolkaBTC> {
+    async getFees(stakedRelayerId: string): Promise<string> {
         // TODO: integration test using docker-compose setup
-        return this.api.query.fee.totalRewards(stakedRelayerId);
+        const parseId = this.api.createType("AccountId", stakedRelayerId);
+        return (await this.api.query.fee.totalRewards(parseId)).toString();
     }
 
-    async getSLA(stakedRelayerId: AccountId): Promise<number> {
+    async getSLA(stakedRelayerId: string): Promise<string> {
         // TODO: integration test using docker-compose setup
-        return (await this.api.query.sla.relayerSla(stakedRelayerId)).toNumber();
+        const parseId = this.api.createType("AccountId", stakedRelayerId);
+        return (await this.api.query.sla.relayerSla(parseId)).toString();
     }
 
     async getMaxSLA(): Promise<string> {
