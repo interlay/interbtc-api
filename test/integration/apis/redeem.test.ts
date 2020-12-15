@@ -111,7 +111,7 @@ describe("redeem", () => {
         });
     });
 
-    describe.skip("fees", () => {
+    describe("fees", () => {
         it("should getFeesToPay", async () => {
             const amount = "2";
             const feesToPay = await redeemAPI.getFeesToPay(amount);
