@@ -153,7 +153,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("fees", () => {
+    describe("fees", () => {
         it("should getFeesToPay", async () => {
             const amount = "2";
             const feesToPay = await issueAPI.getFeesToPay(amount);

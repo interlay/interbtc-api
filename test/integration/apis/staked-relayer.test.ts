@@ -56,15 +56,9 @@ describe("stakedRelayerAPI", () => {
             assert.equal(totalStakedDOTAmount.toNumber(), 0);
         });
 
-        // commented because function is only a stub now
-        // it("should getFeesEarned", async () => {
-        //     const feesEarned = await stakedRelayerAPI.getFeesEarned();
-        //     assert.notEqual(typeof(feesEarned), undefined);
-        // });
-
         it("should listIncludingIds", async () => {
-            const latestBTCBlockFromBTCRelay = await stakedRelayerAPI.map();
-            assert.isDefined(latestBTCBlockFromBTCRelay);
+            const relayersMap = await stakedRelayerAPI.map();
+            assert.isDefined(relayersMap);
         });
 
         it.skip("should getMonitoredVaultsCollateralizationRate", async () => {
@@ -103,10 +97,20 @@ describe("stakedRelayerAPI", () => {
         });
     });
 
-    describe.skip("sla", () => {
+    describe("sla", () => {
         it("should getMaxSLA", async () => {
             const feesToPay = await stakedRelayerAPI.getMaxSLA();
             assert.equal(feesToPay, "100");
         });
+
+        // it("should get SLA", async () => {
+        //     const relayersMap = await stakedRelayerAPI.map();
+        //     console.log(`RelayersMap: ${relayersMap.size}`);
+        //     relayersMap.forEach(async (value: ActiveStakedRelayer, key: AccountId) => {
+        //         const sla = await stakedRelayerAPI.getSLA(key.toString());
+        //         console.log(sla);
+        //     });
+        //     // assert.equal(feesToPay, "100");
+        // });
     });
 });

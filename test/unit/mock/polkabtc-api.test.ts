@@ -23,10 +23,4 @@ describe.skip("PolkaBTCAPIMock", () => {
         assert.equal(totalStakedDOTAmount.toNumber(), 16);
     });
 
-    it("should retrieve mock data from parameterized methods", async () => {
-        const activeStakedRelayerId = <AccountId>{};
-        const feesEarnedByActiveStakedRelayer = await polkaBTC.stakedRelayer.getFeesEarned(activeStakedRelayerId);
-        // toNumber() trims BigNumber to an integer
-        assert.equal(feesEarnedByActiveStakedRelayer.toNumber(), 120);
-    });
 });
