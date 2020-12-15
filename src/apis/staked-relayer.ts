@@ -17,7 +17,6 @@ export interface StakedRelayerAPI {
     isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
     getTotalStakedDOTAmount(): Promise<DOT>;
-    getFeesEarned(activeStakedRelayerId: AccountId): Promise<DOT>;
     getMonitoredVaultsCollateralizationRate(): Promise<Vault[]>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
@@ -94,10 +93,6 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
             const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
             return stakedDOTAmounts.reduce(sumReducer);
         }
-        return new BN(0) as DOT;
-    }
-
-    async getFeesEarned(_activeStakedRelayerId: AccountId): Promise<DOT> {
         return new BN(0) as DOT;
     }
 
