@@ -122,5 +122,11 @@ describe("redeem", () => {
             const feePercentage = await redeemAPI.getFeePercentage();
             assert.equal(feePercentage, "0.005");
         });
+
+        it("should getPremiumRedeemFee", async () => {
+            const premiumRedeemFee = await redeemAPI.getPremiumRedeemFee();
+            assert.equal(premiumRedeemFee, "0.05");
+        });
+        
     });
 });

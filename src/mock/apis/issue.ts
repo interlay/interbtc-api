@@ -32,8 +32,8 @@ export class MockIssueAPI implements IssueAPI {
         return;
     }
 
-    getGriefingCollateral(): Promise<DOT> {
-        return Promise.resolve(new BN(100) as DOT);
+    getGriefingCollateral(): Promise<string> {
+        return Promise.resolve("100");
     }
 
     list(): Promise<IssueRequestExt[]> {
