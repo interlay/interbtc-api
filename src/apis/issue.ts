@@ -34,7 +34,7 @@ export interface IssueAPI {
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
-    getGriefingCollateral(): Promise<DOT>;
+    getGriefingCollateral(): Promise<string>;
     list(): Promise<IssueRequestExt[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
@@ -131,7 +131,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
         if (!griefingCollateral) {
             const griefingCollateralRate = await this.getGriefingCollateral();
-            const griefingCollateralRateBig = new Big(griefingCollateralRate.toString());
+            const griefingCollateralRateBig = new Big(griefingCollateralRate);
             const exchangeRate = await this.oracleAPI.getExchangeRate();
             const exchangeRateU128 = new Big(exchangeRate);
             const amountBig = new Big(amount.toString());
@@ -204,8 +204,9 @@ export class DefaultIssueAPI implements IssueAPI {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
-    async getGriefingCollateral(): Promise<DOT> {
-        return this.api.query.fee.issueGriefingCollateral();
+    async getGriefingCollateral(): Promise<string> {
+        const issueGriefingCollateral = await this.api.query.fee.issueGriefingCollateral();
+        return scaleFixedPointType(issueGriefingCollateral);
     }
 
     async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {

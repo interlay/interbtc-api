@@ -218,6 +218,11 @@ export class DefaultRedeemAPI {
         return await this.api.query.redeem.redeemBtcDustValue();
     }
 
+    async getPremiumRedeemFee(): Promise<string> {
+        const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee();
+        return scaleFixedPointType(premiumRedeemFee);
+    }
+
     getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]> {
         return pagedIterator<RedeemRequest>(this.api.query.redeem.redeemRequests, perPage);
     }

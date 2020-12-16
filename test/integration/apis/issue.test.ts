@@ -64,6 +64,11 @@ describe("issue", () => {
             const requestResult = await issueAPI.request(amount);
             assert.isTrue(requestResult.hash.length > 0);
         });
+
+        it("should getGriefingCollateral", async () => {
+            const griefingCollateralRate = await issueAPI.getGriefingCollateral();
+            assert.equal(griefingCollateralRate, "0.00005");
+        })
     });
 
     describe.skip("execute", () => {
