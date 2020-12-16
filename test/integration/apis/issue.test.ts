@@ -50,15 +50,6 @@ describe("issue", () => {
         api.disconnect();
     });
 
-    describe("list", () => {
-        it("should list all issue requests", async () => {
-            const aliceAccountId = api.createType("AccountId", alice.address);
-            const requests = await issueAPI.mapForUser(aliceAccountId);
-            // There should be a single request after the docker-compose setup
-            assert.isTrue(requests.size === 1);
-        });
-    });
-
     describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);

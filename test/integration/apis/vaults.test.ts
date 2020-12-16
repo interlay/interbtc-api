@@ -136,7 +136,7 @@ describe("vaultsAPI", () => {
             const feesBig = new Big(fees);
             const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
             const scaledFees = feesBig.div(scalingFactor);
-            const benchmarkFees = new Big("1e-16");
+            const benchmarkFees = new Big("0");
             console.log(`scaledFees: ${scaledFees.toString()}`);
             assert.isTrue(scaledFees.gte(benchmarkFees));
         });
