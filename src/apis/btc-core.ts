@@ -81,20 +81,29 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     constructor(network: string = "mainnet") {
         let basePath = "";
         switch (network) {
-            case "mainnet":
-                basePath = mainnetApiBasePath;
-                break;
-            case "testnet":
-                basePath = testnetApiBasePath;
-                break;
-            default:
-                basePath = network;
+        case "mainnet":
+            basePath = mainnetApiBasePath;
+            break;
+        case "testnet":
+            basePath = testnetApiBasePath;
+            break;
+        default:
+            basePath = network;
         }
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
         this.scripthashApi = new ScripthashApi({ basePath });
     }
 
+    /**
+     * Initialize the Bitcoin-js client, which is a js equivalent to bitcoin-cli
+     * @param network Bitcoin network (mainnet, testnet, regtest)
+     * @param host URL of Bitcoin node (e.g. localhost)
+     * @param username User for RPC authentication
+     * @param password Password for RPC authentication
+     * @param port Bitcoin node connection port (e.g. 18443)
+     * @param wallet Name of wallet to use (e.g. Alice)
+     */
     initializeClientConnection(
         network: string,
         host: string,
@@ -135,6 +144,11 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
     }
 
+    /**
+     * Broadcasts a transaction to the Bitcoin network configured with `initializeClientConnection`
+     * @param hex A hex-encoded raw transaction to be broadcast to the Bitcoin blockchain
+     * @returns The txid of the transaction
+     */
     async broadcastRawTransaction(hex: string): Promise<AxiosResponse<string>> {
         return await this.txApi.postTx(hex);
     }
@@ -182,9 +196,9 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      * @remarks
      * Performs the lookup using an external service, Esplora. Requires the input string to be a hex
      *
-     * @param opReturn - Data string used for matching the OP_CODE of Bitcoin transactions
-     * @param recipientAddress - Match the receiving address of a transaction that contains said op_return
-     * @param amountAsBTC - Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
+     * @param opReturn Data string used for matching the OP_CODE of Bitcoin transactions
+     * @param recipientAddress Match the receiving address of a transaction that contains said op_return
+     * @param amountAsBTC Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
      * This parameter is only considered if `recipientAddress` is defined.
      *
      * @returns A Bitcoin transaction ID
@@ -217,6 +231,15 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return Promise.reject("No transaction id found");
     }
 
+    /**
+     * Check if a given UTXO sends at least `amountAsBTC` to a certain `recipientAddress`
+     *
+     * @param vout UTXO object
+     * @param recipientAddress (Optional) Address of recipient
+     * @param amountAsBTC (Optional) Amount the recipient must receive. This parameter is only considered if the 
+     * `recipientAddress` is defined too
+     * @returns Boolean value
+     */
     private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amountAsBTC?: string): boolean {
         if (recipientAddress) {
             if (recipientAddress !== vout.scriptpubkey_address) {

@@ -4,7 +4,7 @@ import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { FIXEDI128_SCALING_FACTOR, pagedIterator, PERCENTAGE_GRANULARITY, planckToDOT } from "../utils";
+import { FIXEDI128_SCALING_FACTOR, pagedIterator, PERCENTAGE_GRANULARITY, planckToDOT, scaleFixedPointType } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -316,7 +316,8 @@ export class DefaultVaultsAPI {
 
     async getSLA(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
-        return (await this.api.query.sla.vaultSla(parsedId)).toString();
+        const sla = await this.api.query.sla.vaultSla(parsedId);
+        return scaleFixedPointType(sla);
     }
 
     async getMaxSLA(): Promise<string> {
@@ -332,7 +333,8 @@ export class DefaultVaultsAPI {
     }
 
     async getPunishmentFee(): Promise<string> {
-        return (await this.api.query.fee.punishmentFee()).toString();
+        const fee = await this.api.query.fee.punishmentFee();
+        return scaleFixedPointType(fee);
     }
 
     private scaleUsingParachainGranularity(value: u128): number {

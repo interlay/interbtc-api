@@ -5,12 +5,11 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
-import { encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
+import { encodeBtcAddress, pagedIterator, scaleFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import BN from "bn.js";
-import { FIXEDI128_SCALING_FACTOR } from "../utils/";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -194,10 +193,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async getFeePercentage(): Promise<string> {
         const issueFee = await this.api.query.fee.issueFee();
-        const issueFeeBig = new Big(issueFee.toString());
-        const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-        const scaledFee = issueFeeBig.div(divisor);
-        return scaledFee.toString();
+        return scaleFixedPointType(issueFee);
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
