@@ -93,7 +93,7 @@ export class MockIssueAPI implements IssueAPI {
     isExecutionSucessful(_events: EventRecord[]): boolean {
         return false;
     }
-    
+
     async getFeesToPay(_amount: string): Promise<string> {
         return "0.01";
     }

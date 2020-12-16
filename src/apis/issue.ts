@@ -46,13 +46,13 @@ export interface IssueAPI {
 }
 
 export class DefaultIssueAPI implements IssueAPI {
-    private vaults: VaultsAPI;
+    private vaultsAPI: VaultsAPI;
     private btcNetwork: Network;
     private oracleAPI: OracleAPI;
     requestHash: Hash;
 
     constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.oracleAPI = new DefaultOracleAPI(api);
         this.btcNetwork = btcNetwork;
         this.requestHash = this.api.createType("Hash");
@@ -123,10 +123,10 @@ export class DefaultIssueAPI implements IssueAPI {
 
         let vault: Vault;
         if (vaultId) {
-            vault = await this.vaults.get(vaultId);
+            vault = await this.vaultsAPI.get(vaultId);
         } else {
-            vaultId = await this.vaults.selectRandomVaultIssue(amount);
-            vault = await this.vaults.get(vaultId);
+            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
+            vault = await this.vaultsAPI.get(vaultId);
         }
 
         if (!griefingCollateral) {

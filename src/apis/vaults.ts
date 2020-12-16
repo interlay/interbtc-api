@@ -4,7 +4,13 @@ import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { FIXEDI128_SCALING_FACTOR, pagedIterator, PERCENTAGE_GRANULARITY, planckToDOT, scaleFixedPointType } from "../utils";
+import {
+    FIXEDI128_SCALING_FACTOR,
+    pagedIterator,
+    PERCENTAGE_GRANULARITY,
+    planckToDOT,
+    scaleFixedPointType,
+} from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";

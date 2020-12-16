@@ -1,11 +1,18 @@
-import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT,  } from "../interfaces/default";
+import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, pagedIterator, scaleFixedPointType, sendLoggedTx } from "../utils";
+import {
+    decodeBtcAddress,
+    encodeBtcAddress,
+    FIXEDI128_SCALING_FACTOR,
+    pagedIterator,
+    scaleFixedPointType,
+    sendLoggedTx,
+} from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -44,13 +51,13 @@ export interface RedeemAPI {
 }
 
 export class DefaultRedeemAPI {
-    private vaults: VaultsAPI;
+    private vaultsAPI: VaultsAPI;
     private btcNetwork: Network;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
     constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.btcNetwork = btcNetwork;
     }
 
@@ -106,10 +113,10 @@ export class DefaultRedeemAPI {
 
         let vault: Vault;
         if (vaultId) {
-            vault = await this.vaults.get(vaultId);
+            vault = await this.vaultsAPI.get(vaultId);
         } else {
-            vaultId = await this.vaults.selectRandomVaultRedeem(amount);
-            vault = await this.vaults.get(vaultId);
+            vaultId = await this.vaultsAPI.selectRandomVaultRedeem(amount);
+            vault = await this.vaultsAPI.get(vaultId);
         }
 
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
