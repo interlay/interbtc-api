@@ -1,4 +1,4 @@
-import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC } from "../../interfaces/default";
+import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC, InactiveStakedRelayer } from "../../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";

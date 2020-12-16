@@ -7,6 +7,8 @@ import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
+import { FIXEDI128_SCALING_FACTOR } from "../../../src/utils";
+import Big from "big.js";
 
 describe("vaultsAPI", () => {
     let bob: KeyringPair;
@@ -115,8 +117,36 @@ describe("vaultsAPI", () => {
 
     describe("sla", () => {
         it("should getMaxSLA", async () => {
-            const feesToPay = await vaultsAPI.getMaxSLA();
-            assert.equal(feesToPay, "100");
+            const sla = await vaultsAPI.getMaxSLA();
+            assert.equal(sla, "100");
+        });
+
+        it("should get SLA", async () => {
+            const sla = await vaultsAPI.getSLA(charlie.address);
+            const slaBig = new Big(sla);
+            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+            const scaledSla = slaBig.div(scalingFactor).toString();
+            assert.equal(scaledSla, "0");
+        });
+    });
+
+    describe("fees", () => {
+        it("should getFees", async () => {
+            const fees = await vaultsAPI.getFees(charlie.address);
+            const feesBig = new Big(fees);
+            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+            const scaledFees = feesBig.div(scalingFactor);
+            const benchmarkFees = new Big("0");
+            console.log(`scaledFees: ${scaledFees.toString()}`);
+            assert.isTrue(scaledFees.gte(benchmarkFees));
+        });
+
+        it("should getAPY", async () => {
+            const apy = await vaultsAPI.getAPY(charlie.address);
+            const apyBig = new Big(apy);
+            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+            const scaledFees = apyBig.div(scalingFactor).toString();
+            assert.equal(scaledFees, "0");
         });
     });
 });

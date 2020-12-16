@@ -9,7 +9,7 @@ import { encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { FixedI128_SCALING_FACTOR } from "../utils/";
+import { FIXEDI128_SCALING_FACTOR } from "../utils/";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -185,7 +185,7 @@ export class DefaultIssueAPI implements IssueAPI {
     async getFeePercentage(): Promise<string> {
         const issueFee = await this.api.query.fee.issueFee();
         const issueFeeBig = new Big(issueFee.toString());
-        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
         const scaledFee = issueFeeBig.div(divisor);
         return scaledFee.toString();
     }

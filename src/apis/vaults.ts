@@ -4,7 +4,7 @@ import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
-import { FixedI128_SCALING_FACTOR, pagedIterator, PERCENTAGE_GRANULARITY, planckToDOT } from "../utils";
+import { FIXEDI128_SCALING_FACTOR, pagedIterator, PERCENTAGE_GRANULARITY, planckToDOT } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -299,13 +299,11 @@ export class DefaultVaultsAPI {
     }
 
     async getFees(vaultId: string): Promise<string> {
-        // TODO: integration test using docker-compose setup
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewards(parsedId)).toString();
     }
 
     async getAPY(vaultId: string): Promise<string> {
-        // TODO: integration test using docker-compose setup
         const fees = await this.getFees(vaultId);
         const feesBig = new Big(fees.toString());
         const dotToBtcRate = await this.oracleAPI.getExchangeRate();
@@ -317,7 +315,6 @@ export class DefaultVaultsAPI {
     }
 
     async getSLA(vaultId: string): Promise<string> {
-        // TODO: integration test using docker-compose setup
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.sla.vaultSla(parsedId)).toString();
     }
@@ -325,7 +322,7 @@ export class DefaultVaultsAPI {
     async getMaxSLA(): Promise<string> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
         const maxSlaBig = new Big(maxSLA.toString());
-        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
         return maxSlaBig.div(divisor).toString();
     }
 
