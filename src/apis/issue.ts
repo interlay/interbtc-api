@@ -5,11 +5,12 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
-import { encodeBtcAddress, pagedIterator, sendLoggedTx } from "../utils";
+import { encodeBtcAddress, pagedIterator, scaleFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { FixedI128_SCALING_FACTOR } from "../utils/";
+import BN from "bn.js";
+import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -47,10 +48,12 @@ export interface IssueAPI {
 export class DefaultIssueAPI implements IssueAPI {
     private vaults: VaultsAPI;
     private btcNetwork: Network;
+    private oracleAPI: OracleAPI;
     requestHash: Hash;
 
     constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
         this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.oracleAPI = new DefaultOracleAPI(api);
         this.btcNetwork = btcNetwork;
         this.requestHash = this.api.createType("Hash");
     }
@@ -127,7 +130,13 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         if (!griefingCollateral) {
-            griefingCollateral = await this.getGriefingCollateral();
+            const griefingCollateralRate = await this.getGriefingCollateral();
+            const griefingCollateralRateBig = new Big(griefingCollateralRate.toString());
+            const exchangeRate = await this.oracleAPI.getExchangeRate();
+            const exchangeRateU128 = new Big(exchangeRate);
+            const amountBig = new Big(amount.toString());
+            const amountInDot = exchangeRateU128.mul(amountBig);
+            griefingCollateral = new BN(amountInDot.mul(griefingCollateralRateBig).toString()) as DOT;
         }
         const requestIssueTx = this.api.tx.issue.requestIssue(amount, vault.id, griefingCollateral);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
@@ -184,10 +193,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async getFeePercentage(): Promise<string> {
         const issueFee = await this.api.query.fee.issueFee();
-        const issueFeeBig = new Big(issueFee.toString());
-        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
-        const scaledFee = issueFeeBig.div(divisor);
-        return scaledFee.toString();
+        return scaleFixedPointType(issueFee);
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {

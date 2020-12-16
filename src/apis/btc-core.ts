@@ -95,6 +95,15 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         this.scripthashApi = new ScripthashApi({ basePath });
     }
 
+    /**
+     * Initialize the Bitcoin-js client, which is a js equivalent to bitcoin-cli
+     * @param network Bitcoin network (mainnet, testnet, regtest)
+     * @param host URL of Bitcoin node (e.g. localhost)
+     * @param username User for RPC authentication
+     * @param password Password for RPC authentication
+     * @param port Bitcoin node connection port (e.g. 18443)
+     * @param wallet Name of wallet to use (e.g. Alice)
+     */
     initializeClientConnection(
         network: string,
         host: string,
@@ -113,23 +122,41 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         });
     }
 
+    /**
+     * @returns The block hash of the latest Bitcoin block
+     */
     getLatestBlock(): Promise<string> {
         return this.getData(this.blockApi.getLastBlockHash());
     }
 
+    /**
+     * @returns The height of the latest Bitcoin block
+     */
     getLatestBlockHeight(): Promise<number> {
         return this.getData(this.blockApi.getLastBlockHeight());
     }
 
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The merkle inclusion proof for the transaction using bitcoind's merkleblock format.
+     */
     getMerkleProof(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
     }
 
+    /**
+     * Broadcasts a transaction to the Bitcoin network configured with `initializeClientConnection`
+     * @param hex A hex-encoded raw transaction to be broadcast to the Bitcoin blockchain
+     * @returns The txid of the transaction
+     */
     async broadcastRawTransaction(hex: string): Promise<AxiosResponse<string>> {
         return await this.txApi.postTx(hex);
     }
 
-    // returns the confirmation status and number of confirmations of a tx
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns A TxStatus object, containing the confirmation status and number of confirmations
+     */
     async getTransactionStatus(txid: string): Promise<TxStatus> {
         const status = {
             confirmed: false,
@@ -146,10 +173,18 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return status;
     }
 
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The height of the block the transaction was included in. If the block has not been confirmed, returns undefined.
+     */
     async getTransactionBlockHeight(txid: string): Promise<number | undefined> {
         return (await this.getTxStatus(txid)).block_height;
     }
 
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The raw transaction data, represented as a Buffer object
+     */
     getRawTransaction(txid: string): Promise<Buffer> {
         return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
     }
@@ -161,9 +196,9 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      * @remarks
      * Performs the lookup using an external service, Esplora. Requires the input string to be a hex
      *
-     * @param opReturn - Data string used for matching the OP_CODE of Bitcoin transactions
-     * @param recipientAddress - Match the receiving address of a transaction that contains said op_return
-     * @param amountAsBTC - Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
+     * @param opReturn Data string used for matching the OP_CODE of Bitcoin transactions
+     * @param recipientAddress Match the receiving address of a transaction that contains said op_return
+     * @param amountAsBTC Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
      * This parameter is only considered if `recipientAddress` is defined.
      *
      * @returns A Bitcoin transaction ID
@@ -196,6 +231,15 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return Promise.reject("No transaction id found");
     }
 
+    /**
+     * Check if a given UTXO sends at least `amountAsBTC` to a certain `recipientAddress`
+     *
+     * @param vout UTXO object
+     * @param recipientAddress (Optional) Address of recipient
+     * @param amountAsBTC (Optional) Amount the recipient must receive. This parameter is only considered if the 
+     * `recipientAddress` is defined too
+     * @returns Boolean value
+     */
     private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amountAsBTC?: string): boolean {
         if (recipientAddress) {
             if (recipientAddress !== vout.scriptpubkey_address) {
