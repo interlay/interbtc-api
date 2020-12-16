@@ -123,10 +123,7 @@ describe("vaultsAPI", () => {
 
         it("should get SLA", async () => {
             const sla = await vaultsAPI.getSLA(charlie.address);
-            const slaBig = new Big(sla);
-            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-            const scaledSla = slaBig.div(scalingFactor).toString();
-            assert.equal(scaledSla, "0");
+            assert.equal(sla, "0");
         });
     });
 
@@ -134,19 +131,20 @@ describe("vaultsAPI", () => {
         it("should getFees", async () => {
             const fees = await vaultsAPI.getFees(charlie.address);
             const feesBig = new Big(fees);
-            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-            const scaledFees = feesBig.div(scalingFactor);
             const benchmarkFees = new Big("0");
-            console.log(`scaledFees: ${scaledFees.toString()}`);
-            assert.isTrue(scaledFees.gte(benchmarkFees));
+            assert.isTrue(feesBig.gte(benchmarkFees));
         });
 
         it("should getAPY", async () => {
             const apy = await vaultsAPI.getAPY(charlie.address);
             const apyBig = new Big(apy);
-            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-            const scaledFees = apyBig.div(scalingFactor).toString();
-            assert.equal(scaledFees, "0");
+            const apyBenchmark = new Big("0");
+            assert.isTrue(apyBig.gte(apyBenchmark));
+        });
+
+        it("should getPunishmentFee", async () => {
+            const punishmentFee = await vaultsAPI.getPunishmentFee();
+            assert.equal(punishmentFee, "0.1");
         });
     });
 });

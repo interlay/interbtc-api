@@ -113,10 +113,8 @@ describe("stakedRelayerAPI", () => {
         it("should get SLA", async () => {
             const sla = await stakedRelayerAPI.getSLA(eve.address);
             const slaBig = new Big(sla);
-            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-            const scaledSla = slaBig.div(scalingFactor);
             const slaBenchmark = new Big("1");
-            assert.isTrue(scaledSla.gte(slaBenchmark));
+            assert.isTrue(slaBig.gte(slaBenchmark));
         });
     });
 
@@ -124,9 +122,8 @@ describe("stakedRelayerAPI", () => {
         it("should getFees", async () => {
             const fees = await stakedRelayerAPI.getFees(eve.address);
             const feesBig = new Big(fees);
-            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-            const scaledFees = feesBig.div(scalingFactor).toString();
-            assert.equal(scaledFees, "0");
+            const feeBenchmark = new Big("0");
+            assert.isTrue(feesBig.gte(feeBenchmark));
         });
 
     });
