@@ -236,7 +236,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      *
      * @param vout UTXO object
      * @param recipientAddress (Optional) Address of recipient
-     * @param amountAsBTC (Optional) Amount the recipient must receive. This parameter is only considered if the 
+     * @param amountAsBTC (Optional) Amount the recipient must receive. This parameter is only considered if the
      * `recipientAddress` is defined too
      * @returns Boolean value
      */

@@ -1,4 +1,12 @@
-import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC, InactiveStakedRelayer } from "../../interfaces/default";
+import {
+    DOT,
+    ActiveStakedRelayer,
+    StatusCode,
+    Vault,
+    StatusUpdate,
+    PolkaBTC,
+    InactiveStakedRelayer,
+} from "../../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -117,6 +125,10 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
 
     async getFees(_stakedRelayerId: string): Promise<string> {
         return "10.22";
+    }
+
+    async getAPY(_vaultId: string): Promise<string> {
+        return "3.23988247";
     }
 
     async getSLA(_stakedRelayerId: string): Promise<string> {

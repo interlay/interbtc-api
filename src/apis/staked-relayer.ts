@@ -1,4 +1,11 @@
-import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, InactiveStakedRelayer } from "../interfaces/default";
+import {
+    DOT,
+    ActiveStakedRelayer,
+    StatusCode,
+    Vault,
+    StatusUpdate,
+    InactiveStakedRelayer,
+} from "../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
@@ -7,6 +14,8 @@ import BN from "bn.js";
 import { FIXEDI128_SCALING_FACTOR, pagedIterator, scaleFixedPointType } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
+import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 
 export interface StakedRelayerAPI {
     list(): Promise<ActiveStakedRelayer[]>;
@@ -25,15 +34,20 @@ export interface StakedRelayerAPI {
     getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getFees(stakedRelayerId: string): Promise<string>;
+    getAPY(vaultId: string): Promise<string>;
     getSLA(stakedRelayerId: string): Promise<string>;
     getMaxSLA(): Promise<string>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
-    private vaults: VaultsAPI;
+    private vaultsAPI: VaultsAPI;
+    private collateralAPI: CollateralAPI;
+    private oracleAPI: OracleAPI;
 
     constructor(private api: ApiPromise, btcNetwork: Network) {
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.collateralAPI = new DefaultCollateralAPI(this.api);
+        this.oracleAPI = new DefaultOracleAPI(this.api);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
     }
 
     async list(): Promise<ActiveStakedRelayer[]> {
@@ -97,7 +111,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {
-        return this.vaults.list();
+        return this.vaultsAPI.list();
     }
 
     async getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]> {
@@ -148,6 +162,17 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return fees.toString();
     }
 
+    async getAPY(stakedRelayerId: string): Promise<string> {
+        const fees = await this.getFees(stakedRelayerId);
+        const feesBig = new Big(fees.toString());
+        const dotToBtcRate = await this.oracleAPI.getExchangeRate();
+        const feesInDot = feesBig.mul(new Big(dotToBtcRate));
+        const parsedStakedRelayerId = this.api.createType("AccountId", stakedRelayerId);
+        const lockedDot = await this.collateralAPI.balanceLockedDOT(parsedStakedRelayerId);
+        const lockedDotBig = new Big(lockedDot.toString());
+        return feesInDot.div(lockedDotBig).toString();
+    }
+
     async getSLA(stakedRelayerId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", stakedRelayerId);
         const sla = await this.api.query.sla.relayerSla(parsedId);
@@ -158,5 +183,4 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
         return scaleFixedPointType(maxSLA);
     }
-
 }
