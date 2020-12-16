@@ -1,4 +1,4 @@
-import { ApiPromise } from "@polkadot/api";
+import { ApiPromise, Keyring } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import sinon from "sinon";
@@ -8,6 +8,9 @@ import { ActiveStakedRelayer, DOT } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
+import { KeyringPair } from "@polkadot/keyring/types";
+import { FIXEDI128_SCALING_FACTOR } from "../../../src/utils";
+import Big from "big.js";
 
 describe("stakedRelayerAPI", () => {
     function numberToDOT(x: number): DOT {
@@ -16,9 +19,13 @@ describe("stakedRelayerAPI", () => {
 
     let api: ApiPromise;
     let stakedRelayerAPI: StakedRelayerAPI;
+    let keyring: Keyring;
+    let eve: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
+        keyring = new Keyring({ type: "sr25519" });
+        eve = keyring.addFromUri("//Eve");
     });
 
     beforeEach(() => {
@@ -103,14 +110,24 @@ describe("stakedRelayerAPI", () => {
             assert.equal(feesToPay, "100");
         });
 
-        // it("should get SLA", async () => {
-        //     const relayersMap = await stakedRelayerAPI.map();
-        //     console.log(`RelayersMap: ${relayersMap.size}`);
-        //     relayersMap.forEach(async (value: ActiveStakedRelayer, key: AccountId) => {
-        //         const sla = await stakedRelayerAPI.getSLA(key.toString());
-        //         console.log(sla);
-        //     });
-        //     // assert.equal(feesToPay, "100");
-        // });
+        it("should get SLA", async () => {
+            const sla = await stakedRelayerAPI.getSLA(eve.address);
+            const slaBig = new Big(sla);
+            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+            const scaledSla = slaBig.div(scalingFactor);
+            const slaBenchmark = new Big("1");
+            assert.isTrue(scaledSla.gte(slaBenchmark));
+        });
+    });
+
+    describe("fees", () => {
+        it("should getFees", async () => {
+            const fees = await stakedRelayerAPI.getFees(eve.address);
+            const feesBig = new Big(fees);
+            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+            const scaledFees = feesBig.div(scalingFactor).toString();
+            assert.equal(scaledFees, "0");
+        });
+
     });
 });

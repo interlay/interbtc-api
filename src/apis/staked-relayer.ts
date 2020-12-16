@@ -1,10 +1,10 @@
-import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, PolkaBTC, FixedPoint } from "../interfaces/default";
+import { DOT, ActiveStakedRelayer, StatusCode, Vault, StatusUpdate, InactiveStakedRelayer } from "../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { FixedI128_SCALING_FACTOR, pagedIterator } from "../utils";
+import { FIXEDI128_SCALING_FACTOR, pagedIterator } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
@@ -143,13 +143,11 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getFees(stakedRelayerId: string): Promise<string> {
-        // TODO: integration test using docker-compose setup
         const parseId = this.api.createType("AccountId", stakedRelayerId);
         return (await this.api.query.fee.totalRewards(parseId)).toString();
     }
 
     async getSLA(stakedRelayerId: string): Promise<string> {
-        // TODO: integration test using docker-compose setup
         const parseId = this.api.createType("AccountId", stakedRelayerId);
         return (await this.api.query.sla.relayerSla(parseId)).toString();
     }
@@ -157,7 +155,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     async getMaxSLA(): Promise<string> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
         const maxSlaBig = new Big(maxSLA.toString());
-        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
         return maxSlaBig.div(divisor).toString();
     }
 

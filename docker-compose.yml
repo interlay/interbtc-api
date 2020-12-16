@@ -128,8 +128,8 @@ services:
                 sleep 9
                 ALICE_ADDRESS=bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc
                 testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=bob set-exchange-rate --exchange-rate=1 
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-issue --issue-amount=10000 --vault=dave
-                REDEEM_ID=$$(testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-redeem --redeem-amount=9000 --btc-address=$${ALICE_ADDRESS} --vault=dave)
+                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-issue --issue-amount=10000 --vault=charlie
+                REDEEM_ID=$$(testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-redeem --redeem-amount=9000 --btc-address=$${ALICE_ADDRESS} --vault=charlie)
                 # testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice execute-redeem --redeem-id=$${REDEEM_ID}
 
         environment:

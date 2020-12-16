@@ -5,7 +5,7 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, encodeBtcAddress, FixedI128_SCALING_FACTOR, pagedIterator, sendLoggedTx } from "../utils";
+import { decodeBtcAddress, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, pagedIterator, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -201,7 +201,7 @@ export class DefaultRedeemAPI {
     async getFeePercentage(): Promise<string> {
         const redeemFee = await this.api.query.fee.redeemFee();
         const issueFeeBig = new Big(redeemFee.toString());
-        const divisor = new Big(Math.pow(10, FixedI128_SCALING_FACTOR));
+        const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
         const scaledFee = issueFeeBig.div(divisor);
         return scaledFee.toString();
     }

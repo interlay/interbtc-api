@@ -1,2 +1,2 @@
 export const PERCENTAGE_GRANULARITY = 3;
-export const FixedI128_SCALING_FACTOR = 18;
+export const FIXEDI128_SCALING_FACTOR = 18;
