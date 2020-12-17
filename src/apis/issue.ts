@@ -5,7 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
-import { encodeBtcAddress, pagedIterator, scaleFixedPointType, sendLoggedTx } from "../utils";
+import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, scaleFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -30,7 +30,7 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 }
 
 export interface IssueAPI {
-    request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
+    request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
@@ -115,7 +115,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return false;
     }
 
-    async request(amount: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult> {
+    async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<RequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -124,16 +124,13 @@ export class DefaultIssueAPI implements IssueAPI {
         if (vaultId) {
             vault = await this.vaultsAPI.get(vaultId);
         } else {
-            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
+            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
             vault = await this.vaultsAPI.get(vaultId);
         }
-
-        if (!griefingCollateral) {
-            griefingCollateral = new BN(await this.getGriefingCollateral(amount.toString())) as DOT;
-        }
-        const requestIssueTx = this.api.tx.issue.requestIssue(amount, vault.id, griefingCollateral);
+        const griefingCollateralPlanck = await this.getGriefingCollateral(amountSat.toString());
+        console.log(griefingCollateralPlanck);
+        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vault.id, griefingCollateralPlanck);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
-
         if (!this.isRequestSuccessful(result.events)) {
             throw new Error("Request failed");
         }
@@ -197,14 +194,20 @@ export class DefaultIssueAPI implements IssueAPI {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
-    async getGriefingCollateral(amountBtc: string): Promise<string> {
+    async getGriefingCollateral(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
         const exchangeRate = await this.oracleAPI.getExchangeRate();
         const exchangeRateU128 = new Big(exchangeRate);
-        const amountBig = new Big(amountBtc.toString());
+        const amountBtc = satToBTC(amountSat);
+        const amountBig = new Big(amountBtc);
         const amountInDot = exchangeRateU128.mul(amountBig);
-        return amountInDot.mul(griefingCollateralRateBig).toString();
+        const griefingCollateralDOT = amountInDot.mul(griefingCollateralRateBig).toString();
+        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDOT);
+        if (griefingCollateralPlanck === undefined) {
+            throw new Error("Griefing collateral conversion to planck failed. It should not be smaller than 1 Planck");
+        }
+        return griefingCollateralPlanck;
     }
 
     async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {

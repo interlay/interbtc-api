@@ -39,9 +39,9 @@ export function planckToDOT(planck: string): string {
 }
 
 export function dotToPlanck(dot: string): string | undefined {
-    const dotAmount: Big = new Big(dot);
-    const planckAmount: Big = dotAmount.mul(DOT_IN_PLANCK);
-    if (planckAmount.mod(1).eq(0)) {
+    const dotAmount = new Big(dot);
+    const planckAmount = dotAmount.mul(DOT_IN_PLANCK);
+    if (planckAmount.gte(1)) {
         return planckAmount.toString();
     }
     // reject any values that are less than 1 planck
