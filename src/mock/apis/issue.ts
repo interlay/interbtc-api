@@ -32,7 +32,7 @@ export class MockIssueAPI implements IssueAPI {
         return;
     }
 
-    getGriefingCollateral(): Promise<string> {
+    getGriefingCollateral(_amountBtc: string): Promise<string> {
         return Promise.resolve("100");
     }
 
@@ -90,11 +90,11 @@ export class MockIssueAPI implements IssueAPI {
         };
     }
 
-    isExecutionSucessful(_events: EventRecord[]): boolean {
+    isExecutionSuccessful(_events: EventRecord[]): boolean {
         return false;
     }
 
-    async getFeesToPay(_amount: string): Promise<string> {
+    async getFeesToPay(_amountBtc: string): Promise<string> {
         return "0.01";
     }
 

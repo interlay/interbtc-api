@@ -34,15 +34,14 @@ export interface IssueAPI {
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
-    getGriefingCollateral(): Promise<string>;
+    getGriefingCollateral(amountBtc: string): Promise<string>;
     list(): Promise<IssueRequestExt[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
     getIssuePeriod(): Promise<BlockNumber>;
-    isExecutionSucessful(events: EventRecord[]): boolean;
-    getFeesToPay(amount: string): Promise<string>;
-    getFeePercentage(): Promise<string>;
+    isExecutionSuccessful(events: EventRecord[]): boolean;
+    getFeesToPay(amountBtc: string): Promise<string>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
@@ -77,7 +76,7 @@ export class DefaultIssueAPI implements IssueAPI {
         throw new Error("Request transaction failed");
     }
 
-    isRequestSucessful(events: EventRecord[]): boolean {
+    isRequestSuccessful(events: EventRecord[]): boolean {
         // A successful `execute` produces the following events:
         // - dot.Reserved
         // - collateral.LockCollateral
@@ -96,7 +95,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return false;
     }
 
-    isExecutionSucessful(events: EventRecord[]): boolean {
+    isExecutionSuccessful(events: EventRecord[]): boolean {
         // A successful `execute` produces the following events:
         // - vaultRegistry.IssueTokens
         // - system.NewAccount
@@ -130,18 +129,12 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         if (!griefingCollateral) {
-            const griefingCollateralRate = await this.getGriefingCollateral();
-            const griefingCollateralRateBig = new Big(griefingCollateralRate);
-            const exchangeRate = await this.oracleAPI.getExchangeRate();
-            const exchangeRateU128 = new Big(exchangeRate);
-            const amountBig = new Big(amount.toString());
-            const amountInDot = exchangeRateU128.mul(amountBig);
-            griefingCollateral = new BN(amountInDot.mul(griefingCollateralRateBig).toString()) as DOT;
+            griefingCollateral = new BN(await this.getGriefingCollateral(amount.toString())) as DOT;
         }
         const requestIssueTx = this.api.tx.issue.requestIssue(amount, vault.id, griefingCollateral);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
 
-        if (!this.isRequestSucessful(result.events)) {
+        if (!this.isRequestSuccessful(result.events)) {
             throw new Error("Request failed");
         }
 
@@ -156,7 +149,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
         const result = await sendLoggedTx(executeIssueTx, this.account, this.api);
-        return this.isExecutionSucessful(result.events);
+        return this.isExecutionSuccessful(result.events);
     }
 
     async cancel(issueId: H256): Promise<void> {
@@ -184,10 +177,10 @@ export class DefaultIssueAPI implements IssueAPI {
         return mapForUser;
     }
 
-    async getFeesToPay(amount: string): Promise<string> {
+    async getFeesToPay(amountBtc: string): Promise<string> {
         const feePercentage = await this.getFeePercentage();
         const feePercentageBN = new Big(feePercentage);
-        const amountBig = new Big(amount);
+        const amountBig = new Big(amountBtc);
         return amountBig.mul(feePercentageBN).toString();
     }
 
@@ -204,9 +197,14 @@ export class DefaultIssueAPI implements IssueAPI {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
-    async getGriefingCollateral(): Promise<string> {
-        const issueGriefingCollateral = await this.api.query.fee.issueGriefingCollateral();
-        return scaleFixedPointType(issueGriefingCollateral);
+    async getGriefingCollateral(amountBtc: string): Promise<string> {
+        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
+        const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
+        const exchangeRate = await this.oracleAPI.getExchangeRate();
+        const exchangeRateU128 = new Big(exchangeRate);
+        const amountBig = new Big(amountBtc.toString());
+        const amountInDot = exchangeRateU128.mul(amountBig);
+        return amountInDot.mul(griefingCollateralRateBig).toString();
     }
 
     async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {

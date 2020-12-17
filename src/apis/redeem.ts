@@ -47,7 +47,6 @@ export interface RedeemAPI {
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
     getFeesToPay(amount: string): Promise<string>;
-    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultRedeemAPI {
@@ -75,7 +74,7 @@ export class DefaultRedeemAPI {
         throw new Error("Transaction failed");
     }
 
-    isRequestSucessful(events: EventRecord[]): boolean {
+    isRequestSuccessful(events: EventRecord[]): boolean {
         // A successful `execute` produces the following events:
         // - vaultRegistry.IncreaseToBeRedeemedTokens
         // - polkaBtc.Reserved
@@ -94,7 +93,7 @@ export class DefaultRedeemAPI {
         return false;
     }
 
-    isExecutionSucessful(events: EventRecord[]): boolean {
+    isExecutionSuccessful(events: EventRecord[]): boolean {
         for (const {
             event: { method, section },
         } of events) {
@@ -122,7 +121,7 @@ export class DefaultRedeemAPI {
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amount, btcAddress, vault.id);
         const result = await sendLoggedTx(requestRedeemTx, this.account, this.api);
-        if (!this.isRequestSucessful(result.events)) {
+        if (!this.isRequestSuccessful(result.events)) {
             throw new Error("Request failed");
         }
         const hash = this.getRedeemHashFromEvents(result.events, "RequestRedeem");
@@ -135,7 +134,7 @@ export class DefaultRedeemAPI {
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
         const result = await sendLoggedTx(executeRedeemTx, this.account, this.api);
-        if (!this.isExecutionSucessful(result.events)) {
+        if (!this.isExecutionSuccessful(result.events)) {
             throw new Error("Execution failed");
         }
         const hash = this.getRedeemHashFromEvents(result.events, "ExecuteRedeem");

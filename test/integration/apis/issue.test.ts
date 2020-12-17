@@ -11,10 +11,10 @@ import { btcToSat, encodeBtcAddress, stripHexPrefix } from "../../../src/utils";
 import { assert, expect } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { delay } from "../../helpers";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 import BN from "bn.js";
 import { fail } from "assert";
+import { DefaultOracleAPI } from "../../../src/apis/oracle";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -22,6 +22,7 @@ describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let treasuryAPI: DefaultTreasuryAPI;
+    let oracleAPI: DefaultOracleAPI;
     let btcCore: DefaultBTCCoreAPI;
     let keyring: Keyring;
 
@@ -44,11 +45,17 @@ describe("issue", () => {
 
     beforeEach(() => {
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+        oracleAPI = new DefaultOracleAPI(api);
     });
 
     after(async () => {
         api.disconnect();
     });
+
+    const setExchangeRate = async (value: number) => {
+        oracleAPI.setAccount(bob);
+        await oracleAPI.setExchangeRate(value.toString());
+    };
 
     describe("request", () => {
         it("should fail if no account is set", () => {
@@ -60,15 +67,17 @@ describe("issue", () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
+            await setExchangeRate(385523187);
             const amount = api.createType("Balance", 100000);
             const requestResult = await issueAPI.request(amount);
             assert.isTrue(requestResult.hash.length > 0);
         });
 
         it("should getGriefingCollateral", async () => {
-            const griefingCollateralRate = await issueAPI.getGriefingCollateral();
-            assert.equal(griefingCollateralRate, "0.00005");
-        })
+            await setExchangeRate(385523187);
+            const griefingCollateralRate = await issueAPI.getGriefingCollateral("0.001");
+            assert.equal(griefingCollateralRate, "0.0001927615935");
+        });
     });
 
     describe.skip("execute", () => {
@@ -91,18 +100,18 @@ describe("issue", () => {
             assert.isDefined(txHash);
         });
 
-        it("should consider execution successful if `isExecutionSucessful` returns true", async () => {
+        it("should consider execution successful if `isExecutionSuccessful` returns true", async () => {
             const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
-            ImportMock.mockFunction(issueAPI, "isExecutionSucessful", true);
+            ImportMock.mockFunction(issueAPI, "isExecutionSuccessful", true);
             const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isTrue(isExecutionCorrect);
         });
 
-        it("should consider execution failed if `isExecutionSucessful` returns false", async () => {
+        it("should consider execution failed if `isExecutionSuccessful` returns false", async () => {
             const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
-            ImportMock.mockFunction(issueAPI, "isExecutionSucessful", false);
+            ImportMock.mockFunction(issueAPI, "isExecutionSuccessful", false);
             const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isFalse(isExecutionCorrect);
         });
@@ -259,11 +268,9 @@ describe("issue", () => {
             const parsedRawTx = api.createType("Bytes", txData.rawTx);
             await issueAPI.execute(parsedIssuedId, parsedTxId, parsedMerkleProof, parsedRawTx);
         }
-        
+
         // check issuing worked
         const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
         assert.isTrue(finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)));
     }
-
-
 });
