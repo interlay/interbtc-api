@@ -34,7 +34,7 @@ export interface IssueAPI {
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
-    getGriefingCollateral(): Promise<DOT>;
+    getGriefingCollateral(): Promise<string>;
     list(): Promise<IssueRequestExt[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
@@ -46,13 +46,13 @@ export interface IssueAPI {
 }
 
 export class DefaultIssueAPI implements IssueAPI {
-    private vaults: VaultsAPI;
+    private vaultsAPI: VaultsAPI;
     private btcNetwork: Network;
     private oracleAPI: OracleAPI;
     requestHash: Hash;
 
     constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.oracleAPI = new DefaultOracleAPI(api);
         this.btcNetwork = btcNetwork;
         this.requestHash = this.api.createType("Hash");
@@ -123,15 +123,15 @@ export class DefaultIssueAPI implements IssueAPI {
 
         let vault: Vault;
         if (vaultId) {
-            vault = await this.vaults.get(vaultId);
+            vault = await this.vaultsAPI.get(vaultId);
         } else {
-            vaultId = await this.vaults.selectRandomVaultIssue(amount);
-            vault = await this.vaults.get(vaultId);
+            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
+            vault = await this.vaultsAPI.get(vaultId);
         }
 
         if (!griefingCollateral) {
             const griefingCollateralRate = await this.getGriefingCollateral();
-            const griefingCollateralRateBig = new Big(griefingCollateralRate.toString());
+            const griefingCollateralRateBig = new Big(griefingCollateralRate);
             const exchangeRate = await this.oracleAPI.getExchangeRate();
             const exchangeRateU128 = new Big(exchangeRate);
             const amountBig = new Big(amount.toString());
@@ -204,8 +204,9 @@ export class DefaultIssueAPI implements IssueAPI {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
-    async getGriefingCollateral(): Promise<DOT> {
-        return this.api.query.fee.issueGriefingCollateral();
+    async getGriefingCollateral(): Promise<string> {
+        const issueGriefingCollateral = await this.api.query.fee.issueGriefingCollateral();
+        return scaleFixedPointType(issueGriefingCollateral);
     }
 
     async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {

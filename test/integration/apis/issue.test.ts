@@ -64,6 +64,11 @@ describe("issue", () => {
             const requestResult = await issueAPI.request(amount);
             assert.isTrue(requestResult.hash.length > 0);
         });
+
+        it("should getGriefingCollateral", async () => {
+            const griefingCollateralRate = await issueAPI.getGriefingCollateral();
+            assert.equal(griefingCollateralRate, "0.00005");
+        })
     });
 
     describe.skip("execute", () => {
@@ -222,7 +227,7 @@ describe("issue", () => {
     }
 
     async function issue(amount: string, vaultName: string, autoExecute: boolean) {
-        let initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+        const initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
         const blocksToMine = 3;
         keyring = new Keyring({ type: "sr25519" });
         const vault = keyring.addFromUri("//" + vaultName);
@@ -256,7 +261,7 @@ describe("issue", () => {
         }
         
         // check issuing worked
-        let finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+        const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
         assert.isTrue(finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)));
     }
 

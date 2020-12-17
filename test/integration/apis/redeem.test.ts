@@ -40,16 +40,6 @@ describe("redeem", () => {
         redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest);
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
         treasuryAPI = new DefaultTreasuryAPI(api);
-        sinon.stub(redeemAPI, <any>"vaults").get(() => {
-            return {
-                selectRandomVaultRedeem() {
-                    return Promise.resolve({ id: new GenericAccountId(registry, randomDecodedAccountId) });
-                },
-                get(id: AccountId) {
-                    return { id };
-                },
-            };
-        });
     });
 
     after(() => {
@@ -122,5 +112,11 @@ describe("redeem", () => {
             const feePercentage = await redeemAPI.getFeePercentage();
             assert.equal(feePercentage, "0.005");
         });
+
+        it("should getPremiumRedeemFee", async () => {
+            const premiumRedeemFee = await redeemAPI.getPremiumRedeemFee();
+            assert.equal(premiumRedeemFee, "0.05");
+        });
+        
     });
 });
