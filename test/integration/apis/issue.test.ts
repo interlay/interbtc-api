@@ -75,8 +75,10 @@ describe("issue", () => {
 
         it("should getGriefingCollateral", async () => {
             await setExchangeRate(385523187);
-            const griefingCollateralRate = await issueAPI.getGriefingCollateral("0.001");
-            assert.equal(griefingCollateralRate, "0.0001927615935");
+            const amountBtc = "0.001";
+            const amountAsSat = btcToSat(amountBtc) as string;
+            const griefingCollateralPlanck = await issueAPI.getGriefingCollateral(amountAsSat);
+            assert.equal(griefingCollateralPlanck, "1927615.935");
         });
     });
 

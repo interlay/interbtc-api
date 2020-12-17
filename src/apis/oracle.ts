@@ -48,7 +48,7 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
-    // return the DOT/BTC exchange rate
+    // return the BTC/DOT exchange rate
     async getExchangeRate(): Promise<number> {
         const rawRate = await this.api.query.exchangeRateOracle.exchangeRate();
         return this.convertFromRawExchangeRate(rawRate);
