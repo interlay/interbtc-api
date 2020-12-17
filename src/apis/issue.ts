@@ -128,7 +128,6 @@ export class DefaultIssueAPI implements IssueAPI {
             vault = await this.vaultsAPI.get(vaultId);
         }
         const griefingCollateralPlanck = await this.getGriefingCollateral(amountSat.toString());
-        console.log(griefingCollateralPlanck);
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vault.id, griefingCollateralPlanck);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
         if (!this.isRequestSuccessful(result.events)) {

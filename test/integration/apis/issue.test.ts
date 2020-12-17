@@ -73,7 +73,7 @@ describe("issue", () => {
             assert.isTrue(requestResult.hash.length > 0);
         });
 
-        it.only("should getGriefingCollateral", async () => {
+        it("should getGriefingCollateral", async () => {
             await setExchangeRate(385523187);
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
