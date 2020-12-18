@@ -7,7 +7,6 @@ import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { FIXEDI128_SCALING_FACTOR } from "../../../src/utils";
 import Big from "big.js";
 
 describe("vaultsAPI", () => {
@@ -129,10 +128,11 @@ describe("vaultsAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const fees = await vaultsAPI.getFees(charlie.address);
-            const feesBig = new Big(fees);
+            const feesPolkaBTC = await vaultsAPI.getFeesPolkaBTC(charlie.address);
+            const feesDOT = await vaultsAPI.getFeesDOT(charlie.address);
             const benchmarkFees = new Big("0");
-            assert.isTrue(feesBig.gte(benchmarkFees));
+            assert.isTrue(new Big(feesPolkaBTC).gte(benchmarkFees));
+            assert.isTrue(new Big(feesDOT).gte(benchmarkFees));
         });
 
         it("should getAPY", async () => {

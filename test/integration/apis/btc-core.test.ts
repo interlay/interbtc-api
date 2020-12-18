@@ -3,6 +3,7 @@ import { assert } from "chai";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { createPolkadotAPI } from "../../../src/factory";
 import { defaultEndpoint } from "../../config";
+import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 
 describe("BTCCore testnet", function () {
     this.timeout(10000); // API can be slightly slow
@@ -116,17 +117,25 @@ describe("BTCCore regtest", function () {
 
     describe("getTxByOpreturn", () => {
         it("should return correct tx id", async () => {
-            btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+            const bitcoinCoreClient = new BitcoinCoreClient(
+                "regtest",
+                "0.0.0.0",
+                "rpcuser",
+                "rpcpassword",
+                "18443",
+                "Alice"
+            );
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00029";
-            const txData = await btcCore.sendBtcTxAndMine(recipientAddress, amountAsBtcString, opReturnValue, 6);
+            const txData = await bitcoinCoreClient.sendBtcTxAndMine(
+                recipientAddress,
+                amountAsBtcString,
+                opReturnValue,
+                6
+            );
             const txid = await btcCore.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
         });
     });
-
-    function delay(ms: number) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
-    }
 });
