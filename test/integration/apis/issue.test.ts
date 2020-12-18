@@ -15,6 +15,7 @@ import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 import BN from "bn.js";
 import { fail } from "assert";
 import { DefaultOracleAPI } from "../../../src/apis/oracle";
+import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -23,7 +24,8 @@ describe("issue", () => {
     let issueAPI: DefaultIssueAPI;
     let treasuryAPI: DefaultTreasuryAPI;
     let oracleAPI: DefaultOracleAPI;
-    let btcCore: DefaultBTCCoreAPI;
+    let btcCoreAPI: DefaultBTCCoreAPI;
+    let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
 
     // alice is the root account
@@ -39,8 +41,8 @@ describe("issue", () => {
         alice = keyring.addFromUri("//Alice");
         bob = keyring.addFromUri("//Bob");
 
-        btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
-        btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
     });
 
     beforeEach(() => {
@@ -150,7 +152,7 @@ describe("issue", () => {
             assert.isTrue(activeIssueRequests.length === initialIssueRequests + 1);
 
             // The cancellation period set by docker-compose is 50 blocks, each being relayed every 6s
-            await btcCore.mineBlocks(50);
+            await bitcoinCoreClient.mineBlocks(50);
             await issueAPI.cancel(requestResult.hash);
 
             // After cancelling, there should be one less outstanding request
@@ -259,11 +261,11 @@ describe("issue", () => {
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
         }
-        const txData = await btcCore.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, data, blocksToMine);
+        const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, data, blocksToMine);
 
         if (autoExecute === false) {
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            const merkleProof = await btcCore.getMerkleProof(txData.txid);
+            const merkleProof = await btcCoreAPI.getMerkleProof(txData.txid);
             const parsedIssuedId = api.createType("H256", requestResult.hash);
             const parsedTxId = api.createType("H256", txData.txid);
             const parsedMerkleProof = api.createType("Bytes", "0x" + merkleProof);
