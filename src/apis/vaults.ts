@@ -29,20 +29,18 @@ export interface VaultsAPI {
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     get(vaultId: AccountId): Promise<Vault>;
-    getVaultCollateralization(
-        vaultId: AccountId,
-        newCollateral?: DOT,
-        onlyIssued?: boolean
-    ): Promise<number | undefined>;
-    getSystemCollateralization(): Promise<number | undefined>;
+    getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT, onlyIssued?: boolean): Promise<Big | undefined>;
+    getSystemCollateralization(): Promise<Big | undefined>;
     getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT>;
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
     selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
     selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
     getIssuablePolkaBTC(): Promise<string>;
-    getLiquidationCollateralThreshold(): Promise<u128>;
-    getPremiumRedeemThreshold(): Promise<u128>;
+    getLiquidationCollateralThreshold(): Promise<Big>;
+    getPremiumRedeemThreshold(): Promise<Big>;
+    getAuctionCollateralThreshold(): Promise<Big>;
+    getSecureCollateralThreshold(): Promise<Big>;
     getFeesPolkaBTC(vaultId: string): Promise<string>;
     getFeesDOT(vaultId: string): Promise<string>;
     getAPY(vaultId: string): Promise<string>;
@@ -173,7 +171,7 @@ export class DefaultVaultsAPI {
         vaultId: AccountId,
         newCollateral?: DOT,
         onlyIssued = false
-    ): Promise<number | undefined> {
+    ): Promise<Big | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = newCollateral
@@ -198,7 +196,7 @@ export class DefaultVaultsAPI {
      *
      * @returns the total system collateralization
      */
-    async getSystemCollateralization(): Promise<number | undefined> {
+    async getSystemCollateralization(): Promise<Big | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = await customAPIRPC.vaultRegistry.getTotalCollateralization();
@@ -250,21 +248,13 @@ export class DefaultVaultsAPI {
         return new UInt(new TypeRegistry(), 0) as PolkaBTC;
     }
 
-    private async getSecureCollateralThreshold(): Promise<Big> {
-        const secureCollateralThresholdU128 = await this.api.query.vaultRegistry.secureCollateralThreshold();
-        return new Big(secureCollateralThresholdU128.toString());
-    }
-
     async getIssuablePolkaBTC(): Promise<string> {
         const totalLockedDotAsPlanck = await this.collateralAPI.totalLockedDOT();
         const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
         const exchangeRateU128 = new Big(exchangeRate);
-        let secureCollateralThreshold = await this.getSecureCollateralThreshold();
-
-        // scale by (PERCENTAGE_GRANULARITY + 2) to go from e.g. 200_000 to 2
-        secureCollateralThreshold = secureCollateralThreshold.div(Math.pow(10, PERCENTAGE_GRANULARITY + 2));
+        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
         return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
 
@@ -298,12 +288,24 @@ export class DefaultVaultsAPI {
         return theftReports.isEmpty;
     }
 
-    async getLiquidationCollateralThreshold(): Promise<u128> {
-        return await this.api.query.vaultRegistry.liquidationCollateralThreshold();
+    async getLiquidationCollateralThreshold(): Promise<Big> {
+        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold();
+        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
     }
 
-    async getPremiumRedeemThreshold(): Promise<u128> {
-        return await this.api.query.vaultRegistry.premiumRedeemThreshold();
+    async getPremiumRedeemThreshold(): Promise<Big> {
+        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold();
+        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
+    }
+
+    async getAuctionCollateralThreshold(): Promise<Big> {
+        const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold();
+        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
+    }
+
+    async getSecureCollateralThreshold(): Promise<Big> {
+        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold();
+        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
     }
 
     async getFeesPolkaBTC(vaultId: string): Promise<string> {
@@ -359,8 +361,8 @@ export class DefaultVaultsAPI {
         return scaleFixedPointType(fee);
     }
 
-    private scaleUsingParachainGranularity(value: u128): number {
-        return value.toNumber() / Math.pow(10, this.granularity);
+    private scaleUsingParachainGranularity(value: Big): Big {
+        return value.div(Math.pow(10, this.granularity));
     }
 
     private wrapCurrency(amount: Balance): BalanceWrapper {

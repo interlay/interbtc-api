@@ -204,5 +204,4 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     getData<T>(response: Promise<AxiosResponse<T>>): Promise<T> {
         return response.then((v) => v.data);
     }
-
 }
