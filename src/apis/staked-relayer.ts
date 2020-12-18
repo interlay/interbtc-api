@@ -159,13 +159,13 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
 
     async getFeesPolkaBTC(stakedRelayerId: string): Promise<string> {
         const parseId = this.api.createType("AccountId", stakedRelayerId);
-        const fees = await this.api.query.fee.totalRewardsPolkaBtc(parseId);
+        const fees = await this.api.query.fee.totalRewardsPolkaBTC(parseId);
         return fees.toString();
     }
 
     async getFeesDOT(stakedRelayerId: string): Promise<string> {
         const parseId = this.api.createType("AccountId", stakedRelayerId);
-        const fees = await this.api.query.fee.totalRewardsDot(parseId);
+        const fees = await this.api.query.fee.totalRewardsDOT(parseId);
         return fees.toString();
     }
 

@@ -7,7 +7,6 @@ import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { FIXEDI128_SCALING_FACTOR } from "../../../src/utils";
 import Big from "big.js";
 
 describe("vaultsAPI", () => {

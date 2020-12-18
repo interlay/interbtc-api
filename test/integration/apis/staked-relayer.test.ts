@@ -37,7 +37,6 @@ describe("stakedRelayerAPI", () => {
     });
 
     describe("request", () => {
-
         it("should getStakedDOTAmount", async () => {
             sinon
                 .stub(stakedRelayerAPI, "get")
@@ -113,7 +112,7 @@ describe("stakedRelayerAPI", () => {
         it("should get SLA", async () => {
             const sla = await stakedRelayerAPI.getSLA(eve.address);
             const slaBig = new Big(sla);
-            const slaBenchmark = new Big("1");
+            const slaBenchmark = new Big("0");
             assert.isTrue(slaBig.gte(slaBenchmark));
         });
     });
@@ -126,6 +125,5 @@ describe("stakedRelayerAPI", () => {
             assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
             assert.isTrue(new Big(feesDOT).gte(feeBenchmark));
         });
-
     });
 });

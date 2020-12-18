@@ -1,3 +1,5 @@
+import Big from "big.js";
+
 export function calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: number): string {
     const feesPolkaBTCBig = new Big(feesPolkaBTC.toString());
     const feesPolkaBTCInDot = feesPolkaBTCBig.mul(new Big(dotToBtcRate));
