@@ -56,7 +56,7 @@ export class BitcoinCoreClient {
         const funded = await this.client.command("fundrawtransaction", raw);
         const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
         const response = await this.client.command("sendrawtransaction", signed.hex);
-        const txid = response.data;
+        const txid = response;
         return {
             txid: txid,
             rawTx: signed.hex,
