@@ -179,12 +179,12 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
      * @returns the APY as a percentage string
      */
     async getAPY(stakedRelayerId: string): Promise<string> {
-        const parsedVaultId = this.api.createType("AccountId", stakedRelayerId);
+        const parsedStakedRelayerId = this.api.createType("AccountId", stakedRelayerId);
         const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
             await this.getFeesPolkaBTC(stakedRelayerId),
             await this.getFeesDOT(stakedRelayerId),
             await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLockedDOT(parsedVaultId)).toString(),
+            await (await this.collateralAPI.balanceLockedDOT(parsedStakedRelayerId)).toString(),
         ]);
         return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
