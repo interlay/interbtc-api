@@ -17,6 +17,7 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
+import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -230,7 +231,13 @@ export class DefaultRedeemAPI {
     }
 
     async getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt> {
-        return encodeRedeemRequest(await this.api.query.redeem.redeemRequests(redeemId), this.btcNetwork);
+        console.log(redeemId);
+        const request = await this.api.query.redeem.redeemRequests(redeemId);
+        console.log("got redeem request by id:");
+        console.log(request);
+        console.log("request.btc_address:");
+        console.log(request.btc_address);
+        return encodeRedeemRequest(request, this.btcNetwork);
     }
 
     setAccount(account?: AddressOrPair): void {

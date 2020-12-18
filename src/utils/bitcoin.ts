@@ -31,6 +31,7 @@ export function encodeBtcAddress(address: BtcAddress, network: bitcoin.Network):
             throw new Error("Invalid address format");
         }
     } catch (err) {
+        console.trace();
         throw new Error(`Error encoding BTC address ${address}: ${err}`);
     }
 
