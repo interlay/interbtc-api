@@ -10,6 +10,7 @@ import { RedeemRequestExt } from "../../apis/redeem";
 import { ReplaceRequestExt } from "../../apis/replace";
 import { VaultsAPI } from "../../apis/vaults";
 import { u128 } from "@polkadot/types/primitive";
+import Big from "big.js";
 
 export class MockVaultsAPI implements VaultsAPI {
     async list(): Promise<Vault[]> {
@@ -122,12 +123,12 @@ export class MockVaultsAPI implements VaultsAPI {
         return new BN(0) as PolkaBTC;
     }
 
-    async getVaultCollateralization(_vaultId: AccountId, _newCollateral?: DOT, _onlyIssued = false): Promise<number> {
-        return 2.0;
+    async getVaultCollateralization(_vaultId: AccountId, _newCollateral?: DOT, _onlyIssued = false): Promise<Big> {
+        return new Big(2.0);
     }
 
-    async getSystemCollateralization(): Promise<number> {
-        return 5.2;
+    async getSystemCollateralization(): Promise<Big> {
+        return new Big(5.2);
     }
 
     async getRequiredCollateralForVault(_vaultId: AccountId): Promise<DOT> {
@@ -135,18 +136,24 @@ export class MockVaultsAPI implements VaultsAPI {
         return new UInt(registry, 100) as DOT;
     }
 
+    async getAuctionCollateralThreshold(): Promise<Big> {
+        return new Big(0);
+    }
+
+    async getSecureCollateralThreshold(): Promise<Big> {
+        return new Big(0);
+    }
+
     async getIssuablePolkaBTC(): Promise<string> {
         return "500";
     }
 
-    async getLiquidationCollateralThreshold(): Promise<u128> {
-        const registry = new TypeRegistry();
-        return new UInt(registry, 110000) as u128;
+    async getLiquidationCollateralThreshold(): Promise<Big> {
+        return new Big(0);
     }
 
-    async getPremiumRedeemThreshold(): Promise<u128> {
-        const registry = new TypeRegistry();
-        return new UInt(registry, 120000) as u128;
+    async getPremiumRedeemThreshold(): Promise<Big> {
+        return new Big(0);
     }
 
     async getFeesPolkaBTC(_vaultId: string): Promise<string> {
