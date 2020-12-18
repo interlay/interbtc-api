@@ -65,48 +65,4 @@ export class MockBTCCoreAPI implements BTCCoreAPI {
         return Promise.resolve("f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
     }
 
-    broadcastOpReturnTx(
-        _receiver: string,
-        _amount: string,
-        _data: string
-    ): Promise<{
-        txid: string;
-        rawTx: string;
-    }> {
-        return Promise.resolve({
-            txid: "f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91",
-            rawTx:
-                "905c09ef6024e83039037be5cd7550900000000905c09ef6024e83039037be5cd7550900000000905c09ef6024e83039037be5cd7550900000",
-        });
-    }
-    initializeClientConnection(
-        _network: string,
-        _host: string,
-        _username: string,
-        _password: string,
-        _port: string,
-        _wallet: string
-    ): void {
-        return;
-    }
-
-    mineBlocks(_n: number): Promise<void> {
-        return Promise.resolve();
-    }
-
-    sendBtcTxAndMine(
-        _recipient: string,
-        _amount: string,
-        _data: string,
-        _blocksToMine: number
-    ): Promise<{
-        txid: string;
-        rawTx: string;
-    }> {
-        return Promise.resolve({
-            txid: "f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91",
-            rawTx:
-                "905c09ef6024e83039037be5cd7550900000000905c09ef6024e83039037be5cd7550900000000905c09ef6024e83039037be5cd7550900000",
-        });
-    }
 }
