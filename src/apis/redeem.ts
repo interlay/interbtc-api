@@ -47,6 +47,9 @@ export interface RedeemAPI {
     subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
     getDustValue(): Promise<PolkaBTC>;
     getFeesToPay(amount: string): Promise<string>;
+    getPremiumRedeemFee(): Promise<string>;
+    getRedeemPeriod(): Promise<BlockNumber>;
+    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultRedeemAPI {
