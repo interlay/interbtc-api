@@ -18,17 +18,22 @@ Build the library using
 yarn build
 ```
 
-Then, to run tests, run
-
-```
-yarn test
-```
-
-Note that the parachain needs to be running for all tests to pass.
 To run only unit tests, use
 
 ```
 yarn test:unit
+```
+
+Note that the parachain needs to be running for all tests to pass. You can spin up the parachain including the different clients with docker-compose:
+
+```bash
+docker-compose up
+```
+
+Then, to run tests, run
+
+```
+yarn test
 ```
 
 ### Updating Types
@@ -37,6 +42,12 @@ Run the parachain (or indeed any Substrate node) and download the metadata:
 
 ```bash
 curl -H "Content-Type: application/json" -d '{"id":"1", "jsonrpc":"2.0", "method": "state_getMetadata", "params":[]}' http://localhost:9933 > src/json/parachain.json
+```
+
+Then, update the metadata by building the library:
+
+```bash
+yarn build
 ```
 
 ## Usage
