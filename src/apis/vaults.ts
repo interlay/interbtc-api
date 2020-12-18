@@ -5,6 +5,7 @@ import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { u128 } from "@polkadot/types/primitive";
 import {
+    calculateAPY,
     FIXEDI128_SCALING_FACTOR,
     pagedIterator,
     PERCENTAGE_GRANULARITY,
@@ -42,7 +43,8 @@ export interface VaultsAPI {
     getIssuablePolkaBTC(): Promise<string>;
     getLiquidationCollateralThreshold(): Promise<u128>;
     getPremiumRedeemThreshold(): Promise<u128>;
-    getFees(vaultId: string): Promise<string>;
+    getFeesPolkaBTC(vaultId: string): Promise<string>;
+    getFeesDOT(vaultId: string): Promise<string>;
     getAPY(vaultId: string): Promise<string>;
     getSLA(vaultId: string): Promise<string>;
     getMaxSLA(): Promise<string>;
@@ -304,20 +306,34 @@ export class DefaultVaultsAPI {
         return await this.api.query.vaultRegistry.premiumRedeemThreshold();
     }
 
-    async getFees(vaultId: string): Promise<string> {
+    async getFeesPolkaBTC(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
-        return (await this.api.query.fee.totalRewards(parsedId)).toString();
+        return (await this.api.query.fee.totalRewardsPolkaBtc(parsedId)).toString();
     }
 
+    async getFeesDOT(vaultId: string): Promise<string> {
+        const parsedId = this.api.createType("AccountId", vaultId);
+        return (await this.api.query.fee.totalRewardsDot(parsedId)).toString();
+    }
+
+    /**
+     * Get the total APY for a vault based on the income in PolkaBTC and DOT
+     * divided by the locked DOT.
+     *
+     * @note this does not account for interest compounding
+     *
+     * @param vaultId the id of the vault
+     * @returns the APY as a percentage string
+     */
     async getAPY(vaultId: string): Promise<string> {
-        const fees = await this.getFees(vaultId);
-        const feesBig = new Big(fees.toString());
-        const dotToBtcRate = await this.oracleAPI.getExchangeRate();
-        const feesInDot = feesBig.mul(new Big(dotToBtcRate));
         const parsedVaultId = this.api.createType("AccountId", vaultId);
-        const lockedDot = await this.collateralAPI.balanceLockedDOT(parsedVaultId);
-        const lockedDotBig = new Big(lockedDot.toString());
-        return feesInDot.div(lockedDotBig).toString();
+        const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
+            await this.getFeesPolkaBTC(vaultId),
+            await this.getFeesDOT(vaultId),
+            await this.oracleAPI.getExchangeRate(),
+            await (await this.collateralAPI.balanceLockedDOT(parsedVaultId)).toString(),
+        ]);
+        return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
     async getSLA(vaultId: string): Promise<string> {

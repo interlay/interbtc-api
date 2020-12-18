@@ -4,3 +4,4 @@ export * from "./encoding";
 export * from "./pagedIterator";
 export * from "./logger";
 export * from "./constants";
+export * from "./fee";

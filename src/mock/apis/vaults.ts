@@ -149,7 +149,11 @@ export class MockVaultsAPI implements VaultsAPI {
         return new UInt(registry, 120000) as u128;
     }
 
-    async getFees(_vaultId: string): Promise<string> {
+    async getFeesPolkaBTC(_vaultId: string): Promise<string> {
+        return "368";
+    }
+
+    async getFeesDOT(_vaultId: string): Promise<string> {
         return "368";
     }
 

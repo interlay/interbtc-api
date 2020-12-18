@@ -39,6 +39,12 @@ Run the parachain (or indeed any Substrate node) and download the metadata:
 curl -H "Content-Type: application/json" -d '{"id":"1", "jsonrpc":"2.0", "method": "state_getMetadata", "params":[]}' http://localhost:9933 > src/json/parachain.json
 ```
 
+Then, update the metadata by building the library:
+
+```bash
+yarn build
+```
+
 ## Usage
 
 The library assumes you have a [BTC-Parachain](https://github.com/interlay/btc-parachain) running locally.
