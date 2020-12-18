@@ -1,12 +1,4 @@
-import {
-    DOT,
-    ActiveStakedRelayer,
-    StatusCode,
-    Vault,
-    StatusUpdate,
-    PolkaBTC,
-    InactiveStakedRelayer,
-} from "../../interfaces/default";
+import { DOT, ActiveStakedRelayer, StatusCode, StatusUpdate } from "../../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -14,7 +6,7 @@ import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { StakedRelayerAPI } from "../../apis/staked-relayer";
-import { VaultExt } from "../../apis/vaults";
+import Big from "big.js";
 
 function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
     const registry = new TypeRegistry();
@@ -86,12 +78,8 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return new BN(120.6) as DOT;
     }
 
-    async getMonitoredVaultsCollateralizationRate(): Promise<VaultExt[]> {
-        return [
-            <VaultExt>{
-                // we need to define a collateralisation rate field in Vault
-            },
-        ];
+    async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {
+        return new Map<AccountId, Big>();
     }
 
     async getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]> {
@@ -107,9 +95,8 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         };
     }
 
-    async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>> {
-        const registry = new TypeRegistry();
-        return [[new BN(11208) as BlockNumber, 5, 5]];
+    async getOngoingStatusUpdateVotes(): Promise<Array<[string, BlockNumber, number, number]>> {
+        return [["1", new BN(11208) as BlockNumber, 5, 5]];
     }
 
     async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {

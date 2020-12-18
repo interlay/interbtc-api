@@ -197,10 +197,20 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return true;
     }
 
+    /**
+     * Use the TxAPI to get the confirmationation
+     * @param txid The ID of a Bitcoin transaction
+     * @returns A Status object, containing transaction settlement information
+     */
     private getTxStatus(txid: string): Promise<Status> {
         return this.getData(this.txApi.getTxStatus(txid));
     }
 
+    /**
+     * Parse an AxiosResponse Promise
+     * @param response A generic AxiosResponse Promise
+     * @returns The data in the response
+     */
     getData<T>(response: Promise<AxiosResponse<T>>): Promise<T> {
         return response.then((v) => v.data);
     }

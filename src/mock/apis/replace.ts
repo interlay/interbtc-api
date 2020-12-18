@@ -21,7 +21,7 @@ export class MockReplaceAPI implements ReplaceAPI {
         return Promise.resolve([]);
     }
 
-    async listWithId(): Promise<[string, ReplaceRequestExt][]> {
-        return Promise.resolve([]);
+    async map(): Promise<Map<string, ReplaceRequestExt>> {
+        return Promise.resolve(new Map<string, ReplaceRequestExt>());
     }
 }

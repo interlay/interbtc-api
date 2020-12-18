@@ -21,12 +21,9 @@ export class MockIssueAPI implements IssueAPI {
 
     request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<RequestResult> {
         const registry = new TypeRegistry();
-        const hash = new U8aFixed(
-            registry,
-            "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c"
-        ) as Hash;
+        const id = new U8aFixed(registry, "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c") as Hash;
         const vault = {} as VaultExt;
-        return Promise.resolve({ hash, vault });
+        return Promise.resolve({ id, vault });
     }
 
     setAccount(_account?: AddressOrPair): void {
