@@ -93,4 +93,13 @@ export class MockRedeemAPI implements RedeemAPI {
     async getFeePercentage(): Promise<string> {
         return "4.4";
     }
+
+    async getPremiumRedeemFee(): Promise<string> {
+        return "5";
+    }
+
+    async getRedeemPeriod(): Promise<BlockNumber> {
+        const registry = new TypeRegistry();
+        return new u32(registry, 20) as BlockNumber;
+    }
 }
