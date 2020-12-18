@@ -1,19 +1,17 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { TypeRegistry } from "@polkadot/types";
-import { GenericAccountId } from "@polkadot/types/generic";
-import { H256, Hash, AccountId } from "@polkadot/types/interfaces";
+import { Hash } from "@polkadot/types/interfaces";
 import { DefaultRedeemAPI } from "../../../src/apis/redeem";
-import sinon from "sinon";
 import { createPolkadotAPI } from "../../../src/factory";
-import { H256Le, Vault } from "../../../src/interfaces/default";
+import { Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { btcToSat, stripHexPrefix, encodeBtcAddress } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
-import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
+import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -26,9 +24,7 @@ describe("redeem", () => {
     // alice is the root account
     let alice: KeyringPair;
     let charlie: KeyringPair;
-    const registry: TypeRegistry = new TypeRegistry();
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
-    let requestResult: RequestResult;
 
     before(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
@@ -53,8 +49,14 @@ describe("redeem", () => {
         });
 
         async function requestAndCallRedeem(blocksToMine: number) {
-            const btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
-            btcCore.initializeClientConnection("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+            const bitcoinCoreClient = new BitcoinCoreClient(
+                "regtest",
+                "0.0.0.0",
+                "rpcuser",
+                "rpcpassword",
+                "18443",
+                "Alice"
+            );
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             charlie = keyring.addFromUri("//Charlie");
@@ -73,7 +75,12 @@ describe("redeem", () => {
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
-            const txData = await btcCore.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, data, blocksToMine);
+            const txData = await bitcoinCoreClient.sendBtcTxAndMine(
+                vaultBtcAddress,
+                amountAsBtcString,
+                data,
+                blocksToMine
+            );
 
             // redeem
             redeemAPI.setAccount(alice);
@@ -117,6 +124,5 @@ describe("redeem", () => {
             const premiumRedeemFee = await redeemAPI.getPremiumRedeemFee();
             assert.equal(premiumRedeemFee, "0.05");
         });
-        
     });
 });

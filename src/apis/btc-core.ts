@@ -3,10 +3,6 @@ import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
 
-// disabling linting as `bitcoin-core` has no types, causing the import to fail
-// eslint-disable-next-line
-const Client = require("bitcoin-core");
-
 const mainnetApiBasePath = "https://blockstream.info/api";
 const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
 
@@ -44,39 +40,12 @@ export interface BTCCoreAPI {
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
     getRawTransaction(txid: string): Promise<Buffer>;
     getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
-    broadcastOpReturnTx(
-        receiver: string,
-        amount: string,
-        data: string
-    ): Promise<{
-        txid: string;
-        rawTx: string;
-    }>;
-    initializeClientConnection(
-        network: string,
-        host: string,
-        username: string,
-        password: string,
-        port: string,
-        wallet: string
-    ): void;
-    mineBlocks(n: number): Promise<void>;
-    sendBtcTxAndMine(
-        recipient: string,
-        amount: string,
-        data: string,
-        blocksToMine: number
-    ): Promise<{
-        txid: string;
-        rawTx: string;
-    }>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
     private blockApi: BlockApi;
     private txApi: TxApi;
     private scripthashApi: ScripthashApi;
-    private client: typeof Client;
 
     constructor(network: string = "mainnet") {
         let basePath = "";
@@ -93,33 +62,6 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
         this.scripthashApi = new ScripthashApi({ basePath });
-    }
-
-    /**
-     * Initialize the Bitcoin-js client, which is a js equivalent to bitcoin-cli
-     * @param network Bitcoin network (mainnet, testnet, regtest)
-     * @param host URL of Bitcoin node (e.g. localhost)
-     * @param username User for RPC authentication
-     * @param password Password for RPC authentication
-     * @param port Bitcoin node connection port (e.g. 18443)
-     * @param wallet Name of wallet to use (e.g. Alice)
-     */
-    initializeClientConnection(
-        network: string,
-        host: string,
-        username: string,
-        password: string,
-        port: string,
-        wallet: string
-    ): void {
-        this.client = new Client({
-            network: network,
-            host: host,
-            username: username,
-            password: password,
-            port: port,
-            wallet: wallet,
-        });
     }
 
     /**
@@ -145,7 +87,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     }
 
     /**
-     * Broadcasts a transaction to the Bitcoin network configured with `initializeClientConnection`
+     * Broadcasts a transaction to the Bitcoin network configured in the constructor
      * @param hex A hex-encoded raw transaction to be broadcast to the Bitcoin blockchain
      * @returns The txid of the transaction
      */
@@ -263,58 +205,4 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return response.then((v) => v.data);
     }
 
-    async sendBtcTxAndMine(
-        recipient: string,
-        amount: string,
-        data: string,
-        blocksToMine: number
-    ): Promise<{
-        txid: string;
-        rawTx: string;
-    }> {
-        const tx = await this.broadcastOpReturnTx(recipient, amount, data);
-        await this.mineBlocks(blocksToMine);
-        return tx;
-    }
-
-    async broadcastOpReturnTx(
-        recipient: string,
-        amount: string,
-        data: string
-    ): Promise<{
-        txid: string;
-        rawTx: string;
-    }> {
-        if (!this.client) {
-            throw new Error("Client needs to be initialized before usage");
-        }
-        const paidOutput = {} as any;
-        paidOutput[recipient] = amount;
-        const raw = await this.client.command("createrawtransaction", [], [{ data: data }, paidOutput]);
-        const funded = await this.client.command("fundrawtransaction", raw);
-        const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
-        const response = await this.broadcastRawTransaction(signed.hex);
-        const txid = response.data;
-        return {
-            txid: txid,
-            rawTx: signed.hex,
-        };
-    }
-
-    async mineBlocks(n: number): Promise<void> {
-        const newWalletAddress = await this.client.command("getnewaddress");
-        const minedTxs = await this.client.command("generatetoaddress", n, newWalletAddress);
-        // A block is relayed every 6000ms by the staked-relayer.
-        // Wait an additional 100ms to be sure
-        const relayPeriodWithBuffer = 6100;
-        await delay(n * relayPeriodWithBuffer);
-    }
-
-    async getBalance() {
-        return await this.client.command("getbalance");
-    }
-}
-
-function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
 }
