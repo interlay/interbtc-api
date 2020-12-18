@@ -176,4 +176,8 @@ export class MockVaultsAPI implements VaultsAPI {
     async getPunishmentFee(): Promise<string> {
         return "368";
     }
+
+    async getPremiumRedeemFee(): Promise<string> {
+        return "15";
+    }
 }

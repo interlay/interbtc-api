@@ -50,6 +50,7 @@ export interface VaultsAPI {
     getMaxSLA(): Promise<string>;
     getSlashableCollateral(vaultId: string, amount: string): Promise<string>;
     getPunishmentFee(): Promise<string>;
+    getPremiumRedeemFee(): Promise<string>;
 }
 
 export class DefaultVaultsAPI {
@@ -253,6 +254,11 @@ export class DefaultVaultsAPI {
     private async getSecureCollateralThreshold(): Promise<Big> {
         const secureCollateralThresholdU128 = await this.api.query.vaultRegistry.secureCollateralThreshold();
         return new Big(secureCollateralThresholdU128.toString());
+    }
+
+    async getPremiumRedeemFee(): Promise<string> {
+        const premiumRedeemFee = await this.api.query.fee.getPremiumRedeemFee();
+        return premiumRedeemFee.toString();
     }
 
     async getIssuablePolkaBTC(): Promise<string> {
