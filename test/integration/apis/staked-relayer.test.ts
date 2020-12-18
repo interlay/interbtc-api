@@ -120,10 +120,11 @@ describe("stakedRelayerAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const fees = await stakedRelayerAPI.getFees(eve.address);
-            const feesBig = new Big(fees);
+            const feesPolkaBTC = await stakedRelayerAPI.getFeesPolkaBTC(eve.address);
+            const feesDOT = await stakedRelayerAPI.getFeesDOT(eve.address);
             const feeBenchmark = new Big("0");
-            assert.isTrue(feesBig.gte(feeBenchmark));
+            assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
+            assert.isTrue(new Big(feesDOT).gte(feeBenchmark));
         });
 
     });
