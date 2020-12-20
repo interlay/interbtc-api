@@ -42,7 +42,7 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    describe.skip("request", () => {
+    describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
@@ -81,6 +81,7 @@ describe("redeem", () => {
                 data,
                 blocksToMine
             );
+            assert.equal(txData.txid.length, 32, "Transaction length not 32 bytes");
 
             // redeem
             redeemAPI.setAccount(alice);
@@ -89,7 +90,10 @@ describe("redeem", () => {
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
             const vaultId = api.createType("AccountId", charlie.address);
-            await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
+            const {id, vault } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
+
+            assert.equal(vault.id, vaultId, "Requested for redeem with the wrong vault");
+            assert.equal(id.toString().length, 32, "Redeem ID length not 32 bytes");
         }
 
         it("should request and execute issue, request redeem", async () => {

@@ -59,6 +59,18 @@ describe("issue", () => {
         await oracleAPI.setExchangeRate(value.toString());
     };
 
+    describe("load requests", () => {
+        it("should load existing requests", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            issueAPI.setAccount(alice);
+
+            const issueRequests = await issueAPI.list();
+            assert.isAtLeast(issueRequests.length, 1, "Error in docker-compose setup. Should have at least 1 issue request");
+
+        })
+    })
+
     describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
@@ -72,7 +84,15 @@ describe("issue", () => {
             await setExchangeRate(385523187);
             const amount = api.createType("Balance", 100000);
             const requestResult = await issueAPI.request(amount);
-            assert.isTrue(requestResult.hash.length > 0);
+            assert.equal(requestResult.hash.length, 32);
+
+            const issueRequests = await issueAPI.list();
+            const thisRequest = issueRequests.find(request => request.hash === requestResult.hash);
+
+            assert.isDefined(thisRequest, "Could not find issue request");
+            if (thisRequest !== undefined) {
+                assert.equal(thisRequest.amount, amount, "Amount different than expected");
+            }
         });
 
         it("should getGriefingCollateral", async () => {
@@ -84,7 +104,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("execute", () => {
+    describe("execute", () => {
         let txHash: Hash;
 
         it("should fail if no account is set", () => {
@@ -98,7 +118,6 @@ describe("issue", () => {
         it("should request if account is set", async () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("Balance", 1);
-            const bobVaultId = api.createType("AccountId", bob.address);
             const requestResult = await issueAPI.request(amount);
             txHash = requestResult.hash;
             assert.isDefined(txHash);
@@ -129,7 +148,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("cancel", () => {
+    describe("cancel", () => {
         it("should cancel a request issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
@@ -275,6 +294,6 @@ describe("issue", () => {
 
         // check issuing worked
         const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
-        assert.isTrue(finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)));
+        assert.isTrue(finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)), "Final balance was not updated");
     }
 });

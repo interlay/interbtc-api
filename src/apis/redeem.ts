@@ -18,7 +18,7 @@ import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
-export type RequestResult = { hash: Hash; vault: Vault };
+export type RequestResult = { id: Hash; vault: Vault };
 
 export interface RedeemRequestExt extends Omit<RedeemRequest, "btc_address"> {
     // network encoded btc address
@@ -63,14 +63,14 @@ export class DefaultRedeemAPI {
         this.btcNetwork = btcNetwork;
     }
 
-    private getRedeemHashFromEvents(events: EventRecord[], method: string): Hash {
+    private getRedeemIdFromEvents(events: EventRecord[], method: string): Hash {
         for (const {
             event: { method, section, data },
         } of events) {
             if (section == "redeem" && method == method) {
                 // the redeem id as H256 is always the first item of the event
-                const hash = this.api.createType("Hash", data[0]);
-                return hash;
+                const id = this.api.createType("Hash", data[0]);
+                return id;
             }
         }
 
@@ -127,8 +127,8 @@ export class DefaultRedeemAPI {
         if (!this.isRequestSuccessful(result.events)) {
             throw new Error("Request failed");
         }
-        const hash = this.getRedeemHashFromEvents(result.events, "RequestRedeem");
-        return { hash, vault };
+        const id = this.getRedeemIdFromEvents(result.events, "RequestRedeem");
+        return { id, vault };
     }
 
     async execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
@@ -140,8 +140,8 @@ export class DefaultRedeemAPI {
         if (!this.isExecutionSuccessful(result.events)) {
             throw new Error("Execution failed");
         }
-        const hash = this.getRedeemHashFromEvents(result.events, "ExecuteRedeem");
-        if (hash) {
+        const id = this.getRedeemIdFromEvents(result.events, "ExecuteRedeem");
+        if (id) {
             return true;
         }
         return false;
@@ -158,8 +158,8 @@ export class DefaultRedeemAPI {
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
         const result = await sendLoggedTx(cancelRedeemTx, this.account, this.api);
-        const hash = this.getRedeemHashFromEvents(result.events, "CancelRedeem");
-        if (hash) {
+        const id = this.getRedeemIdFromEvents(result.events, "CancelRedeem");
+        if (id) {
             return true;
         }
         return false;

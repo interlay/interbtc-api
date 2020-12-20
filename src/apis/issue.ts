@@ -9,8 +9,9 @@ import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, scaleFixedPoint
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import BN from "bn.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import * as fs from 'fs';
+import util from "util";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -159,7 +160,17 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async list(): Promise<IssueRequestExt[]> {
         const issueRequests = await this.api.query.issue.issueRequests.entries();
-        return issueRequests.map((v) => v[1]).map((req: IssueRequest) => encodeIssueRequest(req, this.btcNetwork));
+        return issueRequests
+            .map((v) => v[1])
+            .map((req: IssueRequest) => {
+                fs.writeFileSync('testoutputfile', util.inspect(req, true, null ));
+                console.log("Getting issue request: ", req.hash.toString());
+                console.log("Bitcoin address: ", req.btc_address);
+                if (req === undefined) {
+                    throw new Error("cannot load issue request");
+                }
+                return encodeIssueRequest(req, this.btcNetwork);
+            });
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>> {
