@@ -120,10 +120,10 @@ services:
                 # wait for the vault to register
                 sleep 45
                 ALICE_ADDRESS=bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-issue --issue-amount=10 --vault=dave
+                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-issue --issue-amount=10000 --vault=dave --griefing-collateral 1000000000000
                 sleep 30
-                REDEEM_ID=$$(testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-redeem --redeem-amount=5 --btc-address=$${ALICE_ADDRESS} --vault=charlie)
-                # testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice execute-redeem --redeem-id=$${REDEEM_ID}
+                REDEEM_ID=$$(testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-redeem --redeem-amount=5000 --btc-address=$${ALICE_ADDRESS} --vault=dave)
+                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice execute-redeem --redeem-id=$${REDEEM_ID}
 
         environment:
             <<: *client-env
