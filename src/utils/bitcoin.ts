@@ -1,6 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { H160 } from "@polkadot/types/interfaces";
-import { u8 } from "@polkadot/types";
 import { BtcAddress } from "../interfaces/default";
 import { TypeRegistry } from "@polkadot/types";
 
@@ -21,7 +20,7 @@ export function encodeBtcAddress(address: BtcAddress, network: bitcoin.Network):
                 network,
             });
             btcAddress = result.address;
-        } else if (address.asP2WpkHv0) {
+        } else if (address.isP2WpkHv0) {
             const result = bitcoin.payments.p2wpkh({
                 hash: Buffer.from(address.asP2WpkHv0.buffer),
                 network,

@@ -9,8 +9,9 @@ import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, scaleFixedPoint
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import BN from "bn.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import * as fs from "fs";
+import util from "util";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -197,10 +198,10 @@ export class DefaultIssueAPI implements IssueAPI {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
         const exchangeRate = await this.oracleAPI.getExchangeRate();
-        const exchangeRateU128 = new Big(exchangeRate);
+        const exchangeRateBig = new Big(exchangeRate);
         const amountBtc = satToBTC(amountSat);
         const amountBig = new Big(amountBtc);
-        const amountInDot = exchangeRateU128.mul(amountBig);
+        const amountInDot = exchangeRateBig.mul(amountBig);
         const griefingCollateralDOT = amountInDot.mul(griefingCollateralRateBig).toString();
         const griefingCollateralPlanck = dotToPlanck(griefingCollateralDOT);
         if (griefingCollateralPlanck === undefined) {
