@@ -181,7 +181,7 @@ export class DefaultVaultsAPI {
                     onlyIssued
                 )
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
-            return this.scaleUsingParachainGranularity(collateralization);
+            return this.scaleUsingParachainGranularity(new Big(collateralization));
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
@@ -200,7 +200,7 @@ export class DefaultVaultsAPI {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = await customAPIRPC.vaultRegistry.getTotalCollateralization();
-            return this.scaleUsingParachainGranularity(collateralization);
+            return this.scaleUsingParachainGranularity(new Big(collateralization));
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
