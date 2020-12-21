@@ -33,7 +33,7 @@ export interface IssueAPI {
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
-    getGriefingCollateralPlanck(amountBtc: string): Promise<string>;
+    getGriefingCollateralInPlanck(amountBtc: string): Promise<string>;
     list(): Promise<IssueRequestExt[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
@@ -126,7 +126,7 @@ export class DefaultIssueAPI implements IssueAPI {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
             vault = await this.vaultsAPI.get(vaultId);
         }
-        const griefingCollateralPlanck = await this.getGriefingCollateralPlanck(amountSat.toString());
+        const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat.toString());
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vault.id, griefingCollateralPlanck);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
         if (!this.isRequestSuccessful(result.events)) {
@@ -192,7 +192,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
-    async getGriefingCollateralPlanck(amountSat: string): Promise<string> {
+    async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
         const exchangeRate = await this.oracleAPI.getExchangeRate();

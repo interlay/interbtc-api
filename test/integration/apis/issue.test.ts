@@ -63,11 +63,6 @@ describe("issue", () => {
         api.disconnect();
     });
 
-    const setExchangeRate = async (value: number) => {
-        oracleAPI.setAccount(bob);
-        await oracleAPI.setExchangeRate(value.toString());
-    };
-
     describe("load requests", () => {
         it("should load existing requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
@@ -104,7 +99,7 @@ describe("issue", () => {
         it("should getGriefingCollateral", async () => {
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
-            const griefingCollateralPlanck = await issueAPI.getGriefingCollateralPlanck(amountAsSat);
+            const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
             assert.equal(griefingCollateralPlanck, "1927615.935");
         });
     });

@@ -78,7 +78,7 @@ describe("redeem", () => {
             // request issue
             issueAPI.setAccount(alice);
             const amountAsBtcString = "0.1";
-            const amountAsSatoshiString = btcToSat(amountAsBtcString) as string;
+            const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
             const issueRequestId = requestResult.hash.toString();
@@ -98,10 +98,7 @@ describe("redeem", () => {
                 data,
                 blocksToMine
             );
-
-            // ensure the txid is 32 bytes in length. In hex, a byte is 2 characters long
-            // so the txid's length must be 32*2
-            assert.equal(txData.txid.length, 64, "Transaction length not 32 bytes");
+            assert.equal(Buffer.from(txData.txid, "hex").length, 32, "Transaction length not 32 bytes");
 
             // redeem
             redeemAPI.setAccount(alice);
@@ -111,11 +108,8 @@ describe("redeem", () => {
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
             const vaultId = api.createType("AccountId", charlie.address);
             const { id, vault } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
-
             assert.equal(vault.id.toString(), vaultId.toString(), "Requested for redeem with the wrong vault");
-
-            // 32*2 + 2. Because 1) 2 hex characters = 1 byte, and 2) the hex prefix (0x)
-            assert.equal(id.toString().length, 66, "Redeem ID length not 32 bytes");
+            assert.equal(Buffer.from(stripHexPrefix(id.toString()), "hex").length, 32, "Redeem ID length not 32 bytes");
         }
 
         it("should request and execute issue, request redeem", async () => {

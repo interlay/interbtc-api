@@ -32,7 +32,7 @@ export class MockIssueAPI implements IssueAPI {
         return;
     }
 
-    getGriefingCollateralPlanck(_amountBtc: string): Promise<string> {
+    getGriefingCollateralInPlanck(_amountBtc: string): Promise<string> {
         return Promise.resolve("100");
     }
 
