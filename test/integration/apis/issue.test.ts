@@ -155,7 +155,9 @@ describe("issue", () => {
             dave = keyring.addFromUri("//Dave");
 
             let activeIssueRequests = await issueAPI.list();
-            activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
+            activeIssueRequests = activeIssueRequests.filter(
+                (request) => request.completed.isFalse && request.cancelled.isFalse
+            );
             const initialIssueRequests = activeIssueRequests.length;
 
             // request issue
