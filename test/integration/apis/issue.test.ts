@@ -63,6 +63,11 @@ describe("issue", () => {
         api.disconnect();
     });
 
+    const setExchangeRate = async (value: number) => {
+        oracleAPI.setAccount(bob);
+        await oracleAPI.setExchangeRate(value.toString());
+    };
+
     describe("load requests", () => {
         it("should load existing requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
@@ -93,14 +98,13 @@ describe("issue", () => {
             assert.equal(requestResult.hash.length, 32);
 
             const issueRequest = await issueAPI.getRequestById(requestResult.hash.toString());
-            console.log(issueRequest.amount.toString(), amount.toString());
             assert.deepEqual(issueRequest.amount, amount, "Amount different than expected");
         });
 
         it("should getGriefingCollateral", async () => {
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
-            const griefingCollateralPlanck = await issueAPI.getGriefingCollateral(amountAsSat);
+            const griefingCollateralPlanck = await issueAPI.getGriefingCollateralPlanck(amountAsSat);
             assert.equal(griefingCollateralPlanck, "1927615.935");
         });
     });
@@ -168,8 +172,11 @@ describe("issue", () => {
 
             // Before cancelling, there should be one more outstanding request
             activeIssueRequests = await issueAPI.list();
-            activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
-            assert.isTrue(activeIssueRequests.length === initialIssueRequests + 1);
+            activeIssueRequests = activeIssueRequests.filter(
+                (request) => request.completed.isFalse && request.cancelled.isFalse
+            );
+            const requestsBeforeCancelling = activeIssueRequests.length;
+            assert.isTrue(requestsBeforeCancelling === initialIssueRequests + 1);
 
             // The cancellation period set by docker-compose is 50 blocks, each being relayed every 6s
             await bitcoinCoreClient.mineBlocks(50);
@@ -177,8 +184,10 @@ describe("issue", () => {
 
             // After cancelling, there should be one less outstanding request
             activeIssueRequests = await issueAPI.list();
-            activeIssueRequests = activeIssueRequests.filter((request) => request.completed.isFalse);
-            assert.isBelow(activeIssueRequests.length, initialIssueRequests);
+            activeIssueRequests = activeIssueRequests.filter(
+                (request) => request.completed.isFalse && request.cancelled.isFalse
+            );
+            assert.isBelow(activeIssueRequests.length, requestsBeforeCancelling);
         });
     });
 

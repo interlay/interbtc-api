@@ -1,6 +1,5 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { TypeRegistry } from "@polkadot/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { DefaultRedeemAPI } from "../../../src/apis/redeem";
 import { createPolkadotAPI } from "../../../src/factory";
@@ -8,7 +7,7 @@ import { Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
-import { btcToSat, stripHexPrefix, encodeBtcAddress } from "../../../src/utils";
+import { btcToSat, stripHexPrefix, encodeBtcAddress, satToBTC } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
@@ -79,10 +78,12 @@ describe("redeem", () => {
             // request issue
             issueAPI.setAccount(alice);
             const amountAsBtcString = "0.1";
-            const amountAsSatoshiString = btcToSat(amountAsBtcString);
+            const amountAsSatoshiString = btcToSat(amountAsBtcString) as string;
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
-            assert.isTrue(requestResult.hash.length > 0);
+            const issueRequestId = requestResult.hash.toString();
+            const issueRequest = await issueAPI.getRequestById(issueRequestId);
+            const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
             // send btc tx
             const data = stripHexPrefix(requestResult.hash.toString());
@@ -90,13 +91,17 @@ describe("redeem", () => {
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
+
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(
                 vaultBtcAddress,
-                amountAsBtcString,
+                txAmountRequired,
                 data,
                 blocksToMine
             );
-            assert.equal(txData.txid.length, 32, "Transaction length not 32 bytes");
+
+            // ensure the txid is 32 bytes in length. In hex, a byte is 2 characters long
+            // so the txid's length must be 32*2
+            assert.equal(txData.txid.length, 64, "Transaction length not 32 bytes");
 
             // redeem
             redeemAPI.setAccount(alice);
@@ -107,8 +112,10 @@ describe("redeem", () => {
             const vaultId = api.createType("AccountId", charlie.address);
             const { id, vault } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
 
-            assert.equal(vault.id, vaultId, "Requested for redeem with the wrong vault");
-            assert.equal(id.toString().length, 32, "Redeem ID length not 32 bytes");
+            assert.equal(vault.id.toString(), vaultId.toString(), "Requested for redeem with the wrong vault");
+
+            // 32*2 + 2. Because 1) 2 hex characters = 1 byte, and 2) the hex prefix (0x)
+            assert.equal(id.toString().length, 66, "Redeem ID length not 32 bytes");
         }
 
         it("should request and execute issue, request redeem", async () => {

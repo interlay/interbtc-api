@@ -10,8 +10,6 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import * as fs from "fs";
-import util from "util";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -35,7 +33,7 @@ export interface IssueAPI {
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account?: AddressOrPair): void;
-    getGriefingCollateral(amountBtc: string): Promise<string>;
+    getGriefingCollateralPlanck(amountBtc: string): Promise<string>;
     list(): Promise<IssueRequestExt[]>;
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
@@ -128,7 +126,7 @@ export class DefaultIssueAPI implements IssueAPI {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
             vault = await this.vaultsAPI.get(vaultId);
         }
-        const griefingCollateralPlanck = await this.getGriefingCollateral(amountSat.toString());
+        const griefingCollateralPlanck = await this.getGriefingCollateralPlanck(amountSat.toString());
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vault.id, griefingCollateralPlanck);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
         if (!this.isRequestSuccessful(result.events)) {
@@ -194,7 +192,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
-    async getGriefingCollateral(amountSat: string): Promise<string> {
+    async getGriefingCollateralPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
         const exchangeRate = await this.oracleAPI.getExchangeRate();
