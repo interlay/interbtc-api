@@ -42,16 +42,20 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    describe("load requests", () => {
+    describe.skip("load requests", () => {
         it("should load existing requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             redeemAPI.setAccount(alice);
 
             const redeemRequests = await redeemAPI.list();
-            assert.isAtLeast(redeemRequests.length, 1, "Error in docker-compose setup. Should have at least 1 redeem request");
-        })
-    })
+            assert.isAtLeast(
+                redeemRequests.length,
+                1,
+                "Error in docker-compose setup. Should have at least 1 redeem request"
+            );
+        });
+    });
 
     describe.skip("request", () => {
         it("should fail if no account is set", () => {
@@ -101,7 +105,7 @@ describe("redeem", () => {
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
             const vaultId = api.createType("AccountId", charlie.address);
-            const {id, vault } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
+            const { id, vault } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
 
             assert.equal(vault.id, vaultId, "Requested for redeem with the wrong vault");
             assert.equal(id.toString().length, 32, "Redeem ID length not 32 bytes");

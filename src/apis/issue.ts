@@ -198,14 +198,11 @@ export class DefaultIssueAPI implements IssueAPI {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
         const exchangeRate = await this.oracleAPI.getExchangeRate();
-        console.log("Exchange rate: ", exchangeRate);
         const exchangeRateBig = new Big(exchangeRate);
         const amountBtc = satToBTC(amountSat);
         const amountBig = new Big(amountBtc);
-        console.log("BTC amount: ", amountBtc);
         const amountInDot = exchangeRateBig.mul(amountBig);
         const griefingCollateralDOT = amountInDot.mul(griefingCollateralRateBig).toString();
-        console.log("griefing collateral: ", griefingCollateralDOT);
         const griefingCollateralPlanck = dotToPlanck(griefingCollateralDOT);
         if (griefingCollateralPlanck === undefined) {
             throw new Error("Griefing collateral conversion to planck failed. It should not be smaller than 1 Planck");

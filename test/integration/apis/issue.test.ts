@@ -59,16 +59,20 @@ describe("issue", () => {
         await oracleAPI.setExchangeRate(value.toString());
     };
 
-    describe("load requests", () => {
+    describe.skip("load requests", () => {
         it("should load existing requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
 
             const issueRequests = await issueAPI.list();
-            assert.isAtLeast(issueRequests.length, 1, "Error in docker-compose setup. Should have at least 1 issue request");
-        })
-    })
+            assert.isAtLeast(
+                issueRequests.length,
+                1,
+                "Error in docker-compose setup. Should have at least 1 issue request"
+            );
+        });
+    });
 
     describe.skip("request", () => {
         it("should fail if no account is set", () => {
@@ -86,7 +90,7 @@ describe("issue", () => {
             assert.equal(requestResult.hash.length, 32);
 
             const issueRequests = await issueAPI.list();
-            const thisRequest = issueRequests.find(request => request.hash === requestResult.hash);
+            const thisRequest = issueRequests.find((request) => request.hash === requestResult.hash);
 
             assert.isDefined(thisRequest, "Could not find issue request");
             if (thisRequest !== undefined) {
@@ -293,6 +297,9 @@ describe("issue", () => {
 
         // check issuing worked
         const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
-        assert.isTrue(finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)), "Final balance was not updated");
+        assert.isTrue(
+            finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)),
+            "Final balance was not updated"
+        );
     }
 });
