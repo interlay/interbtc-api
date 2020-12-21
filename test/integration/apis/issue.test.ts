@@ -6,8 +6,8 @@ import { ImportMock } from "ts-mock-imports";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
-import { H256Le, Vault } from "../../../src/interfaces/default";
-import { btcToSat, encodeBtcAddress, stripHexPrefix } from "../../../src/utils";
+import { H256Le, Vault, PolkaBTC } from "../../../src/interfaces/default";
+import { btcToSat, encodeBtcAddress, satToBTC, stripHexPrefix } from "../../../src/utils";
 import { assert, expect } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
@@ -16,8 +16,15 @@ import BN from "bn.js";
 import { fail } from "assert";
 import { DefaultOracleAPI } from "../../../src/apis/oracle";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
+import { Buffer } from "buffer";
 
 export type RequestResult = { hash: Hash; vault: Vault };
+
+const DEFAULT_EXCHANGE_RATE = "385523187";
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -45,21 +52,18 @@ describe("issue", () => {
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
     });
 
-    beforeEach(() => {
+    beforeEach(async () => {
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
         oracleAPI = new DefaultOracleAPI(api);
+        oracleAPI.setAccount(bob);
+        await oracleAPI.setExchangeRate(DEFAULT_EXCHANGE_RATE);
     });
 
     after(async () => {
         api.disconnect();
     });
 
-    const setExchangeRate = async (value: number) => {
-        oracleAPI.setAccount(bob);
-        await oracleAPI.setExchangeRate(value.toString());
-    };
-
-    describe.skip("load requests", () => {
+    describe("load requests", () => {
         it("should load existing requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
@@ -74,7 +78,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("request", () => {
+    describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(issueAPI.request(amount));
@@ -84,22 +88,16 @@ describe("issue", () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
-            await setExchangeRate(385523187);
-            const amount = api.createType("Balance", 100000);
+            const amount = api.createType("Balance", 100000) as PolkaBTC;
             const requestResult = await issueAPI.request(amount);
             assert.equal(requestResult.hash.length, 32);
 
-            const issueRequests = await issueAPI.list();
-            const thisRequest = issueRequests.find((request) => request.hash === requestResult.hash);
-
-            assert.isDefined(thisRequest, "Could not find issue request");
-            if (thisRequest !== undefined) {
-                assert.equal(thisRequest.amount, amount, "Amount different than expected");
-            }
+            const issueRequest = await issueAPI.getRequestById(requestResult.hash.toString());
+            console.log(issueRequest.amount.toString(), amount.toString());
+            assert.deepEqual(issueRequest.amount, amount, "Amount different than expected");
         });
 
         it("should getGriefingCollateral", async () => {
-            await setExchangeRate(385523187);
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateral(amountAsSat);
@@ -107,7 +105,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("execute", () => {
+    describe("execute", () => {
         let txHash: Hash;
 
         it("should fail if no account is set", () => {
@@ -146,12 +144,12 @@ describe("issue", () => {
             await issue("0.001", "Charlie", true);
         });
 
-        it("should request and execute issue", async () => {
+        it("should request and manually execute issue", async () => {
             await issue("0.001", "Dave", false);
         });
     });
 
-    describe.skip("cancel", () => {
+    describe("cancel", () => {
         it("should cancel a request issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
@@ -262,23 +260,29 @@ describe("issue", () => {
     }
 
     async function issue(amount: string, vaultName: string, autoExecute: boolean) {
-        const initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+        issueAPI.setAccount(alice);
+        const aliceAccountId = api.createType("AccountId", alice.address);
+
+        const initialBalance = await treasuryAPI.balancePolkaBTC(aliceAccountId);
         const blocksToMine = 3;
         keyring = new Keyring({ type: "sr25519" });
         const vault = keyring.addFromUri("//" + vaultName);
+        const vaultAccountId = api.createType("AccountId", vault.address);
 
         // request issue
-        issueAPI.setAccount(alice);
-        const amountAsBtcString = amount;
+        let amountAsBtcString = amount;
         const amountAsSatoshiString = btcToSat(amountAsBtcString);
         if (amountAsSatoshiString === undefined) {
             fail();
         }
         const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-        const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", vault.address));
+        const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
+        const issueRequestId = requestResult.hash.toString();
+        const issueRequest = await issueAPI.getRequestById(issueRequestId);
+        amountAsBtcString = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
         // send btc tx
-        const data = stripHexPrefix(requestResult.hash.toString());
+        const data = stripHexPrefix(issueRequestId);
         const vaultBtcAddress = encodeBtcAddress(requestResult.vault.wallet.address, bitcoin.networks.regtest);
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
@@ -289,14 +293,20 @@ describe("issue", () => {
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
             const merkleProof = await btcCoreAPI.getMerkleProof(txData.txid);
             const parsedIssuedId = api.createType("H256", requestResult.hash);
-            const parsedTxId = api.createType("H256", txData.txid);
+            // reverse endianness (expects little-endian)
+            const parsedTxId = api.createType("H256", "0x" + Buffer.from(txData.txid, "hex").reverse().toString("hex"));
             const parsedMerkleProof = api.createType("Bytes", "0x" + merkleProof);
-            const parsedRawTx = api.createType("Bytes", txData.rawTx);
+            const parsedRawTx = api.createType("Bytes", "0x" + txData.rawTx);
             await issueAPI.execute(parsedIssuedId, parsedTxId, parsedMerkleProof, parsedRawTx);
+        } else {
+            // wait for vault to execute issue
+            while (!(await issueAPI.getRequestById(issueRequestId)).completed.isTrue) {
+                await sleep(1000);
+            }
         }
 
         // check issuing worked
-        const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+        const finalBalance = await treasuryAPI.balancePolkaBTC(aliceAccountId);
         assert.isTrue(
             finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)),
             "Final balance was not updated"

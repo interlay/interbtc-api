@@ -31,6 +31,7 @@ export class BitcoinCoreClient {
         data: string,
         blocksToMine: number
     ): Promise<{
+        // big endian
         txid: string;
         rawTx: string;
     }> {
