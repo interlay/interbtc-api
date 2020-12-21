@@ -154,12 +154,6 @@ describe("issue", () => {
             alice = keyring.addFromUri("//Alice");
             dave = keyring.addFromUri("//Dave");
 
-            let activeIssueRequests = await issueAPI.list();
-            activeIssueRequests = activeIssueRequests.filter(
-                (request) => request.completed.isFalse && request.cancelled.isFalse
-            );
-            const initialIssueRequests = activeIssueRequests.length;
-
             // request issue
             issueAPI.setAccount(alice);
             const amountAsBtcString = "0.001";
@@ -167,24 +161,14 @@ describe("issue", () => {
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi);
 
-            // Before cancelling, there should be one more outstanding request
-            activeIssueRequests = await issueAPI.list();
-            activeIssueRequests = activeIssueRequests.filter(
-                (request) => request.completed.isFalse && request.cancelled.isFalse
-            );
-            const requestsBeforeCancelling = activeIssueRequests.length;
-            assert.isTrue(requestsBeforeCancelling === initialIssueRequests + 1);
-
             // The cancellation period set by docker-compose is 50 blocks, each being relayed every 6s
             await bitcoinCoreClient.mineBlocks(50);
             await issueAPI.cancel(requestResult.hash);
 
-            // After cancelling, there should be one less outstanding request
-            activeIssueRequests = await issueAPI.list();
-            activeIssueRequests = activeIssueRequests.filter(
-                (request) => request.completed.isFalse && request.cancelled.isFalse
-            );
-            assert.isBelow(activeIssueRequests.length, requestsBeforeCancelling);
+            const issueRequestId = requestResult.hash.toString();
+            const issueRequest = await issueAPI.getRequestById(issueRequestId);
+
+            assert.isTrue(issueRequest.cancelled.isTrue, "Failed to cancel issue request");
         });
     });
 
