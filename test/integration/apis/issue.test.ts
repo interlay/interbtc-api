@@ -67,11 +67,10 @@ describe("issue", () => {
 
             const issueRequests = await issueAPI.list();
             assert.isAtLeast(issueRequests.length, 1, "Error in docker-compose setup. Should have at least 1 issue request");
-
         })
     })
 
-    describe("request", () => {
+    describe.skip("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(issueAPI.request(amount));
@@ -104,7 +103,7 @@ describe("issue", () => {
         });
     });
 
-    describe("execute", () => {
+    describe.skip("execute", () => {
         let txHash: Hash;
 
         it("should fail if no account is set", () => {
@@ -148,7 +147,7 @@ describe("issue", () => {
         });
     });
 
-    describe("cancel", () => {
+    describe.skip("cancel", () => {
         it("should cancel a request issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");

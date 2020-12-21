@@ -42,7 +42,18 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    describe("request", () => {
+    describe("load requests", () => {
+        it("should load existing requests", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            redeemAPI.setAccount(alice);
+
+            const redeemRequests = await redeemAPI.list();
+            assert.isAtLeast(redeemRequests.length, 1, "Error in docker-compose setup. Should have at least 1 redeem request");
+        })
+    })
+
+    describe.skip("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));

@@ -10,7 +10,7 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import * as fs from 'fs';
+import * as fs from "fs";
 import util from "util";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -160,17 +160,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async list(): Promise<IssueRequestExt[]> {
         const issueRequests = await this.api.query.issue.issueRequests.entries();
-        return issueRequests
-            .map((v) => v[1])
-            .map((req: IssueRequest) => {
-                fs.writeFileSync('testoutputfile', util.inspect(req, true, null ));
-                console.log("Getting issue request: ", req.hash.toString());
-                console.log("Bitcoin address: ", req.btc_address);
-                if (req === undefined) {
-                    throw new Error("cannot load issue request");
-                }
-                return encodeIssueRequest(req, this.btcNetwork);
-            });
+        return issueRequests.map((v) => v[1]).map((req: IssueRequest) => encodeIssueRequest(req, this.btcNetwork));
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>> {
@@ -208,11 +198,14 @@ export class DefaultIssueAPI implements IssueAPI {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
         const exchangeRate = await this.oracleAPI.getExchangeRate();
-        const exchangeRateU128 = new Big(exchangeRate);
+        console.log("Exchange rate: ", exchangeRate);
+        const exchangeRateBig = new Big(exchangeRate);
         const amountBtc = satToBTC(amountSat);
         const amountBig = new Big(amountBtc);
-        const amountInDot = exchangeRateU128.mul(amountBig);
+        console.log("BTC amount: ", amountBtc);
+        const amountInDot = exchangeRateBig.mul(amountBig);
         const griefingCollateralDOT = amountInDot.mul(griefingCollateralRateBig).toString();
+        console.log("griefing collateral: ", griefingCollateralDOT);
         const griefingCollateralPlanck = dotToPlanck(griefingCollateralDOT);
         if (griefingCollateralPlanck === undefined) {
             throw new Error("Griefing collateral conversion to planck failed. It should not be smaller than 1 Planck");
