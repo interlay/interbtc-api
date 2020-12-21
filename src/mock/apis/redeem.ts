@@ -6,7 +6,6 @@ import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../apis/redeem";
 
-
 export class MockRedeemAPI implements RedeemAPI {
     execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
         throw new Error("Method not implemented.");
