@@ -8,64 +8,63 @@ import { UInt } from "@polkadot/types/codec";
 import { IssueRequestExt } from "../../apis/issue";
 import { RedeemRequestExt } from "../../apis/redeem";
 import { ReplaceRequestExt } from "../../apis/replace";
-import { VaultsAPI } from "../../apis/vaults";
-import { u128 } from "@polkadot/types/primitive";
+import { VaultsAPI, VaultExt } from "../../apis/vaults";
 import Big from "big.js";
 
 export class MockVaultsAPI implements VaultsAPI {
-    async list(): Promise<Vault[]> {
+    async list(): Promise<VaultExt[]> {
         const registry = new TypeRegistry();
 
         // random value
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
         return Promise.resolve([
-            <Vault>{
+            <VaultExt>{
                 id: new GenericAccountId(registry, decodedAccountId),
                 to_be_issued_tokens: new BN(120) as PolkaBTC,
                 issued_tokens: new BN(330) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(5) as PolkaBTC,
-                wallet: new (registry.createClass("Wallet"))(registry, {
-                    address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
-                }),
+                wallet: {
+                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                },
                 banned_until: new Option(registry, "BlockNumber", new BN(10908)),
             },
-            <Vault>{
+            <VaultExt>{
                 id: new GenericAccountId(registry, decodedAccountId),
                 to_be_issued_tokens: new BN(220) as PolkaBTC,
                 issued_tokens: new BN(430) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(12) as PolkaBTC,
-                wallet: new (registry.createClass("Wallet"))(registry, {
-                    address: new U8aFixed(registry, "78443543fdsf") as H160,
-                }),
+                wallet: {
+                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                },
                 banned_until: new Option(registry, "BlockNumber", new BN(11938)),
             },
         ]);
     }
 
-    async listPaged(): Promise<Vault[]> {
+    async listPaged(): Promise<VaultExt[]> {
         const registry = new TypeRegistry();
 
         // random value
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
         return Promise.resolve([
-            <Vault>{
+            <VaultExt>{
                 id: new GenericAccountId(registry, decodedAccountId),
                 to_be_issued_tokens: new BN(120) as PolkaBTC,
                 issued_tokens: new BN(330) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(5) as PolkaBTC,
-                wallet: new (registry.createClass("Wallet"))(registry, {
-                    address: new U8aFixed(registry, "343242ddsadsadsa") as H160,
-                }),
+                wallet: {
+                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                },
                 banned_until: new Option(registry, "BlockNumber", new BN(10908)),
             },
-            <Vault>{
+            <VaultExt>{
                 id: new GenericAccountId(registry, decodedAccountId),
                 to_be_issued_tokens: new BN(220) as PolkaBTC,
                 issued_tokens: new BN(430) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(12) as PolkaBTC,
-                wallet: new (registry.createClass("Wallet"))(registry, {
-                    address: new U8aFixed(registry, "78443543fdsf") as H160,
-                }),
+                wallet: {
+                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                },
                 banned_until: new Option(registry, "BlockNumber", new BN(11938)),
             },
         ]);
@@ -90,8 +89,8 @@ export class MockVaultsAPI implements VaultsAPI {
         return {} as AsyncGenerator<Vault[]>;
     }
 
-    get(_vaultId: AccountId): Promise<Vault> {
-        return Promise.resolve(<Vault>{});
+    get(_vaultId: AccountId): Promise<VaultExt> {
+        return Promise.resolve(<VaultExt>{});
     }
 
     async selectRandomVaultIssue(_btc: PolkaBTC): Promise<AccountId> {

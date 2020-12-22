@@ -7,7 +7,7 @@ import { Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
-import { btcToSat, stripHexPrefix, encodeBtcAddress, satToBTC } from "../../../src/utils";
+import { btcToSat, stripHexPrefix, satToBTC } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
@@ -87,7 +87,7 @@ describe("redeem", () => {
 
             // send btc tx
             const data = stripHexPrefix(requestResult.hash.toString());
-            const vaultBtcAddress = encodeBtcAddress(requestResult.vault.wallet.address, bitcoin.networks.regtest);
+            const vaultBtcAddress = requestResult.vault.wallet.address;
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }

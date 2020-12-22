@@ -14,6 +14,7 @@ import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { StakedRelayerAPI } from "../../apis/staked-relayer";
+import { VaultExt } from "../../apis/vaults";
 
 function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
     const registry = new TypeRegistry();
@@ -85,9 +86,9 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return new BN(120.6) as DOT;
     }
 
-    async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {
+    async getMonitoredVaultsCollateralizationRate(): Promise<VaultExt[]> {
         return [
-            <Vault>{
+            <VaultExt>{
                 // we need to define a collateralisation rate field in Vault
             },
         ];

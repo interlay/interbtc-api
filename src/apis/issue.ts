@@ -3,15 +3,15 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
-import { DOT, H256Le, IssueRequest, PolkaBTC, Vault } from "../interfaces/default";
-import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
+import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
+import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
 import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, scaleFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
-export type RequestResult = { hash: Hash; vault: Vault };
+export type RequestResult = { hash: Hash; vault: VaultExt };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -119,7 +119,7 @@ export class DefaultIssueAPI implements IssueAPI {
             throw new Error("cannot request without setting account");
         }
 
-        let vault: Vault;
+        let vault: VaultExt;
         if (vaultId) {
             vault = await this.vaultsAPI.get(vaultId);
         } else {
