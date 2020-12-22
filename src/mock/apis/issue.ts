@@ -1,4 +1,4 @@
-import { DOT, IssueRequest, PolkaBTC, H256Le, Vault, BtcAddress } from "../../interfaces/default";
+import { DOT, IssueRequest, PolkaBTC, H256Le, Vault } from "../../interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
 import { Bytes, bool } from "@polkadot/types/primitive";
@@ -7,6 +7,7 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
 import { IssueAPI, RequestResult, IssueRequestExt } from "../../apis/issue";
+import { VaultExt } from "../../apis/vaults";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 
 export class MockIssueAPI implements IssueAPI {
@@ -24,7 +25,7 @@ export class MockIssueAPI implements IssueAPI {
             registry,
             "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c"
         ) as Hash;
-        const vault = {} as Vault;
+        const vault = {} as VaultExt;
         return Promise.resolve({ hash, vault });
     }
 

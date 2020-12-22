@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import BN from "bn.js";
 import sinon from "sinon";
-import { DefaultVaultsAPI } from "../../../src/apis/vaults";
+import { DefaultVaultsAPI, VaultExt } from "../../../src/apis/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
 import { IssueRequest, PolkaBTC, RedeemRequest, Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
@@ -39,7 +39,7 @@ describe("vaultsAPI", () => {
     });
 
     it("should getIssuedPolkaBTCAmount", async () => {
-        sinon.stub(vaultsAPI, "get").returns(Promise.resolve(<Vault>{ issued_tokens: new BN(100) as PolkaBTC }));
+        sinon.stub(vaultsAPI, "get").returns(Promise.resolve(<VaultExt>{ issued_tokens: new BN(100) as PolkaBTC }));
         const vaultId = <AccountId>{};
         const issuedPolkaBTCAmount: PolkaBTC = await vaultsAPI.getIssuedPolkaBTCAmount(vaultId);
         assert.equal(issuedPolkaBTCAmount.toNumber(), 100);

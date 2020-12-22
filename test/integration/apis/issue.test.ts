@@ -7,7 +7,7 @@ import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault, PolkaBTC } from "../../../src/interfaces/default";
-import { btcToSat, encodeBtcAddress, satToBTC, stripHexPrefix } from "../../../src/utils";
+import { btcToSat, satToBTC, stripHexPrefix } from "../../../src/utils";
 import { assert, expect } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
@@ -288,7 +288,7 @@ describe("issue", () => {
 
         // send btc tx
         const data = stripHexPrefix(issueRequestId);
-        const vaultBtcAddress = encodeBtcAddress(requestResult.vault.wallet.address, bitcoin.networks.regtest);
+        const vaultBtcAddress = requestResult.vault.wallet.address;
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
         }
