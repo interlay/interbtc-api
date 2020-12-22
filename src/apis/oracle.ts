@@ -33,18 +33,19 @@ export class DefaultOracleAPI implements OracleAPI {
     constructor(private api: ApiPromise, private account?: AddressOrPair) {}
 
     async getInfo(): Promise<OracleInfo> {
-        const results = await this.api.queryMulti([
+        const [exchangeRate, lastExchangeRateTime, errors] = await this.api.queryMulti([
             this.api.query.exchangeRateOracle.exchangeRate,
             this.api.query.exchangeRateOracle.lastExchangeRateTime,
             this.api.query.security.errors,
         ]);
+        const exchangeRateIsSet = new Big(exchangeRate).gt(0);
         const names = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
         return {
-            exchangeRate: this.convertFromRawExchangeRate(<u128>results[0]),
+            exchangeRate: this.convertFromRawExchangeRate(<u128>exchangeRate),
             feed: await this.getFeed(),
             names: names.map((v) => v[1].toUtf8()),
-            online: !this.hasOracleError(<BTreeSet<ErrorCode>>results[2]),
-            lastUpdate: this.convertMoment(<Moment>results[1]),
+            online: exchangeRateIsSet && !this.hasOracleError(<BTreeSet<ErrorCode>>errors),
+            lastUpdate: this.convertMoment(<Moment>lastExchangeRateTime),
         };
     }
 
