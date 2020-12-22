@@ -38,7 +38,7 @@ describe("OracleAPI", () => {
 
     describe("setExchangeRate", () => {
         it("should set exchange rate", async () => {
-            const exchangeRateToSet = 1;
+            const exchangeRateToSet = 385523195;
             const exchangeRateGranularity = 5;
             const exchangeRateTx = api.tx.exchangeRateOracle.setExchangeRate(exchangeRateToSet);
             await sendLoggedTx(exchangeRateTx, bob, api);

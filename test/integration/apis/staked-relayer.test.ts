@@ -67,7 +67,7 @@ describe("stakedRelayerAPI", () => {
             assert.isDefined(relayersMap);
         });
 
-        it.skip("should getMonitoredVaultsCollateralizationRate", async () => {
+        it("should getMonitoredVaultsCollateralizationRate", async () => {
             const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
             assert.isDefined(monitoredVaultsCollateralizationRate);
         });
