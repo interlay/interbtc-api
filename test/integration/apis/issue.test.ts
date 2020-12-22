@@ -78,7 +78,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("load requests", () => {
+    describe("load requests", () => {
         it("should load existing requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
@@ -93,7 +93,7 @@ describe("issue", () => {
         });
     });
 
-    describe.skip("request", () => {
+    describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
             assert.isRejected(issueAPI.request(amount));

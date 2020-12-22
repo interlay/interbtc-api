@@ -10,8 +10,6 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import * as fs from "fs";
-import util from "util";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
