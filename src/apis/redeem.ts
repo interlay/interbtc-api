@@ -4,7 +4,7 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
+import { VaultsAPI, DefaultVaultsAPI, VaultExt } from "./vaults";
 import {
     decodeBtcAddress,
     encodeBtcAddress,
@@ -18,7 +18,7 @@ import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
-export type RequestResult = { id: Hash; vault: Vault };
+export type RequestResult = { id: Hash; vault: VaultExt };
 
 export interface RedeemRequestExt extends Omit<RedeemRequest, "btc_address"> {
     // network encoded btc address
@@ -113,7 +113,7 @@ export class DefaultRedeemAPI {
             throw new Error("cannot request without setting account");
         }
 
-        let vault: Vault;
+        let vault: VaultExt;
         if (vaultId) {
             vault = await this.vaultsAPI.get(vaultId);
         } else {

@@ -1,16 +1,15 @@
-import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT } from "../interfaces/default";
+import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
-import { u128 } from "@polkadot/types/primitive";
 import {
     calculateAPY,
     FIXEDI128_SCALING_FACTOR,
     pagedIterator,
-    PERCENTAGE_GRANULARITY,
     planckToDOT,
     scaleFixedPointType,
+    encodeBtcAddress,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
@@ -21,14 +20,49 @@ import { RedeemRequestExt, encodeRedeemRequest } from "./redeem";
 import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
 import { Network } from "bitcoinjs-lib";
 
+export interface WalletExt {
+    // network encoded btc addresses
+    address: string;
+    addresses: Array<string>;
+}
+
+export interface VaultExt extends Omit<Vault, "wallet"> {
+    wallet: WalletExt;
+}
+
+function encodeWallet(wallet: Wallet, network: Network): WalletExt {
+    const { addresses, address } = wallet;
+
+    const btcAddress = encodeBtcAddress(address, network);
+    const btcAddresses: Array<string> = [];
+    for (const value of addresses.values()) {
+        btcAddresses.push(encodeBtcAddress(value, network));
+    }
+
+    return {
+        address: btcAddress,
+        addresses: btcAddresses,
+    };
+}
+
+export function encodeVault(vault: Vault, network: Network): VaultExt {
+    const { wallet, ...obj } = vault;
+    return Object.assign(
+        {
+            wallet: encodeWallet(wallet, network),
+        },
+        obj
+    ) as VaultExt;
+}
+
 export interface VaultsAPI {
-    list(): Promise<Vault[]>;
-    listPaged(): Promise<Vault[]>;
+    list(): Promise<VaultExt[]>;
+    listPaged(): Promise<VaultExt[]>;
     mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>>;
     mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>>;
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>>;
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
-    get(vaultId: AccountId): Promise<Vault>;
+    get(vaultId: AccountId): Promise<VaultExt>;
     getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT, onlyIssued?: boolean): Promise<Big | undefined>;
     getSystemCollateralization(): Promise<Big | undefined>;
     getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT>;
@@ -62,14 +96,14 @@ export class DefaultVaultsAPI {
         this.oracleAPI = new DefaultOracleAPI(this.api);
     }
 
-    async list(): Promise<Vault[]> {
+    async list(): Promise<VaultExt[]> {
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
-        return vaultsMap.map((v) => v[1]);
+        return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
-    async listPaged(): Promise<Vault[]> {
+    async listPaged(): Promise<VaultExt[]> {
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
-        return vaultsMap.map((v) => v[1]);
+        return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
     /**
@@ -142,12 +176,12 @@ export class DefaultVaultsAPI {
         return pagedIterator<Vault>(this.api.query.vaultRegistry.vaults, perPage);
     }
 
-    async get(vaultId: AccountId): Promise<Vault> {
+    async get(vaultId: AccountId): Promise<VaultExt> {
         const vault = await this.api.query.vaultRegistry.vaults(vaultId);
         if (!vaultId.eq(vault.id)) {
             throw new Error(`No vault registered with id ${vaultId}`);
         }
-        return vault;
+        return encodeVault(vault, this.btcNetwork);
     }
 
     private isNoTokensIssuedError(e: Error): boolean {
@@ -228,12 +262,12 @@ export class DefaultVaultsAPI {
     }
 
     async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
-        const vault: Vault = await this.get(vaultId);
+        const vault: VaultExt = await this.get(vaultId);
         return vault.issued_tokens;
     }
 
     private async getIssuedPolkaBTCAmounts(): Promise<PolkaBTC[]> {
-        const vaults: Vault[] = await this.list();
+        const vaults: VaultExt[] = await this.list();
         const issuedTokens: PolkaBTC[] = vaults.map((v) => v.issued_tokens);
         return issuedTokens;
     }

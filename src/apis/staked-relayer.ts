@@ -1,15 +1,8 @@
-import {
-    DOT,
-    ActiveStakedRelayer,
-    StatusCode,
-    Vault,
-    StatusUpdate,
-    InactiveStakedRelayer,
-} from "../interfaces/default";
+import { DOT, ActiveStakedRelayer, StatusCode, StatusUpdate, InactiveStakedRelayer } from "../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
+import { VaultsAPI, DefaultVaultsAPI, VaultExt } from "./vaults";
 import BN from "bn.js";
 import { calculateAPY, FIXEDI128_SCALING_FACTOR, pagedIterator, scaleFixedPointType } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -26,7 +19,7 @@ export interface StakedRelayerAPI {
     isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
     getTotalStakedDOTAmount(): Promise<DOT>;
-    getMonitoredVaultsCollateralizationRate(): Promise<Vault[]>;
+    getMonitoredVaultsCollateralizationRate(): Promise<VaultExt[]>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>>;
@@ -111,7 +104,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return new BN(0) as DOT;
     }
 
-    async getMonitoredVaultsCollateralizationRate(): Promise<Vault[]> {
+    async getMonitoredVaultsCollateralizationRate(): Promise<VaultExt[]> {
         return this.vaultsAPI.list();
     }
 
