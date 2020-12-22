@@ -78,6 +78,21 @@ describe("issue", () => {
         });
     });
 
+    describe("load requests", () => {
+        it("should load existing requests", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            issueAPI.setAccount(alice);
+
+            const issueRequests = await issueAPI.list();
+            assert.isAtLeast(
+                issueRequests.length,
+                1,
+                "Error in docker-compose setup. Should have at least 1 issue request"
+            );
+        });
+    });
+
     describe("request", () => {
         it("should fail if no account is set", () => {
             const amount = api.createType("Balance", 10);
