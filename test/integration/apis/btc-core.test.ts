@@ -114,10 +114,19 @@ describe("BTCCore regtest", function () {
 
     let api: ApiPromise;
     let btcCore: BTCCoreAPI;
+    let bitcoinCoreClient: BitcoinCoreClient;
 
     beforeEach(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
         btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        bitcoinCoreClient = new BitcoinCoreClient(
+            "regtest",
+            "0.0.0.0",
+            "rpcuser",
+            "rpcpassword",
+            "18443",
+            "Alice"
+        );
     });
 
     afterEach(async () => {
@@ -148,14 +157,6 @@ describe("BTCCore regtest", function () {
 
     describe("getTxByOpreturn", () => {
         it("should return correct tx id", async () => {
-            const bitcoinCoreClient = new BitcoinCoreClient(
-                "regtest",
-                "0.0.0.0",
-                "rpcuser",
-                "rpcpassword",
-                "18443",
-                "Alice"
-            );
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00029";
