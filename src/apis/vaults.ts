@@ -225,21 +225,25 @@ export class DefaultVaultsAPI {
         onlyIssued = false
     ): Promise<Big | undefined> {
         const customAPIRPC = this.api.rpc as any;
+        let collateralization = undefined;
         try {
-            const collateralization = newCollateral
+            collateralization = newCollateral
                 ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
                     vaultId,
                     this.wrapCurrency(newCollateral),
                     onlyIssued
                 )
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
-            return this.scaleUsingParachainGranularity(new Big(collateralization));
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
             }
             return Promise.reject(`Error during collateralization computation: ${(e as Error).message}`);
         }
+        if (!collateralization) {
+            return Promise.resolve(undefined);
+        }
+        return this.scaleUsingParachainGranularity(new Big(collateralization));
     }
 
     /**
