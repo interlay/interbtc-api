@@ -1,8 +1,8 @@
 import { PolkaBTC, Vault, DOT } from "../../interfaces/default";
-import { AccountId, H256, H160 } from "@polkadot/types/interfaces";
+import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
-import { U8aFixed, Option } from "@polkadot/types/codec";
+import { Option } from "@polkadot/types/codec";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
 import { IssueRequestExt } from "../../apis/issue";

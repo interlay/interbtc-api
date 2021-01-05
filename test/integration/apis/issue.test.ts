@@ -105,9 +105,9 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("Balance", 100000) as PolkaBTC;
             const requestResult = await issueAPI.request(amount);
-            assert.equal(requestResult.hash.length, 32);
+            assert.equal(requestResult.id.length, 32);
 
-            const issueRequest = await issueAPI.getRequestById(requestResult.hash.toString());
+            const issueRequest = await issueAPI.getRequestById(requestResult.id.toString());
             assert.deepEqual(issueRequest.amount, amount, "Amount different than expected");
         });
 
@@ -134,7 +134,7 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
             const amount = api.createType("Balance", 1);
             const requestResult = await issueAPI.request(amount);
-            txHash = requestResult.hash;
+            txHash = requestResult.id;
             assert.isDefined(txHash);
         });
 
@@ -178,9 +178,9 @@ describe("issue", () => {
 
             // The cancellation period set by docker-compose is 50 blocks, each being relayed every 6s
             await bitcoinCoreClient.mineBlocks(50);
-            await issueAPI.cancel(requestResult.hash);
+            await issueAPI.cancel(requestResult.id);
 
-            const issueRequestId = requestResult.hash.toString();
+            const issueRequestId = requestResult.id.toString();
             const issueRequest = await issueAPI.getRequestById(issueRequestId);
 
             assert.isTrue(issueRequest.cancelled.isTrue, "Failed to cancel issue request");
@@ -282,7 +282,7 @@ describe("issue", () => {
         }
         const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
         const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
-        const issueRequestId = requestResult.hash.toString();
+        const issueRequestId = requestResult.id.toString();
         const issueRequest = await issueAPI.getRequestById(issueRequestId);
         amountAsBtcString = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
@@ -297,7 +297,7 @@ describe("issue", () => {
         if (autoExecute === false) {
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
             const merkleProof = await btcCoreAPI.getMerkleProof(txData.txid);
-            const parsedIssuedId = api.createType("H256", requestResult.hash);
+            const parsedIssuedId = api.createType("H256", requestResult.id);
             // reverse endianness (expects little-endian)
             const parsedTxId = api.createType("H256", "0x" + Buffer.from(txData.txid, "hex").reverse().toString("hex"));
             const parsedMerkleProof = api.createType("Bytes", "0x" + merkleProof);

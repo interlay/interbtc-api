@@ -19,10 +19,10 @@ export interface StakedRelayerAPI {
     isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
     getTotalStakedDOTAmount(): Promise<DOT>;
-    getMonitoredVaultsCollateralizationRate(): Promise<VaultExt[]>;
+    getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>>;
     getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]>;
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
-    getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>>;
+    getOngoingStatusUpdateVotes(): Promise<Array<[string, BlockNumber, number, number]>>;
     getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
@@ -44,11 +44,17 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
     }
 
+    /**
+     * @returns An array containing the active staked relayers
+     */
     async list(): Promise<ActiveStakedRelayer[]> {
         const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
         return activeStakedRelayersMap.map((v) => v[1]);
     }
 
+    /**
+     * @returns A mapping from the active staked relayer AccountId to the ActiveStakedRelayer object
+     */
     async map(): Promise<Map<AccountId, ActiveStakedRelayer>> {
         const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
         const activeStakedRelayerPairs: [AccountId, ActiveStakedRelayer][] = activeStakedRelayers.map(
@@ -59,31 +65,51 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
                 ];
             }
         );
-        const activeStakedRelayersMap: Map<AccountId, ActiveStakedRelayer> = new Map<AccountId, ActiveStakedRelayer>();
+        const activeStakedRelayersMap = new Map<AccountId, ActiveStakedRelayer>();
         activeStakedRelayerPairs.forEach((activeStakedRelayerPair) =>
             activeStakedRelayersMap.set(activeStakedRelayerPair[0], activeStakedRelayerPair[1])
         );
         return activeStakedRelayersMap;
     }
 
+    /**
+     * @param perPage Number of staked relayers to iterate through at a time
+     * @returns An AsyncGenerator to be used as an iterator
+     */
     getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {
         return pagedIterator<ActiveStakedRelayer>(this.api.query.issue.issueRequests, perPage);
     }
 
+    /**
+     * @param activeStakedRelayerId The ID of the staked relayer to fetch
+     * @returns An ActiveStakedRelayer object
+     */
     get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {
         return this.api.query.stakedRelayers.activeStakedRelayers(activeStakedRelayerId);
     }
 
+    /**
+     * @param stakedRelayerId The ID of the relayer for which to check the status
+     * @returns A boolean value
+     */
     async isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean> {
         const active = await this.api.query.stakedRelayers.activeStakedRelayers(stakedRelayerId);
         return active.stake.gt(new BN(0));
     }
 
+    /**
+     * @param stakedRelayerId The ID of the relayer for which to check the status
+     * @returns A boolean value
+     */
     async isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean> {
         const inactive = await this.api.query.stakedRelayers.inactiveStakedRelayers(stakedRelayerId);
         return inactive.stake.gt(new BN(0));
     }
 
+    /**
+     * @param stakedRelayerId The ID of the relayer for which to fetch the staked DOT amount
+     * @returns The staked DOT amount, denoted in Planck
+     */
     async getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT> {
         const stakedRelayer = await this.get(activeStakedRelayerId);
         return stakedRelayer.stake;
@@ -95,6 +121,9 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return activeStakedRelayersStakes;
     }
 
+    /**
+     * @returns The total staked DOT amount, denoted in Planck
+     */
     async getTotalStakedDOTAmount(): Promise<DOT> {
         const stakedDOTAmounts: DOT[] = await this.getStakedDOTAmounts();
         if (stakedDOTAmounts.length) {
@@ -104,31 +133,64 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return new BN(0) as DOT;
     }
 
-    async getMonitoredVaultsCollateralizationRate(): Promise<VaultExt[]> {
-        return this.vaultsAPI.list();
+    /**
+     * @returns A mapping from vault IDs to their collateralization
+     */
+    async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {
+        const vaults = await this.vaultsAPI.list();
+
+        const collateralizationRates = await Promise.all(
+            vaults.map<Promise<[AccountId, Big | undefined]>>(async (vault) => [
+                vault.id,
+                await this.vaultsAPI.getVaultCollateralization(vault.id),
+            ])
+        );
+
+        const map = new Map<AccountId, Big>();
+        collateralizationRates
+            .filter<[AccountId, Big]>(this.isMonitoredVaultCollateralizationDefined)
+            .forEach((pair) => map.set(pair[0], pair[1]));
+        return map;
     }
 
+    private isMonitoredVaultCollateralizationDefined(pair: [AccountId, Big | undefined]): pair is [AccountId, Big] {
+        return pair[1] !== undefined;
+    }
+
+    /**
+     * @returns A tuple denoting [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime]
+     */
     async getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]> {
         const lastBTCDOTExchangeRate = await this.api.query.exchangeRateOracle.exchangeRate();
         const lastBTCDOTExchangeRateTime = await this.api.query.exchangeRateOracle.lastExchangeRateTime();
         return [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime];
     }
 
+    /**
+     * @returns A parachain status code object
+     */
     async getCurrentStateOfBTCParachain(): Promise<StatusCode> {
         return await this.api.query.security.parachainStatus();
     }
 
-    async getOngoingStatusUpdateVotes(): Promise<Array<[BlockNumber, number, number]>> {
+    /**
+     * @returns A tuple denoting [statusUpdateStorageKey, statusUpdateEnd, statusUpdateAyes, statusUpdateNays]
+     */
+    async getOngoingStatusUpdateVotes(): Promise<Array<[string, BlockNumber, number, number]>> {
         const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entries();
-        const statusUpdates = statusUpdatesMappings.map((v) => v[1]);
-        const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate.proposal_status.isPending);
+        const statusUpdates = statusUpdatesMappings.map<[string, StatusUpdate]>((v) => [v[0].toString(), v[1]]);
+        const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate[1].proposal_status.isPending);
         return pendingUpdates.map((pendingUpdate) => [
-            pendingUpdate.end,
-            pendingUpdate.tally.aye.size,
-            pendingUpdate.tally.nay.size,
+            pendingUpdate[0],
+            pendingUpdate[1].end,
+            pendingUpdate[1].tally.aye.size,
+            pendingUpdate[1].tally.nay.size,
         ]);
     }
 
+    /**
+     * @returns An array of { id, statusUpdate } objects
+     */
     async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
         const result = await this.api.query.stakedRelayers.activeStatusUpdates.entries();
         return result.map(([key, value]) => {
@@ -136,6 +198,9 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         });
     }
 
+    /**
+     * @returns An array of { id, statusUpdate } objects
+     */
     async getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
         const result = await this.api.query.stakedRelayers.inactiveStatusUpdates.entries();
         return result.map(([key, value]) => {
@@ -143,6 +208,9 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         });
     }
 
+    /**
+     * @returns An array of { id, statusUpdate } objects
+     */
     async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
         // TODO: page this so we don't fetch ALL status updates at once
         const activeStatusUpdates = await this.getAllActiveStatusUpdates();
@@ -150,12 +218,20 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
 
+    /**
+     * @param stakedRelayerId The ID of a staked relayer
+     * @returns Total rewards in PolkaBTC, denoted in Satoshi, for the given staked relayer
+     */
     async getFeesPolkaBTC(stakedRelayerId: string): Promise<string> {
         const parseId = this.api.createType("AccountId", stakedRelayerId);
         const fees = await this.api.query.fee.totalRewardsPolkaBTC(parseId);
         return fees.toString();
     }
 
+    /**
+     * @param stakedRelayerId The ID of a staked relayer
+     * @returns Total rewards in DOT, denoted in Planck, for the given staked relayer
+     */
     async getFeesDOT(stakedRelayerId: string): Promise<string> {
         const parseId = this.api.createType("AccountId", stakedRelayerId);
         const fees = await this.api.query.fee.totalRewardsDOT(parseId);
@@ -182,12 +258,19 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
+    /**
+     * @param stakedRelayerId The ID of a staked relayer
+     * @returns The SLA score, an integer in the range [0, MaxSLA]
+     */
     async getSLA(stakedRelayerId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", stakedRelayerId);
         const sla = await this.api.query.sla.relayerSla(parsedId);
         return scaleFixedPointType(sla);
     }
 
+    /**
+     * @returns The maximum SLA score, a positive integer
+     */
     async getMaxSLA(): Promise<string> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
         return scaleFixedPointType(maxSLA);
