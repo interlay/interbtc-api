@@ -5,7 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
-import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, scaleFixedPointType, sendLoggedTx } from "../utils";
+import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, decodeFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -221,7 +221,7 @@ export class DefaultIssueAPI implements IssueAPI {
      */
     async getFeePercentage(): Promise<string> {
         const issueFee = await this.api.query.fee.issueFee();
-        return scaleFixedPointType(issueFee);
+        return decodeFixedPointType(issueFee);
     }
 
     /**
@@ -247,7 +247,7 @@ export class DefaultIssueAPI implements IssueAPI {
      */
     async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
-        const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
+        const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
         const exchangeRate = await this.oracleAPI.getExchangeRate();
         const exchangeRateBig = new Big(exchangeRate);
         const amountBtc = satToBTC(amountSat);

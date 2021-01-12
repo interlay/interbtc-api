@@ -1,16 +1,18 @@
 import { ApiPromise } from "@polkadot/api";
 import { TypeRegistry } from "@polkadot/types";
-import { BTreeSet, Raw } from "@polkadot/types/codec";
-import { AccountId } from "@polkadot/types/interfaces";
+import { BTreeSet, Raw, UInt } from "@polkadot/types/codec";
 import BN from "bn.js";
 import sinon from "sinon";
 import { DefaultOracleAPI, OracleAPI } from "../../../src/apis/oracle";
 import { createAPIRegistry } from "../../../src/factory";
-import { ErrorCode } from "../../../src/interfaces/default";
+import { ErrorCode, UnsignedFixedPoint } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 
 describe("oracle", () => {
-    const exchangeRate = 300000000;
+    // We don't have access to the FixedU128 / UnisgnedFixedPoint constructor, so we need to limit
+    // ourselves to the UInt constructor that these types extend. As such, the maximum value we
+    // can use is 64 bits long instead of 128
+    const rawFixedPointExchangeRate = "385523195000000000";
     const lastRate = new Date(2020, 8, 1);
     let oracle: OracleAPI;
     let errors: ErrorCode[];
@@ -21,7 +23,7 @@ describe("oracle", () => {
         const timestamp = new BN(Math.floor(lastRate.getTime() / 1000));
         return {
             exchangeRateOracle: {
-                exchangeRate: () => Promise.resolve(new BN(exchangeRate)),
+                exchangeRate: () => Promise.resolve(new UInt(registry, rawFixedPointExchangeRate) as UnsignedFixedPoint),
                 lastExchangeRateTime: () => Promise.resolve(timestamp),
                 authorizedOracles: {
                     entries: () => Promise.resolve([[1, new Raw(registry, "test")]]),
@@ -48,8 +50,10 @@ describe("oracle", () => {
     });
 
     describe("getExchangeRate", () => {
-        it("should scale exchange rate", () => {
-            return assert.eventually.equal(oracle.getExchangeRate(), 30);
+        it("should scale exchange rate", async () => {
+            const exchangeRate = await oracle.getExchangeRate();
+            console.log(`exchangerate is: ${exchangeRate}`);
+            return assert.equal(exchangeRate.toString(), "0.00385523195");
         });
     });
 
@@ -96,7 +100,7 @@ describe("oracle", () => {
             const oracleProto = Object.getPrototypeOf(oracle);
             const planck_to_sat = 38552318700;
             const dot_to_btc = oracleProto.convertFromRawExchangeRate(planck_to_sat);
-            return assert.equal(dot_to_btc, 3855.23187);
+            return assert.equal(dot_to_btc.toString(), "385523187");
         });
     });
 });

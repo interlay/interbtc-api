@@ -5,7 +5,7 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI, VaultExt } from "./vaults";
-import { decodeBtcAddress, encodeBtcAddress, pagedIterator, scaleFixedPointType, sendLoggedTx } from "../utils";
+import { decodeBtcAddress, encodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -258,7 +258,7 @@ export class DefaultRedeemAPI {
      */
     async getFeePercentage(): Promise<string> {
         const redeemFee = await this.api.query.fee.redeemFee();
-        return scaleFixedPointType(redeemFee);
+        return decodeFixedPointType(redeemFee);
     }
 
     /**
@@ -283,7 +283,7 @@ export class DefaultRedeemAPI {
      */
     async getPremiumRedeemFee(): Promise<string> {
         const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee();
-        return scaleFixedPointType(premiumRedeemFee);
+        return decodeFixedPointType(premiumRedeemFee);
     }
 
     /**

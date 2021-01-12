@@ -2,16 +2,14 @@ import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
-import { u128 } from "@polkadot/types/primitive";
-import { BTC_IN_SAT, DOT_IN_PLANCK, sendLoggedTx } from "../utils";
+import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, sendLoggedTx, encodeUnsignedFixedPoint } from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
 const defaultFeedName = "DOT/BTC";
-const granularity = 5;
 
 export type OracleInfo = {
-    exchangeRate: number;
+    exchangeRate: Big;
     feed: string;
     names: Array<string>;
     online: boolean;
@@ -19,7 +17,7 @@ export type OracleInfo = {
 };
 
 export interface OracleAPI {
-    getExchangeRate(): Promise<number>;
+    getExchangeRate(): Promise<Big>;
     getFeed(): Promise<string>;
     getLastExchangeRateTime(): Promise<Date>;
     getOracleNames(): Promise<Array<string>>;
@@ -36,28 +34,22 @@ export class DefaultOracleAPI implements OracleAPI {
      * @returns An object of type OracleInfo 
      */
     async getInfo(): Promise<OracleInfo> {
-        const [exchangeRate, lastExchangeRateTime, errors] = await this.api.queryMulti([
-            this.api.query.exchangeRateOracle.exchangeRate,
-            this.api.query.exchangeRateOracle.lastExchangeRateTime,
-            this.api.query.security.errors,
-        ]);
-        const exchangeRateIsSet = new Big(exchangeRate).gt(0);
-        const names = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
         return {
-            exchangeRate: this.convertFromRawExchangeRate(<u128>exchangeRate),
+            exchangeRate: await this.getExchangeRate(),
             feed: await this.getFeed(),
-            names: names.map((v) => v[1].toUtf8()),
-            online: exchangeRateIsSet && !this.hasOracleError(<BTreeSet<ErrorCode>>errors),
-            lastUpdate: this.convertMoment(<Moment>lastExchangeRateTime),
+            names: await this.getOracleNames(),
+            online: await this.isOnline(),
+            lastUpdate: await this.getLastExchangeRateTime(),
         };
     }
 
     /**
      * @returns The DOT/BTC exchange rate
      */
-    async getExchangeRate(): Promise<number> {
-        const rawRate = await this.api.query.exchangeRateOracle.exchangeRate();
-        return this.convertFromRawExchangeRate(rawRate);
+    async getExchangeRate(): Promise<Big> {
+        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate();
+        const decodedRawRate = decodeFixedPointType(encodedRawRate);
+        return this.convertFromRawExchangeRate(decodedRawRate);
     }
 
     /**
@@ -68,7 +60,8 @@ export class DefaultOracleAPI implements OracleAPI {
         if (!this.account) {
             throw new Error("cannot set exchange rate without setting account");
         }
-        const tx = this.api.tx.exchangeRateOracle.setExchangeRate(exchangeRate);
+        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate);
+        const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
         const result = await sendLoggedTx(tx, this.account, this.api);
     }
 
@@ -116,12 +109,12 @@ export class DefaultOracleAPI implements OracleAPI {
         return new Date(moment.toNumber());
     }
 
-    // Converts the raw exchange rate (planck to satoshi) into
+    // Converts the raw exchange rate (Planck to Satoshi) into
     // DOT to BTC
-    private convertFromRawExchangeRate(rate: u128): number {
-        const rateBN = new Big(rate.toString());
-        const divisor = new Big(Math.pow(10, granularity) * (DOT_IN_PLANCK / BTC_IN_SAT));
-        return parseFloat(rateBN.div(divisor).toString());
+    private convertFromRawExchangeRate(rate: string): Big {
+        const rateBN = new Big(rate);
+        const divisor = new Big(DOT_IN_PLANCK / BTC_IN_SAT);
+        return rateBN.div(divisor);
     }
 
     /**
