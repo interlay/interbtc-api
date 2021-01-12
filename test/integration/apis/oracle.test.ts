@@ -38,7 +38,7 @@ describe("OracleAPI", () => {
 
     describe("setExchangeRate", () => {
         it("should set exchange rate", async () => {
-            const exchangeRateToSet = "385523195";
+            const exchangeRateToSet = "3855.23195";
             await oracle.setExchangeRate(exchangeRateToSet);
             const exchangeRate = await oracle.getExchangeRate();
             assert.equal(exchangeRateToSet, exchangeRate.toString());

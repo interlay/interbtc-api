@@ -20,7 +20,7 @@ import { Buffer } from "buffer";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-const DEFAULT_EXCHANGE_RATE = "385523187";
+const DEFAULT_EXCHANGE_RATE = "3855.23187";
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,9 +50,7 @@ describe("issue", () => {
 
         btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-    });
 
-    beforeEach(async () => {
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
         oracleAPI = new DefaultOracleAPI(api);
         oracleAPI.setAccount(bob);
@@ -115,7 +113,7 @@ describe("issue", () => {
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck, "1927615.935");
+            assert.equal(griefingCollateralPlanck, "19276.15935");
         });
     });
 

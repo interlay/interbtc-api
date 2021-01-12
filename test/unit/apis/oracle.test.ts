@@ -52,7 +52,6 @@ describe("oracle", () => {
     describe("getExchangeRate", () => {
         it("should scale exchange rate", async () => {
             const exchangeRate = await oracle.getExchangeRate();
-            console.log(`exchangerate is: ${exchangeRate}`);
             return assert.equal(exchangeRate.toString(), "0.00385523195");
         });
     });

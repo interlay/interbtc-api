@@ -115,7 +115,9 @@ services:
                 sleep 15
                 testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-issue-period --period=50
                 testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-redeem-period --period=50
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=bob set-exchange-rate --exchange-rate=385523187
+
+                # the exchange rate value is 3855.23187 in FixedPoint format
+                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=bob set-exchange-rate --exchange-rate=3855231870000000000000
 
                 # wait for the vault to register
                 sleep 45

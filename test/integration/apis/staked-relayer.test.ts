@@ -9,7 +9,6 @@ import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { FIXEDI128_SCALING_FACTOR } from "../../../src/utils";
 import Big from "big.js";
 
 describe("stakedRelayerAPI", () => {

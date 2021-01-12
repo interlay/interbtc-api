@@ -5,7 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
-import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, decodeFixedPointType, sendLoggedTx } from "../utils";
+import { encodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -248,16 +248,11 @@ export class DefaultIssueAPI implements IssueAPI {
     async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
-        const exchangeRate = await this.oracleAPI.getExchangeRate();
-        const exchangeRateBig = new Big(exchangeRate);
-        const amountBtc = satToBTC(amountSat);
-        const amountBig = new Big(amountBtc);
-        const amountInDot = exchangeRateBig.mul(amountBig);
-        const griefingCollateralDOT = amountInDot.mul(griefingCollateralRateBig).toString();
-        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDOT);
-        if (griefingCollateralPlanck === undefined) {
-            throw new Error("Griefing collateral conversion to planck failed. It should not be smaller than 1 Planck");
-        }
+        const planckPerSatoshi = await this.oracleAPI.getExchangeRate();
+        const planckPerSatoshiBig = new Big(planckPerSatoshi);
+        const amountSatoshiBig = new Big(amountSat);
+        const amountInPlanck = planckPerSatoshiBig.mul(amountSatoshiBig);
+        const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRateBig).toString();
         return griefingCollateralPlanck;
     }
 
