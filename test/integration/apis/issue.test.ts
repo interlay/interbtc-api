@@ -14,13 +14,10 @@ import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 import BN from "bn.js";
 import { fail } from "assert";
-import { DefaultOracleAPI } from "../../../src/apis/oracle";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 import { Buffer } from "buffer";
 
 export type RequestResult = { hash: Hash; vault: Vault };
-
-const DEFAULT_EXCHANGE_RATE = "3855.23187";
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,7 +27,6 @@ describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let treasuryAPI: DefaultTreasuryAPI;
-    let oracleAPI: DefaultOracleAPI;
     let btcCoreAPI: DefaultBTCCoreAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -52,9 +48,6 @@ describe("issue", () => {
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
 
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
-        oracleAPI = new DefaultOracleAPI(api);
-        oracleAPI.setAccount(bob);
-        await oracleAPI.setExchangeRate(DEFAULT_EXCHANGE_RATE);
     });
 
     after(async () => {
