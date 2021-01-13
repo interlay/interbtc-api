@@ -321,8 +321,11 @@ export class DefaultVaultsAPI {
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
         const exchangeRateU128 = new Big(exchangeRate);
-        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
-        return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
+        const secureCollateralThresholdPercentage = await this.getSecureCollateralThreshold();
+
+        // convert from e.g. 150(%) to 1.5
+        const secureCollateralThresholdRate = secureCollateralThresholdPercentage.div(100);
+        return totalLockedDot.div(exchangeRateU128).div(secureCollateralThresholdRate).toString();
     }
 
     /**
