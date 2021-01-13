@@ -2,7 +2,6 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { H256, Hash } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
-import { ImportMock } from "ts-mock-imports";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
@@ -16,6 +15,7 @@ import BN from "bn.js";
 import { fail } from "assert";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 import { Buffer } from "buffer";
+import sinon from "sinon";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -30,6 +30,7 @@ describe("issue", () => {
     let btcCoreAPI: DefaultBTCCoreAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
+    let sandbox: sinon.SinonSandbox;
 
     // alice is the root account
     let alice: KeyringPair;
@@ -48,6 +49,7 @@ describe("issue", () => {
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
 
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+        sandbox = sinon.createSandbox();
     });
 
     after(async () => {
@@ -85,9 +87,10 @@ describe("issue", () => {
     });
 
     describe("request", () => {
-        it("should fail if no account is set", () => {
+        it("should fail if no account is set", async () => {
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
             const amount = api.createType("Balance", 10);
-            assert.isRejected(issueAPI.request(amount));
+            assert.isRejected(tmpIssueAPI.request(amount));
         });
 
         it("should request issue", async () => {
@@ -111,38 +114,31 @@ describe("issue", () => {
     });
 
     describe("execute", () => {
-        let txHash: Hash;
-
-        it("should fail if no account is set", () => {
+        it("should fail if no account is set", async () => {
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
             const issueId: H256 = <H256>{};
             const txId: H256Le = <H256Le>{};
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
-            assert.isRejected(issueAPI.execute(issueId, txId, merkleProof, rawTx));
-        });
-
-        it("should request if account is set", async () => {
-            issueAPI.setAccount(alice);
-            const amount = api.createType("Balance", 1);
-            const requestResult = await issueAPI.request(amount);
-            txHash = requestResult.id;
-            assert.isDefined(txHash);
+            assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
         });
 
         it("should consider execution successful if `isExecutionSuccessful` returns true", async () => {
             const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
-            ImportMock.mockFunction(issueAPI, "isExecutionSuccessful", true);
+            sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(true);
             const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isTrue(isExecutionCorrect);
+            sandbox.restore();
         });
 
         it("should consider execution failed if `isExecutionSuccessful` returns false", async () => {
             const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
-            ImportMock.mockFunction(issueAPI, "isExecutionSuccessful", false);
+            sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(false);
             const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isFalse(isExecutionCorrect);
+            sandbox.restore();
         });
 
         it("should request and auto-execute issue", async () => {

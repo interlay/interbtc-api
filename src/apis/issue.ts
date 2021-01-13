@@ -141,7 +141,7 @@ export class DefaultIssueAPI implements IssueAPI {
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vault.id, griefingCollateralPlanck);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
         if (!this.isRequestSuccessful(result.events)) {
-            throw new Error("Request failed");
+            Promise.reject("Request failed");
         }
 
         const id = this.getIssueIdFromEvents(result.events);
@@ -160,7 +160,6 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
         const result = await sendLoggedTx(executeIssueTx, this.account, this.api);
         return this.isExecutionSuccessful(result.events);
