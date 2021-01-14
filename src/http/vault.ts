@@ -62,10 +62,9 @@ export class VaultClient extends JsonRpcClient {
         return result.account_id.toString();
     }
 
-    async requestReplace(amount: string, griefingCollateral: string): Promise<void> {
+    async requestReplace(amount: string): Promise<void> {
         const request = new this.constr["ReplaceRequestJsonRpcRequest"](this.registry, {
             amount: new BN(amount),
-            griefing_collateral: new BN(griefingCollateral),
         });
         await this.post("request_replace", [request.toHex()]);
     }
