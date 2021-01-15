@@ -33,7 +33,7 @@
   "engineStrict" : true,
   "dependencies": {
     "@interlay/esplora-btc-api": "^0.3.3",
-    "@interlay/polkabtc-types": "0.2.11",
+    "@interlay/polkabtc-types": "0.2.13",
     "@types/big.js": "^4.0.5",
     "big.js": "^6.0.1",
     "bitcoinjs-lib": "^5.2.0",
