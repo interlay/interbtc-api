@@ -96,12 +96,22 @@ export class DefaultVaultsAPI {
         this.oracleAPI = new DefaultOracleAPI(this.api);
     }
 
+    /**
+     * @returns An array containing the vaults
+     */
     async list(): Promise<VaultExt[]> {
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
+    /**
+     * This function is not finalized
+     *
+     * @returns An array containing the vaults, paged. This function is meant to be used as an
+     * iterator
+     */
     async listPaged(): Promise<VaultExt[]> {
+        // TODO: Finish or remove this function
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
@@ -172,10 +182,18 @@ export class DefaultVaultsAPI {
         }
     }
 
+    /**
+     * @param perPage Number of vaults to iterate through at a time
+     * @returns An AsyncGenerator to be used as an iterator
+     */
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
         return pagedIterator<Vault>(this.api.query.vaultRegistry.vaults, perPage);
     }
 
+    /**
+     * @param vaultId The ID of the vault to fetch
+     * @returns A vault object
+     */
     async get(vaultId: AccountId): Promise<VaultExt> {
         const vault = await this.api.query.vaultRegistry.vaults(vaultId);
         if (!vaultId.eq(vault.id)) {
@@ -207,28 +225,32 @@ export class DefaultVaultsAPI {
         onlyIssued = false
     ): Promise<Big | undefined> {
         const customAPIRPC = this.api.rpc as any;
+        let collateralization = undefined;
         try {
-            const collateralization = newCollateral
+            collateralization = newCollateral
                 ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
                     vaultId,
                     this.wrapCurrency(newCollateral),
                     onlyIssued
                 )
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
-            return this.scaleUsingParachainGranularity(new Big(collateralization));
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
             }
             return Promise.reject(`Error during collateralization computation: ${(e as Error).message}`);
         }
+        if (!collateralization) {
+            return Promise.resolve(undefined);
+        }
+        return this.scaleUsingParachainGranularity(new Big(collateralization));
     }
 
     /**
      * Get the total system collateralization measured by the amount of issued PolkaBTC
      * divided by the total locked DOT collateral.
      *
-     * @returns the total system collateralization
+     * @returns The total system collateralization
      */
     async getSystemCollateralization(): Promise<Big | undefined> {
         const customAPIRPC = this.api.rpc as any;
@@ -247,8 +269,8 @@ export class DefaultVaultsAPI {
      * Get the amount of collateral required for the given vault to be at the
      * current SecureCollateralThreshold with the current exchange rate
      *
-     * @param vaultId the vault account id
-     * @returns the required collateral the vault needs to deposit to stay
+     * @param vaultId The vault account ID
+     * @returns The required collateral the vault needs to deposit to stay
      * above the threshold limit
      */
     async getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT> {
@@ -261,6 +283,10 @@ export class DefaultVaultsAPI {
         }
     }
 
+    /**
+     * @param vaultId The vault account ID
+     * @returns The amount of PolkaBTC issued by the given vault, denoted in Satoshi
+     */
     async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
         const vault: VaultExt = await this.get(vaultId);
         return vault.issued_tokens;
@@ -272,6 +298,9 @@ export class DefaultVaultsAPI {
         return issuedTokens;
     }
 
+    /**
+     * @returns The total amount of PolkaBTC issued by the vaults, denoted in Satoshi
+     */
     async getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC> {
         const issuedTokens: PolkaBTC[] = await this.getIssuedPolkaBTCAmounts();
         if (issuedTokens.length) {
@@ -279,9 +308,13 @@ export class DefaultVaultsAPI {
                 accumulator.add(currentValue) as PolkaBTC;
             return issuedTokens.reduce(sumReducer);
         }
-        return new UInt(new TypeRegistry(), 0) as PolkaBTC;
+        return this.api.createType("Balance", 0) as PolkaBTC;
     }
 
+    /**
+     * @returns The total amount of PolkaBTC that can be issued, considering the DOT
+     * locked by the vaults
+     */
     async getIssuablePolkaBTC(): Promise<string> {
         const totalLockedDotAsPlanck = await this.collateralAPI.totalLockedDOT();
         const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
@@ -292,12 +325,16 @@ export class DefaultVaultsAPI {
         return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
 
-    async selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId> {
+    /**
+     * @param amountAsSat PolkaBTC amount to issue, denoted in Satoshi
+     * @returns A vault that has sufficient DOT collateral to issue the given PolkaBTC amount
+     */
+    async selectRandomVaultIssue(amountAsSat: PolkaBTC): Promise<AccountId> {
         const customAPIRPC = this.api.rpc as any;
         try {
             // eslint-disable-next-line max-len
             const firstVaultWithSufficientCollateral = await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientCollateral(
-                this.wrapCurrency(btc)
+                this.wrapCurrency(amountAsSat)
             );
             return firstVaultWithSufficientCollateral;
         } catch (e) {
@@ -305,11 +342,15 @@ export class DefaultVaultsAPI {
         }
     }
 
-    async selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId> {
+    /**
+     * @param amountAsSat PolkaBTC amount to redeem, denoted in Satoshi
+     * @returns A vault that has issued sufficient PolkaBTC to redeem the given PolkaBTC amount
+     */
+    async selectRandomVaultRedeem(amountAsSat: PolkaBTC): Promise<AccountId> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const firstVaultWithSufficientTokens = await customAPIRPC.vaultRegistry.getFirstVaultWithSufficientTokens(
-                this.wrapCurrency(btc)
+                this.wrapCurrency(amountAsSat)
             );
             return firstVaultWithSufficientTokens;
         } catch (e) {
@@ -317,36 +358,66 @@ export class DefaultVaultsAPI {
         }
     }
 
+    /**
+     * @param vaultId The vault account ID
+     * @returns A bollean value
+     */
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
         const theftReports = await this.api.query.stakedRelayers.theftReports(vaultId);
         return theftReports.isEmpty;
     }
 
+    /**
+     * @returns The lower bound for the collateral rate in PolkaBTC.
+     * If a Vault’s collateral rate
+     * drops below this, automatic liquidation (forced Redeem) is triggered.
+     */
     async getLiquidationCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold();
         return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
     }
 
+    /**
+     * @returns The collateral rate of Vaults at which users receive
+     * a premium in DOT, allocated from the
+     * Vault’s collateral, when performing a redeem with this Vault.
+     */
     async getPremiumRedeemThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold();
         return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
     }
 
+    /**
+     * @returns The collateral rate of Vaults at which the
+     * BTC backed by the Vault are opened up for auction to other Vaults
+     */
     async getAuctionCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold();
         return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
     }
 
+    /**
+     * @returns The over-collateralization rate for DOT collateral locked
+     * by Vaults, necessary for issuing PolkaBTC
+     */
     async getSecureCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold();
         return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
     }
 
+    /**
+     * @param vaultId The vault account ID
+     * @returns The total PolkaBTC reward collected by the vault, denoted in Satoshi
+     */
     async getFeesPolkaBTC(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewardsPolkaBTC(parsedId)).toString();
     }
 
+    /**
+     * @param vaultId The vault account ID
+     * @returns The total DOT reward collected by the vault, denoted in Planck
+     */
     async getFeesDOT(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewardsDOT(parsedId)).toString();
@@ -372,12 +443,19 @@ export class DefaultVaultsAPI {
         return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
+    /**
+     * @param vaultId The vault account ID
+     * @returns The SLA score of the given vault, an integer in the range [0, MaxSLA]
+     */
     async getSLA(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         const sla = await this.api.query.sla.vaultSla(parsedId);
         return scaleFixedPointType(sla);
     }
 
+    /**
+     * @returns The maximum SLA score, a positive integer
+     */
     async getMaxSLA(): Promise<string> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
         const maxSlaBig = new Big(maxSLA.toString());
@@ -390,6 +468,11 @@ export class DefaultVaultsAPI {
         return "123";
     }
 
+    /**
+     * @returns Fee that a Vault has to pay if it fails to execute redeem or replace requests
+     * (for redeem, on top of the slashed BTC-in-DOT value of the request). The fee is
+     * paid in DOT based on the PolkaBTC amount at the current exchange rate.
+     */
     async getPunishmentFee(): Promise<string> {
         const fee = await this.api.query.fee.punishmentFee();
         return scaleFixedPointType(fee);

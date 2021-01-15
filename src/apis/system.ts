@@ -8,6 +8,9 @@ export interface SystemAPI {
 export class DefaultSystemAPI implements SystemAPI {
     constructor(private api: ApiPromise) {}
 
+    /**
+     * @returns The current block number being processed.
+     */
     async getCurrentBlockNumber(): Promise<BlockNumber> {
         return await this.api.query.system.number();
     }

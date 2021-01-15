@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     polkabtc:
-        image: "registry.gitlab.com/interlay/btc-parachain:dev"
+        image: "registry.gitlab.com/interlay/btc-parachain:master"
         command:
             - btc-parachain
             - --rpc-external
@@ -48,7 +48,7 @@ services:
             - "3002:3002"
     staked-relayer:
         # only start staked relayer after mining to prevent long catch-up
-        image: "registry.gitlab.com/interlay/polkabtc-clients/staked-relayer:dev"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/staked-relayer:master"
         command:
             - /bin/sh
             - -c
@@ -64,7 +64,7 @@ services:
         ports:
             - "3030:3030"
     oracle:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/oracle:dev"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/oracle:master"
         command:
             - /bin/sh
             - -c
@@ -75,7 +75,7 @@ services:
         environment:
             RUST_LOG: info
     vault_1:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:dev"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:master"
         command:
             - /bin/sh
             - -c
@@ -90,7 +90,7 @@ services:
         ports:
             - "3032:3032"
     vault_2:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:dev"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:master"
         command:
             - /bin/sh
             - -c
@@ -106,7 +106,7 @@ services:
             - "3033:3033"
 
     testdata_gen:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/testdata-gen:dev"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/testdata-gen:master"
         command:
             - /bin/sh
             - -c

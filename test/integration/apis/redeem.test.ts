@@ -81,12 +81,12 @@ describe("redeem", () => {
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
-            const issueRequestId = requestResult.hash.toString();
+            const issueRequestId = requestResult.id.toString();
             const issueRequest = await issueAPI.getRequestById(issueRequestId);
             const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
             // send btc tx
-            const data = stripHexPrefix(requestResult.hash.toString());
+            const data = stripHexPrefix(requestResult.id.toString());
             const vaultBtcAddress = requestResult.vault.wallet.address;
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");

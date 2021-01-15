@@ -26,12 +26,15 @@ export interface OracleAPI {
     isOnline(): Promise<boolean>;
     getInfo(): Promise<OracleInfo>;
     setExchangeRate(exchangeRate: string): Promise<void>;
-    setAccount(account?: AddressOrPair): void;
+    setAccount(account: AddressOrPair): void;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
     constructor(private api: ApiPromise, private account?: AddressOrPair) {}
 
+    /**
+     * @returns An object of type OracleInfo 
+     */
     async getInfo(): Promise<OracleInfo> {
         const [exchangeRate, lastExchangeRateTime, errors] = await this.api.queryMulti([
             this.api.query.exchangeRateOracle.exchangeRate,
@@ -49,12 +52,18 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
-    // return the BTC/DOT exchange rate
+    /**
+     * @returns The DOT/BTC exchange rate
+     */
     async getExchangeRate(): Promise<number> {
         const rawRate = await this.api.query.exchangeRateOracle.exchangeRate();
         return this.convertFromRawExchangeRate(rawRate);
     }
 
+    /**
+     * Send a transaction to set the DOT/BTC exchange rate
+     * @param exchangeRate The rate to set
+     */
     async setExchangeRate(exchangeRate: string): Promise<void> {
         if (!this.account) {
             throw new Error("cannot set exchange rate without setting account");
@@ -63,20 +72,32 @@ export class DefaultOracleAPI implements OracleAPI {
         const result = await sendLoggedTx(tx, this.account, this.api);
     }
 
+    /**
+     * @returns An array with the oracle names
+     */
     async getOracleNames(): Promise<Array<string>> {
         const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
         return oracles.map((v) => v[1].toUtf8());
     }
 
+    /**
+     * @returns The feed name (such as "DOT/BTC")
+     */
     getFeed(): Promise<string> {
         return Promise.resolve(defaultFeedName);
     }
 
+    /**
+     * @returns Last exchange rate time
+     */
     async getLastExchangeRateTime(): Promise<Date> {
         const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime();
         return this.convertMoment(moment);
     }
 
+    /**
+     * @returns Boolean value indicating whether the oracle is online
+     */
     async isOnline(): Promise<boolean> {
         const errors = await this.api.query.security.errors();
         return !this.hasOracleError(errors);
@@ -103,7 +124,11 @@ export class DefaultOracleAPI implements OracleAPI {
         return parseFloat(rateBN.div(divisor).toString());
     }
 
-    setAccount(account?: AddressOrPair): void {
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
+    setAccount(account: AddressOrPair): void {
         this.account = account;
     }
 }
