@@ -2,7 +2,7 @@ import {
     FundAccountJsonRpcRequest,
 } from "../interfaces/default";
 import { getAPITypes } from "../factory";
-import { TypeRegistry,  } from "@polkadot/types";
+import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import { JsonRpcClient } from "./client";
