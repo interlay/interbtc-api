@@ -1,14 +1,12 @@
 import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
-import { UInt } from "@polkadot/types/codec";
-import { TypeRegistry } from "@polkadot/types";
 import {
     calculateAPY,
     FIXEDI128_SCALING_FACTOR,
     pagedIterator,
     planckToDOT,
-    scaleFixedPointType,
+    decodeFixedPointType,
     encodeBtcAddress,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
@@ -243,7 +241,7 @@ export class DefaultVaultsAPI {
         if (!collateralization) {
             return Promise.resolve(undefined);
         }
-        return this.scaleUsingParachainGranularity(new Big(collateralization));
+        return new Big(decodeFixedPointType(collateralization));
     }
 
     /**
@@ -256,7 +254,7 @@ export class DefaultVaultsAPI {
         const customAPIRPC = this.api.rpc as any;
         try {
             const collateralization = await customAPIRPC.vaultRegistry.getTotalCollateralization();
-            return this.scaleUsingParachainGranularity(new Big(collateralization));
+            return new Big(decodeFixedPointType(collateralization));
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
@@ -374,7 +372,7 @@ export class DefaultVaultsAPI {
      */
     async getLiquidationCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold();
-        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
+        return new Big(decodeFixedPointType(threshold));
     }
 
     /**
@@ -384,7 +382,7 @@ export class DefaultVaultsAPI {
      */
     async getPremiumRedeemThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold();
-        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
+        return new Big(decodeFixedPointType(threshold));
     }
 
     /**
@@ -393,7 +391,7 @@ export class DefaultVaultsAPI {
      */
     async getAuctionCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold();
-        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
+        return new Big(decodeFixedPointType(threshold));
     }
 
     /**
@@ -402,7 +400,7 @@ export class DefaultVaultsAPI {
      */
     async getSecureCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold();
-        return this.scaleUsingParachainGranularity(new Big(threshold.toString()));
+        return new Big(decodeFixedPointType(threshold));
     }
 
     /**
@@ -450,7 +448,7 @@ export class DefaultVaultsAPI {
     async getSLA(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         const sla = await this.api.query.sla.vaultSla(parsedId);
-        return scaleFixedPointType(sla);
+        return decodeFixedPointType(sla);
     }
 
     /**
@@ -475,11 +473,7 @@ export class DefaultVaultsAPI {
      */
     async getPunishmentFee(): Promise<string> {
         const fee = await this.api.query.fee.punishmentFee();
-        return scaleFixedPointType(fee);
-    }
-
-    private scaleUsingParachainGranularity(value: Big): Big {
-        return value.div(Math.pow(10, this.granularity));
+        return decodeFixedPointType(fee);
     }
 
     private wrapCurrency(amount: Balance): BalanceWrapper {

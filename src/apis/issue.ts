@@ -5,7 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
-import { dotToPlanck, encodeBtcAddress, pagedIterator, satToBTC, scaleFixedPointType, sendLoggedTx } from "../utils";
+import { encodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -141,7 +141,7 @@ export class DefaultIssueAPI implements IssueAPI {
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vault.id, griefingCollateralPlanck);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
         if (!this.isRequestSuccessful(result.events)) {
-            throw new Error("Request failed");
+            Promise.reject("Request failed");
         }
 
         const id = this.getIssueIdFromEvents(result.events);
@@ -160,7 +160,6 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
-
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
         const result = await sendLoggedTx(executeIssueTx, this.account, this.api);
         return this.isExecutionSuccessful(result.events);
@@ -221,7 +220,7 @@ export class DefaultIssueAPI implements IssueAPI {
      */
     async getFeePercentage(): Promise<string> {
         const issueFee = await this.api.query.fee.issueFee();
-        return scaleFixedPointType(issueFee);
+        return decodeFixedPointType(issueFee);
     }
 
     /**
@@ -247,17 +246,12 @@ export class DefaultIssueAPI implements IssueAPI {
      */
     async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
-        const griefingCollateralRateBig = new Big(scaleFixedPointType(griefingCollateralRate));
-        const exchangeRate = await this.oracleAPI.getExchangeRate();
-        const exchangeRateBig = new Big(exchangeRate);
-        const amountBtc = satToBTC(amountSat);
-        const amountBig = new Big(amountBtc);
-        const amountInDot = exchangeRateBig.mul(amountBig);
-        const griefingCollateralDOT = amountInDot.mul(griefingCollateralRateBig).toString();
-        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDOT);
-        if (griefingCollateralPlanck === undefined) {
-            throw new Error("Griefing collateral conversion to planck failed. It should not be smaller than 1 Planck");
-        }
+        const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
+        const planckPerSatoshi = await this.oracleAPI.getExchangeRate();
+        const planckPerSatoshiBig = new Big(planckPerSatoshi);
+        const amountSatoshiBig = new Big(amountSat);
+        const amountInPlanck = planckPerSatoshiBig.mul(amountSatoshiBig);
+        const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRateBig).toString();
         return griefingCollateralPlanck;
     }
 

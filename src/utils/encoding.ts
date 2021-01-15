@@ -1,6 +1,7 @@
 import { FIXEDI128_SCALING_FACTOR } from ".";
 import { SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
 import Big from "big.js";
+import { ApiPromise } from "@polkadot/api";
 /**
  * Converts endianness of a Uint8Array
  * @param bytes Uint8Array, to be converted LE<>BE
@@ -51,9 +52,16 @@ export function uint8ArrayToString(bytes: Uint8Array): string {
     return stripHexPrefix(bytes.toString()).split("").join("");
 }
 
-export function scaleFixedPointType(x: SignedFixedPoint | UnsignedFixedPoint): string {
+export function decodeFixedPointType(x: SignedFixedPoint | UnsignedFixedPoint): string {
     const xBig = new Big(x.toString());
     const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-    const xSla = xBig.div(scalingFactor);
-    return xSla.toString();
+    const xDecoded = xBig.div(scalingFactor);
+    return xDecoded.toString();
+}
+
+export function encodeUnsignedFixedPoint(api: ApiPromise, x: string): UnsignedFixedPoint {
+    const xBig = new Big(x);
+    const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+    const xScaled = xBig.mul(scalingFactor);
+    return api.createType("FixedU128", xScaled.toFixed());
 }

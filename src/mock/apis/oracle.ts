@@ -1,6 +1,7 @@
 import { AddressOrPair } from "@polkadot/api/types";
 import { OracleAPI } from "../../apis";
 import { OracleInfo } from "../../apis/oracle";
+import Big from "big.js";
 
 export class MockOracleAPI implements OracleAPI {
     async getInfo(): Promise<OracleInfo> {
@@ -15,8 +16,8 @@ export class MockOracleAPI implements OracleAPI {
         return Promise.resolve(oracle_info);
     }
 
-    getExchangeRate(): Promise<number> {
-        return Promise.resolve(20);
+    getExchangeRate(): Promise<Big> {
+        return Promise.resolve(new Big(20));
     }
 
     getOracleNames(): Promise<Array<string>> {
@@ -35,11 +36,11 @@ export class MockOracleAPI implements OracleAPI {
         return Promise.resolve(true);
     }
 
-    async setExchangeRate(exchangeRate: string): Promise<void> {
+    async setExchangeRate(_exchangeRate: string): Promise<void> {
         return;
     }
 
-    async setAccount(account: AddressOrPair): Promise<void> {
+    async setAccount(_account: AddressOrPair): Promise<void> {
         return;
     }
 }

@@ -4,7 +4,7 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI, VaultExt } from "./vaults";
 import BN from "bn.js";
-import { calculateAPY, FIXEDI128_SCALING_FACTOR, pagedIterator, scaleFixedPointType } from "../utils";
+import { calculateAPY, FIXEDI128_SCALING_FACTOR, pagedIterator, decodeFixedPointType } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -265,7 +265,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     async getSLA(stakedRelayerId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", stakedRelayerId);
         const sla = await this.api.query.sla.relayerSla(parsedId);
-        return scaleFixedPointType(sla);
+        return decodeFixedPointType(sla);
     }
 
     /**
@@ -273,6 +273,6 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
      */
     async getMaxSLA(): Promise<string> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
-        return scaleFixedPointType(maxSLA);
+        return decodeFixedPointType(maxSLA);
     }
 }

@@ -1,8 +1,8 @@
 import Big from "big.js";
 
-export function calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: number): string {
+export function calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: Big): string {
     const feesPolkaBTCBig = new Big(feesPolkaBTC.toString());
-    const feesPolkaBTCInDot = feesPolkaBTCBig.mul(new Big(dotToBtcRate));
+    const feesPolkaBTCInDot = feesPolkaBTCBig.mul(dotToBtcRate);
     const totalFees = new Big(feesDOT).add(feesPolkaBTCInDot);
 
     const lockedDotBig = new Big(lockedDOT.toString());
