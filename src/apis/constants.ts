@@ -10,9 +10,7 @@ export interface ConstantsAPI {
     getPolkaBtcExistentialDeposit(): Balance;
     getStakedRelayersMaturityPeriod(): BlockNumber;
     getStakedRelayersMinimumDeposit(): DOT;
-    getStakedRelayersMinimumParticipants(): u64;
     getStakedRelayersMinimumStake(): DOT;
-    getStakedRelayersVoteThreshold(): u64;
     getStakedRelayersVotingPeriod(): BlockNumber;
     getSystemBlockExecutionWeight(): Weight;
     getSystemBlockHashCount(): BlockNumber;
@@ -57,24 +55,10 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     }
 
     /**
-     * @returns The minimum number of active participants
-     */
-    getStakedRelayersMinimumParticipants(): u64 {
-        return this.api.consts.stakedRelayers.minimumParticipants;
-    }
-
-    /**
      * @returns The minimum amount of stake required to participate
      */
     getStakedRelayersMinimumStake(): DOT {
         return this.api.consts.stakedRelayers.minimumStake;
-    }
-
-    /**
-     * @returns The percentage of votes necessary to enact an update
-     */
-    getStakedRelayersVoteThreshold(): u64 {
-        return this.api.consts.stakedRelayers.voteThreshold;
     }
 
     /**

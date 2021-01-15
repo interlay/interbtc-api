@@ -47,23 +47,9 @@ describe("Constants", function () {
         });
     });
 
-    describe("getStakedRelayersMinimumParticipants", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getStakedRelayersMinimumParticipants();
-            assert.isDefined(returnValue);
-        });
-    });
-
     describe("getStakedRelayersMinimumStake", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getStakedRelayersMinimumStake();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getStakedRelayersVoteThreshold", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getStakedRelayersVoteThreshold();
             assert.isDefined(returnValue);
         });
     });
