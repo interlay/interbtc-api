@@ -33,13 +33,6 @@ describe("Constants", function () {
         });
     });
 
-    describe("getStakedRelayersMaturityPeriod", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getStakedRelayersMaturityPeriod();
-            assert.isDefined(returnValue);
-        });
-    });
-
     describe("getStakedRelayersMinimumDeposit", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getStakedRelayersMinimumDeposit();

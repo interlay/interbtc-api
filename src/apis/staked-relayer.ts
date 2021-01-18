@@ -31,6 +31,7 @@ export interface StakedRelayerAPI {
     getAPY(stakedRelayerId: string): Promise<string>;
     getSLA(stakedRelayerId: string): Promise<string>;
     getMaxSLA(): Promise<string>;
+    getStakedRelayersMaturityPeriod(): Promise<BlockNumber>;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -274,5 +275,12 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     async getMaxSLA(): Promise<string> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
         return decodeFixedPointType(maxSLA);
+    }
+
+    /**
+     * @returns The number of blocks to wait until eligible to vote
+     */
+    async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
+        return await this.api.query.stakedRelayers.maturityPeriod();
     }
 }
