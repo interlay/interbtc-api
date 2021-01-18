@@ -1,4 +1,4 @@
-import { DOT, ActiveStakedRelayer, StatusCode, StatusUpdate, InactiveStakedRelayer } from "../interfaces/default";
+import { DOT, StakedRelayer, StatusCode, StatusUpdate } from "../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
@@ -11,10 +11,10 @@ import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 
 export interface StakedRelayerAPI {
-    list(): Promise<ActiveStakedRelayer[]>;
-    map(): Promise<Map<AccountId, ActiveStakedRelayer>>;
-    getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]>;
-    get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer>;
+    list(): Promise<StakedRelayer[]>;
+    map(): Promise<Map<AccountId, StakedRelayer>>;
+    getPagedIterator(perPage: number): AsyncGenerator<StakedRelayer[]>;
+    get(activeStakedRelayerId: AccountId): Promise<StakedRelayer>;
     isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean>;
     isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean>;
     getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
@@ -47,17 +47,17 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     /**
      * @returns An array containing the active staked relayers
      */
-    async list(): Promise<ActiveStakedRelayer[]> {
+    async list(): Promise<StakedRelayer[]> {
         const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
         return activeStakedRelayersMap.map((v) => v[1]);
     }
 
     /**
-     * @returns A mapping from the active staked relayer AccountId to the ActiveStakedRelayer object
+     * @returns A mapping from the active staked relayer AccountId to the StakedRelayer object
      */
-    async map(): Promise<Map<AccountId, ActiveStakedRelayer>> {
+    async map(): Promise<Map<AccountId, StakedRelayer>> {
         const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
-        const activeStakedRelayerPairs: [AccountId, ActiveStakedRelayer][] = activeStakedRelayers.map(
+        const activeStakedRelayerPairs: [AccountId, StakedRelayer][] = activeStakedRelayers.map(
             (activeStakedRelayer) => {
                 return [
                     this.api.createType("AccountId", activeStakedRelayer[0].args[0].toU8a()),
@@ -65,7 +65,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
                 ];
             }
         );
-        const activeStakedRelayersMap = new Map<AccountId, ActiveStakedRelayer>();
+        const activeStakedRelayersMap = new Map<AccountId, StakedRelayer>();
         activeStakedRelayerPairs.forEach((activeStakedRelayerPair) =>
             activeStakedRelayersMap.set(activeStakedRelayerPair[0], activeStakedRelayerPair[1])
         );
@@ -76,15 +76,15 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
      * @param perPage Number of staked relayers to iterate through at a time
      * @returns An AsyncGenerator to be used as an iterator
      */
-    getPagedIterator(perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {
-        return pagedIterator<ActiveStakedRelayer>(this.api.query.issue.issueRequests, perPage);
+    getPagedIterator(perPage: number): AsyncGenerator<StakedRelayer[]> {
+        return pagedIterator<StakedRelayer>(this.api.query.issue.issueRequests, perPage);
     }
 
     /**
      * @param activeStakedRelayerId The ID of the staked relayer to fetch
-     * @returns An ActiveStakedRelayer object
+     * @returns An StakedRelayer object
      */
-    get(activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {
+    get(activeStakedRelayerId: AccountId): Promise<StakedRelayer> {
         return this.api.query.stakedRelayers.activeStakedRelayers(activeStakedRelayerId);
     }
 

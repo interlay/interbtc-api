@@ -6,7 +6,6 @@ import {
     ChangeCollateralJsonRpcRequest,
     UpdateBtcAddressJsonRpcResponse,
     WithdrawReplaceJsonRpcRequest,
-    BtcAddress,
 } from "../interfaces/default";
 import { H256 } from "@polkadot/types/interfaces/runtime";
 import { getAPITypes } from "../factory";
