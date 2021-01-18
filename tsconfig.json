@@ -10,6 +10,8 @@
         "esModuleInterop": true,
         "baseUrl": ".",
         "resolveJsonModule": true,
+        // Generate files for debugging
+        "sourceMap": true,
         "lib": [
             "ES2019"
         ],

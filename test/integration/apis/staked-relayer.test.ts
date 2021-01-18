@@ -4,12 +4,11 @@ import BN from "bn.js";
 import sinon from "sinon";
 import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "../../../src/apis/staked-relayer";
 import { createPolkadotAPI } from "../../../src/factory";
-import { ActiveStakedRelayer, DOT } from "../../../src/interfaces/default";
+import { StakedRelayer, DOT } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { FIXEDI128_SCALING_FACTOR } from "../../../src/utils";
 import Big from "big.js";
 
 describe("stakedRelayerAPI", () => {
@@ -40,7 +39,7 @@ describe("stakedRelayerAPI", () => {
         it("should getStakedDOTAmount", async () => {
             sinon
                 .stub(stakedRelayerAPI, "get")
-                .returns(Promise.resolve(<ActiveStakedRelayer>{ stake: new BN(100) as DOT }));
+                .returns(Promise.resolve(<StakedRelayer>{ stake: new BN(100) as DOT,  }));
             const activeStakedRelayerId = <AccountId>{};
             const stakedDOTAmount: DOT = await stakedRelayerAPI.getStakedDOTAmount(activeStakedRelayerId);
             assert.equal(stakedDOTAmount.toNumber(), 100);
@@ -100,6 +99,11 @@ describe("stakedRelayerAPI", () => {
                 assert.isTrue(curr.value.length <= listingsPerPage);
                 curr = await requestsIterator.next();
             }
+        });
+
+        it("should sucessfully return", async () => {
+            const returnValue = await stakedRelayerAPI.getStakedRelayersMaturityPeriod();
+            assert.isDefined(returnValue);
         });
     });
 

@@ -8,11 +8,8 @@ import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 export interface ConstantsAPI {
     getDotExistentialDeposit(): Balance;
     getPolkaBtcExistentialDeposit(): Balance;
-    getStakedRelayersMaturityPeriod(): BlockNumber;
     getStakedRelayersMinimumDeposit(): DOT;
-    getStakedRelayersMinimumParticipants(): u64;
     getStakedRelayersMinimumStake(): DOT;
-    getStakedRelayersVoteThreshold(): u64;
     getStakedRelayersVotingPeriod(): BlockNumber;
     getSystemBlockExecutionWeight(): Weight;
     getSystemBlockHashCount(): BlockNumber;
@@ -43,13 +40,6 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     }
 
     /**
-     * @returns The number of blocks to wait until eligible to vote
-     */
-    getStakedRelayersMaturityPeriod(): BlockNumber {
-        return this.api.consts.stakedRelayers.maturityPeriod;
-    }
-
-    /**
      * @returns The minimum amount of deposit required to propose an update
      */
     getStakedRelayersMinimumDeposit(): DOT {
@@ -57,24 +47,10 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     }
 
     /**
-     * @returns The minimum number of active participants
-     */
-    getStakedRelayersMinimumParticipants(): u64 {
-        return this.api.consts.stakedRelayers.minimumParticipants;
-    }
-
-    /**
      * @returns The minimum amount of stake required to participate
      */
     getStakedRelayersMinimumStake(): DOT {
         return this.api.consts.stakedRelayers.minimumStake;
-    }
-
-    /**
-     * @returns The percentage of votes necessary to enact an update
-     */
-    getStakedRelayersVoteThreshold(): u64 {
-        return this.api.consts.stakedRelayers.voteThreshold;
     }
 
     /**

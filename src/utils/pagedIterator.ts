@@ -1,10 +1,10 @@
-import { IssueRequest, Vault, RedeemRequest, ActiveStakedRelayer } from "../interfaces/default";
+import { IssueRequest, Vault, RedeemRequest, StakedRelayer } from "../interfaces/default";
 import { AugmentedQuery, PaginationOptions } from "@polkadot/api/types";
 import { StorageKey } from "@polkadot/types/primitive";
 import { Codec, Observable, CodecArg } from "@polkadot/types/types";
 import { QueryableStorageEntry, ApiTypes } from "@polkadot/api/types";
 
-export type PolkadotCodecType = IssueRequest | RedeemRequest | Vault | ActiveStakedRelayer;
+export type PolkadotCodecType = IssueRequest | RedeemRequest | Vault | StakedRelayer;
 
 export async function* pagedIterator<T extends PolkadotCodecType>(
     polkadotListings: AugmentedQuery<ApiTypes, (arg: CodecArg) => Observable<T>> & QueryableStorageEntry<ApiTypes>,

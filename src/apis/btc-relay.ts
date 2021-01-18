@@ -43,16 +43,14 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
      * @param txid The ID of a Bitcoin transaction
      * @param confirmations The number of block confirmations needed to accept the inclusion proof.
      * This parameter is only used if the `insecure` parameter is set to `true`.
-     * @param insecure If true, use the `confirmations` parameter of this method to consider a transaction confirmed.
-     * If false, the global transaction confirmations number is used and the `confirmations` parameter of this method is ignored.
      */
     async verifyTransactionInclusion(
         txid: string,
         confirmations: number = DEFAULT_STABLE_CONFIRMATIONS,
-        insecure: boolean = false
     ): Promise<void> {
         const merkleProof = await this.btcCore.getMerkleProof(txid);
+        const confirmationsU32 = this.api.createType("u32", confirmations);
         // TODO: change this to RPC call
-        this.api.tx.btcRelay.verifyTransactionInclusion(txid, merkleProof, confirmations, insecure);
+        this.api.tx.btcRelay.verifyTransactionInclusion(txid, merkleProof, confirmationsU32);
     }
 }

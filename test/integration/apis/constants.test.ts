@@ -33,13 +33,6 @@ describe("Constants", function () {
         });
     });
 
-    describe("getStakedRelayersMaturityPeriod", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getStakedRelayersMaturityPeriod();
-            assert.isDefined(returnValue);
-        });
-    });
-
     describe("getStakedRelayersMinimumDeposit", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getStakedRelayersMinimumDeposit();
@@ -47,23 +40,9 @@ describe("Constants", function () {
         });
     });
 
-    describe("getStakedRelayersMinimumParticipants", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getStakedRelayersMinimumParticipants();
-            assert.isDefined(returnValue);
-        });
-    });
-
     describe("getStakedRelayersMinimumStake", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getStakedRelayersMinimumStake();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getStakedRelayersVoteThreshold", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getStakedRelayersVoteThreshold();
             assert.isDefined(returnValue);
         });
     });

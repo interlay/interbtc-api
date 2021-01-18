@@ -1,4 +1,4 @@
-import { DOT, ActiveStakedRelayer, StatusCode, StatusUpdate } from "../../interfaces/default";
+import { DOT, StakedRelayer, StatusCode, StatusUpdate } from "../../interfaces/default";
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -16,32 +16,32 @@ function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
 }
 
 export class MockStakedRelayerAPI implements StakedRelayerAPI {
-    async list(): Promise<ActiveStakedRelayer[]> {
+    async list(): Promise<StakedRelayer[]> {
         return [
-            <ActiveStakedRelayer>{
+            <StakedRelayer>{
                 stake: new BN(10.2) as DOT,
             },
-            <ActiveStakedRelayer>{
+            <StakedRelayer>{
                 stake: new BN(11.9) as DOT,
             },
         ];
     }
 
-    async map(): Promise<Map<AccountId, ActiveStakedRelayer>> {
+    async map(): Promise<Map<AccountId, StakedRelayer>> {
         const registry = new TypeRegistry();
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
         return new Map([
-            [new GenericAccountId(registry, decodedAccountId), <ActiveStakedRelayer>{ stake: new BN(10.2) as DOT }],
-            [new GenericAccountId(registry, decodedAccountId), <ActiveStakedRelayer>{ stake: new BN(11.9) as DOT }],
+            [new GenericAccountId(registry, decodedAccountId), <StakedRelayer>{ stake: new BN(10.2) as DOT }],
+            [new GenericAccountId(registry, decodedAccountId), <StakedRelayer>{ stake: new BN(11.9) as DOT }],
         ]);
     }
 
-    getPagedIterator(_perPage: number): AsyncGenerator<ActiveStakedRelayer[]> {
-        return {} as AsyncGenerator<ActiveStakedRelayer[]>;
+    getPagedIterator(_perPage: number): AsyncGenerator<StakedRelayer[]> {
+        return {} as AsyncGenerator<StakedRelayer[]>;
     }
 
-    get(_activeStakedRelayerId: AccountId): Promise<ActiveStakedRelayer> {
-        return Promise.resolve(<ActiveStakedRelayer>{});
+    get(_activeStakedRelayerId: AccountId): Promise<StakedRelayer> {
+        return Promise.resolve(<StakedRelayer>{});
     }
 
     async isStakedRelayerActive(_stakedRelayerId: AccountId): Promise<boolean> {
@@ -129,5 +129,9 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
 
     async getMaxSLA(): Promise<string> {
         return "100";
+    }
+
+    async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
+        return new BN(11208) as BlockNumber;
     }
 }
