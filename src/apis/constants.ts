@@ -8,7 +8,6 @@ import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 export interface ConstantsAPI {
     getDotExistentialDeposit(): Balance;
     getPolkaBtcExistentialDeposit(): Balance;
-    getStakedRelayersMaturityPeriod(): BlockNumber;
     getStakedRelayersMinimumDeposit(): DOT;
     getStakedRelayersMinimumStake(): DOT;
     getStakedRelayersVotingPeriod(): BlockNumber;
@@ -38,13 +37,6 @@ export class DefaultConstantsAPI implements ConstantsAPI {
      */
     getPolkaBtcExistentialDeposit(): Balance {
         return this.api.consts.polkaBtc.existentialDeposit;
-    }
-
-    /**
-     * @returns The number of blocks to wait until eligible to vote
-     */
-    getStakedRelayersMaturityPeriod(): BlockNumber {
-        return this.api.consts.stakedRelayers.maturityPeriod;
     }
 
     /**

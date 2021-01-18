@@ -130,4 +130,8 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
     async getMaxSLA(): Promise<string> {
         return "100";
     }
+
+    async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
+        return new BN(11208) as BlockNumber;
+    }
 }

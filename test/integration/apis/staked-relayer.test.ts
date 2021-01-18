@@ -100,6 +100,11 @@ describe("stakedRelayerAPI", () => {
                 curr = await requestsIterator.next();
             }
         });
+
+        it("should sucessfully return", async () => {
+            const returnValue = await stakedRelayerAPI.getStakedRelayersMaturityPeriod();
+            assert.isDefined(returnValue);
+        });
     });
 
     describe("sla", () => {
