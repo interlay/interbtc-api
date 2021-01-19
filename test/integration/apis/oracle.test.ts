@@ -27,16 +27,19 @@ describe("OracleAPI", () => {
         return api.disconnect();
     });
 
-    describe("getInfo", () => {
+    describe("Oracle", () => {
         it("should return oracle info", async () => {
             const info = await oracle.getInfo();
             assert.equal(info.names[0], "Bob");
             assert.isTrue(info.online);
             assert.equal(info.feed, "DOT/BTC");
         });
-    });
 
-    describe("setExchangeRate", () => {
+        it("should have a rate of 3855.23187", async () => {
+            const exchangeRate = await oracle.getExchangeRate();
+            assert.equal(exchangeRate.toString(), "3855.23187");
+        });
+
         it("should set exchange rate", async () => {
             const exchangeRateToSet = "3855.23195";
             await oracle.setExchangeRate(exchangeRateToSet);

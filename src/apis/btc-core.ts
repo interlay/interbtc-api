@@ -1,6 +1,5 @@
-import { BlockApi, Status, TxApi, ScripthashApi, Transaction, VOut } from "@interlay/esplora-btc-api";
+import { BlockApi, Status, TxApi, AddressApi, UTXO } from "@interlay/esplora-btc-api";
 import { AxiosResponse } from "axios";
-import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
 
 const mainnetApiBasePath = "https://blockstream.info/api";
@@ -39,13 +38,13 @@ export interface BTCCoreAPI {
     getTransactionStatus(txid: string): Promise<TxStatus>;
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
     getRawTransaction(txid: string): Promise<Buffer>;
-    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
+    getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
     private blockApi: BlockApi;
     private txApi: TxApi;
-    private scripthashApi: ScripthashApi;
+    private addressApi: AddressApi;
 
     constructor(network: string = "mainnet") {
         let basePath = "";
@@ -61,7 +60,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         }
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
-        this.scripthashApi = new ScripthashApi({ basePath });
+        this.addressApi = new AddressApi({ basePath });
     }
 
     /**
@@ -84,6 +83,49 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      */
     getMerkleProof(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
+    }
+
+    /**
+     * Fetch the last bitcoin transaction ID based on the recipient address and amount.
+     * Throw an error if no such transaction is found.
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param recipientAddress Match the receiving address of a UTXO
+     * @param amountAsBTC Match the amount (in BTC) of a UTXO that contains said recipientAddress.
+     *
+     * @returns A Bitcoin transaction ID
+     */
+    async getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string> {
+        try {
+            const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
+            for (const utxo of utxos.reverse()) {
+                if (this.utxoHasAmount(utxo, amountAsBTC)) {
+                    return utxo.txid;
+                }
+            }
+        } catch (e) {
+            console.log(`Error during tx lookup by unique vault address: ${e}`);
+        }
+        return Promise.reject("No transaction found for recipient and amount");
+    }
+
+    /**
+     * Check if a given UTXO has at least `amountAsBTC`
+     *
+     * @param vout UTXO object
+     * @param amountAsBTC (Optional) Amount the recipient must receive
+     * @returns Boolean value
+     */
+    private utxoHasAmount(utxo: UTXO, amountAsBTC?: string): boolean {
+        if (amountAsBTC) {
+            const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
+            if (utxo.value === undefined || expectedBtcAsSatoshi > utxo.value) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -129,72 +171,6 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      */
     getRawTransaction(txid: string): Promise<Buffer> {
         return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
-    }
-
-    /**
-     * Fetch the first bitcoin transaction ID based on the OP_RETURN field, recipient and amount.
-     * Throw an error unless there is exactly one transaction with the given opcode.
-     *
-     * @remarks
-     * Performs the lookup using an external service, Esplora. Requires the input string to be a hex
-     *
-     * @param opReturn Data string used for matching the OP_CODE of Bitcoin transactions
-     * @param recipientAddress Match the receiving address of a transaction that contains said op_return
-     * @param amountAsBTC Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
-     * This parameter is only considered if `recipientAddress` is defined.
-     *
-     * @returns A Bitcoin transaction ID
-     */
-    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string> {
-        const data = Buffer.from(opReturn, "hex");
-        if (data.length !== 32) {
-            return Promise.reject("Requires a 32 byte hash as OP_RETURN");
-        }
-        const opReturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
-        const hash = bitcoinjs.crypto.sha256(opReturnBuffer).toString("hex");
-
-        let txs: Transaction[] = [];
-        try {
-            txs = await this.getData(this.scripthashApi.getRecentTxsByScripthash(hash));
-        } catch (e) {
-            console.log(`Error during tx lookup by OP_RETURN: ${e}`);
-        }
-
-        for (const tx of txs) {
-            if (tx.vout === undefined) {
-                continue;
-            }
-            for (const vout of tx.vout) {
-                if (this.txOutputHasRecipientAndAmount(vout, recipientAddress, amountAsBTC)) {
-                    return tx.txid;
-                }
-            }
-        }
-        return Promise.reject("No transaction id found");
-    }
-
-    /**
-     * Check if a given UTXO sends at least `amountAsBTC` to a certain `recipientAddress`
-     *
-     * @param vout UTXO object
-     * @param recipientAddress (Optional) Address of recipient
-     * @param amountAsBTC (Optional) Amount the recipient must receive. This parameter is only considered if the
-     * `recipientAddress` is defined too
-     * @returns Boolean value
-     */
-    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amountAsBTC?: string): boolean {
-        if (recipientAddress) {
-            if (recipientAddress !== vout.scriptpubkey_address) {
-                return false;
-            }
-            if (amountAsBTC) {
-                const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
-                if (vout.value === undefined || expectedBtcAsSatoshi > vout.value) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     /**

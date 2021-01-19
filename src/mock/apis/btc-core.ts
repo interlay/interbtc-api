@@ -61,7 +61,7 @@ export class MockBTCCoreAPI implements BTCCoreAPI {
         );
     }
 
-    getTxIdByOpReturn(_opReturn: string, _recipientAddress?: string, _amountAsBTC?: string): Promise<string> {
+    getTxIdByRecipientAddress(_recipientAddress: string, _amountAsBTC?: string): Promise<string> {
         return Promise.resolve("f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
     }
 }

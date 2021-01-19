@@ -94,7 +94,7 @@ describe("issue", () => {
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck, "19276.15935");
+            assert.equal(griefingCollateralPlanck, "19276.15975");
         });
     });
 
@@ -259,12 +259,11 @@ describe("issue", () => {
         amountAsBtcString = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
         // send btc tx
-        const data = stripHexPrefix(issueRequestId);
-        const vaultBtcAddress = requestResult.vault.wallet.address;
+        const vaultBtcAddress = requestResult.vault.wallet.addresses[0];
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
         }
-        const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, data, blocksToMine);
+        const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, blocksToMine);
 
         if (autoExecute === false) {
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled

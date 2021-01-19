@@ -4,7 +4,7 @@ import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
 import { BTCCoreAPI } from "../../../src/apis";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
-import { Transaction, VOut } from "@interlay/esplora-btc-api";
+import { UTXO } from "@interlay/esplora-btc-api";
 
 describe("btc-core", () => {
     let api: ApiPromise;
@@ -28,35 +28,43 @@ describe("btc-core", () => {
         sandbox.restore();
     });
 
-    it("should reject getTxIdByOpReturn if query returns empty array", async () => {
+    it("should reject getTxIdByRecipientAddress if query returns empty array", async () => {
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([]));
         assert.isRejected(
-            btcCore.getTxIdByOpReturn("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b")
+            btcCore.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b")
         );
     });
 
-    it("should reject getTxIdByOpReturn if no found tx has outputs", async () => {
-        sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([undefined, undefined]));
-        assert.isRejected(
-            btcCore.getTxIdByOpReturn("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b")
-        );
-    });
-
-    it("should return the first tx when using getTxIdByOpReturn if esplora returns array longer than 1", async () => {
+    it("should reject getTxIdByRecipientAddress transaction amount is smaller", async () => {
         const txs = [
             {
                 txid: "tx1",
-                version: 1,
-                vout: [{} as VOut],
-            } as Transaction,
+                vout: 0,
+                value: 78100
+            } as UTXO
+        ];
+        const amountAsSat = "0.0007811";
+        sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve(txs));
+        assert.isRejected(
+            btcCore.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b", amountAsSat)
+        );
+    });
+
+    it("should return the first tx when using getTxIdByRecipientAddress if esplora returns array longer than 1", async () => {
+        const txs = [
+            {
+                txid: "tx1",
+                vout: 0,
+                value: 781
+            } as UTXO,
             {
                 txid: "tx2",
-                version: 1,
-                vout: [{} as VOut],
-            } as Transaction,
+                vout: 1,
+                value: 119000000
+            } as UTXO,
         ];
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve(txs));
-        const tx = await btcCore.getTxIdByOpReturn("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b");
+        const tx = await btcCore.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b");
         assert.strictEqual(tx, txs[0].txid);
     });
 });

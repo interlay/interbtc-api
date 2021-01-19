@@ -1,9 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import BN from "bn.js";
 import { DefaultVaultsAPI } from "../../../src/apis/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
-import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { defaultEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
@@ -15,10 +13,6 @@ describe("vaultsAPI", () => {
     let dave: KeyringPair;
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
-
-    function numberToPolkaBTC(x: number): PolkaBTC {
-        return new BN(x) as PolkaBTC;
-    }
 
     before(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
@@ -34,6 +28,13 @@ describe("vaultsAPI", () => {
 
     after(() => {
         return api.disconnect();
+    });
+
+    it("should getIssuablePolkaBTC", async () => {
+        const issuablePolkaBTC = await vaultsAPI.getIssuablePolkaBTC();
+        const issuablePolkaBTCBig = new Big(issuablePolkaBTC);
+        const minIssuablePolkaBTC = new Big(1);
+        assert.isTrue(issuablePolkaBTCBig.gte(minIssuablePolkaBTC));
     });
 
     it("should select random vault for issue", async () => {

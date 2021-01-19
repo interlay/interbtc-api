@@ -24,7 +24,7 @@ export class MockVaultsAPI implements VaultsAPI {
                 issued_tokens: new BN(330) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(5) as PolkaBTC,
                 wallet: {
-                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                    addresses: ["bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"],
                 },
                 banned_until: new Option(registry, "BlockNumber", new BN(10908)),
             },
@@ -34,7 +34,7 @@ export class MockVaultsAPI implements VaultsAPI {
                 issued_tokens: new BN(430) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(12) as PolkaBTC,
                 wallet: {
-                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                    addresses: ["bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"],
                 },
                 banned_until: new Option(registry, "BlockNumber", new BN(11938)),
             },
@@ -53,7 +53,7 @@ export class MockVaultsAPI implements VaultsAPI {
                 issued_tokens: new BN(330) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(5) as PolkaBTC,
                 wallet: {
-                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                    addresses: ["bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"],
                 },
                 banned_until: new Option(registry, "BlockNumber", new BN(10908)),
             },
@@ -63,7 +63,7 @@ export class MockVaultsAPI implements VaultsAPI {
                 issued_tokens: new BN(430) as PolkaBTC,
                 to_be_redeemed_tokens: new BN(12) as PolkaBTC,
                 wallet: {
-                    address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+                    addresses: ["bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"],
                 },
                 banned_until: new Option(registry, "BlockNumber", new BN(11938)),
             },
