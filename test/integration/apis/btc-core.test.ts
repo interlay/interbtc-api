@@ -122,7 +122,7 @@ describe("BTCCore regtest", function () {
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
     });
 
-    afterEach(async () => {
+    after(async () => {
         await api.disconnect();
     });
 
