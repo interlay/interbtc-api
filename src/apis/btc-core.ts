@@ -215,7 +215,9 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         const latest_block_height = await this.getLatestBlockHeight();
 
         status.confirmed = txStatus.confirmed;
-        if (txStatus.block_height) {
+        // NOTE: the second part of the check is only to ensure that the -1 we sometimes see
+        // in the UI is not caused by the lib
+        if (txStatus.block_height && latest_block_height - txStatus.block_height > 0) {
             status.confirmations = latest_block_height - txStatus.block_height;
         }
 
