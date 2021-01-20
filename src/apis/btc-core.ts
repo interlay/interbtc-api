@@ -1,4 +1,4 @@
-import { BlockApi, Status, TxApi, ScripthashApi, Transaction, VOut } from "@interlay/esplora-btc-api";
+import { BlockApi, Status, TxApi, AddressApi, UTXO, VOut, Transaction, ScripthashApi } from "@interlay/esplora-btc-api";
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
@@ -40,12 +40,14 @@ export interface BTCCoreAPI {
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
     getRawTransaction(txid: string): Promise<Buffer>;
     getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
+    getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
     private blockApi: BlockApi;
     private txApi: TxApi;
     private scripthashApi: ScripthashApi;
+    private addressApi: AddressApi;
 
     constructor(network: string = "mainnet") {
         let basePath = "";
@@ -62,6 +64,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         this.blockApi = new BlockApi({ basePath });
         this.txApi = new TxApi({ basePath });
         this.scripthashApi = new ScripthashApi({ basePath });
+        this.addressApi = new AddressApi({ basePath });
     }
 
     /**
@@ -87,48 +90,46 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     }
 
     /**
-     * Broadcasts a transaction to the Bitcoin network configured in the constructor
-     * @param hex A hex-encoded raw transaction to be broadcast to the Bitcoin blockchain
-     * @returns The txid of the transaction
+     * Fetch the last bitcoin transaction ID based on the recipient address and amount.
+     * Throw an error if no such transaction is found.
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param recipientAddress Match the receiving address of a UTXO
+     * @param amountAsBTC Match the amount (in BTC) of a UTXO that contains said recipientAddress.
+     *
+     * @returns A Bitcoin transaction ID
      */
-    async broadcastRawTransaction(hex: string): Promise<AxiosResponse<string>> {
-        return await this.txApi.postTx(hex);
-    }
-
-    /**
-     * @param txid The ID of a Bitcoin transaction
-     * @returns A TxStatus object, containing the confirmation status and number of confirmations
-     */
-    async getTransactionStatus(txid: string): Promise<TxStatus> {
-        const status = {
-            confirmed: false,
-            confirmations: 0,
-        };
-        const txStatus = await this.getTxStatus(txid);
-        const latest_block_height = await this.getLatestBlockHeight();
-
-        status.confirmed = txStatus.confirmed;
-        if (txStatus.block_height) {
-            status.confirmations = latest_block_height - txStatus.block_height;
+    async getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string> {
+        try {
+            const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
+            for (const utxo of utxos.reverse()) {
+                if (this.utxoHasAmount(utxo, amountAsBTC)) {
+                    return utxo.txid;
+                }
+            }
+        } catch (e) {
+            console.log(`Error during tx lookup by address: ${e}`);
         }
-
-        return status;
+        return Promise.reject("No transaction found for recipient and amount");
     }
 
     /**
-     * @param txid The ID of a Bitcoin transaction
-     * @returns The height of the block the transaction was included in. If the block has not been confirmed, returns undefined.
+     * Check if a given UTXO has at least `amountAsBTC`
+     *
+     * @param vout UTXO object
+     * @param amountAsBTC (Optional) Amount the recipient must receive
+     * @returns Boolean value
      */
-    async getTransactionBlockHeight(txid: string): Promise<number | undefined> {
-        return (await this.getTxStatus(txid)).block_height;
-    }
-
-    /**
-     * @param txid The ID of a Bitcoin transaction
-     * @returns The raw transaction data, represented as a Buffer object
-     */
-    getRawTransaction(txid: string): Promise<Buffer> {
-        return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
+    private utxoHasAmount(utxo: UTXO | VOut, amountAsBTC?: string): boolean {
+        if (amountAsBTC) {
+            const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
+            if (utxo.value === undefined || expectedBtcAsSatoshi > utxo.value) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -187,14 +188,54 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
             if (recipientAddress !== vout.scriptpubkey_address) {
                 return false;
             }
-            if (amountAsBTC) {
-                const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
-                if (vout.value === undefined || expectedBtcAsSatoshi > vout.value) {
-                    return false;
-                }
-            }
+            return this.utxoHasAmount(vout, amountAsBTC);
         }
         return true;
+    }
+
+    /**
+     * Broadcasts a transaction to the Bitcoin network configured in the constructor
+     * @param hex A hex-encoded raw transaction to be broadcast to the Bitcoin blockchain
+     * @returns The txid of the transaction
+     */
+    async broadcastRawTransaction(hex: string): Promise<AxiosResponse<string>> {
+        return await this.txApi.postTx(hex);
+    }
+
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns A TxStatus object, containing the confirmation status and number of confirmations
+     */
+    async getTransactionStatus(txid: string): Promise<TxStatus> {
+        const status = {
+            confirmed: false,
+            confirmations: 0,
+        };
+        const txStatus = await this.getTxStatus(txid);
+        const latest_block_height = await this.getLatestBlockHeight();
+
+        status.confirmed = txStatus.confirmed;
+        if (txStatus.block_height) {
+            status.confirmations = latest_block_height - txStatus.block_height;
+        }
+
+        return status;
+    }
+
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The height of the block the transaction was included in. If the block has not been confirmed, returns undefined.
+     */
+    async getTransactionBlockHeight(txid: string): Promise<number | undefined> {
+        return (await this.getTxStatus(txid)).block_height;
+    }
+
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The raw transaction data, represented as a Buffer object
+     */
+    getRawTransaction(txid: string): Promise<Buffer> {
+        return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
     }
 
     /**

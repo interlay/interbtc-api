@@ -86,8 +86,7 @@ describe("redeem", () => {
             const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
             // send btc tx
-            const data = stripHexPrefix(requestResult.id.toString());
-            const vaultBtcAddress = requestResult.vault.wallet.address;
+            const vaultBtcAddress = requestResult.vault.wallet.btcAddress;
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
@@ -95,7 +94,6 @@ describe("redeem", () => {
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(
                 vaultBtcAddress,
                 txAmountRequired,
-                data,
                 blocksToMine
             );
             assert.equal(Buffer.from(txData.txid, "hex").length, 32, "Transaction length not 32 bytes");

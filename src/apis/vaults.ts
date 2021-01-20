@@ -20,7 +20,8 @@ import { Network } from "bitcoinjs-lib";
 
 export interface WalletExt {
     // network encoded btc addresses
-    address: string;
+    publicKey: string,
+    btcAddress?: string,
     addresses: Array<string>;
 }
 
@@ -29,16 +30,15 @@ export interface VaultExt extends Omit<Vault, "wallet"> {
 }
 
 function encodeWallet(wallet: Wallet, network: Network): WalletExt {
-    const { addresses, address } = wallet;
+    const { addresses, public_key } = wallet;
 
-    const btcAddress = encodeBtcAddress(address, network);
     const btcAddresses: Array<string> = [];
     for (const value of addresses.values()) {
         btcAddresses.push(encodeBtcAddress(value, network));
     }
 
     return {
-        address: btcAddress,
+        publicKey: public_key.toString(),
         addresses: btcAddresses,
     };
 }

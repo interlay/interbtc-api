@@ -145,6 +145,8 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         const id = this.getIssueIdFromEvents(result.events);
+        const issueRequest = await this.getRequestById(id);
+        vault.wallet.btcAddress = issueRequest.btc_address;
         return { id, vault };
     }
 

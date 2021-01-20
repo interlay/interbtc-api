@@ -27,21 +27,29 @@ describe("OracleAPI", () => {
         return api.disconnect();
     });
 
-    describe("getInfo", () => {
+    describe("Oracle", () => {
         it("should return oracle info", async () => {
             const info = await oracle.getInfo();
             assert.equal(info.names[0], "Bob");
             assert.isTrue(info.online);
             assert.equal(info.feed, "DOT/BTC");
         });
-    });
 
-    describe("setExchangeRate", () => {
+        it("[docker-compose initial setup] should set a rate of 3855.23187", async () => {
+            const exchangeRate = await oracle.getExchangeRate();
+            assert.equal(exchangeRate.toString(), "3855.23187");
+        });
+
         it("should set exchange rate", async () => {
+            const previousExchangeRate = await oracle.getExchangeRate();
             const exchangeRateToSet = "3855.23195";
             await oracle.setExchangeRate(exchangeRateToSet);
             const exchangeRate = await oracle.getExchangeRate();
             assert.equal(exchangeRateToSet, exchangeRate.toString());
+
+            // Revert the exchange rate to its initial value,
+            // so that this test is idempotent
+            await oracle.setExchangeRate(previousExchangeRate.toString());
         });
     });
 });
