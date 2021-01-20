@@ -94,7 +94,7 @@ describe("issue", () => {
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck, "19276.15975");
+            assert.equal(griefingCollateralPlanck, "19276.15935");
         });
     });
 
@@ -259,7 +259,7 @@ describe("issue", () => {
         amountAsBtcString = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
         // send btc tx
-        const vaultBtcAddress = requestResult.vault.wallet.addresses[0];
+        const vaultBtcAddress = requestResult.vault.wallet.btcAddress;
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
         }

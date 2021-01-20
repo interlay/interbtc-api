@@ -12,6 +12,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 import { JsonRpcClient } from "./client";
+import { bitcoin } from "../utils/bitcoin";
 
 export class VaultClient extends JsonRpcClient {
     registry: TypeRegistry;
@@ -69,6 +70,15 @@ export class VaultClient extends JsonRpcClient {
             amount: new BN(amount),
         });
         await this.post("lock_additional_collateral", [request.toHex()]);
+    }
+
+    async registerVault(collateral: string): Promise<RegisterVaultJsonRpcResponse> {
+        const request = new this.constr["RegisterVaultJsonRpcRequest"](this.registry, {
+            collateral: new BN(collateral),
+        });
+        const response = await this.post("register_vault", [request.toHex()]);
+        const result = new this.constr["RegisterVaultJsonRpcResponse"](this.registry, response.result);
+        return result;
     }
 
     async withdrawCollateral(amount: string): Promise<void> {

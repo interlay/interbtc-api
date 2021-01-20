@@ -86,7 +86,7 @@ describe("redeem", () => {
             const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
             // send btc tx
-            const vaultBtcAddress = requestResult.vault.wallet.addresses[0];
+            const vaultBtcAddress = requestResult.vault.wallet.btcAddress;
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
