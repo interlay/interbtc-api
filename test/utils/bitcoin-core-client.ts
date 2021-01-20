@@ -28,22 +28,31 @@ export class BitcoinCoreClient {
     async sendBtcTxAndMine(
         recipient: string,
         amount: string,
-        data: string,
-        blocksToMine: number
+        blocksToMine: number,
+        data?: string
     ): Promise<{
         // big endian
         txid: string;
         rawTx: string;
     }> {
-        const tx = await this.broadcastOpReturnTx(recipient, amount, data);
+        const tx = await this.broadcastTx(recipient, amount, data);
         await this.mineBlocks(blocksToMine);
         return tx;
     }
 
-    async broadcastOpReturnTx(
+    formatRawTxInput(recipient: string, amount: string, data?: string) {
+        const paidOutput = {} as any;
+        paidOutput[recipient] = amount;
+        if (data !== undefined) {
+            return [{ data }, paidOutput];
+        }
+        return [paidOutput];
+    }
+
+    async broadcastTx(
         recipient: string,
         amount: string,
-        data: string
+        data?: string
     ): Promise<{
         txid: string;
         rawTx: string;
@@ -53,7 +62,7 @@ export class BitcoinCoreClient {
         }
         const paidOutput = {} as any;
         paidOutput[recipient] = amount;
-        const raw = await this.client.command("createrawtransaction", [], [{ data: data }, paidOutput]);
+        const raw = await this.client.command("createrawtransaction", [], this.formatRawTxInput(recipient, amount, data));
         const funded = await this.client.command("fundrawtransaction", raw);
         const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
         const response = await this.client.command("sendrawtransaction", signed.hex);

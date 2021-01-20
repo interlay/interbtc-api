@@ -78,6 +78,15 @@ describe("BTCCore testnet", function () {
         });
     });
 
+    describe("get tx by recipient", () => {
+        it("should return correct tx id when called with amount and receiver", async () => {
+            const recipientAddress = "tb1qt49nhv6cqx5edp85awwd4a40fw0mh7cln0v9s0";
+            const amountAsBTC = "0.00012364";
+            const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBTC);
+            assert.strictEqual(txid, "97c4a73a971fd9410416ee46bc9bd62f08e68efc35d4f52c5b4a50307d5f6b93");
+        });
+    });
+
     describe("getTxByOpcode", () => {
         it("should return correct tx id", async () => {
             // uses testnet tx: https://blockstream.info/testnet/tx/cac50845f700c97b0e9f0232d2e876e93d384cd93cfa9dc2bf7883ba202237d4?expand
@@ -115,6 +124,28 @@ describe("BTCCore regtest", function () {
         await api.disconnect();
     });
 
+    describe("getTxIdByRecipientAddress", () => {
+        it("should return correct tx id", async () => {
+            const bitcoinCoreClient = new BitcoinCoreClient(
+                "regtest",
+                "0.0.0.0",
+                "rpcuser",
+                "rpcpassword",
+                "18443",
+                "Alice"
+            );
+            const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
+            const amountAsBtcString = "0.00022244";
+            const txData = await bitcoinCoreClient.sendBtcTxAndMine(
+                recipientAddress,
+                amountAsBtcString,
+                6
+            );
+            const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBtcString);
+            assert.strictEqual(txid, txData.txid);
+        });
+    });
+
     describe("getTxByOpreturn", () => {
         it("should return correct tx id", async () => {
             const bitcoinCoreClient = new BitcoinCoreClient(
@@ -131,8 +162,8 @@ describe("BTCCore regtest", function () {
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(
                 recipientAddress,
                 amountAsBtcString,
-                opReturnValue,
-                6
+                6,
+                opReturnValue
             );
             const txid = await btcCore.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);

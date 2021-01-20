@@ -4,7 +4,6 @@ import {
     RegisterVaultJsonRpcRequest,
     RegisterVaultJsonRpcResponse,
     ChangeCollateralJsonRpcRequest,
-    UpdateBtcAddressJsonRpcResponse,
     WithdrawReplaceJsonRpcRequest,
 } from "../interfaces/default";
 import { H256 } from "@polkadot/types/interfaces/runtime";
@@ -13,7 +12,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 import { JsonRpcClient } from "./client";
-import { bitcoin, encodeBtcAddress } from "../utils/bitcoin";
+import { bitcoin } from "../utils/bitcoin";
 
 export class VaultClient extends JsonRpcClient {
     registry: TypeRegistry;
@@ -24,7 +23,6 @@ export class VaultClient extends JsonRpcClient {
         RegisterVaultJsonRpcRequest: Constructor<RegisterVaultJsonRpcRequest>;
         RegisterVaultJsonRpcResponse: Constructor<RegisterVaultJsonRpcResponse>;
         ChangeCollateralJsonRpcRequest: Constructor<ChangeCollateralJsonRpcRequest>;
-        UpdateBtcAddressJsonRpcResponse: Constructor<UpdateBtcAddressJsonRpcResponse>;
         WithdrawReplaceJsonRpcRequest: Constructor<WithdrawReplaceJsonRpcRequest>;
         H256: Constructor<H256>;
     };
@@ -40,7 +38,6 @@ export class VaultClient extends JsonRpcClient {
             RegisterVaultJsonRpcRequest: this.registry.createClass("RegisterVaultJsonRpcRequest"),
             RegisterVaultJsonRpcResponse: this.registry.createClass("RegisterVaultJsonRpcResponse"),
             ChangeCollateralJsonRpcRequest: this.registry.createClass("ChangeCollateralJsonRpcRequest"),
-            UpdateBtcAddressJsonRpcResponse: this.registry.createClass("UpdateBtcAddressJsonRpcResponse"),
             WithdrawReplaceJsonRpcRequest: this.registry.createClass("WithdrawReplaceJsonRpcRequest"),
             H256: this.registry.createClass("H256"),
         };
@@ -68,15 +65,6 @@ export class VaultClient extends JsonRpcClient {
         await this.post("request_replace", [request.toHex()]);
     }
 
-    async registerVault(collateral: string, network: bitcoin.Network): Promise<string> {
-        const request = new this.constr["RegisterVaultJsonRpcRequest"](this.registry, {
-            collateral: new BN(collateral),
-        });
-        const response = await this.post("register_vault", [request.toHex()]);
-        const result = new this.constr["RegisterVaultJsonRpcResponse"](this.registry, response.result);
-        return encodeBtcAddress(result.address, network);
-    }
-
     async lockAdditionalCollateral(amount: string): Promise<void> {
         const request = new this.constr["ChangeCollateralJsonRpcRequest"](this.registry, {
             amount: new BN(amount),
@@ -84,17 +72,20 @@ export class VaultClient extends JsonRpcClient {
         await this.post("lock_additional_collateral", [request.toHex()]);
     }
 
+    async registerVault(collateral: string): Promise<RegisterVaultJsonRpcResponse> {
+        const request = new this.constr["RegisterVaultJsonRpcRequest"](this.registry, {
+            collateral: new BN(collateral),
+        });
+        const response = await this.post("register_vault", [request.toHex()]);
+        const result = new this.constr["RegisterVaultJsonRpcResponse"](this.registry, response.result);
+        return result;
+    }
+
     async withdrawCollateral(amount: string): Promise<void> {
         const request = new this.constr["ChangeCollateralJsonRpcRequest"](this.registry, {
             amount: new BN(amount),
         });
         await this.post("withdraw_collateral", [request.toHex()]);
-    }
-
-    async updateBtcAddress(network: bitcoin.Network): Promise<string> {
-        const response = await this.post("update_btc_address");
-        const result = new this.constr["UpdateBtcAddressJsonRpcResponse"](this.registry, response.result);
-        return encodeBtcAddress(result.address, network);
     }
 
     async withdrawReplace(replace_id: string): Promise<void> {
