@@ -116,17 +116,10 @@ describe("BTCCore regtest", function () {
     let btcCore: BTCCoreAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
 
-    beforeEach(async () => {
+    before(async () => {
         api = await createPolkadotAPI(defaultEndpoint);
         btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
-        bitcoinCoreClient = new BitcoinCoreClient(
-            "regtest",
-            "0.0.0.0",
-            "rpcuser",
-            "rpcpassword",
-            "18443",
-            "Alice"
-        );
+        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
     });
 
     afterEach(async () => {
@@ -135,21 +128,9 @@ describe("BTCCore regtest", function () {
 
     describe("getTxIdByRecipientAddress", () => {
         it("should return correct tx id", async () => {
-            const bitcoinCoreClient = new BitcoinCoreClient(
-                "regtest",
-                "0.0.0.0",
-                "rpcuser",
-                "rpcpassword",
-                "18443",
-                "Alice"
-            );
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00022244";
-            const txData = await bitcoinCoreClient.sendBtcTxAndMine(
-                recipientAddress,
-                amountAsBtcString,
-                6
-            );
+            const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amountAsBtcString, 6);
             const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
         });
@@ -168,6 +149,32 @@ describe("BTCCore regtest", function () {
             );
             const txid = await btcCore.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
+        });
+    });
+
+    describe("getTxStatus", () => {
+        it("should return 0 confirmations", async () => {
+            const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
+            const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
+            const amountAsBtcString = "0.00029";
+            const txData = await bitcoinCoreClient.broadcastTx(
+                recipientAddress,
+                amountAsBtcString,
+                opReturnValue
+            );
+            // transaction in mempool
+            let status = await btcCore.getTransactionStatus(txData.txid);
+            assert.strictEqual(status.confirmations, 0);
+
+            // transaction in the latest block
+            await bitcoinCoreClient.mineBlocks(1);
+            status = await btcCore.getTransactionStatus(txData.txid);
+            assert.strictEqual(status.confirmations, 0);
+
+            // transaction in the parent of the latest block
+            await bitcoinCoreClient.mineBlocks(1);
+            status = await btcCore.getTransactionStatus(txData.txid);
+            assert.strictEqual(status.confirmations, 1);
         });
     });
 });
