@@ -20,9 +20,9 @@ describe("currency", () => {
             const satoshi = "1332132132100000000";
             assert.equal(btcToSat(bitcoin), satoshi);
         });
-        it("should not convert a too small Bitcoin amount to a Satoshi string", () => {
+        it("should round too small a Bitcoin amount to 1 Satoshi", () => {
             const bitcoin = "0.00000000000005";
-            assert.equal(btcToSat(bitcoin), undefined);
+            assert.equal(btcToSat(bitcoin), "1");
         });
         it("should convert a Satoshi string to a Bitcoin string", () => {
             const bitcoin = "135000";

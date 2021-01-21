@@ -13,8 +13,18 @@ export function roundTwoDecimals(input: string): string {
     return number.round(2).toString();
 }
 
+export function roundUpBigToNearestInteger(x: Big): Big {
+    return x.round(0, 3);
+}
+
+export function roundUpBtcToNearestSatoshi(amountBtc: string): string {
+    const amountSat = new Big(btcToSat(amountBtc));
+    const amountSatRounded = roundUpBigToNearestInteger(amountSat).toString();
+    return satToBTC(amountSatRounded);
+}
+
 export function satToBTC(sat: string): string {
-    const satAmount = new Big(sat);
+    const satAmount = roundUpBigToNearestInteger(new Big(sat));
     return satAmount.div(BTC_IN_SAT).toString();
 }
 
@@ -23,14 +33,12 @@ export function satToMBTC(sat: string): string {
     return satAmount.div(MBTC_IN_SAT).toString();
 }
 
-export function btcToSat(btc: string): string | undefined {
+export function btcToSat(btc: string): string {
     const btcAmount: Big = new Big(btc);
     const satAmount: Big = btcAmount.mul(BTC_IN_SAT);
-    if (satAmount.mod(1).eq(0)) {
-        return satAmount.toString();
-    }
-    // reject any values that are less than 1 sat
-    return undefined;
+
+    // Round up to the nearest Satoshi
+    return roundUpBigToNearestInteger(satAmount).toString();
 }
 
 export function planckToDOT(planck: string): string {

@@ -6,7 +6,7 @@ import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault, PolkaBTC } from "../../../src/interfaces/default";
-import { btcToSat, satToBTC, stripHexPrefix } from "../../../src/utils";
+import { btcToSat, dotToPlanck, satToBTC } from "../../../src/utils";
 import { assert, expect } from "../../chai";
 import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
@@ -16,6 +16,7 @@ import { fail } from "assert";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 import { Buffer } from "buffer";
 import sinon from "sinon";
+import { DefaultCollateralAPI } from "../../../src/apis/collateral";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -26,6 +27,7 @@ function sleep(ms: number): Promise<void> {
 describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
+    let collateralAPI: DefaultCollateralAPI;
     let treasuryAPI: DefaultTreasuryAPI;
     let btcCoreAPI: DefaultBTCCoreAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
@@ -49,6 +51,7 @@ describe("issue", () => {
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
 
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+        collateralAPI = new DefaultCollateralAPI(api);
         sandbox = sinon.createSandbox();
     });
 
@@ -90,11 +93,11 @@ describe("issue", () => {
             assert.deepEqual(issueRequest.amount, amount, "Amount different than expected");
         });
 
-        it("should getGriefingCollateral", async () => {
+        it("should getGriefingCollateral (rounded)", async () => {
             const amountBtc = "0.001";
             const amountAsSat = btcToSat(amountBtc) as string;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck, "19276.15935");
+            assert.equal(griefingCollateralPlanck, "1927616");
         });
     });
 
@@ -130,6 +133,14 @@ describe("issue", () => {
             await issue("0.001", "Charlie", true);
         });
 
+        it("should request and auto-execute issue", async () => {
+            await issue("0.0000121", "Charlie", true);
+        });
+
+        it("should fail to request a value finer than 1 Satoshi", async () => {
+            await assert.isRejected(issue("0.000012111", "Charlie", true));
+        });
+
         it("should request and manually execute issue", async () => {
             await issue("0.001", "Dave", false);
         });
@@ -143,7 +154,7 @@ describe("issue", () => {
 
             // request issue
             issueAPI.setAccount(alice);
-            const amountAsBtcString = "0.001";
+            const amountAsBtcString = "0.0000121";
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi);
@@ -239,8 +250,8 @@ describe("issue", () => {
     async function issue(amount: string, vaultName: string, autoExecute: boolean) {
         issueAPI.setAccount(alice);
         const aliceAccountId = api.createType("AccountId", alice.address);
-
-        const initialBalance = await treasuryAPI.balancePolkaBTC(aliceAccountId);
+        const initialBalanceDOT = await collateralAPI.balanceDOT(aliceAccountId);
+        const initialBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(aliceAccountId);
         const blocksToMine = 3;
         keyring = new Keyring({ type: "sr25519" });
         const vault = keyring.addFromUri("//" + vaultName);
@@ -282,10 +293,17 @@ describe("issue", () => {
         }
 
         // check issuing worked
-        const finalBalance = await treasuryAPI.balancePolkaBTC(aliceAccountId);
+        const finalBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(aliceAccountId);
+        assert.equal(
+            satToBTC(finalBalancePolkaBTC.toBn().sub(initialBalancePolkaBTC.toBn()).toString()),
+            amount,
+            "Final balance was not increased by the exact amount specified"
+        );
+
+        const finalBalanceDOT = await collateralAPI.balanceDOT(aliceAccountId);
         assert.isTrue(
-            finalBalance.toBn().sub(initialBalance.toBn()).eq(new BN(amountAsSatoshiString)),
-            "Final balance was not updated"
+            initialBalanceDOT.sub(finalBalanceDOT).lt(new BN(dotToPlanck("1") as string)),
+            "Issue-Redeem were more expensive than 1 DOT"
         );
     }
 });
