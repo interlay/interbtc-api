@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { createPolkadotAPI } from "../../../src/factory";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 
 describe("BTCCore testnet", function () {
@@ -14,7 +14,7 @@ describe("BTCCore testnet", function () {
     let btcCore: BTCCoreAPI;
 
     beforeEach(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         btcCore = new DefaultBTCCoreAPI("testnet");
     });
 
@@ -117,7 +117,7 @@ describe("BTCCore regtest", function () {
     let bitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
     });

@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { ConstantsAPI, DefaultConstantsAPI } from "../../../src/apis/constants";
 import { createPolkadotAPI } from "../../../src/factory";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 
 describe("Constants", function () {
     this.timeout(10000); // API can be slightly slow
@@ -11,7 +11,7 @@ describe("Constants", function () {
     let constantAPI: ConstantsAPI;
 
     beforeEach(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         constantAPI = new DefaultConstantsAPI(api);
     });
 

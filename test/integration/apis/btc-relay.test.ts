@@ -4,7 +4,7 @@ import { BTCRelayAPI } from "../../../src/apis";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { DefaultBTCRelayAPI } from "../../../src/apis/btc-relay";
 import { createPolkadotAPI } from "../../../src/factory";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 
 describe("BTCCore", function () {
     this.timeout(10000); // API can be slightly slow
@@ -14,7 +14,7 @@ describe("BTCCore", function () {
     let btcRelay: BTCRelayAPI;
 
     beforeEach(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         btcCore = new DefaultBTCCoreAPI("testnet");
         btcRelay = new DefaultBTCRelayAPI(api, btcCore);
     });

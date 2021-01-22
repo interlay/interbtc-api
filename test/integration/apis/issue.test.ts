@@ -8,7 +8,7 @@ import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault, PolkaBTC } from "../../../src/interfaces/default";
 import { btcToSat, satToBTC, stripHexPrefix } from "../../../src/utils";
 import { assert, expect } from "../../chai";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 import BN from "bn.js";
@@ -38,7 +38,7 @@ describe("issue", () => {
     let dave: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         treasuryAPI = new DefaultTreasuryAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account

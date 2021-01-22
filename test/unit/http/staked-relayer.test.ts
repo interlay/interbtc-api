@@ -5,15 +5,15 @@ import { JsonRpcRequest, JsonRpcResponse } from "../../../src/http/client";
 import nock from "nock";
 
 describe("stakedRelayerClient", async () => {
-    const defaultEndpoint = "http://127.0.0.1:2342";
+    const defaultParachainEndpoint = "http://127.0.0.1:2342";
     let stakedRelayerClient: StakedRelayerClient;
 
     beforeEach(async () => {
-        stakedRelayerClient = new StakedRelayerClient(defaultEndpoint);
+        stakedRelayerClient = new StakedRelayerClient(defaultParachainEndpoint);
     });
 
     it("should reject response without json response body", async () => {
-        const scope = nock(defaultEndpoint).post("/").reply(200, {});
+        const scope = nock(defaultParachainEndpoint).post("/").reply(200, {});
 
         const result = stakedRelayerClient.getAccountId();
         await expect(result).to.be.rejected;
@@ -22,7 +22,7 @@ describe("stakedRelayerClient", async () => {
     });
 
     it("should reject response with incorrect json rpc id", async () => {
-        const scope = nock(defaultEndpoint).post("/").reply(200, {
+        const scope = nock(defaultParachainEndpoint).post("/").reply(200, {
             jsonrpc: "2.0",
             id: "invalid",
         });
@@ -34,7 +34,7 @@ describe("stakedRelayerClient", async () => {
     });
 
     it("should reject response with custom error message", async () => {
-        const scope = nock(defaultEndpoint)
+        const scope = nock(defaultParachainEndpoint)
             .post("/")
             .reply(
                 500,
@@ -57,7 +57,7 @@ describe("stakedRelayerClient", async () => {
     });
 
     it("should successfully decode getAccountId response", async () => {
-        const scope = nock(defaultEndpoint)
+        const scope = nock(defaultParachainEndpoint)
             .post("/")
             .reply(
                 200,
