@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultVaultsAPI } from "../../../src/apis/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import Big from "big.js";
 
@@ -15,7 +15,7 @@ describe("vaultsAPI", () => {
     let vaultsAPI: DefaultVaultsAPI;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
         charlie = keyring.addFromUri("//Charlie");

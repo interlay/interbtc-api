@@ -6,7 +6,7 @@ import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "../../../src/apis/sta
 import { createPolkadotAPI } from "../../../src/factory";
 import { StakedRelayer, DOT } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
@@ -22,7 +22,7 @@ describe("stakedRelayerAPI", () => {
     let eve: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         eve = keyring.addFromUri("//Eve");
     });
