@@ -5,7 +5,7 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI, VaultExt } from "./vaults";
-import { decodeBtcAddress, encodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx } from "../utils";
+import { decodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx, encodeParachainRequest } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -19,13 +19,7 @@ export interface RedeemRequestExt extends Omit<RedeemRequest, "btc_address"> {
 }
 
 export function encodeRedeemRequest(req: RedeemRequest, network: Network): RedeemRequestExt {
-    const { btc_address, ...obj } = req;
-    return Object.assign(
-        {
-            btc_address: encodeBtcAddress(btc_address, network),
-        },
-        obj
-    ) as RedeemRequestExt;
+    return encodeParachainRequest<RedeemRequest, RedeemRequestExt>(req, network);
 }
 
 export interface RedeemAPI {
@@ -47,13 +41,11 @@ export interface RedeemAPI {
 
 export class DefaultRedeemAPI {
     private vaultsAPI: VaultsAPI;
-    private btcNetwork: Network;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
-        this.btcNetwork = btcNetwork;
     }
 
     /**

@@ -5,7 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
-import { encodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx } from "../utils";
+import { pagedIterator, decodeFixedPointType, sendLoggedTx, encodeParachainRequest } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -19,13 +19,7 @@ export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
 }
 
 export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRequestExt {
-    const { btc_address, ...obj } = req;
-    return Object.assign(
-        {
-            btc_address: encodeBtcAddress(btc_address, network),
-        },
-        obj
-    ) as IssueRequestExt;
+    return encodeParachainRequest<IssueRequest, IssueRequestExt>(req, network);
 }
 
 export interface IssueAPI {
@@ -45,14 +39,12 @@ export interface IssueAPI {
 
 export class DefaultIssueAPI implements IssueAPI {
     private vaultsAPI: VaultsAPI;
-    private btcNetwork: Network;
     private oracleAPI: OracleAPI;
     requestHash: Hash;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.oracleAPI = new DefaultOracleAPI(api);
-        this.btcNetwork = btcNetwork;
         this.requestHash = this.api.createType("Hash");
     }
 
