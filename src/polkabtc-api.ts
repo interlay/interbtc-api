@@ -6,6 +6,7 @@ import { BTCCoreAPI, DefaultBTCCoreAPI } from "./apis/btc-core";
 import { DefaultIssueAPI, IssueAPI } from "./apis/issue";
 import { DefaultOracleAPI, OracleAPI } from "./apis/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./apis/redeem";
+import { DefaultRefundAPI, RefundAPI } from "./apis/refund";
 import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "./apis/staked-relayer";
 import { DefaultVaultsAPI, VaultsAPI } from "./apis/vaults";
 import { DefaultSystemAPI, SystemAPI } from "./apis/system";
@@ -34,6 +35,7 @@ export interface PolkaBTCAPI {
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
     readonly redeem: RedeemAPI;
+    readonly refund: RefundAPI;
     readonly stakedRelayer: StakedRelayerAPI;
     readonly relayer: StakedRelayerClient;
     readonly oracle: OracleAPI;
@@ -51,6 +53,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
+    public readonly refund: RefundAPI;
     public readonly stakedRelayer: StakedRelayerAPI;
     public readonly relayer: StakedRelayerClient;
     public readonly oracle: OracleAPI;
@@ -66,6 +69,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.vaults = new DefaultVaultsAPI(api, btcNetwork);
         this.issue = new DefaultIssueAPI(api, btcNetwork, _account);
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, _account);
+        this.refund = new DefaultRefundAPI(api, btcNetwork, _account);
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork);
         this.relayer = new StakedRelayerClient("");
         this.oracle = new DefaultOracleAPI(api);
