@@ -248,7 +248,8 @@ export class DefaultIssueAPI implements IssueAPI {
         const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRateBig).toString();
 
         // Compute the ceiling of the griefing collateral, because the parachain
-        // ignores the decimal place (123.456 -> 123456), which is wrong
+        // ignores the decimal place (123.456 -> 123456), because there is nothing
+        // smaller than 1 Planck
         const griefingCollateralPlanckRoundedUp = (new Big(griefingCollateralPlanck)).round(0, 3).toString();
         return griefingCollateralPlanckRoundedUp;
     }
