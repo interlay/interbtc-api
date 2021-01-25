@@ -44,8 +44,8 @@ export class DefaultRefundAPI {
     }
 
     /**
-     * @param account The ID of the account whose refunds are to be retrieved
-     * @returns A mapping from the replace ID to the replace object, corresponding to the given account
+     * @param account The ID of the account whose refund requests are to be retrieved
+     * @returns A mapping from the refund ID to the refund request, corresponding to the given account
      */
     async mapForUser(account: AccountId): Promise<Map<H256, RefundRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,12 +67,17 @@ export class DefaultRefundAPI {
     }
 
     /**
-     * @param issueId The ID of the refund to fetch
-     * @returns A refund object
+     * @param issueId The ID of the refund request to fetch
+     * @returns A refund request object
      */
     async getRequestByIssueId(issueId: string): Promise<RefundRequestExt> {
         const customAPIRPC = this.api.rpc as any;
-        const keyValuePair = await customAPIRPC.refund.getRefundRequestsByIssueId(issueId);
+        let keyValuePair = undefined;
+        try {
+            keyValuePair = await customAPIRPC.refund.getRefundRequestsByIssueId(issueId);
+        } catch (error) {
+            Promise.reject(`Error fetching refund request by issue id: ${error}`);
+        }
         return encodeRefundRequest(keyValuePair[1], this.btcNetwork);
     }
 
