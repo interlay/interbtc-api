@@ -5,7 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
-import { pagedIterator, decodeFixedPointType, sendLoggedTx, encodeParachainRequest } from "../utils";
+import { pagedIterator, decodeFixedPointType, sendLoggedTx, roundUpBtcToNearestSatoshi, encodeParachainRequest } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -206,7 +206,8 @@ export class DefaultIssueAPI implements IssueAPI {
         const feePercentage = await this.getFeePercentage();
         const feePercentageBN = new Big(feePercentage);
         const amountBig = new Big(amountBtc);
-        return amountBig.mul(feePercentageBN).toString();
+        const feeBtc = amountBig.mul(feePercentageBN);
+        return roundUpBtcToNearestSatoshi(feeBtc.toString());
     }
 
     /**
@@ -241,12 +242,16 @@ export class DefaultIssueAPI implements IssueAPI {
     async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
-        const planckPerSatoshi = await this.oracleAPI.getExchangeRate();
-        const planckPerSatoshiBig = new Big(planckPerSatoshi);
+        const planckPerSatoshi = await this.oracleAPI.getRawExchangeRate();
         const amountSatoshiBig = new Big(amountSat);
-        const amountInPlanck = planckPerSatoshiBig.mul(amountSatoshiBig);
+        const amountInPlanck = planckPerSatoshi.mul(amountSatoshiBig);
         const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRateBig).toString();
-        return griefingCollateralPlanck;
+
+        // Compute the ceiling of the griefing collateral, because the parachain
+        // ignores the decimal place (123.456 -> 123456), because there is nothing
+        // smaller than 1 Planck
+        const griefingCollateralPlanckRoundedUp = (new Big(griefingCollateralPlanck)).round(0, 3).toString();
+        return griefingCollateralPlanckRoundedUp;
     }
 
     /**
