@@ -21,7 +21,7 @@ import { MockRedeemAPI } from "./apis/redeem";
 import { MockVaultsAPI } from "./apis/vaults";
 import { MockStakedRelayerAPI } from "./apis/staked-relayer";
 import { PolkaBTCAPI } from "../polkabtc-api";
-import { StakedRelayerClient } from "../http";
+import { FaucetClient, StakedRelayerClient } from "../http";
 import { MockOracleAPI } from "./apis/oracle";
 import { MockBTCCoreAPI } from "./apis/btc-core";
 import { MockBTCRelayAPI } from "./apis/btc-relay";
@@ -37,6 +37,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly redeem: RedeemAPI;
     public readonly stakedRelayer: StakedRelayerAPI;
     public readonly relayer: StakedRelayerClient;
+    public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
     public readonly btcRelay: BTCRelayAPI;
@@ -52,6 +53,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.redeem = new MockRedeemAPI();
         this.stakedRelayer = new MockStakedRelayerAPI();
         this.relayer = new StakedRelayerClient("");
+        this.faucet = new FaucetClient("");
         this.oracle = new MockOracleAPI();
         this.btcCore = new MockBTCCoreAPI();
         this.btcRelay = new MockBTCRelayAPI();
