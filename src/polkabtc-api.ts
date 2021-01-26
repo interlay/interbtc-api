@@ -12,7 +12,7 @@ import { DefaultVaultsAPI, VaultsAPI } from "./apis/vaults";
 import { DefaultSystemAPI, SystemAPI } from "./apis/system";
 import { DefaultCollateralAPI, CollateralAPI } from "./apis/collateral";
 import { DefaultTreasuryAPI, TreasuryAPI } from "./apis/treasury";
-import { StakedRelayerClient } from "./http";
+import { FaucetClient, StakedRelayerClient } from "./http";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./apis/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./apis/replace";
 import { Network, networks } from "bitcoinjs-lib";
@@ -38,6 +38,7 @@ export interface PolkaBTCAPI {
     readonly refund: RefundAPI;
     readonly stakedRelayer: StakedRelayerAPI;
     readonly relayer: StakedRelayerClient;
+    readonly faucet: FaucetClient;
     readonly oracle: OracleAPI;
     readonly btcCore: BTCCoreAPI;
     readonly btcRelay: BTCRelayAPI;
@@ -56,6 +57,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly refund: RefundAPI;
     public readonly stakedRelayer: StakedRelayerAPI;
     public readonly relayer: StakedRelayerClient;
+    public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
     public readonly btcRelay: BTCRelayAPI;
@@ -72,6 +74,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.refund = new DefaultRefundAPI(api, btcNetwork, _account);
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork);
         this.relayer = new StakedRelayerClient("");
+        this.faucet = new FaucetClient("");
         this.oracle = new DefaultOracleAPI(api);
         this.btcCore = new DefaultBTCCoreAPI(network);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.btcCore);
