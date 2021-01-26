@@ -1,7 +1,10 @@
-import { FIXEDI128_SCALING_FACTOR } from ".";
-import { SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
+import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
+import { SignedFixedPoint, UnsignedFixedPoint, BtcAddress } from "../interfaces";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
+import type { Struct } from "@polkadot/types";
+import { Network } from "bitcoinjs-lib";
+
 /**
  * Converts endianness of a Uint8Array
  * @param bytes Uint8Array, to be converted LE<>BE
@@ -64,4 +67,20 @@ export function encodeUnsignedFixedPoint(api: ApiPromise, x: string): UnsignedFi
     const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
     const xScaled = xBig.mul(scalingFactor);
     return api.createType("FixedU128", xScaled.toFixed());
+}
+
+export interface DecodedRequest extends Struct {
+    readonly btc_address: BtcAddress;
+}
+
+export interface DecodedRequestExt extends Omit<DecodedRequest, "btc_address"> {
+    // network encoded btc address
+    btc_address: string;
+}
+
+export function encodeParachainRequest<T extends DecodedRequest, K extends DecodedRequestExt>(req: T, network: Network): K {
+    return  {
+        ...req,
+        btc_address: encodeBtcAddress(req.btc_address, network),
+    } as unknown as K;
 }

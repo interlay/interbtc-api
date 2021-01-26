@@ -25,6 +25,7 @@ export interface OracleAPI {
     getInfo(): Promise<OracleInfo>;
     setExchangeRate(exchangeRate: string): Promise<void>;
     setAccount(account: AddressOrPair): void;
+    getRawExchangeRate(): Promise<Big>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -47,9 +48,16 @@ export class DefaultOracleAPI implements OracleAPI {
      * @returns The DOT/BTC exchange rate
      */
     async getExchangeRate(): Promise<Big> {
+        const rawRate = await this.getRawExchangeRate();
+        return new Big(this.convertFromRawExchangeRate(rawRate.toString()));
+    }
+
+    /**
+     * @returns The Planck/Satoshi exchange rate
+     */
+    async getRawExchangeRate(): Promise<Big> {
         const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate();
-        const decodedRawRate = decodeFixedPointType(encodedRawRate);
-        return this.convertFromRawExchangeRate(decodedRawRate);
+        return new Big(decodeFixedPointType(encodedRawRate));
     }
 
     /**
@@ -111,10 +119,10 @@ export class DefaultOracleAPI implements OracleAPI {
 
     // Converts the raw exchange rate (Planck to Satoshi) into
     // DOT to BTC
-    private convertFromRawExchangeRate(rate: string): Big {
-        const rateBN = new Big(rate);
+    private convertFromRawExchangeRate(rate: string): string {
+        const rateBig = new Big(rate);
         const divisor = new Big(DOT_IN_PLANCK / BTC_IN_SAT);
-        return rateBN.div(divisor);
+        return rateBig.div(divisor).toString();
     }
 
     /**

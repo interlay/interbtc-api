@@ -5,13 +5,19 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
-import { encodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx } from "../utils";
+import {
+    pagedIterator,
+    decodeFixedPointType,
+    sendLoggedTx,
+    roundUpBtcToNearestSatoshi,
+    encodeParachainRequest,
+} from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
-export type RequestResult = { id: Hash; vault: VaultExt };
+export type IssueRequestResult = { id: Hash; vault: VaultExt };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -19,17 +25,11 @@ export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
 }
 
 export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRequestExt {
-    const { btc_address, ...obj } = req;
-    return Object.assign(
-        {
-            btc_address: encodeBtcAddress(btc_address, network),
-        },
-        obj
-    ) as IssueRequestExt;
+    return encodeParachainRequest<IssueRequest, IssueRequestExt>(req, network);
 }
 
 export interface IssueAPI {
-    request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
+    request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<IssueRequestResult>;
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account: AddressOrPair): void;
@@ -45,14 +45,12 @@ export interface IssueAPI {
 
 export class DefaultIssueAPI implements IssueAPI {
     private vaultsAPI: VaultsAPI;
-    private btcNetwork: Network;
     private oracleAPI: OracleAPI;
     requestHash: Hash;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.oracleAPI = new DefaultOracleAPI(api);
-        this.btcNetwork = btcNetwork;
         this.requestHash = this.api.createType("Hash");
     }
 
@@ -125,7 +123,7 @@ export class DefaultIssueAPI implements IssueAPI {
      * a random vault will be selected
      * @returns An object of type {issueId, vault} if the request succeeded. The function throws an error otherwise.
      */
-    async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<RequestResult> {
+    async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -214,7 +212,8 @@ export class DefaultIssueAPI implements IssueAPI {
         const feePercentage = await this.getFeePercentage();
         const feePercentageBN = new Big(feePercentage);
         const amountBig = new Big(amountBtc);
-        return amountBig.mul(feePercentageBN).toString();
+        const feeBtc = amountBig.mul(feePercentageBN);
+        return roundUpBtcToNearestSatoshi(feeBtc.toString());
     }
 
     /**
@@ -249,12 +248,16 @@ export class DefaultIssueAPI implements IssueAPI {
     async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
-        const planckPerSatoshi = await this.oracleAPI.getExchangeRate();
-        const planckPerSatoshiBig = new Big(planckPerSatoshi);
+        const planckPerSatoshi = await this.oracleAPI.getRawExchangeRate();
         const amountSatoshiBig = new Big(amountSat);
-        const amountInPlanck = planckPerSatoshiBig.mul(amountSatoshiBig);
+        const amountInPlanck = planckPerSatoshi.mul(amountSatoshiBig);
         const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRateBig).toString();
-        return griefingCollateralPlanck;
+
+        // Compute the ceiling of the griefing collateral, because the parachain
+        // ignores the decimal place (123.456 -> 123456), because there is nothing
+        // smaller than 1 Planck
+        const griefingCollateralPlanckRoundedUp = new Big(griefingCollateralPlanck).round(0, 3).toString();
+        return griefingCollateralPlanckRoundedUp;
     }
 
     /**

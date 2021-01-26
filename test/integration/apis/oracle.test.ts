@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultOracleAPI, OracleAPI } from "../../../src/apis/oracle";
 import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
@@ -12,7 +12,7 @@ describe("OracleAPI", () => {
     let bob: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         const keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
         bob = keyring.addFromUri("//Bob");

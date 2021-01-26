@@ -20,6 +20,10 @@ export class MockOracleAPI implements OracleAPI {
         return Promise.resolve(new Big(20));
     }
 
+    getRawExchangeRate(): Promise<Big> {
+        return Promise.resolve(new Big(200));
+    }
+
     getOracleNames(): Promise<Array<string>> {
         return Promise.resolve(["ChainLink"]);
     }

@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultVaultsAPI } from "../../../src/apis/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import Big from "big.js";
 
@@ -11,15 +11,17 @@ describe("vaultsAPI", () => {
     let bob: KeyringPair;
     let charlie: KeyringPair;
     let dave: KeyringPair;
+    let eve: KeyringPair;
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
         charlie = keyring.addFromUri("//Charlie");
         dave = keyring.addFromUri("//Dave");
+        eve = keyring.addFromUri("//Eve");
     });
 
     beforeEach(async () => {
@@ -40,7 +42,11 @@ describe("vaultsAPI", () => {
     it("should select random vault for issue", async () => {
         const polkaBTCCollateral = api.createType("PolkaBTC", 0);
         const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
-        assert.isTrue(randomVault.toHuman() === dave.address || randomVault.toHuman() === charlie.address);
+        assert.isTrue(
+            randomVault.toHuman() === dave.address ||
+                randomVault.toHuman() === charlie.address ||
+                randomVault.toHuman() === eve.address
+        );
     });
 
     it("should fail if no vault for issuing is found", async () => {
@@ -51,7 +57,11 @@ describe("vaultsAPI", () => {
     it("should select random vault for redeem", async () => {
         const polkaBTCCollateral = api.createType("PolkaBTC", 0);
         const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
-        assert.isTrue(randomVault.toHuman() === dave.address || randomVault.toHuman() === charlie.address);
+        assert.isTrue(
+            randomVault.toHuman() === dave.address ||
+                randomVault.toHuman() === charlie.address ||
+                randomVault.toHuman() === eve.address
+        );
     });
 
     it("should fail if no vault for redeeming is found", async () => {

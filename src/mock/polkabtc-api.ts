@@ -14,13 +14,14 @@ import {
     TreasuryAPI,
     SystemAPI,
     ReplaceAPI,
+    RefundAPI,
 } from "../apis";
 import { MockIssueAPI } from "./apis/issue";
 import { MockRedeemAPI } from "./apis/redeem";
 import { MockVaultsAPI } from "./apis/vaults";
 import { MockStakedRelayerAPI } from "./apis/staked-relayer";
 import { PolkaBTCAPI } from "../polkabtc-api";
-import { StakedRelayerClient } from "../http";
+import { FaucetClient, StakedRelayerClient } from "../http";
 import { MockOracleAPI } from "./apis/oracle";
 import { MockBTCCoreAPI } from "./apis/btc-core";
 import { MockBTCRelayAPI } from "./apis/btc-relay";
@@ -28,6 +29,7 @@ import { MockCollateralAPI } from "./apis/collateral";
 import { MockTreasuryAPI } from "./apis/treasury";
 import { MockSystemAPI } from "./apis/system";
 import { MockReplaceAPI } from "./apis/replace";
+import { MockRefundAPI } from "./apis/refund";
 
 export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
@@ -35,6 +37,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly redeem: RedeemAPI;
     public readonly stakedRelayer: StakedRelayerAPI;
     public readonly relayer: StakedRelayerClient;
+    public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
     public readonly btcRelay: BTCRelayAPI;
@@ -42,6 +45,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly treasury: TreasuryAPI;
     public readonly system: SystemAPI;
     public readonly replace: ReplaceAPI;
+    public readonly refund: RefundAPI;
 
     constructor(readonly api: ApiPromise, private _account?: AddressOrPair) {
         this.vaults = new MockVaultsAPI();
@@ -49,6 +53,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.redeem = new MockRedeemAPI();
         this.stakedRelayer = new MockStakedRelayerAPI();
         this.relayer = new StakedRelayerClient("");
+        this.faucet = new FaucetClient("");
         this.oracle = new MockOracleAPI();
         this.btcCore = new MockBTCCoreAPI();
         this.btcRelay = new MockBTCRelayAPI();
@@ -56,6 +61,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.treasury = new MockTreasuryAPI();
         this.system = new MockSystemAPI();
         this.replace = new MockReplaceAPI();
+        this.refund = new MockRefundAPI();
     }
 
     setAccount(account: AddressOrPair, _signer?: Signer): void {

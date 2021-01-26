@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
 import { createPolkadotAPI } from "../../../src/factory";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 
 describe("BTCCore testnet", function () {
@@ -14,7 +14,7 @@ describe("BTCCore testnet", function () {
     let btcCore: BTCCoreAPI;
 
     beforeEach(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         btcCore = new DefaultBTCCoreAPI("testnet");
     });
 
@@ -114,33 +114,23 @@ describe("BTCCore regtest", function () {
 
     let api: ApiPromise;
     let btcCore: BTCCoreAPI;
+    let bitcoinCoreClient: BitcoinCoreClient;
 
-    beforeEach(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+    before(async () => {
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
     });
 
-    afterEach(async () => {
+    after(async () => {
         await api.disconnect();
     });
 
     describe("getTxIdByRecipientAddress", () => {
         it("should return correct tx id", async () => {
-            const bitcoinCoreClient = new BitcoinCoreClient(
-                "regtest",
-                "0.0.0.0",
-                "rpcuser",
-                "rpcpassword",
-                "18443",
-                "Alice"
-            );
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00022244";
-            const txData = await bitcoinCoreClient.sendBtcTxAndMine(
-                recipientAddress,
-                amountAsBtcString,
-                6
-            );
+            const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amountAsBtcString, 6);
             const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
         });
@@ -148,14 +138,6 @@ describe("BTCCore regtest", function () {
 
     describe("getTxByOpreturn", () => {
         it("should return correct tx id", async () => {
-            const bitcoinCoreClient = new BitcoinCoreClient(
-                "regtest",
-                "0.0.0.0",
-                "rpcuser",
-                "rpcpassword",
-                "18443",
-                "Alice"
-            );
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00029";
@@ -167,6 +149,32 @@ describe("BTCCore regtest", function () {
             );
             const txid = await btcCore.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
+        });
+    });
+
+    describe("getTxStatus", () => {
+        it("should return 0 confirmations", async () => {
+            const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
+            const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
+            const amountAsBtcString = "0.00029";
+            const txData = await bitcoinCoreClient.broadcastTx(
+                recipientAddress,
+                amountAsBtcString,
+                opReturnValue
+            );
+            // transaction in mempool
+            let status = await btcCore.getTransactionStatus(txData.txid);
+            assert.strictEqual(status.confirmations, 0);
+
+            // transaction in the latest block
+            await bitcoinCoreClient.mineBlocks(1);
+            status = await btcCore.getTransactionStatus(txData.txid);
+            assert.strictEqual(status.confirmations, 0);
+
+            // transaction in the parent of the latest block
+            await bitcoinCoreClient.mineBlocks(1);
+            status = await btcCore.getTransactionStatus(txData.txid);
+            assert.strictEqual(status.confirmations, 1);
         });
     });
 });

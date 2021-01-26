@@ -5,7 +5,7 @@ import { DefaultRedeemAPI } from "../../../src/apis/redeem";
 import { createPolkadotAPI } from "../../../src/factory";
 import { Vault } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint } from "../../config";
 import { DefaultIssueAPI } from "../../../src/apis/issue";
 import { btcToSat, stripHexPrefix, satToBTC } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
@@ -26,7 +26,7 @@ describe("redeem", () => {
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
 
     before(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
     });

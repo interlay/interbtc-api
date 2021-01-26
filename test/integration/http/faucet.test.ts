@@ -1,13 +1,13 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { FaucetClient } from "../../../src/http";
 import { createPolkadotAPI } from "../../../src/factory";
-import { defaultEndpoint } from "../../config";
+import { defaultParachainEndpoint, defaultFaucetEndpoint } from "../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountData } from "@polkadot/types/interfaces/balances";
 import { assert } from "../../chai";
 import Big from "big.js";
 
-describe.skip("Faucet", function () {
+describe("Faucet", function () {
     this.timeout(100000);
 
     let api: ApiPromise;
@@ -17,11 +17,8 @@ describe.skip("Faucet", function () {
     let bob: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultEndpoint);
-        // TODO: Replace url with the one exposed from docker-compose
-        // after the faucet is released as a service
-        const url = "http://localhost:3034";
-        faucet = new FaucetClient(url);
+        api = await createPolkadotAPI(defaultParachainEndpoint);
+        faucet = new FaucetClient(defaultFaucetEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
     });

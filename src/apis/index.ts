@@ -1,6 +1,7 @@
 export { VaultsAPI } from "./vaults";
 export { IssueAPI, IssueRequestExt } from "./issue";
 export { RedeemAPI, RedeemRequestExt } from "./redeem";
+export { RefundAPI, RefundRequestExt } from "./refund";
 export { StakedRelayerAPI } from "./staked-relayer";
 export { OracleAPI } from "./oracle";
 export { BTCCoreAPI } from "./btc-core";
