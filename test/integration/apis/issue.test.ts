@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { H256, Hash } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
-import { DefaultIssueAPI } from "../../../src/apis/issue";
+import { DefaultIssueAPI, IssueRequestResult } from "../../../src/apis/issue";
 import { createPolkadotAPI } from "../../../src/factory";
 import { H256Le, Vault, PolkaBTC } from "../../../src/interfaces/default";
 import { btcToSat, dotToPlanck, satToBTC } from "../../../src/utils";
@@ -11,14 +11,12 @@ import { assert, expect } from "../../chai";
 import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
-import BN from "bn.js";
 import { fail } from "assert";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 import { Buffer } from "buffer";
 import sinon from "sinon";
 import { DefaultCollateralAPI } from "../../../src/apis/collateral";
-
-export type RequestResult = { hash: Hash; vault: Vault };
+import Big from "big.js";
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -27,8 +25,6 @@ function sleep(ms: number): Promise<void> {
 describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
-    let collateralAPI: DefaultCollateralAPI;
-    let treasuryAPI: DefaultTreasuryAPI;
     let btcCoreAPI: DefaultBTCCoreAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -41,7 +37,6 @@ describe("issue", () => {
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
-        treasuryAPI = new DefaultTreasuryAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
@@ -51,7 +46,6 @@ describe("issue", () => {
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
 
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
-        collateralAPI = new DefaultCollateralAPI(api);
         sandbox = sinon.createSandbox();
     });
 
@@ -78,7 +72,7 @@ describe("issue", () => {
         it("should fail if no account is set", async () => {
             const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
             const amount = api.createType("Balance", 10);
-            assert.isRejected(tmpIssueAPI.request(amount));
+            await assert.isRejected(tmpIssueAPI.request(amount));
         });
 
         it("should request issue", async () => {
@@ -108,7 +102,7 @@ describe("issue", () => {
             const txId: H256Le = <H256Le>{};
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
-            assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
+            await assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
         });
 
         it("should consider execution successful if `isExecutionSuccessful` returns true", async () => {
@@ -130,19 +124,92 @@ describe("issue", () => {
         });
 
         it("should request and auto-execute issue", async () => {
-            await issue("0.001", "Charlie", true);
+            const amount = "0.001";
+            const issueResult = await issue(
+                api,
+                btcCoreAPI,
+                bitcoinCoreClient,
+                keyring,
+                amount,
+                "Alice",
+                "Charlie",
+                true,
+                false
+            );
+
+            assert.equal(
+                satToBTC(
+                    issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance.toString()).toString()
+                ),
+                amount,
+                "Final balance was not increased by the exact amount specified"
+            );
+
+            assert.isTrue(
+                issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
+                "Issue-Redeem were more expensive than 1 DOT"
+            );
         });
 
         it("should request and auto-execute issue", async () => {
-            await issue("0.0000121", "Charlie", true);
+            const amount = "0.0000121";
+            const issueResult = await issue(
+                api,
+                btcCoreAPI,
+                bitcoinCoreClient,
+                keyring,
+                amount,
+                "Alice",
+                "Charlie",
+                true,
+                false
+            );
+            assert.equal(
+                satToBTC(
+                    issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance.toString()).toString()
+                ),
+                amount,
+                "Final balance was not increased by the exact amount specified"
+            );
+
+            assert.isTrue(
+                issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
+                "Issue-Redeem were more expensive than 1 DOT"
+            );
         });
 
         it("should fail to request a value finer than 1 Satoshi", async () => {
-            await assert.isRejected(issue("0.000012111", "Charlie", true));
+            const amount = "0.00000121";
+            await assert.isRejected(
+                issue(api, btcCoreAPI, bitcoinCoreClient, keyring, amount, "Alice", "Charlie", true, false)
+            );
         });
 
         it("should request and manually execute issue", async () => {
-            await issue("0.001", "Dave", false);
+            const amount = "0.001";
+            const issueResult = await issue(
+                api,
+                btcCoreAPI,
+                bitcoinCoreClient,
+                keyring,
+                amount,
+                "Alice",
+                "Dave",
+                false,
+                false
+            );
+            assert.equal(
+                satToBTC(
+                    issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance.toString()).toString()
+                ),
+                amount,
+                "Final balance was not increased by the exact amount specified"
+            );
+
+            assert.isTrue(
+                issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
+                "Issue-Redeem were more expensive than 1 DOT"
+            );
         });
     });
 
@@ -246,64 +313,92 @@ describe("issue", () => {
         );
         return { issueId, txId, merkleProof, rawTx };
     }
-
-    async function issue(amount: string, vaultName: string, autoExecute: boolean) {
-        issueAPI.setAccount(alice);
-        const aliceAccountId = api.createType("AccountId", alice.address);
-        const initialBalanceDOT = await collateralAPI.balanceDOT(aliceAccountId);
-        const initialBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(aliceAccountId);
-        const blocksToMine = 3;
-        keyring = new Keyring({ type: "sr25519" });
-        const vault = keyring.addFromUri("//" + vaultName);
-        const vaultAccountId = api.createType("AccountId", vault.address);
-
-        // request issue
-        let amountAsBtcString = amount;
-        const amountAsSatoshiString = btcToSat(amountAsBtcString);
-        if (amountAsSatoshiString === undefined) {
-            fail();
-        }
-        const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-        const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
-        const issueRequestId = requestResult.id.toString();
-        const issueRequest = await issueAPI.getRequestById(issueRequestId);
-        amountAsBtcString = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
-
-        // send btc tx
-        const vaultBtcAddress = requestResult.vault.wallet.btcAddress;
-        if (vaultBtcAddress === undefined) {
-            throw new Error("Undefined vault address returned from RequestIssue");
-        }
-        const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, blocksToMine);
-
-        if (autoExecute === false) {
-            // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            const merkleProof = await btcCoreAPI.getMerkleProof(txData.txid);
-            const parsedIssuedId = api.createType("H256", requestResult.id);
-            // reverse endianness (expects little-endian)
-            const parsedTxId = api.createType("H256", "0x" + Buffer.from(txData.txid, "hex").reverse().toString("hex"));
-            const parsedMerkleProof = api.createType("Bytes", "0x" + merkleProof);
-            const parsedRawTx = api.createType("Bytes", "0x" + txData.rawTx);
-            await issueAPI.execute(parsedIssuedId, parsedTxId, parsedMerkleProof, parsedRawTx);
-        } else {
-            // wait for vault to execute issue
-            while (!(await issueAPI.getRequestById(issueRequestId)).completed.isTrue) {
-                await sleep(1000);
-            }
-        }
-
-        // check issuing worked
-        const finalBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(aliceAccountId);
-        assert.equal(
-            satToBTC(finalBalancePolkaBTC.toBn().sub(initialBalancePolkaBTC.toBn()).toString()),
-            amount,
-            "Final balance was not increased by the exact amount specified"
-        );
-
-        const finalBalanceDOT = await collateralAPI.balanceDOT(aliceAccountId);
-        assert.isTrue(
-            initialBalanceDOT.sub(finalBalanceDOT).lt(new BN(dotToPlanck("1") as string)),
-            "Issue-Redeem were more expensive than 1 DOT"
-        );
-    }
 });
+
+export interface IssueResult {
+    request: IssueRequestResult;
+    initialDotBalance: Big;
+    finalDotBalance: Big;
+    initialPolkaBtcBalance: Big;
+    finalPolkaBtcBalance: Big;
+}
+
+export async function issue(
+    api: ApiPromise,
+    btcCoreAPI: DefaultBTCCoreAPI,
+    bitcoinCoreClient: BitcoinCoreClient,
+    keyring: Keyring,
+    amount: string,
+    requesterName: string,
+    vaultName: string,
+    autoExecute: boolean,
+    triggerRefund: boolean
+): Promise<IssueResult> {
+    const treasuryAPI = new DefaultTreasuryAPI(api);
+    const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+    const collateralAPI = new DefaultCollateralAPI(api);
+
+    const requester = keyring.addFromUri("//" + requesterName);
+    issueAPI.setAccount(requester);
+    const requesterAccountId = api.createType("AccountId", requester.address);
+    const initialBalanceDOT = await collateralAPI.balanceDOT(requesterAccountId);
+    const initialBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(requesterAccountId);
+    const blocksToMine = 3;
+    keyring = new Keyring({ type: "sr25519" });
+    const vault = keyring.addFromUri("//" + vaultName);
+    const vaultAccountId = api.createType("AccountId", vault.address);
+
+    // request issue
+    let amountAsBtcString = amount;
+    const amountAsSatoshiString = btcToSat(amountAsBtcString);
+    if (amountAsSatoshiString === undefined) {
+        fail();
+    }
+    const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
+    const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
+    const issueRequestId = requestResult.id.toString();
+    const issueRequest = await issueAPI.getRequestById(issueRequestId);
+    amountAsBtcString = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
+
+    if (triggerRefund) {
+        // Send 1 more Btc than needed
+        amountAsBtcString = new Big(amountAsBtcString).add(1).toString();
+    }
+
+    // send btc tx
+    const vaultBtcAddress = requestResult.vault.wallet.btcAddress;
+    if (vaultBtcAddress === undefined) {
+        throw new Error("Undefined vault address returned from RequestIssue");
+    }
+
+    const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, blocksToMine);
+
+    if (autoExecute === false) {
+        // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
+        const merkleProof = await btcCoreAPI.getMerkleProof(txData.txid);
+        const parsedIssuedId = api.createType("H256", requestResult.id);
+        // reverse endianness (expects little-endian)
+        const parsedTxId = api.createType("H256", "0x" + Buffer.from(txData.txid, "hex").reverse().toString("hex"));
+        const parsedMerkleProof = api.createType("Bytes", "0x" + merkleProof);
+        const parsedRawTx = api.createType("Bytes", "0x" + txData.rawTx);
+        await issueAPI.execute(parsedIssuedId, parsedTxId, parsedMerkleProof, parsedRawTx);
+    } else {
+        // wait for vault to execute issue
+        while (!(await issueAPI.getRequestById(issueRequestId)).completed.isTrue) {
+            await sleep(1000);
+        }
+    }
+
+    // check issuing worked
+    const finalBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(requesterAccountId);
+
+    const finalBalanceDOT = await collateralAPI.balanceDOT(requesterAccountId);
+
+    return {
+        request: requestResult,
+        initialDotBalance: new Big(initialBalanceDOT.toString()),
+        finalDotBalance: new Big(finalBalanceDOT.toString()),
+        initialPolkaBtcBalance: new Big(initialBalancePolkaBTC.toString()),
+        finalPolkaBtcBalance: new Big(finalBalancePolkaBTC.toString()),
+    };
+}

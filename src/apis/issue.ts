@@ -5,13 +5,19 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
-import { pagedIterator, decodeFixedPointType, sendLoggedTx, roundUpBtcToNearestSatoshi, encodeParachainRequest } from "../utils";
+import {
+    pagedIterator,
+    decodeFixedPointType,
+    sendLoggedTx,
+    roundUpBtcToNearestSatoshi,
+    encodeParachainRequest,
+} from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
-export type RequestResult = { id: Hash; vault: VaultExt };
+export type IssueRequestResult = { id: Hash; vault: VaultExt };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -23,7 +29,7 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 }
 
 export interface IssueAPI {
-    request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<RequestResult>;
+    request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<IssueRequestResult>;
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
     cancel(issueId: H256): Promise<void>;
     setAccount(account: AddressOrPair): void;
@@ -117,7 +123,7 @@ export class DefaultIssueAPI implements IssueAPI {
      * a random vault will be selected
      * @returns An object of type {issueId, vault} if the request succeeded. The function throws an error otherwise.
      */
-    async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<RequestResult> {
+    async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
@@ -250,7 +256,7 @@ export class DefaultIssueAPI implements IssueAPI {
         // Compute the ceiling of the griefing collateral, because the parachain
         // ignores the decimal place (123.456 -> 123456), because there is nothing
         // smaller than 1 Planck
-        const griefingCollateralPlanckRoundedUp = (new Big(griefingCollateralPlanck)).round(0, 3).toString();
+        const griefingCollateralPlanckRoundedUp = new Big(griefingCollateralPlanck).round(0, 3).toString();
         return griefingCollateralPlanckRoundedUp;
     }
 

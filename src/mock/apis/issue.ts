@@ -6,7 +6,7 @@ import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
-import { IssueAPI, RequestResult, IssueRequestExt } from "../../apis/issue";
+import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../apis/issue";
 import { VaultExt } from "../../apis/vaults";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 
@@ -19,7 +19,7 @@ export class MockIssueAPI implements IssueAPI {
         throw new Error("Method not implemented.");
     }
 
-    request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<RequestResult> {
+    request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<IssueRequestResult> {
         const registry = new TypeRegistry();
         const id = new U8aFixed(registry, "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c") as Hash;
         const vault = {} as VaultExt;
