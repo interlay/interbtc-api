@@ -16,8 +16,10 @@ export class MockTreasuryAPI implements TreasuryAPI {
     }
 
     async transfer(destination: string, amountSatoshi: string): Promise<void> {
+        return;
     }
 
     setAccount(account: AddressOrPair): void {
+        return;
     }
 }
