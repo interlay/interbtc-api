@@ -7,7 +7,7 @@ import { EventRecord } from "@polkadot/types/interfaces";
 export interface TreasuryAPI {
     totalPolkaBTC(): Promise<Balance>;
     balancePolkaBTC(id: AccountId): Promise<Balance>;
-    transfer(destination: string, amount: String): Promise<void>;
+    transfer(destination: string, amount: string): Promise<void>;
     setAccount(account: AddressOrPair): void;
 }
 
