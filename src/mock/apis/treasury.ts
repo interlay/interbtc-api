@@ -15,7 +15,7 @@ export class MockTreasuryAPI implements TreasuryAPI {
         return new u128(registry, 128);
     }
 
-    async transfer(destination: string, amount: string): Promise<void> {
+    async transfer(destination: string, amountSatoshi: string): Promise<void> {
     }
 
     setAccount(account: AddressOrPair): void {

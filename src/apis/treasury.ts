@@ -7,7 +7,7 @@ import { EventRecord } from "@polkadot/types/interfaces";
 export interface TreasuryAPI {
     totalPolkaBTC(): Promise<Balance>;
     balancePolkaBTC(id: AccountId): Promise<Balance>;
-    transfer(destination: string, amount: string): Promise<void>;
+    transfer(destination: string, amountSatoshi: string): Promise<void>;
     setAccount(account: AddressOrPair): void;
 }
 
@@ -56,14 +56,14 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
 
     /**
      * @param destination The address of a user
-     * @param amount The amount in satoshi to transfer
+     * @param amountSatoshi The amount in satoshi to transfer
      */
-    async transfer(destination: string, amount: string): Promise<void> {
+    async transfer(destination: string, amountSatoshi: string): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
 
-        const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amount);
+        const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSatoshi);
         const result = await sendLoggedTx(transferTransaction, this.account, this.api);
         
         if (!this.isTransferSuccessful(result.events)) {
