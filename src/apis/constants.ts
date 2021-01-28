@@ -11,12 +11,8 @@ export interface ConstantsAPI {
     getStakedRelayersMinimumDeposit(): DOT;
     getStakedRelayersMinimumStake(): DOT;
     getStakedRelayersVotingPeriod(): BlockNumber;
-    getSystemBlockExecutionWeight(): Weight;
     getSystemBlockHashCount(): BlockNumber;
     getSystemDbWeight(): RuntimeDbWeight;
-    getSystemExtrinsicBaseWeight(): Weight;
-    getSystemMaximumBlockLength(): u32;
-    getSystemMaximumBlockWeight(): Weight;
     getTimestampMinimumPeriod(): Moment;
     getTransactionByteFee(): BalanceOf;
     getTransactionWeightToFee(): Vec<WeightToFeeCoefficient>;
@@ -61,14 +57,6 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     }
 
     /**
-     * @returns The weight of the overhead invoked on the block import process, independent of the
-     * extrinsics included in that block.
-     */
-    getSystemBlockExecutionWeight(): Weight {
-        return this.api.consts.system.blockExecutionWeight;
-    }
-
-    /**
      * @returns Maximum number of block number to block hash mappings to keep (oldest pruned first).
      */
     getSystemBlockHashCount(): BlockNumber {
@@ -80,32 +68,6 @@ export class DefaultConstantsAPI implements ConstantsAPI {
      */
     getSystemDbWeight(): RuntimeDbWeight {
         return this.api.consts.system.dbWeight;
-    }
-
-    /**
-     * @returns The base weight of any extrinsic processed by the runtime, independent of the 
-     * logic of that extrinsic. (Signature verification, nonce increment, fee, etc...)
-     */
-    getSystemExtrinsicBaseWeight(): Weight {
-        return this.api.consts.system.extrinsicBaseWeight;
-    }
-
-    /**
-     * @returns Maximum size of all encoded transactions (in bytes) that are allowed in one block.
-     */
-    getSystemMaximumBlockLength(): u32 {
-        return this.api.consts.system.maximumBlockLength;
-    }
-
-    /**
-     * Weights are a fixed number designed to manage the time is takes to validate a block. 
-     * Each transaction has a base weight that accounts for the overhead of inclusion 
-     * (e.g. signature verification) as well as a dispatch weight that accounts for the 
-     * time to execute the transaction. 
-     * @returns The maximum weight allowed by the parachain, currently 2 seconds of compute with a 6 second average block time.
-     */
-    getSystemMaximumBlockWeight(): Weight {
-        return this.api.consts.system.maximumBlockWeight;
     }
 
     /**
