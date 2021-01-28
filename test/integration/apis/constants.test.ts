@@ -54,13 +54,6 @@ describe("Constants", function () {
         });
     });
 
-    describe("getSystemBlockExecutionWeight", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getSystemBlockExecutionWeight();
-            assert.isDefined(returnValue);
-        });
-    });
-
     describe("getSystemBlockHashCount", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getSystemBlockHashCount();
@@ -71,27 +64,6 @@ describe("Constants", function () {
     describe("getSystemDbWeight", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getSystemDbWeight();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getSystemExtrinsicBaseWeight", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getSystemExtrinsicBaseWeight();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getSystemMaximumBlockLength", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getSystemMaximumBlockLength();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getSystemMaximumBlockWeight", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getSystemMaximumBlockWeight();
             assert.isDefined(returnValue);
         });
     });
