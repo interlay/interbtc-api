@@ -83,10 +83,9 @@ export class DefaultOracleAPI implements OracleAPI {
 
     /**
      * Obtains the current fees for BTC transactions, in satoshi/byte.
-     * @returns An array of three numbers whose first value is the estimated
-     * fee for inclusion in the next block (about 10 minutes), the second value
-     * is the fee for inclusion in the next 3 blocks (~30 minutes), and the
-     * third is the fee for inclusion in the next 6 blocks, or ~60 minutes).
+     * @returns An object with the values `fast` (estimated fee for inclusion
+     * in the next block - about 10 minutes), `half` (fee for the next 3 blocks or ~30 minutes)
+     * and `hour` (fee for inclusion in the next 6 blocks, or ~60 minutes).
      */
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
         const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes();
@@ -95,9 +94,9 @@ export class DefaultOracleAPI implements OracleAPI {
 
     /**
      * Send a transaction to set the current fee rates for BTC transactions
-     * @param fast Estimated Satoshis per bytes to get included in the next block (~10 min)
-     * @param half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
-     * @param hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
+     * @param fees.fast Estimated Satoshis per bytes to get included in the next block (~10 min)
+     * @param fees.half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
+     * @param fees.hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
      */
     async setBtcTxFeesPerByte({fast, half, hour}: BtcTxFees): Promise<void> {
         if (!this.account) {
