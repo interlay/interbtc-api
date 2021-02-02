@@ -1,5 +1,5 @@
 import { Balance, BalanceOf, BlockNumber, Moment, RuntimeDbWeight, Weight } from "@polkadot/types/interfaces/runtime";
-import { DOT } from "@interlay/polkabtc/interfaces/default";
+import { DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { u32, u64 } from "@polkadot/types/primitive";
 import { Vec } from "@polkadot/types/codec";
@@ -19,7 +19,7 @@ export interface ConstantsAPI {
 }
 
 export class DefaultConstantsAPI implements ConstantsAPI {
-    constructor(private api: ApiPromise) {}
+    constructor(private api: ApiPromise) { }
 
     /**
      * @returns The minimum amount of DOT required to keep an account open.
