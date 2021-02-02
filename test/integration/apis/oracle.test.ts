@@ -53,13 +53,13 @@ describe("OracleAPI", () => {
         });
 
         it("should set BTC tx fees", async () => {
-            const prev = (await oracle.getBtcTxFeesPerByte()).map((fee) => fee.toString());
-            const fees = ["505", "303", "202"];
-            await oracle.setBtcTxFeesPerByte(fees[0], fees[1], fees[2]);
-            const newTxFees = (await oracle.getBtcTxFeesPerByte()).map((fee) => fee.toString());
-            assert.sameOrderedMembers(fees, newTxFees);
+            const prev = await oracle.getBtcTxFeesPerByte();
+            const fees = {fast: 505, half: 303, hour: 202};
+            await oracle.setBtcTxFeesPerByte(fees);
+            const newTxFees = await oracle.getBtcTxFeesPerByte();
+            assert.deepEqual(fees, newTxFees);
 
-            await oracle.setBtcTxFeesPerByte(prev[0], prev[1], prev[2]);
+            await oracle.setBtcTxFeesPerByte(prev);
         });
     });
 });

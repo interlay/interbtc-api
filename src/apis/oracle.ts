@@ -16,16 +16,22 @@ export type OracleInfo = {
     lastUpdate: Date;
 };
 
+export type BtcTxFees = {
+    fast: number;
+    half: number;
+    hour: number;
+};
+
 export interface OracleAPI {
     getExchangeRate(): Promise<Big>;
-    getBtcTxFeesPerByte(): Promise<[number, number, number]>;
+    getBtcTxFeesPerByte(): Promise<BtcTxFees>;
     getFeed(): Promise<string>;
     getLastExchangeRateTime(): Promise<Date>;
     getOracleNames(): Promise<Array<string>>;
     isOnline(): Promise<boolean>;
     getInfo(): Promise<OracleInfo>;
     setExchangeRate(exchangeRate: string): Promise<void>;
-    setBtcTxFeesPerByte(fast: string, half: string, hour: string): Promise<void>;
+    setBtcTxFeesPerByte(fees: BtcTxFees): Promise<void>;
     setAccount(account: AddressOrPair): void;
     getRawExchangeRate(): Promise<Big>;
 }
@@ -82,9 +88,9 @@ export class DefaultOracleAPI implements OracleAPI {
      * is the fee for inclusion in the next 3 blocks (~30 minutes), and the
      * third is the fee for inclusion in the next 6 blocks, or ~60 minutes).
      */
-    async getBtcTxFeesPerByte(): Promise<[number, number, number]> {
+    async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
         const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes();
-        return [fees.fast.toNumber(), fees.half.toNumber(), fees.hour.toNumber()];
+        return { fast: fees.fast.toNumber(), half: fees.half.toNumber(), hour: fees.hour.toNumber() };
     }
 
     /**
@@ -93,7 +99,7 @@ export class DefaultOracleAPI implements OracleAPI {
      * @param half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
      * @param hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
      */
-    async setBtcTxFeesPerByte(fast: string, half: string, hour: string): Promise<void> {
+    async setBtcTxFeesPerByte({fast, half, hour}: BtcTxFees): Promise<void> {
         if (!this.account) {
             throw new Error("cannot set tx fees without setting account");
         }
