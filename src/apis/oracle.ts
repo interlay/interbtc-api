@@ -1,6 +1,7 @@
 import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
+import { u32 } from "@polkadot/types/primitive";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, sendLoggedTx, encodeUnsignedFixedPoint } from "../utils";
 import Big from "big.js";
@@ -24,6 +25,7 @@ export interface OracleAPI {
     isOnline(): Promise<boolean>;
     getInfo(): Promise<OracleInfo>;
     setExchangeRate(exchangeRate: string): Promise<void>;
+    setBtcTxFeesPerByte(fast: u32, half: u32, hour: u32): Promise<void>;
     setAccount(account: AddressOrPair): void;
     getRawExchangeRate(): Promise<Big>;
 }
@@ -32,7 +34,7 @@ export class DefaultOracleAPI implements OracleAPI {
     constructor(private api: ApiPromise, private account?: AddressOrPair) {}
 
     /**
-     * @returns An object of type OracleInfo 
+     * @returns An object of type OracleInfo
      */
     async getInfo(): Promise<OracleInfo> {
         return {
@@ -71,6 +73,20 @@ export class DefaultOracleAPI implements OracleAPI {
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
         const result = await sendLoggedTx(tx, this.account, this.api);
+    }
+
+    /**
+     * Send a transaction to set the current fee rates for BTC transactions
+     * @param fast Estimated Satoshis per bytes to get included in the next block (~10 min)
+     * @param half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
+     * @param hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
+     */
+    async setBtcTxFeesPerByte(fast: u32, half: u32, hour: u32): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot set tx fees without setting account");
+        }
+        const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
+        await sendLoggedTx(tx, this.account, this.api);
     }
 
     /**
