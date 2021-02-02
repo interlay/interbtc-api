@@ -5,7 +5,7 @@ import { GenericAccountId } from "@polkadot/types/generic";
 
 import { TypeRegistry, bool, U8aFixed } from "@polkadot/types";
 import BN from "bn.js";
-import { RefundAPI, RefundRequestExt, ReplaceAPI, ReplaceRequestExt } from "@interlay/polkabtc/apis";
+import { RefundAPI, RefundRequestExt, ReplaceAPI, ReplaceRequestExt } from "../../apis";
 
 export class MockRefundAPI implements RefundAPI {
 
@@ -50,7 +50,7 @@ export class MockRefundAPI implements RefundAPI {
             btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
             completed: new bool(registry, true),
             issue_id: new U8aFixed(registry, "0") as H256,
-        }; 
+        };
     }
 
 
