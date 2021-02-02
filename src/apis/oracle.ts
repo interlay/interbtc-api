@@ -1,7 +1,6 @@
-import { ErrorCode } from "../interfaces/default";
+import { BtcTxFeesPerByte, ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
-import { u32 } from "@polkadot/types/primitive";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, sendLoggedTx, encodeUnsignedFixedPoint } from "../utils";
 import Big from "big.js";
@@ -19,13 +18,14 @@ export type OracleInfo = {
 
 export interface OracleAPI {
     getExchangeRate(): Promise<Big>;
+    getBtcTxFeesPerByte(): Promise<[number, number, number]>;
     getFeed(): Promise<string>;
     getLastExchangeRateTime(): Promise<Date>;
     getOracleNames(): Promise<Array<string>>;
     isOnline(): Promise<boolean>;
     getInfo(): Promise<OracleInfo>;
     setExchangeRate(exchangeRate: string): Promise<void>;
-    setBtcTxFeesPerByte(fast: u32, half: u32, hour: u32): Promise<void>;
+    setBtcTxFeesPerByte(fast: string, half: string, hour: string): Promise<void>;
     setAccount(account: AddressOrPair): void;
     getRawExchangeRate(): Promise<Big>;
 }
@@ -72,7 +72,19 @@ export class DefaultOracleAPI implements OracleAPI {
         }
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
-        const result = await sendLoggedTx(tx, this.account, this.api);
+        await sendLoggedTx(tx, this.account, this.api);
+    }
+
+    /**
+     * Obtains the current fees for BTC transactions, in satoshi/byte.
+     * @returns An array of three numbers whose first value is the estimated
+     * fee for inclusion in the next block (about 10 minutes), the second value
+     * is the fee for inclusion in the next 3 blocks (~30 minutes), and the
+     * third is the fee for inclusion in the next 6 blocks, or ~60 minutes).
+     */
+    async getBtcTxFeesPerByte(): Promise<[number, number, number]> {
+        const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes();
+        return [fees.fast.toNumber(), fees.half.toNumber(), fees.hour.toNumber()];
     }
 
     /**
@@ -81,10 +93,19 @@ export class DefaultOracleAPI implements OracleAPI {
      * @param half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
      * @param hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
      */
-    async setBtcTxFeesPerByte(fast: u32, half: u32, hour: u32): Promise<void> {
+    async setBtcTxFeesPerByte(fast: string, half: string, hour: string): Promise<void> {
         if (!this.account) {
             throw new Error("cannot set tx fees without setting account");
         }
+        [fast, half, hour].forEach((param) => {
+            const big = new Big(param);
+            if (!big.round().eq(big)) {
+                throw new Error("tx fees must be an integer amount of satoshi");
+            }
+            if (big.lt(0)) {
+                throw new Error("tx fees must be a positive amount of satoshi");
+            }
+        });
         const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
         await sendLoggedTx(tx, this.account, this.api);
     }
