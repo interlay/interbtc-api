@@ -1,6 +1,6 @@
 import { AddressOrPair } from "@polkadot/api/types";
 import { OracleAPI } from "../../apis";
-import { OracleInfo } from "../../apis/oracle";
+import { BtcTxFees, OracleInfo } from "../../apis/oracle";
 import Big from "big.js";
 
 export class MockOracleAPI implements OracleAPI {
@@ -24,6 +24,10 @@ export class MockOracleAPI implements OracleAPI {
         return Promise.resolve(new Big(200));
     }
 
+    getBtcTxFeesPerByte(): Promise<BtcTxFees> {
+        return Promise.resolve({ fast: 500, half: 300, hour: 200 });
+    }
+
     getOracleNames(): Promise<Array<string>> {
         return Promise.resolve(["ChainLink"]);
     }
@@ -41,6 +45,10 @@ export class MockOracleAPI implements OracleAPI {
     }
 
     async setExchangeRate(_exchangeRate: string): Promise<void> {
+        return;
+    }
+
+    async setBtcTxFeesPerByte(_fees: BtcTxFees): Promise<void> {
         return;
     }
 

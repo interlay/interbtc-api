@@ -1,6 +1,6 @@
-import { ReplaceAPI } from "@interlay/polkabtc/apis";
+import { ReplaceAPI } from "../../apis";
 import { BlockNumber } from "@polkadot/types/interfaces";
-import { PolkaBTC, DOT } from "@interlay/polkabtc/interfaces/default";
+import { PolkaBTC, DOT } from "../../interfaces/default";
 import BN from "bn.js";
 import { ReplaceRequestExt } from "../../apis/replace";
 
