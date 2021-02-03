@@ -51,5 +51,15 @@ describe("OracleAPI", () => {
             // so that this test is idempotent
             await oracle.setExchangeRate(previousExchangeRate.toString());
         });
+
+        it("should set BTC tx fees", async () => {
+            const prev = await oracle.getBtcTxFeesPerByte();
+            const fees = {fast: 505, half: 303, hour: 202};
+            await oracle.setBtcTxFeesPerByte(fees);
+            const newTxFees = await oracle.getBtcTxFeesPerByte();
+            assert.deepEqual(fees, newTxFees);
+
+            await oracle.setBtcTxFeesPerByte(prev);
+        });
     });
 });
