@@ -46,7 +46,7 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
      */
     async verifyTransactionInclusion(
         txid: string,
-        confirmations: number = DEFAULT_STABLE_CONFIRMATIONS,
+        confirmations: number = DEFAULT_STABLE_CONFIRMATIONS
     ): Promise<void> {
         const merkleProof = await this.btcCore.getMerkleProof(txid);
         const confirmationsU32 = this.api.createType("u32", confirmations);
