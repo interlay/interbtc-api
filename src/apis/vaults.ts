@@ -20,8 +20,8 @@ import { Network } from "bitcoinjs-lib";
 
 export interface WalletExt {
     // network encoded btc addresses
-    publicKey: string,
-    btcAddress?: string,
+    publicKey: string;
+    btcAddress?: string;
     addresses: Array<string>;
 }
 

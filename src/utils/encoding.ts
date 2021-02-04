@@ -78,9 +78,12 @@ export interface DecodedRequestExt extends Omit<DecodedRequest, "btc_address"> {
     btc_address: string;
 }
 
-export function encodeParachainRequest<T extends DecodedRequest, K extends DecodedRequestExt>(req: T, network: Network): K {
-    return  {
+export function encodeParachainRequest<T extends DecodedRequest, K extends DecodedRequestExt>(
+    req: T,
+    network: Network
+): K {
+    return ({
         ...req,
         btc_address: encodeBtcAddress(req.btc_address, network),
-    } as unknown as K;
+    } as unknown) as K;
 }

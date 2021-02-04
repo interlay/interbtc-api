@@ -1,6 +1,4 @@
-import {
-    FundAccountJsonRpcRequest,
-} from "../interfaces/default";
+import { FundAccountJsonRpcRequest } from "../interfaces/default";
 import { getAPITypes } from "../factory";
 import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
@@ -26,9 +24,8 @@ export class FaucetClient extends JsonRpcClient {
 
     async fundAccount(account: AccountId): Promise<void> {
         const request = new this.constr["FundAccountJsonRpcRequest"](this.registry, {
-            account_id: account
+            account_id: account,
         });
         await this.post("fund_account", [request.toHex()]);
     }
-
 }

@@ -65,7 +65,7 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
 
         const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSatoshi);
         const result = await sendLoggedTx(transferTransaction, this.account, this.api);
-        
+
         if (!this.isTransferSuccessful(result.events)) {
             Promise.reject("Transfer failed");
         }

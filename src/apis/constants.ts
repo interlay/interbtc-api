@@ -19,7 +19,7 @@ export interface ConstantsAPI {
 }
 
 export class DefaultConstantsAPI implements ConstantsAPI {
-    constructor(private api: ApiPromise) { }
+    constructor(private api: ApiPromise) {}
 
     /**
      * @returns The minimum amount of DOT required to keep an account open.
