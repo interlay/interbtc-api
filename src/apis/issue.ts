@@ -73,7 +73,6 @@ export class DefaultIssueAPI implements IssueAPI {
                 return hash;
             }
         }
-
         throw new Error("Request transaction failed");
     }
 
@@ -89,7 +88,6 @@ export class DefaultIssueAPI implements IssueAPI {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -112,7 +110,6 @@ export class DefaultIssueAPI implements IssueAPI {
                 return true;
             }
         }
-
         return false;
     }
 
