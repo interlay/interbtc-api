@@ -91,12 +91,12 @@ describe("redeem", () => {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
 
-            const txData = await bitcoinCoreClient.sendBtcTxAndMine(
-                vaultBtcAddress,
-                txAmountRequired,
-                blocksToMine
-            );
+            const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, txAmountRequired, blocksToMine);
             assert.equal(Buffer.from(txData.txid, "hex").length, 32, "Transaction length not 32 bytes");
+
+            while (!(await issueAPI.getRequestById(issueRequestId)).completed.isTrue) {
+                await sleep(1000);
+            }
 
             // redeem
             redeemAPI.setAccount(alice);
@@ -110,6 +110,10 @@ describe("redeem", () => {
             assert.equal(Buffer.from(stripHexPrefix(id.toString()), "hex").length, 32, "Redeem ID length not 32 bytes");
         }
 
+        function sleep(ms: number): Promise<void> {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
         it("should request and execute issue, request redeem", async () => {
             const blocksToMine = 3;
             await requestAndCallRedeem(blocksToMine);
@@ -118,7 +122,7 @@ describe("redeem", () => {
         it("should request and execute issue, request (and wait for execute) redeem", async () => {
             const initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
-            requestAndCallRedeem(blocksToMine);
+            await requestAndCallRedeem(blocksToMine);
 
             // check redeeming worked
             const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
