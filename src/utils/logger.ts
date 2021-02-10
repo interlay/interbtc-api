@@ -64,7 +64,10 @@ function printEvents(events: EventRecord[], api: ApiPromise) {
         events.forEach(({ phase, event: { data, method, section } }) => {
             console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
         });
-    } else {
+    } else if (errorMessage !== "issue.IssueCompleted: ") {
+        // IssueCompleted errors occur due to the vault having
+        // already auto-executed the issuance. Future ability
+        // to select 
         throw new Error(errorMessage);
     }
 }

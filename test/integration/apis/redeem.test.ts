@@ -11,6 +11,7 @@ import { btcToSat, stripHexPrefix, satToBTC } from "../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
+import BN from "bn.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -62,7 +63,7 @@ describe("redeem", () => {
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
 
-        async function requestAndCallRedeem(blocksToMine: number) {
+        async function requestAndCallRedeem(blocksToMine: number, amountAsBtcString = "0.1", redeemAmountAsBtcString = "0.09") {
             const bitcoinCoreClient = new BitcoinCoreClient(
                 "regtest",
                 "0.0.0.0",
@@ -77,7 +78,6 @@ describe("redeem", () => {
 
             // request issue
             issueAPI.setAccount(alice);
-            const amountAsBtcString = "0.1";
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
@@ -100,7 +100,6 @@ describe("redeem", () => {
 
             // redeem
             redeemAPI.setAccount(alice);
-            const redeemAmountAsBtcString = "0.09";
             const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
@@ -122,11 +121,16 @@ describe("redeem", () => {
         it("should request and execute issue, request (and wait for execute) redeem", async () => {
             const initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
-            await requestAndCallRedeem(blocksToMine);
+            const amountAsBtcString = "0.1";
+            const redeemAmountAsBtcString = "0.09";
+            await requestAndCallRedeem(blocksToMine, amountAsBtcString, redeemAmountAsBtcString);
 
             // check redeeming worked
+            const issueAmountAsSatoshi = new BN(btcToSat(amountAsBtcString));
+            const redeemAmountAsSatoshi = new BN(btcToSat(redeemAmountAsBtcString));
+            const expectedBalanceDifferenceAfterRedeem = issueAmountAsSatoshi.sub(redeemAmountAsSatoshi);
             const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
-            assert.equal(initialBalance.toString(), finalBalance.toString());
+            assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem).toString(), finalBalance.toString());
         });
     });
 

@@ -8,6 +8,7 @@ import {
     planckToDOT,
     decodeFixedPointType,
     encodeBtcAddress,
+    satToBTC,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
@@ -317,7 +318,8 @@ export class DefaultVaultsAPI {
     async getIssuablePolkaBTC(): Promise<string> {
         const polkaBTCCapacityString = await this.getPolkaBTCCapacity();
         const polkaBTCCapacityBig = new Big(polkaBTCCapacityString);
-        const issuedPolkaBTCString = (await this.getTotalIssuedPolkaBTCAmount()).toString();
+        const issuedPolkaBTCSatoshiString = (await this.getTotalIssuedPolkaBTCAmount()).toString();
+        const issuedPolkaBTCString = satToBTC(issuedPolkaBTCSatoshiString);
         const issuedPolkaBTCBig = new Big(issuedPolkaBTCString);
         return polkaBTCCapacityBig.sub(issuedPolkaBTCBig).toString();
     }
