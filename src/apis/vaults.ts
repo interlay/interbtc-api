@@ -369,7 +369,7 @@ export class DefaultVaultsAPI {
     }
 
     async getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>> {
-        const customAPIRPC = this.api.rpc as any;
+        const customAPIRPC = this.api.rpc;
         try {
             const vaults: [AccountId, BalanceWrapper][] = await customAPIRPC.vaultRegistry.getPremiumRedeemVaults();
             return new Map(
