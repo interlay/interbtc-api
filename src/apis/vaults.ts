@@ -82,6 +82,7 @@ export interface VaultsAPI {
     getSlashableCollateral(vaultId: string, amount: string): Promise<string>;
     getPunishmentFee(): Promise<string>;
     getPolkaBTCCapacity(): Promise<string>;
+    getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>>;
 }
 
 export class DefaultVaultsAPI {
@@ -229,10 +230,10 @@ export class DefaultVaultsAPI {
         try {
             collateralization = newCollateral
                 ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
-                    vaultId,
-                    this.wrapCurrency(newCollateral),
-                    onlyIssued
-                )
+                      vaultId,
+                      this.wrapCurrency(newCollateral),
+                      onlyIssued
+                  )
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
@@ -364,6 +365,18 @@ export class DefaultVaultsAPI {
             return firstVaultWithSufficientTokens;
         } catch (e) {
             return Promise.reject("Did not find vault with sufficient locked BTC");
+        }
+    }
+
+    async getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>> {
+        const customAPIRPC = this.api.rpc as any;
+        try {
+            const vaults: [AccountId, BalanceWrapper][] = await customAPIRPC.vaultRegistry.getPremiumRedeemVaults();
+            return new Map(
+                vaults.map(([id, redeemableTokens]) => [id, this.unwrapCurrency(redeemableTokens) as PolkaBTC])
+            );
+        } catch (e) {
+            return Promise.reject("Did not find vault below the premium redeem threshold");
         }
     }
 
