@@ -147,6 +147,10 @@ export class MockVaultsAPI implements VaultsAPI {
         return "500";
     }
 
+    async getPolkaBTCCapacity(): Promise<string> {
+        return "500";
+    }
+
     async getLiquidationCollateralThreshold(): Promise<Big> {
         return new Big(0);
     }
