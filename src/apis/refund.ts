@@ -23,9 +23,7 @@ export interface RefundAPI {
 }
 
 export class DefaultRefundAPI {
-
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
-    }
+    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {}
 
     /**
      * Set an account to use when sending transactions from this API
@@ -80,5 +78,4 @@ export class DefaultRefundAPI {
         }
         return encodeRefundRequest(keyValuePair[1], this.btcNetwork);
     }
-
-} 
+}

@@ -1,4 +1,14 @@
-import { BlockApi, Status, TxApi, AddressApi, UTXO, VOut, Transaction, ScripthashApi } from "@interlay/esplora-btc-api";
+import {
+    BlockApi,
+    Status,
+    TxApi,
+    AddressApi,
+    UTXO,
+    VOut,
+    Transaction,
+    ScripthashApi,
+    Configuration,
+} from "@interlay/esplora-btc-api";
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
@@ -61,10 +71,11 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         default:
             basePath = network;
         }
-        this.blockApi = new BlockApi({ basePath });
-        this.txApi = new TxApi({ basePath });
-        this.scripthashApi = new ScripthashApi({ basePath });
-        this.addressApi = new AddressApi({ basePath });
+        const conf = new Configuration({ basePath });
+        this.blockApi = new BlockApi(conf);
+        this.txApi = new TxApi(conf);
+        this.scripthashApi = new ScripthashApi(conf);
+        this.addressApi = new AddressApi(conf);
     }
 
     /**

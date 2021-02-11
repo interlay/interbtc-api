@@ -8,7 +8,6 @@ import BN from "bn.js";
 import { RefundAPI, RefundRequestExt, ReplaceAPI, ReplaceRequestExt } from "../../apis";
 
 export class MockRefundAPI implements RefundAPI {
-
     list(): Promise<RefundRequestExt[]> {
         return Promise.resolve([]);
     }
@@ -52,7 +51,4 @@ export class MockRefundAPI implements RefundAPI {
             issue_id: new U8aFixed(registry, "0") as H256,
         };
     }
-
-
-
 }

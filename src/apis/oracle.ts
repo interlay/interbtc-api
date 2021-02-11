@@ -98,7 +98,7 @@ export class DefaultOracleAPI implements OracleAPI {
      * @param fees.half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
      * @param fees.hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
      */
-    async setBtcTxFeesPerByte({fast, half, hour}: BtcTxFees): Promise<void> {
+    async setBtcTxFeesPerByte({ fast, half, hour }: BtcTxFees): Promise<void> {
         if (!this.account) {
             throw new Error("cannot set tx fees without setting account");
         }

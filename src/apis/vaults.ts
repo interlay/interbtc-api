@@ -8,6 +8,7 @@ import {
     planckToDOT,
     decodeFixedPointType,
     encodeBtcAddress,
+    satToBTC,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
@@ -20,8 +21,8 @@ import { Network } from "bitcoinjs-lib";
 
 export interface WalletExt {
     // network encoded btc addresses
-    publicKey: string,
-    btcAddress?: string,
+    publicKey: string;
+    btcAddress?: string;
     addresses: Array<string>;
 }
 
@@ -80,6 +81,8 @@ export interface VaultsAPI {
     getMaxSLA(): Promise<string>;
     getSlashableCollateral(vaultId: string, amount: string): Promise<string>;
     getPunishmentFee(): Promise<string>;
+    getPolkaBTCCapacity(): Promise<string>;
+    getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>>;
 }
 
 export class DefaultVaultsAPI {
@@ -314,6 +317,15 @@ export class DefaultVaultsAPI {
      * locked by the vaults
      */
     async getIssuablePolkaBTC(): Promise<string> {
+        const polkaBTCCapacityString = await this.getPolkaBTCCapacity();
+        const polkaBTCCapacityBig = new Big(polkaBTCCapacityString);
+        const issuedPolkaBTCSatoshiString = (await this.getTotalIssuedPolkaBTCAmount()).toString();
+        const issuedPolkaBTCString = satToBTC(issuedPolkaBTCSatoshiString);
+        const issuedPolkaBTCBig = new Big(issuedPolkaBTCString);
+        return polkaBTCCapacityBig.sub(issuedPolkaBTCBig).toString();
+    }
+
+    async getPolkaBTCCapacity(): Promise<string> {
         const totalLockedDotAsPlanck = await this.collateralAPI.totalLockedDOT();
         const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
         const oracle = new DefaultOracleAPI(this.api);
@@ -353,6 +365,24 @@ export class DefaultVaultsAPI {
             return firstVaultWithSufficientTokens;
         } catch (e) {
             return Promise.reject("Did not find vault with sufficient locked BTC");
+        }
+    }
+
+    /**
+     * @returns Vaults below the premium redeem threshold.
+     */
+    async getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>> {
+        const customAPIRPC = this.api.rpc;
+        try {
+            const vaults = await customAPIRPC.vaultRegistry.getPremiumRedeemVaults();
+            return new Map(
+                vaults.map(([id, redeemableTokens]) => [
+                    this.api.createType("AccountId", id.toString()),
+                    this.unwrapCurrency(redeemableTokens) as PolkaBTC,
+                ])
+            );
+        } catch (e) {
+            return Promise.reject("Did not find vault below the premium redeem threshold");
         }
     }
 

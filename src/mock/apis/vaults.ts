@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, DOT } from "../../interfaces/default";
+import { PolkaBTC, Vault, DOT, BalanceWrapper } from "../../interfaces/default";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -103,6 +103,11 @@ export class MockVaultsAPI implements VaultsAPI {
         return vaults[0].id;
     }
 
+    async getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>> {
+        const vaults = await this.list();
+        return Promise.resolve(new Map([[vaults[0].id, vaults[0].issued_tokens]]));
+    }
+
     async getIssuedPolkaBTCAmount(_vaultId: AccountId): Promise<PolkaBTC> {
         return new BN(5) as PolkaBTC;
     }
@@ -144,6 +149,10 @@ export class MockVaultsAPI implements VaultsAPI {
     }
 
     async getIssuablePolkaBTC(): Promise<string> {
+        return "500";
+    }
+
+    async getPolkaBTCCapacity(): Promise<string> {
         return "500";
     }
 

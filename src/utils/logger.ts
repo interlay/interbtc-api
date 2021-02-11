@@ -40,6 +40,7 @@ export async function sendLoggedTx(
 
 function printEvents(events: EventRecord[], api: ApiPromise) {
     let foundErrorEvent = false;
+    let errorMessage = "";
     events
         .flatMap(({ event }) => event.data)
         .forEach((eventData) => {
@@ -48,13 +49,13 @@ function printEvents(events: EventRecord[], api: ApiPromise) {
                     const decoded = api.registry.findMetaError(eventData.asModule);
                     const { documentation, name, section } = decoded;
                     if (documentation) {
-                        console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
+                        errorMessage = `${section}.${name}: ${documentation.join(" ")}`;
                     } else {
-                        console.log(`\t${section}.${name}`);
+                        errorMessage = `${section}.${name}`;
                     }
                     foundErrorEvent = true;
                 } catch (err) {
-                    console.log("\tCould not find transaction failure details.");
+                    errorMessage = "Error. Could not find transaction failure details.";
                 }
             }
         });
@@ -63,6 +64,10 @@ function printEvents(events: EventRecord[], api: ApiPromise) {
         events.forEach(({ phase, event: { data, method, section } }) => {
             console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
         });
+    } else if (errorMessage !== "issue.IssueCompleted: ") {
+        // IssueCompleted errors occur due to the vault having
+        // already auto-executed the issuance
+        throw new Error(errorMessage);
     }
 }
 
