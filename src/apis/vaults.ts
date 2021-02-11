@@ -230,10 +230,10 @@ export class DefaultVaultsAPI {
         try {
             collateralization = newCollateral
                 ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
-                      vaultId,
-                      this.wrapCurrency(newCollateral),
-                      onlyIssued
-                  )
+                    vaultId,
+                    this.wrapCurrency(newCollateral),
+                    onlyIssued
+                )
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
@@ -368,12 +368,18 @@ export class DefaultVaultsAPI {
         }
     }
 
+    /**
+     * @returns Vaults below the premium redeem threshold.
+     */
     async getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>> {
         const customAPIRPC = this.api.rpc;
         try {
-            const vaults: [AccountId, BalanceWrapper][] = await customAPIRPC.vaultRegistry.getPremiumRedeemVaults();
+            const vaults = await customAPIRPC.vaultRegistry.getPremiumRedeemVaults();
             return new Map(
-                vaults.map(([id, redeemableTokens]) => [id, this.unwrapCurrency(redeemableTokens) as PolkaBTC])
+                vaults.map(([id, redeemableTokens]) => [
+                    this.api.createType("AccountId", id.toString()),
+                    this.unwrapCurrency(redeemableTokens) as PolkaBTC,
+                ])
             );
         } catch (e) {
             return Promise.reject("Did not find vault below the premium redeem threshold");
