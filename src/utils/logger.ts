@@ -66,8 +66,7 @@ function printEvents(events: EventRecord[], api: ApiPromise) {
         });
     } else if (errorMessage !== "issue.IssueCompleted: ") {
         // IssueCompleted errors occur due to the vault having
-        // already auto-executed the issuance. Future ability
-        // to select 
+        // already auto-executed the issuance
         throw new Error(errorMessage);
     }
 }
