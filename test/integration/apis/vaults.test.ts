@@ -44,8 +44,8 @@ describe("vaultsAPI", () => {
         const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
-                randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address
+            randomVault.toHuman() === charlie.address ||
+            randomVault.toHuman() === eve.address
         );
     });
 
@@ -59,8 +59,8 @@ describe("vaultsAPI", () => {
         const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
-                randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address
+            randomVault.toHuman() === charlie.address ||
+            randomVault.toHuman() === eve.address
         );
     });
 
@@ -133,7 +133,7 @@ describe("vaultsAPI", () => {
 
         it("should get SLA", async () => {
             const sla = await vaultsAPI.getSLA(charlie.address);
-            assert.equal(sla, "0");
+            assert.isString(sla);
         });
     });
 
