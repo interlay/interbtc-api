@@ -3,7 +3,7 @@ import { DOT, PolkaBTC, ReplaceRequest } from "../interfaces/default";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Network } from "bitcoinjs-lib";
-import { encodeParachainRequest } from "../utils";
+import { encodeBtcAddress } from "../utils";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address"> {
     // network encoded btc address
@@ -11,7 +11,10 @@ export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address"> {
 }
 
 export function encodeReplaceRequest(req: ReplaceRequest, network: Network): ReplaceRequestExt {
-    return encodeParachainRequest<ReplaceRequest, ReplaceRequestExt>(req, network);
+    return ({
+        ...req,
+        btc_address: encodeBtcAddress(req.btc_address.unwrap(), network),
+    } as unknown) as ReplaceRequestExt;
 }
 
 export interface ReplaceAPI {
