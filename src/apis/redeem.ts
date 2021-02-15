@@ -220,18 +220,24 @@ export class DefaultRedeemAPI {
         callback: (requestRedeemId: string) => void
     ): Promise<() => void> {
         const expired = new Set();
-        const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
-            const redeemRequests = await this.mapForUser(account);
-            const redeemPeriod = await this.getRedeemPeriod();
-            const currentParachainBlockHeight = header.number.toBn();
-            redeemRequests.forEach((request, id) => {
-                if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
-                    expired.add(id);
-                    callback(stripHexPrefix(id.toString()));
-                }
+        try {
+            const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
+                const redeemRequests = await this.mapForUser(account);
+                const redeemPeriod = await this.getRedeemPeriod();
+                const currentParachainBlockHeight = header.number.toBn();
+                redeemRequests.forEach((request, id) => {
+                    if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
+                        expired.add(id);
+                        callback(stripHexPrefix(id.toString()));
+                    }
+                });
             });
-        });
-        return unsubscribe;
+            return unsubscribe;
+        } catch (error) {
+            console.log(`Error during expired redeem callback: ${error}`);
+        }
+        // as a fallback, return an empty void function
+        return () => { return; };
     }
 
     /**
