@@ -5,15 +5,25 @@ import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Network } from "bitcoinjs-lib";
 import { encodeBtcAddress } from "../utils";
 
-export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address"> {
+export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
     btc_address: string;
+    new_vault: string;
 }
 
 export function encodeReplaceRequest(req: ReplaceRequest, network: Network): ReplaceRequestExt {
+    let displayedBtcAddress = "Pending...";
+    let displayedNewVaultAddress = "Pending...";
+    if (req.btc_address.isSome) {
+        displayedBtcAddress = encodeBtcAddress(req.btc_address.unwrap(), network);
+    }
+    if (req.new_vault.isSome) {
+        displayedNewVaultAddress = req.new_vault.unwrap().toHuman();
+    }
     return ({
         ...req,
-        btc_address: encodeBtcAddress(req.btc_address.unwrap(), network),
+        btc_address: displayedBtcAddress,
+        new_vault: displayedNewVaultAddress,
     } as unknown) as ReplaceRequestExt;
 }
 
