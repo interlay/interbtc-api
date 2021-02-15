@@ -1,6 +1,6 @@
 {
   "name": "@interlay/polkabtc",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "description": "JavaScript library to interact with PolkaBTC",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
