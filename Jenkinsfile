@@ -34,7 +34,6 @@ pipeline {
         stage('Prepare') {
             steps {
               sh 'yarn install'
-              sh 'yarn lint'
             }
         }
         stage('Test') {
