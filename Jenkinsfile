@@ -34,6 +34,7 @@ pipeline {
         stage('Prepare') {
             steps {
               sh 'yarn'
+              sh 'yarn build'
             }
         }
         stage('Test') {
