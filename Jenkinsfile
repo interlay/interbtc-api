@@ -37,9 +37,18 @@ pipeline {
             }
         }
         stage('Test') {
-            steps {
-                sh 'yarn ci:test'
+          parallel {
+            stage('Unit tests') {
+              steps {
+                sh 'yarn unit:test'
+              }
             }
+            stage('Integration tests') {
+              steps {
+                // sh 'yarn ci:test'
+              }
+            }
+          }
         }
         stage('Build') {
           steps {
