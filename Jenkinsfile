@@ -13,7 +13,7 @@ pipeline {
       - cat
       tty: true
     - name: kaniko
-      image: gcr.io/kaniko-project/executor:1.5.0-debug
+      image: gcr.io/kaniko-project/executor:v1.5.0-debug
       command:
         - /busybox/cat
       tty: true
