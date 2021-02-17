@@ -33,19 +33,19 @@ pipeline {
     stages {
         stage('Prepare') {
             steps {
-              sh 'yarn install'
+              sh 'yarn'
             }
         }
         stage('Test') {
           parallel {
             stage('Unit tests') {
               steps {
-                sh 'yarn unit:test'
+                sh 'yarn test:unit'
               }
             }
             stage('Integration tests') {
               steps {
-                sh 'yarn unit:test'
+                sh 'yarn test:unit'
               }
             }
           }
