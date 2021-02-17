@@ -45,7 +45,7 @@ pipeline {
             }
             stage('Integration tests') {
               steps {
-                // sh 'yarn ci:test'
+                sh 'yarn unit:test'
               }
             }
           }
