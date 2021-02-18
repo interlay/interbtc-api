@@ -108,6 +108,11 @@ export class MockVaultsAPI implements VaultsAPI {
         return Promise.resolve(new Map([[vaults[0].id, vaults[0].issued_tokens]]));
     }
 
+    async getVaultsWithIssuableTokens(): Promise<Map<AccountId, PolkaBTC>> {
+        const vaults = await this.list();
+        return Promise.resolve(new Map([[vaults[0].id, vaults[0].issued_tokens]]));
+    }
+
     async getIssuedPolkaBTCAmount(_vaultId: AccountId): Promise<PolkaBTC> {
         return new BN(5) as PolkaBTC;
     }

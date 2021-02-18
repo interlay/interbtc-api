@@ -83,6 +83,7 @@ export interface VaultsAPI {
     getPunishmentFee(): Promise<string>;
     getPolkaBTCCapacity(): Promise<string>;
     getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>>;
+    getVaultsWithIssuableTokens(): Promise<Map<AccountId, PolkaBTC>>;
 }
 
 export class DefaultVaultsAPI {
@@ -369,7 +370,7 @@ export class DefaultVaultsAPI {
     }
 
     /**
-     * @returns Vaults below the premium redeem threshold.
+     * @returns Vaults below the premium redeem threshold, sorted in descending order of their redeemable tokens
      */
     async getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>> {
         const customAPIRPC = this.api.rpc;
@@ -380,6 +381,20 @@ export class DefaultVaultsAPI {
             );
         } catch (e) {
             return Promise.reject("Did not find vault below the premium redeem threshold");
+        }
+    }
+
+    /**
+     * @returns Vaults with issuable tokens, sorted in descending order of this value
+     */
+    async getVaultsWithIssuableTokens(): Promise<Map<AccountId, PolkaBTC>> {
+        try {
+            const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
+            return new Map(
+                vaults.map(([id, redeemableTokens]) => [id, this.unwrapCurrency(redeemableTokens) as PolkaBTC])
+            );
+        } catch (e) {
+            return Promise.reject("Did not find vault with issuable tokens");
         }
     }
 
