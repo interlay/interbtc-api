@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { DefaultOracleAPI, OracleAPI } from "../../../src/apis/oracle";
+import { DefaultOracleAPI, OracleAPI } from "../../../src/parachain/oracle";
 import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
 import { defaultParachainEndpoint } from "../../config";

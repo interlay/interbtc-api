@@ -2,8 +2,8 @@ import { ApiPromise } from "@polkadot/api";
 import sinon from "sinon";
 import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
-import { BTCCoreAPI } from "../../../src/apis";
-import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
+import { BTCCoreAPI } from "../../../src/external";
+import { DefaultBTCCoreAPI } from "../../../src/external/btc-core";
 import { UTXO } from "@interlay/esplora-btc-api";
 
 describe("btc-core", () => {

@@ -1,8 +1,8 @@
-import { ReplaceAPI } from "../../apis";
+import { ReplaceAPI } from "../../parachain";
 import { BlockNumber } from "@polkadot/types/interfaces";
 import { PolkaBTC, DOT } from "../../interfaces/default";
 import BN from "bn.js";
-import { ReplaceRequestExt } from "../../apis/replace";
+import { ReplaceRequestExt } from "../../parachain/replace";
 
 export class MockReplaceAPI implements ReplaceAPI {
     async getBtcDustValue(): Promise<PolkaBTC> {

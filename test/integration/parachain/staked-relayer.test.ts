@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import sinon from "sinon";
-import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "../../../src/apis/staked-relayer";
+import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "../../../src/parachain/staked-relayer";
 import { createPolkadotAPI } from "../../../src/factory";
 import { StakedRelayer, DOT } from "../../../src/interfaces/default";
 import { assert } from "../../chai";

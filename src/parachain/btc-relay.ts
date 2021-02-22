@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { BTCCoreAPI } from "./btc-core";
+import { BTCCoreAPI } from "../external/btc-core";
 import { u32 } from "@polkadot/types/primitive";
 import { H256Le } from "../interfaces/default";
 

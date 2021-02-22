@@ -8,20 +8,20 @@ import {
     VaultsAPI,
     StakedRelayerAPI,
     OracleAPI,
-    BTCCoreAPI,
     BTCRelayAPI,
     CollateralAPI,
     TreasuryAPI,
     SystemAPI,
     ReplaceAPI,
     RefundAPI,
-} from "../apis";
+} from "../parachain";
+import { BTCCoreAPI } from "../external";
 import { MockIssueAPI } from "./apis/issue";
 import { MockRedeemAPI } from "./apis/redeem";
 import { MockVaultsAPI } from "./apis/vaults";
 import { MockStakedRelayerAPI } from "./apis/staked-relayer";
 import { PolkaBTCAPI } from "../polkabtc-api";
-import { FaucetClient, StakedRelayerClient } from "../http";
+import { FaucetClient, StakedRelayerClient } from "../clients";
 import { MockOracleAPI } from "./apis/oracle";
 import { MockBTCCoreAPI } from "./apis/btc-core";
 import { MockBTCRelayAPI } from "./apis/btc-relay";

@@ -6,8 +6,8 @@ import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
-import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../apis/issue";
-import { VaultExt } from "../../apis/vaults";
+import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../parachain/issue";
+import { VaultExt } from "../../parachain/vaults";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 
 export class MockIssueAPI implements IssueAPI {

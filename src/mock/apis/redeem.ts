@@ -4,8 +4,8 @@ import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
-import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../apis/redeem";
-import { VaultExt } from "../../apis/vaults";
+import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../parachain/redeem";
+import { VaultExt } from "../../parachain/vaults";
 
 export class MockRedeemAPI implements RedeemAPI {
     execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {

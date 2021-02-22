@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { DefaultVaultsAPI } from "../../../src/apis/vaults";
+import { DefaultVaultsAPI } from "../../../src/parachain/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
 import { assert } from "../../chai";
 import { defaultParachainEndpoint } from "../../config";

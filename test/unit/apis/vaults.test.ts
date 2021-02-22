@@ -1,15 +1,13 @@
 import { ApiPromise } from "@polkadot/api";
 import BN from "bn.js";
 import sinon from "sinon";
-import { DefaultVaultsAPI, VaultExt } from "../../../src/apis/vaults";
+import { DefaultVaultsAPI, VaultExt } from "../../../src/parachain/vaults";
 import { createPolkadotAPI } from "../../../src/factory";
-import { IssueRequest, PolkaBTC, RedeemRequest, Vault } from "../../../src/interfaces/default";
+import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
-import { GenericAccountId } from "@polkadot/types/generic";
 import { AccountId } from "@polkadot/types/interfaces";
 import { TypeRegistry } from "@polkadot/types";
-import { DefaultIssueAPI } from "../../../src/apis/issue";
-import { DefaultRedeemAPI } from "../../../src/apis/redeem";
+import { DefaultIssueAPI } from "../../../src/parachain/issue";
 import { networks } from "bitcoinjs-lib";
 
 describe("vaultsAPI", () => {

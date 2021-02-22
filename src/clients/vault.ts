@@ -17,7 +17,7 @@ import { bitcoin } from "../utils/bitcoin";
 /**
  * @category Clients
  */
-export class VaultClient extends JsonRpcClient {
+export class VaultClient extends JsonRpcClient<string> {
     registry: TypeRegistry;
 
     constr: {

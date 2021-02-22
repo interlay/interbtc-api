@@ -1,21 +1,21 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { H256, Hash } from "@polkadot/types/interfaces";
+import { H256 } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
-import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
-import { DefaultIssueAPI, IssueRequestExt, IssueRequestResult } from "../../../src/apis/issue";
+import { DefaultBTCCoreAPI } from "../../../src/external/btc-core";
+import { DefaultIssueAPI, IssueRequestExt, IssueRequestResult } from "../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../src/factory";
-import { H256Le, Vault, PolkaBTC } from "../../../src/interfaces/default";
+import { H256Le, PolkaBTC } from "../../../src/interfaces/default";
 import { btcToSat, dotToPlanck, satToBTC } from "../../../src/utils";
 import { assert, expect } from "../../chai";
 import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { DefaultTreasuryAPI } from "../../../src/apis/treasury";
+import { DefaultTreasuryAPI } from "../../../src/parachain/treasury";
 import { fail } from "assert";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 import { Buffer } from "buffer";
 import sinon from "sinon";
-import { DefaultCollateralAPI } from "../../../src/apis/collateral";
+import { DefaultCollateralAPI } from "../../../src/parachain/collateral";
 import Big from "big.js";
 
 function sleep(ms: number): Promise<void> {

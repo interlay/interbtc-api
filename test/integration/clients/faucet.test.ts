@@ -1,5 +1,5 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { FaucetClient } from "../../../src/http";
+import { FaucetClient } from "../../../src/clients";
 import { createPolkadotAPI } from "../../../src/factory";
 import { defaultParachainEndpoint, defaultFaucetEndpoint } from "../../config";
 import { KeyringPair } from "@polkadot/keyring/types";

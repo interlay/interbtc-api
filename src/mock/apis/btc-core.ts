@@ -1,5 +1,5 @@
 import { Transaction } from "@interlay/esplora-btc-api";
-import { BTCCoreAPI, TxStatus } from "../../apis/btc-core";
+import { BTCCoreAPI, TxStatus } from "../../external/btc-core";
 
 export class MockBTCCoreAPI implements BTCCoreAPI {
     getLatestBlock(): Promise<string> {

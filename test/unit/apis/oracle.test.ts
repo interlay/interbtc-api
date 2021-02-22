@@ -3,7 +3,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { BTreeSet, Raw, UInt } from "@polkadot/types/codec";
 import BN from "bn.js";
 import sinon from "sinon";
-import { DefaultOracleAPI, OracleAPI } from "../../../src/apis/oracle";
+import { DefaultOracleAPI, OracleAPI } from "../../../src/parachain/oracle";
 import { createAPIRegistry } from "../../../src/factory";
 import { ErrorCode, UnsignedFixedPoint } from "../../../src/interfaces/default";
 import { assert } from "../../chai";

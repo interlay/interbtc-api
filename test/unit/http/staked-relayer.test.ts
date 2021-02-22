@@ -1,6 +1,6 @@
 import { expect } from "../../chai";
-import { StakedRelayerClient } from "../../../src/http";
-import { JsonRpcRequest, JsonRpcResponse } from "../../../src/http/client";
+import { StakedRelayerClient } from "../../../src/clients";
+import { JsonRpcRequest, JsonRpcResponse } from "../../../src/clients/client";
 
 import nock from "nock";
 

@@ -5,7 +5,7 @@ import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
-import { StakedRelayerAPI } from "../../apis/staked-relayer";
+import { StakedRelayerAPI } from "../../parachain/staked-relayer";
 import Big from "big.js";
 
 function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {

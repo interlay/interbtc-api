@@ -17,7 +17,7 @@ import { JsonRpcClient } from "./client";
 /**
  * @category Clients
  */
-export class StakedRelayerClient extends JsonRpcClient {
+export class StakedRelayerClient extends JsonRpcClient<string> {
     registry: TypeRegistry;
 
     constr: {

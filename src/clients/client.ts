@@ -10,27 +10,27 @@ export interface JsonRpcRequest {
     id?: JsonRpcId | null;
 }
 
-export interface JsonRpcError {
+export interface JsonRpcError<T> {
     code: number;
     message: string;
-    data?: any;
+    data?: T;
 }
 
-export interface JsonRpcResponse {
+export interface JsonRpcResponse<T> {
     jsonrpc: string;
     result?: string;
-    error?: JsonRpcError;
+    error?: JsonRpcError<T>;
     id?: JsonRpcId | null;
 }
 
-export class JsonRpcClient {
+export class JsonRpcClient<T> {
     url: string;
 
     constructor(url: string) {
         this.url = url;
     }
 
-    async post(method: string, params?: RequestParams): Promise<JsonRpcResponse> {
+    async post<T>(method: string, params?: RequestParams): Promise<JsonRpcResponse<T>> {
         const id = Math.random().toString(16).substring(7);
         const body: JsonRpcRequest = {
             jsonrpc: "2.0",
@@ -51,7 +51,7 @@ export class JsonRpcClient {
             throw new Error("Invalid response");
         }
 
-        const jsonResponse: JsonRpcResponse = await httpResponse.json();
+        const jsonResponse: JsonRpcResponse<T> = await httpResponse.json();
         if (jsonResponse.id != id) {
             throw new Error("Invalid id in JsonRpcResponse");
         }

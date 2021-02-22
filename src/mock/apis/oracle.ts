@@ -1,6 +1,6 @@
 import { AddressOrPair } from "@polkadot/api/types";
-import { OracleAPI } from "../../apis";
-import { BtcTxFees, OracleInfo } from "../../apis/oracle";
+import { OracleAPI } from "../../parachain";
+import { BtcTxFees, OracleInfo } from "../../parachain/oracle";
 import Big from "big.js";
 
 export class MockOracleAPI implements OracleAPI {

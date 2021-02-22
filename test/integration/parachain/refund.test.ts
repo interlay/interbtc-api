@@ -1,12 +1,12 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { DefaultIssueAPI } from "../../../src/apis/issue";
-import { DefaultBTCCoreAPI } from "../../../src/apis/btc-core";
+import { DefaultIssueAPI } from "../../../src/parachain/issue";
+import { DefaultBTCCoreAPI } from "../../../src/external/btc-core";
 import { issue } from "./issue.test";
 import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../src/factory";
 import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { DefaultRefundAPI } from "../../../src/apis/refund";
+import { DefaultRefundAPI } from "../../../src/parachain/refund";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { assert } from "../../chai";
 

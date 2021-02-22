@@ -8,7 +8,7 @@ import { JsonRpcClient } from "./client";
 /**
  * @category Clients
  */
-export class FaucetClient extends JsonRpcClient {
+export class FaucetClient extends JsonRpcClient<void> {
     registry: TypeRegistry;
 
     constr: {

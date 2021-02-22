@@ -5,10 +5,10 @@ import { TypeRegistry } from "@polkadot/types";
 import { Option } from "@polkadot/types/codec";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
-import { IssueRequestExt } from "../../apis/issue";
-import { RedeemRequestExt } from "../../apis/redeem";
-import { ReplaceRequestExt } from "../../apis/replace";
-import { VaultsAPI, VaultExt } from "../../apis/vaults";
+import { IssueRequestExt } from "../../parachain/issue";
+import { RedeemRequestExt } from "../../parachain/redeem";
+import { ReplaceRequestExt } from "../../parachain/replace";
+import { VaultsAPI, VaultExt } from "../../parachain/vaults";
 import Big from "big.js";
 
 export class MockVaultsAPI implements VaultsAPI {

@@ -1,4 +1,12 @@
-import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet } from "../interfaces/default";
+import {
+    PolkaBTC,
+    Vault,
+    IssueRequest,
+    RedeemRequest,
+    ReplaceRequest,
+    DOT,
+    Wallet,
+} from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import {
@@ -90,7 +98,9 @@ export interface VaultsAPI {
      * @param vaultId - The AccountId of the vault used to filter replace requests
      * @returns A map with replace ids to replace requests involving said vault as new vault and old vault
      */
-    mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>>;
+    mapReplaceRequests(
+        vaultId: AccountId
+    ): Promise<Map<H256, ReplaceRequestExt>>;
     /**
      * @param perPage Number of vaults to iterate through at a time
      * @returns An AsyncGenerator to be used as an iterator
@@ -114,7 +124,11 @@ export interface VaultsAPI {
      * should only include the issued tokens, leaving out unsettled ("to-be-issued") tokens
      * @returns the vault collateralization
      */
-    getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT, onlyIssued?: boolean): Promise<Big | undefined>;
+    getVaultCollateralization(
+        vaultId: AccountId,
+        newCollateral?: DOT,
+        onlyIssued?: boolean
+    ): Promise<Big | undefined>;
     /**
      * Get the total system collateralization measured by the amount of issued PolkaBTC
      * divided by the total locked DOT collateral.
@@ -256,59 +270,105 @@ export class DefaultVaultsAPI {
 
     async listPaged(): Promise<VaultExt[]> {
         // TODO: Finish or remove this function
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
+        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged(
+            { pageSize: 1 }
+        );
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
-    async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>> {
+    async mapIssueRequests(
+        vaultId: AccountId
+    ): Promise<Map<H256, IssueRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
         try {
-            const issueRequestPairs: [H256, IssueRequest][] = await customAPIRPC.issue.getVaultIssueRequests(vaultId);
-            return new Map(issueRequestPairs.map(([id, req]) => [id, encodeIssueRequest(req, this.btcNetwork)]));
-        } catch (err) {
-            return Promise.reject(`Error during issue request retrieval: ${err}`);
-        }
-    }
-
-    async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
-        try {
-            const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getVaultRedeemRequests(
-                vaultId
+            const issueRequestPairs: [
+                H256,
+                IssueRequest
+            ][] = await customAPIRPC.issue.getVaultIssueRequests(vaultId);
+            return new Map(
+                issueRequestPairs.map(([id, req]) => [
+                    id,
+                    encodeIssueRequest(req, this.btcNetwork),
+                ])
             );
-            return new Map(redeemRequestPairs.map(([id, req]) => [id, encodeRedeemRequest(req, this.btcNetwork)]));
         } catch (err) {
-            return Promise.reject(`Error during redeem request retrieval: ${err}`);
+            return Promise.reject(
+                `Error during issue request retrieval: ${err}`
+            );
         }
     }
 
-    async mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
+    async mapRedeemRequests(
+        vaultId: AccountId
+    ): Promise<Map<H256, RedeemRequestExt>> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const customAPIRPC = this.api.rpc as any;
+        try {
+            const redeemRequestPairs: [
+                H256,
+                RedeemRequest
+            ][] = await customAPIRPC.redeem.getVaultRedeemRequests(vaultId);
+            return new Map(
+                redeemRequestPairs.map(([id, req]) => [
+                    id,
+                    encodeRedeemRequest(req, this.btcNetwork),
+                ])
+            );
+        } catch (err) {
+            return Promise.reject(
+                `Error during redeem request retrieval: ${err}`
+            );
+        }
+    }
+
+    async mapReplaceRequests(
+        vaultId: AccountId
+    ): Promise<Map<H256, ReplaceRequestExt>> {
         const customAPIRPC = this.api.rpc as any;
         try {
             const oldVaultReplaceRequests: [
                 H256,
                 ReplaceRequest
-            ][] = await customAPIRPC.replace.getOldVaultReplaceRequests(vaultId);
+            ][] = await customAPIRPC.replace.getOldVaultReplaceRequests(
+                vaultId
+            );
             const oldVaultReplaceRequestsExt = oldVaultReplaceRequests.map(
-                ([id, req]) => [id, encodeReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
+                ([id, req]) =>
+                    [id, encodeReplaceRequest(req, this.btcNetwork)] as [
+                        H256,
+                        ReplaceRequestExt
+                    ]
             );
             const newVaultReplaceRequests: [
                 H256,
                 ReplaceRequest
-            ][] = await customAPIRPC.replace.getNewVaultReplaceRequests(vaultId);
-            const newVaultReplaceRequestsExt = newVaultReplaceRequests.map(
-                ([id, req]) => [id, encodeReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
+            ][] = await customAPIRPC.replace.getNewVaultReplaceRequests(
+                vaultId
             );
-            return new Map([...oldVaultReplaceRequestsExt, ...newVaultReplaceRequestsExt]);
+            const newVaultReplaceRequestsExt = newVaultReplaceRequests.map(
+                ([id, req]) =>
+                    [id, encodeReplaceRequest(req, this.btcNetwork)] as [
+                        H256,
+                        ReplaceRequestExt
+                    ]
+            );
+            return new Map([
+                ...oldVaultReplaceRequestsExt,
+                ...newVaultReplaceRequestsExt,
+            ]);
         } catch (err) {
-            return Promise.reject(`Error during replace request retrieval: ${err}`);
+            return Promise.reject(
+                `Error during replace request retrieval: ${err}`
+            );
         }
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
-        return pagedIterator<Vault>(this.api.query.vaultRegistry.vaults, perPage);
+        return pagedIterator<Vault>(
+            this.api.query.vaultRegistry.vaults,
+            perPage
+        );
     }
 
     async get(vaultId: AccountId): Promise<VaultExt> {
@@ -337,12 +397,19 @@ export class DefaultVaultsAPI {
                     this.wrapCurrency(newCollateral),
                     onlyIssued
                 )
-                : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
+                : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(
+                    vaultId,
+                    onlyIssued
+                );
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
             }
-            return Promise.reject(`Error during collateralization computation: ${(e as Error).message}`);
+            return Promise.reject(
+                `Error during collateralization computation: ${
+                    (e as Error).message
+                }`
+            );
         }
         if (!collateralization) {
             return Promise.resolve(undefined);
@@ -366,7 +433,9 @@ export class DefaultVaultsAPI {
     async getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT> {
         const customAPIRPC = this.api.rpc as any;
         try {
-            const dotWrapper: BalanceWrapper = await customAPIRPC.vaultRegistry.getRequiredCollateralForVault(vaultId);
+            const dotWrapper: BalanceWrapper = await customAPIRPC.vaultRegistry.getRequiredCollateralForVault(
+                vaultId
+            );
             return this.unwrapCurrency(dotWrapper) as DOT;
         } catch (e) {
             return Promise.reject((e as Error).message);
@@ -387,8 +456,10 @@ export class DefaultVaultsAPI {
     async getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC> {
         const issuedTokens: PolkaBTC[] = await this.getIssuedPolkaBTCAmounts();
         if (issuedTokens.length) {
-            const sumReducer = (accumulator: PolkaBTC, currentValue: PolkaBTC) =>
-                accumulator.add(currentValue) as PolkaBTC;
+            const sumReducer = (
+                accumulator: PolkaBTC,
+                currentValue: PolkaBTC
+            ) => accumulator.add(currentValue) as PolkaBTC;
             return issuedTokens.reduce(sumReducer);
         }
         return this.api.createType("Balance", 0) as PolkaBTC;
@@ -397,7 +468,9 @@ export class DefaultVaultsAPI {
     async getIssuablePolkaBTC(): Promise<string> {
         const polkaBTCCapacityString = await this.getPolkaBTCCapacity();
         const polkaBTCCapacityBig = new Big(polkaBTCCapacityString);
-        const issuedPolkaBTCSatoshiString = (await this.getTotalIssuedPolkaBTCAmount()).toString();
+        const issuedPolkaBTCSatoshiString = (
+            await this.getTotalIssuedPolkaBTCAmount()
+        ).toString();
         const issuedPolkaBTCString = satToBTC(issuedPolkaBTCSatoshiString);
         const issuedPolkaBTCBig = new Big(issuedPolkaBTCString);
         return polkaBTCCapacityBig.sub(issuedPolkaBTCBig).toString();
@@ -405,12 +478,17 @@ export class DefaultVaultsAPI {
 
     async getPolkaBTCCapacity(): Promise<string> {
         const totalLockedDotAsPlanck = await this.collateralAPI.totalLockedDOT();
-        const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
+        const totalLockedDot = new Big(
+            planckToDOT(totalLockedDotAsPlanck.toString())
+        );
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
         const exchangeRateU128 = new Big(exchangeRate);
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
-        return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
+        return totalLockedDot
+            .div(exchangeRateU128)
+            .div(secureCollateralThreshold)
+            .toString();
     }
 
     async selectRandomVaultIssue(amountAsSat: PolkaBTC): Promise<AccountId> {
@@ -422,7 +500,9 @@ export class DefaultVaultsAPI {
             );
             return firstVaultWithSufficientCollateral;
         } catch (e) {
-            return Promise.reject("Did not find vault with sufficient collateral");
+            return Promise.reject(
+                "Did not find vault with sufficient collateral"
+            );
         }
     }
 
@@ -434,7 +514,9 @@ export class DefaultVaultsAPI {
             );
             return firstVaultWithSufficientTokens;
         } catch (e) {
-            return Promise.reject("Did not find vault with sufficient locked BTC");
+            return Promise.reject(
+                "Did not find vault with sufficient locked BTC"
+            );
         }
     }
 
@@ -443,10 +525,15 @@ export class DefaultVaultsAPI {
         try {
             const vaults = await customAPIRPC.vaultRegistry.getPremiumRedeemVaults();
             return new Map(
-                vaults.map(([id, redeemableTokens]) => [id, this.unwrapCurrency(redeemableTokens) as PolkaBTC])
+                vaults.map(([id, redeemableTokens]) => [
+                    id,
+                    this.unwrapCurrency(redeemableTokens) as PolkaBTC,
+                ])
             );
         } catch (e) {
-            return Promise.reject("Did not find vault below the premium redeem threshold");
+            return Promise.reject(
+                "Did not find vault below the premium redeem threshold"
+            );
         }
     }
 
@@ -454,7 +541,10 @@ export class DefaultVaultsAPI {
         try {
             const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
             return new Map(
-                vaults.map(([id, redeemableTokens]) => [id, this.unwrapCurrency(redeemableTokens) as PolkaBTC])
+                vaults.map(([id, redeemableTokens]) => [
+                    id,
+                    this.unwrapCurrency(redeemableTokens) as PolkaBTC,
+                ])
             );
         } catch (e) {
             return Promise.reject("Did not find vault with issuable tokens");
@@ -462,7 +552,9 @@ export class DefaultVaultsAPI {
     }
 
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
-        const theftReports = await this.api.query.stakedRelayers.theftReports(vaultId);
+        const theftReports = await this.api.query.stakedRelayers.theftReports(
+            vaultId
+        );
         return theftReports.isEmpty;
     }
 
@@ -488,7 +580,9 @@ export class DefaultVaultsAPI {
 
     async getFeesPolkaBTC(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
-        return (await this.api.query.fee.totalRewardsPolkaBTC(parsedId)).toString();
+        return (
+            await this.api.query.fee.totalRewardsPolkaBTC(parsedId)
+        ).toString();
     }
 
     async getFeesDOT(vaultId: string): Promise<string> {
@@ -498,11 +592,18 @@ export class DefaultVaultsAPI {
 
     async getAPY(vaultId: string): Promise<string> {
         const parsedVaultId = this.api.createType("AccountId", vaultId);
-        const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
+        const [
+            feesPolkaBTC,
+            feesDOT,
+            dotToBtcRate,
+            lockedDOT,
+        ] = await Promise.all([
             await this.getFeesPolkaBTC(vaultId),
             await this.getFeesDOT(vaultId),
             await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLockedDOT(parsedVaultId)).toString(),
+            await (
+                await this.collateralAPI.balanceLockedDOT(parsedVaultId)
+            ).toString(),
         ]);
         return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
@@ -520,7 +621,10 @@ export class DefaultVaultsAPI {
         return maxSlaBig.div(divisor).toString();
     }
 
-    async getSlashableCollateral(_vaultId: string, _amount: string): Promise<string> {
+    async getSlashableCollateral(
+        _vaultId: string,
+        _amount: string
+    ): Promise<string> {
         // TODO: get real value from backend
         return "123";
     }
