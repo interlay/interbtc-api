@@ -161,6 +161,10 @@ export class MockVaultsAPI implements VaultsAPI {
         return "500";
     }
 
+    isVaultFlaggedForTheft(_vaultId: AccountId): Promise<boolean> {
+        return Promise.resolve(true);
+    }
+
     async getLiquidationCollateralThreshold(): Promise<Big> {
         return new Big(0);
     }

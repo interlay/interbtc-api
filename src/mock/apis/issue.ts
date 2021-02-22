@@ -88,6 +88,10 @@ export class MockIssueAPI implements IssueAPI {
         };
     }
 
+    isRequestSuccessful(events: EventRecord[]): boolean {
+        return true;
+    }
+
     isExecutionSuccessful(_events: EventRecord[]): boolean {
         return false;
     }
