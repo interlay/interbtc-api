@@ -29,17 +29,87 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 }
 
 export interface IssueAPI {
+    /**
+     * Send an issue request transaction
+     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue
+     * @param vaultId (optional) Request the issue from a specific vault. If this parameter is unspecified,
+     * a random vault will be selected
+     * @returns An object of type {issueId, vault} if the request succeeded. The function throws an error otherwise.
+     */
     request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<IssueRequestResult>;
+    /**
+     * Send an issue execution transaction
+     * @param issueId The ID returned by the issue request transaction
+     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
+     * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
+     * @param rawTx The raw bytes of the Bitcoin transaction
+     * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
+     */
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
+    /**
+     * Send an issue cancellation transaction. After the issue period has elapsed,
+     * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
+     * of the requester will be slashed and sent to the vault that had prepared to issue.
+     * @param issueId The ID returned by the issue request transaction
+     */
     cancel(issueId: H256): Promise<void>;
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
     setAccount(account: AddressOrPair): void;
+    /**
+     * @param amountSat Amount, in Satoshi, for which to compute the required
+     * griefing collateral, in Planck
+     * @returns The griefing collateral, in Planck
+     */
     getGriefingCollateralInPlanck(amountBtc: string): Promise<string>;
+    /**
+     * @returns An array containing the issue requests
+     */
     list(): Promise<IssueRequestExt[]>;
+    /**
+     * @param perPage Number of issue requests to iterate through at a time
+     * @returns An AsyncGenerator to be used as an iterator
+     */
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
+    /**
+     * @param account The ID of the account whose issue requests are to be retrieved
+     * @returns A mapping from the issue request ID to the issue request object, corresponding to the requests of
+     * the given account
+     */
     mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
+    /**
+     * @param issueId The ID of the issue request to fetch
+     * @returns An issue request object
+     */
     getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
+    /**
+     * @returns The time difference in number of blocks between when an issue request is created
+     * and required completion time by a user.
+     */
     getIssuePeriod(): Promise<BlockNumber>;
+    /**
+     * @param events The EventRecord array returned after sending an request issue transaction
+     * @returns A boolean value
+     */
+    isRequestSuccessful(events: EventRecord[]): boolean;
+    /**
+     * A successful `execute` produces the following events:
+        - vaultRegistry.IssueTokens
+        - system.NewAccount
+        - polkaBtc.Endowed
+        - treasury.Mint
+        - issue.ExecuteIssue
+        - system.ExtrinsicSuccess
+     * @param events The EventRecord array returned after sending an execute request transaction
+     * @returns A boolean value
+     */
     isExecutionSuccessful(events: EventRecord[]): boolean;
+    /**
+     * @param amountBtc The amount, in BTC, for which to compute the issue fees
+     * @returns The fees, in BTC
+     */
     getFeesToPay(amountBtc: string): Promise<string>;
 }
 
@@ -76,10 +146,6 @@ export class DefaultIssueAPI implements IssueAPI {
         throw new Error("Request transaction failed");
     }
 
-    /**
-     * @param events The EventRecord array returned after sending an request issue transaction
-     * @returns A boolean value
-     */
     isRequestSuccessful(events: EventRecord[]): boolean {
         for (const {
             event: { method, section },
@@ -91,17 +157,6 @@ export class DefaultIssueAPI implements IssueAPI {
         return false;
     }
 
-    /**
-     * A successful `execute` produces the following events:
-        - vaultRegistry.IssueTokens
-        - system.NewAccount
-        - polkaBtc.Endowed
-        - treasury.Mint
-        - issue.ExecuteIssue
-        - system.ExtrinsicSuccess
-     * @param events The EventRecord array returned after sending an execute request transaction
-     * @returns A boolean value
-     */
     isExecutionSuccessful(events: EventRecord[]): boolean {
         for (const {
             event: { method, section },
@@ -113,13 +168,6 @@ export class DefaultIssueAPI implements IssueAPI {
         return false;
     }
 
-    /**
-     * Send an issue request transaction
-     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue
-     * @param vaultId (optional) Request the issue from a specific vault. If this parameter is unspecified,
-     * a random vault will be selected
-     * @returns An object of type {issueId, vault} if the request succeeded. The function throws an error otherwise.
-     */
     async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
@@ -145,14 +193,6 @@ export class DefaultIssueAPI implements IssueAPI {
         return { id, vault };
     }
 
-    /**
-     * Send an issue execution transaction
-     * @param issueId The ID returned by the issue request transaction
-     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
-     * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
-     * @param rawTx The raw bytes of the Bitcoin transaction
-     * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
-     */
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
@@ -162,12 +202,6 @@ export class DefaultIssueAPI implements IssueAPI {
         return this.isExecutionSuccessful(result.events);
     }
 
-    /**
-     * Send an issue cancellation transaction. After the issue period has elapsed,
-     * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
-     * of the requester will be slashed and sent to the vault that had prepared to issue.
-     * @param issueId The ID returned by the issue request transaction
-     */
     async cancel(issueId: H256): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
@@ -177,19 +211,11 @@ export class DefaultIssueAPI implements IssueAPI {
         await sendLoggedTx(cancelIssueTx, this.account, this.api);
     }
 
-    /**
-     * @returns An array containing the issue requests
-     */
     async list(): Promise<IssueRequestExt[]> {
         const issueRequests = await this.api.query.issue.issueRequests.entries();
         return issueRequests.map((v) => v[1]).map((req: IssueRequest) => encodeIssueRequest(req, this.btcNetwork));
     }
 
-    /**
-     * @param account The ID of the account whose issue requests are to be retrieved
-     * @returns A mapping from the issue request ID to the issue request object, corresponding to the requests of
-     * the given account
-     */
     async mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
@@ -201,10 +227,6 @@ export class DefaultIssueAPI implements IssueAPI {
         return mapForUser;
     }
 
-    /**
-     * @param amountBtc The amount, in BTC, for which to compute the issue fees
-     * @returns The fees, in BTC
-     */
     async getFeesToPay(amountBtc: string): Promise<string> {
         const feePercentage = await this.getFeePercentage();
         const feePercentageBN = new Big(feePercentage);
@@ -221,27 +243,14 @@ export class DefaultIssueAPI implements IssueAPI {
         return decodeFixedPointType(issueFee);
     }
 
-    /**
-     * @param perPage Number of issue requests to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
         return pagedIterator<IssueRequest>(this.api.query.issue.issueRequests, perPage);
     }
 
-    /**
-     * @returns The time difference in number of blocks between when an issue request is created
-     * and required completion time by a user.
-     */
     async getIssuePeriod(): Promise<BlockNumber> {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
     }
 
-    /**
-     * @param amountSat Amount, in Satoshi, for which to compute the required
-     * griefing collateral, in Planck
-     * @returns The griefing collateral, in Planck
-     */
     async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
@@ -257,18 +266,10 @@ export class DefaultIssueAPI implements IssueAPI {
         return griefingCollateralPlanckRoundedUp;
     }
 
-    /**
-     * @param issueId The ID of the issue request to fetch
-     * @returns An issue request object
-     */
     async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {
         return encodeIssueRequest(await this.api.query.issue.issueRequests(issueId), this.btcNetwork);
     }
 
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
     setAccount(account: AddressOrPair): void {
         this.account = account;
     }

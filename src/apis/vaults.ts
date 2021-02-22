@@ -55,35 +55,183 @@ export function encodeVault(vault: Vault, network: Network): VaultExt {
 }
 
 export interface VaultsAPI {
+    /**
+     * @returns An array containing the vaults
+     */
     list(): Promise<VaultExt[]>;
+    /**
+     * This function is not finalized
+     *
+     * @returns An array containing the vaults, paged. This function is meant to be used as an
+     * iterator
+     */
     listPaged(): Promise<VaultExt[]>;
+    /**
+     * Fetch the issue requests associated with a vault
+     *
+     * @param vaultId - The AccountId of the vault used to filter issue requests
+     * @returns A map with issue ids to issue requests involving said vault
+     */
     mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>>;
+    /**
+     * Fetch the redeem requests associated with a vault
+     *
+     * @param vaultId - The AccountId of the vault used to filter redeem requests
+     * @returns A map with redeem ids to redeem requests involving said vault
+     */
     mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>>;
+    /**
+     * Fetch the replace requests associated with a vault. In the returned requests,
+     * the vault is either the replaced or the replacing one.
+     *
+     * @param vaultId - The AccountId of the vault used to filter replace requests
+     * @returns A map with replace ids to replace requests involving said vault as new vault and old vault
+     */
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>>;
+    /**
+     * @param perPage Number of vaults to iterate through at a time
+     * @returns An AsyncGenerator to be used as an iterator
+     */
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
+    /**
+     * @param vaultId The ID of the vault to fetch
+     * @returns A vault object
+     */
     get(vaultId: AccountId): Promise<VaultExt>;
+    /**
+     * Get the collateralization of a single vault measured by the amount of issued PolkaBTC
+     * divided by the total locked DOT collateral.
+     *
+     * @remarks Undefined collateralization is handled as infinite collateralization in the UI.
+     * If no tokens have been issued, the `collateralFunds / issuedFunds` ratio divides by zero,
+     * which means collateralization is infinite.
+     * @param vaultId the vault account id
+     * @param newCollateral use this instead of the vault's actual collateral
+     * @param onlyIssued optional, defaults to `false`. Specifies whether the collateralization
+     * should only include the issued tokens, leaving out unsettled ("to-be-issued") tokens
+     * @returns the vault collateralization
+     */
     getVaultCollateralization(vaultId: AccountId, newCollateral?: DOT, onlyIssued?: boolean): Promise<Big | undefined>;
+    /**
+     * Get the total system collateralization measured by the amount of issued PolkaBTC
+     * divided by the total locked DOT collateral.
+     *
+     * @returns The total system collateralization
+     */
     getSystemCollateralization(): Promise<Big | undefined>;
+    /**
+     * Get the amount of collateral required for the given vault to be at the
+     * current SecureCollateralThreshold with the current exchange rate
+     *
+     * @param vaultId The vault account ID
+     * @returns The required collateral the vault needs to deposit to stay
+     * above the threshold limit
+     */
     getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT>;
+    /**
+     * @param vaultId The vault account ID
+     * @returns The amount of PolkaBTC issued by the given vault, denoted in Satoshi
+     */
     getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC>;
+    /**
+     * @returns The total amount of PolkaBTC issued by the vaults, denoted in Satoshi
+     */
     getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC>;
-    selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
-    selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
+    /**
+     * @returns The total amount of PolkaBTC that can be issued, considering the DOT
+     * locked by the vaults
+     */
     getIssuablePolkaBTC(): Promise<string>;
-    getLiquidationCollateralThreshold(): Promise<Big>;
-    getPremiumRedeemThreshold(): Promise<Big>;
-    getAuctionCollateralThreshold(): Promise<Big>;
-    getSecureCollateralThreshold(): Promise<Big>;
-    getFeesPolkaBTC(vaultId: string): Promise<string>;
-    getFeesDOT(vaultId: string): Promise<string>;
-    getAPY(vaultId: string): Promise<string>;
-    getSLA(vaultId: string): Promise<string>;
-    getMaxSLA(): Promise<string>;
-    getSlashableCollateral(vaultId: string, amount: string): Promise<string>;
-    getPunishmentFee(): Promise<string>;
-    getPolkaBTCCapacity(): Promise<string>;
+    /**
+     * @param amountAsSat PolkaBTC amount to issue, denoted in Satoshi
+     * @returns A vault that has sufficient DOT collateral to issue the given PolkaBTC amount
+     */
+    selectRandomVaultIssue(btc: PolkaBTC): Promise<AccountId>;
+    /**
+     * @param amountAsSat PolkaBTC amount to redeem, denoted in Satoshi
+     * @returns A vault that has issued sufficient PolkaBTC to redeem the given PolkaBTC amount
+     */
+    selectRandomVaultRedeem(btc: PolkaBTC): Promise<AccountId>;
+    /**
+     * @returns Vaults below the premium redeem threshold, sorted in descending order of their redeemable tokens
+     */
     getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>>;
+    /**
+     * @returns Vaults with issuable tokens, sorted in descending order of this value
+     */
     getVaultsWithIssuableTokens(): Promise<Map<AccountId, PolkaBTC>>;
+    /**
+     * @param vaultId The vault account ID
+     * @returns A bollean value
+     */
+    isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean>;
+    /**
+     * @returns The lower bound for the collateral rate in PolkaBTC.
+     * If a Vault’s collateral rate
+     * drops below this, automatic liquidation (forced Redeem) is triggered.
+     */
+    getLiquidationCollateralThreshold(): Promise<Big>;
+    /**
+     * @returns The collateral rate of Vaults at which users receive
+     * a premium in DOT, allocated from the
+     * Vault’s collateral, when performing a redeem with this Vault.
+     */
+    getPremiumRedeemThreshold(): Promise<Big>;
+    /**
+     * @returns The collateral rate of Vaults at which the
+     * BTC backed by the Vault are opened up for auction to other Vaults
+     */
+    getAuctionCollateralThreshold(): Promise<Big>;
+    /**
+     * @returns The over-collateralization rate for DOT collateral locked
+     * by Vaults, necessary for issuing PolkaBTC
+     */
+    getSecureCollateralThreshold(): Promise<Big>;
+    /**
+     * @param vaultId The vault account ID
+     * @returns The total PolkaBTC reward collected by the vault, denoted in Satoshi
+     */
+    getFeesPolkaBTC(vaultId: string): Promise<string>;
+    /**
+     * @param vaultId The vault account ID
+     * @returns The total DOT reward collected by the vault, denoted in Planck
+     */
+    getFeesDOT(vaultId: string): Promise<string>;
+    /**
+     * Get the total APY for a vault based on the income in PolkaBTC and DOT
+     * divided by the locked DOT.
+     *
+     * @note this does not account for interest compounding
+     *
+     * @param vaultId the id of the vault
+     * @returns the APY as a percentage string
+     */
+    getAPY(vaultId: string): Promise<string>;
+    /**
+     * @param vaultId The vault account ID
+     * @returns The SLA score of the given vault, an integer in the range [0, MaxSLA]
+     */
+    getSLA(vaultId: string): Promise<string>;
+    /**
+     * @returns The maximum SLA score, a positive integer
+     */
+    getMaxSLA(): Promise<string>;
+    /**
+     * @returns Fee that a Vault has to pay if it fails to execute redeem or replace requests
+     * (for redeem, on top of the slashed BTC-in-DOT value of the request). The fee is
+     * paid in DOT based on the PolkaBTC amount at the current exchange rate.
+     */
+    getPunishmentFee(): Promise<string>;
+    /**
+     * This function is currently just a stub
+     */
+    getSlashableCollateral(vaultId: string, amount: string): Promise<string>;
+    /**
+     * @returns Total PolkaBTC that the total collateral in the system can back.
+     * If every vault is properly collateralized, this value is equivalent to the sum of
+     * issued PolkaBTC and issuable PolkaBTC
+     */
+    getPolkaBTCCapacity(): Promise<string>;
 }
 
 export class DefaultVaultsAPI {
@@ -98,32 +246,17 @@ export class DefaultVaultsAPI {
         this.oracleAPI = new DefaultOracleAPI(this.api);
     }
 
-    /**
-     * @returns An array containing the vaults
-     */
     async list(): Promise<VaultExt[]> {
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
-    /**
-     * This function is not finalized
-     *
-     * @returns An array containing the vaults, paged. This function is meant to be used as an
-     * iterator
-     */
     async listPaged(): Promise<VaultExt[]> {
         // TODO: Finish or remove this function
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
-    /**
-     * Fetch the issue requests associated with a vault
-     *
-     * @param vaultId - The AccountId of the vault used to filter issue requests
-     * @returns A map with issue ids to issue requests involving said vault
-     */
     async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
@@ -135,12 +268,6 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * Fetch the redeem requests associated with a vault
-     *
-     * @param vaultId - The AccountId of the vault used to filter redeem requests
-     * @returns A map with redeem ids to redeem requests involving said vault
-     */
     async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const customAPIRPC = this.api.rpc as any;
@@ -154,13 +281,6 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * Fetch the replace requests associated with a vault. In the returned requests,
-     * the vault is either the replaced or the replacing one.
-     *
-     * @param vaultId - The AccountId of the vault used to filter replace requests
-     * @returns A map with replace ids to replace requests involving said vault as new vault and old vault
-     */
     async mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
         const customAPIRPC = this.api.rpc as any;
         try {
@@ -184,18 +304,10 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * @param perPage Number of vaults to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
     getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
         return pagedIterator<Vault>(this.api.query.vaultRegistry.vaults, perPage);
     }
 
-    /**
-     * @param vaultId The ID of the vault to fetch
-     * @returns A vault object
-     */
     async get(vaultId: AccountId): Promise<VaultExt> {
         const vault = await this.api.query.vaultRegistry.vaults(vaultId);
         if (!vaultId.eq(vault.id)) {
@@ -208,19 +320,6 @@ export class DefaultVaultsAPI {
         return e.message.includes("NoTokensIssued");
     }
 
-    /**
-     * Get the collateralization of a single vault measured by the amount of issued PolkaBTC
-     * divided by the total locked DOT collateral.
-     *
-     * @remarks Undefined collateralization is handled as infinite collateralization in the UI.
-     * If no tokens have been issued, the `collateralFunds / issuedFunds` ratio divides by zero,
-     * which means collateralization is infinite.
-     * @param vaultId the vault account id
-     * @param newCollateral use this instead of the vault's actual collateral
-     * @param onlyIssued optional, defaults to `false`. Specifies whether the collateralization
-     * should only include the issued tokens, leaving out unsettled ("to-be-issued") tokens
-     * @returns the vault collateralization
-     */
     async getVaultCollateralization(
         vaultId: AccountId,
         newCollateral?: DOT,
@@ -231,10 +330,10 @@ export class DefaultVaultsAPI {
         try {
             collateralization = newCollateral
                 ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
-                    vaultId,
-                    this.wrapCurrency(newCollateral),
-                    onlyIssued
-                )
+                      vaultId,
+                      this.wrapCurrency(newCollateral),
+                      onlyIssued
+                  )
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
@@ -248,12 +347,6 @@ export class DefaultVaultsAPI {
         return new Big(decodeFixedPointType(collateralization));
     }
 
-    /**
-     * Get the total system collateralization measured by the amount of issued PolkaBTC
-     * divided by the total locked DOT collateral.
-     *
-     * @returns The total system collateralization
-     */
     async getSystemCollateralization(): Promise<Big | undefined> {
         const customAPIRPC = this.api.rpc as any;
         try {
@@ -267,14 +360,6 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * Get the amount of collateral required for the given vault to be at the
-     * current SecureCollateralThreshold with the current exchange rate
-     *
-     * @param vaultId The vault account ID
-     * @returns The required collateral the vault needs to deposit to stay
-     * above the threshold limit
-     */
     async getRequiredCollateralForVault(vaultId: AccountId): Promise<DOT> {
         const customAPIRPC = this.api.rpc as any;
         try {
@@ -285,10 +370,6 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * @param vaultId The vault account ID
-     * @returns The amount of PolkaBTC issued by the given vault, denoted in Satoshi
-     */
     async getIssuedPolkaBTCAmount(vaultId: AccountId): Promise<PolkaBTC> {
         const vault: VaultExt = await this.get(vaultId);
         return vault.issued_tokens;
@@ -300,9 +381,6 @@ export class DefaultVaultsAPI {
         return issuedTokens;
     }
 
-    /**
-     * @returns The total amount of PolkaBTC issued by the vaults, denoted in Satoshi
-     */
     async getTotalIssuedPolkaBTCAmount(): Promise<PolkaBTC> {
         const issuedTokens: PolkaBTC[] = await this.getIssuedPolkaBTCAmounts();
         if (issuedTokens.length) {
@@ -313,10 +391,6 @@ export class DefaultVaultsAPI {
         return this.api.createType("Balance", 0) as PolkaBTC;
     }
 
-    /**
-     * @returns The total amount of PolkaBTC that can be issued, considering the DOT
-     * locked by the vaults
-     */
     async getIssuablePolkaBTC(): Promise<string> {
         const polkaBTCCapacityString = await this.getPolkaBTCCapacity();
         const polkaBTCCapacityBig = new Big(polkaBTCCapacityString);
@@ -336,10 +410,6 @@ export class DefaultVaultsAPI {
         return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
     }
 
-    /**
-     * @param amountAsSat PolkaBTC amount to issue, denoted in Satoshi
-     * @returns A vault that has sufficient DOT collateral to issue the given PolkaBTC amount
-     */
     async selectRandomVaultIssue(amountAsSat: PolkaBTC): Promise<AccountId> {
         const customAPIRPC = this.api.rpc as any;
         try {
@@ -353,10 +423,6 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * @param amountAsSat PolkaBTC amount to redeem, denoted in Satoshi
-     * @returns A vault that has issued sufficient PolkaBTC to redeem the given PolkaBTC amount
-     */
     async selectRandomVaultRedeem(amountAsSat: PolkaBTC): Promise<AccountId> {
         const customAPIRPC = this.api.rpc as any;
         try {
@@ -369,9 +435,6 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * @returns Vaults below the premium redeem threshold, sorted in descending order of their redeemable tokens
-     */
     async getPremiumRedeemVaults(): Promise<Map<AccountId, PolkaBTC>> {
         const customAPIRPC = this.api.rpc;
         try {
@@ -384,9 +447,6 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * @returns Vaults with issuable tokens, sorted in descending order of this value
-     */
     async getVaultsWithIssuableTokens(): Promise<Map<AccountId, PolkaBTC>> {
         try {
             const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
@@ -398,80 +458,41 @@ export class DefaultVaultsAPI {
         }
     }
 
-    /**
-     * @param vaultId The vault account ID
-     * @returns A bollean value
-     */
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
         const theftReports = await this.api.query.stakedRelayers.theftReports(vaultId);
         return theftReports.isEmpty;
     }
 
-    /**
-     * @returns The lower bound for the collateral rate in PolkaBTC.
-     * If a Vault’s collateral rate
-     * drops below this, automatic liquidation (forced Redeem) is triggered.
-     */
     async getLiquidationCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold();
         return new Big(decodeFixedPointType(threshold));
     }
 
-    /**
-     * @returns The collateral rate of Vaults at which users receive
-     * a premium in DOT, allocated from the
-     * Vault’s collateral, when performing a redeem with this Vault.
-     */
     async getPremiumRedeemThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold();
         return new Big(decodeFixedPointType(threshold));
     }
 
-    /**
-     * @returns The collateral rate of Vaults at which the
-     * BTC backed by the Vault are opened up for auction to other Vaults
-     */
     async getAuctionCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold();
         return new Big(decodeFixedPointType(threshold));
     }
 
-    /**
-     * @returns The over-collateralization rate for DOT collateral locked
-     * by Vaults, necessary for issuing PolkaBTC
-     */
     async getSecureCollateralThreshold(): Promise<Big> {
         const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold();
         return new Big(decodeFixedPointType(threshold));
     }
 
-    /**
-     * @param vaultId The vault account ID
-     * @returns The total PolkaBTC reward collected by the vault, denoted in Satoshi
-     */
     async getFeesPolkaBTC(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewardsPolkaBTC(parsedId)).toString();
     }
 
-    /**
-     * @param vaultId The vault account ID
-     * @returns The total DOT reward collected by the vault, denoted in Planck
-     */
     async getFeesDOT(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewardsDOT(parsedId)).toString();
     }
 
-    /**
-     * Get the total APY for a vault based on the income in PolkaBTC and DOT
-     * divided by the locked DOT.
-     *
-     * @note this does not account for interest compounding
-     *
-     * @param vaultId the id of the vault
-     * @returns the APY as a percentage string
-     */
     async getAPY(vaultId: string): Promise<string> {
         const parsedVaultId = this.api.createType("AccountId", vaultId);
         const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
@@ -483,19 +504,12 @@ export class DefaultVaultsAPI {
         return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
-    /**
-     * @param vaultId The vault account ID
-     * @returns The SLA score of the given vault, an integer in the range [0, MaxSLA]
-     */
     async getSLA(vaultId: string): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         const sla = await this.api.query.sla.vaultSla(parsedId);
         return decodeFixedPointType(sla);
     }
 
-    /**
-     * @returns The maximum SLA score, a positive integer
-     */
     async getMaxSLA(): Promise<string> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
         const maxSlaBig = new Big(maxSLA.toString());

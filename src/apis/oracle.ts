@@ -23,25 +23,63 @@ export type BtcTxFees = {
 };
 
 export interface OracleAPI {
+    /**
+     * @returns The DOT/BTC exchange rate
+     */
     getExchangeRate(): Promise<Big>;
+    /**
+     * Obtains the current fees for BTC transactions, in satoshi/byte.
+     * @returns An object with the values `fast` (estimated fee for inclusion
+     * in the next block - about 10 minutes), `half` (fee for the next 3 blocks or ~30 minutes)
+     * and `hour` (fee for inclusion in the next 6 blocks, or ~60 minutes).
+     */
     getBtcTxFeesPerByte(): Promise<BtcTxFees>;
+    /**
+     * @returns The feed name (such as "DOT/BTC")
+     */
     getFeed(): Promise<string>;
+    /**
+     * @returns Last exchange rate time
+     */
     getLastExchangeRateTime(): Promise<Date>;
+    /**
+     * @returns An array with the oracle names
+     */
     getOracleNames(): Promise<Array<string>>;
+    /**
+     * @returns Boolean value indicating whether the oracle is online
+     */
     isOnline(): Promise<boolean>;
+    /**
+     * @returns An object of type OracleInfo
+     */
     getInfo(): Promise<OracleInfo>;
+    /**
+     * Send a transaction to set the DOT/BTC exchange rate
+     * @param exchangeRate The rate to set
+     */
     setExchangeRate(exchangeRate: string): Promise<void>;
+    /**
+     * Send a transaction to set the current fee rates for BTC transactions
+     * @param fees.fast Estimated Satoshis per bytes to get included in the next block (~10 min)
+     * @param fees.half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
+     * @param fees.hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
+     */
     setBtcTxFeesPerByte(fees: BtcTxFees): Promise<void>;
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
     setAccount(account: AddressOrPair): void;
+    /**
+     * @returns The Planck/Satoshi exchange rate
+     */
     getRawExchangeRate(): Promise<Big>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
     constructor(private api: ApiPromise, private account?: AddressOrPair) {}
 
-    /**
-     * @returns An object of type OracleInfo
-     */
     async getInfo(): Promise<OracleInfo> {
         return {
             exchangeRate: await this.getExchangeRate(),
@@ -52,26 +90,16 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
-    /**
-     * @returns The DOT/BTC exchange rate
-     */
     async getExchangeRate(): Promise<Big> {
         const rawRate = await this.getRawExchangeRate();
         return new Big(this.convertFromRawExchangeRate(rawRate.toString()));
     }
 
-    /**
-     * @returns The Planck/Satoshi exchange rate
-     */
     async getRawExchangeRate(): Promise<Big> {
         const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate();
         return new Big(decodeFixedPointType(encodedRawRate));
     }
 
-    /**
-     * Send a transaction to set the DOT/BTC exchange rate
-     * @param exchangeRate The rate to set
-     */
     async setExchangeRate(exchangeRate: string): Promise<void> {
         if (!this.account) {
             throw new Error("cannot set exchange rate without setting account");
@@ -81,23 +109,11 @@ export class DefaultOracleAPI implements OracleAPI {
         await sendLoggedTx(tx, this.account, this.api);
     }
 
-    /**
-     * Obtains the current fees for BTC transactions, in satoshi/byte.
-     * @returns An object with the values `fast` (estimated fee for inclusion
-     * in the next block - about 10 minutes), `half` (fee for the next 3 blocks or ~30 minutes)
-     * and `hour` (fee for inclusion in the next 6 blocks, or ~60 minutes).
-     */
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
         const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes();
         return { fast: fees.fast.toNumber(), half: fees.half.toNumber(), hour: fees.hour.toNumber() };
     }
 
-    /**
-     * Send a transaction to set the current fee rates for BTC transactions
-     * @param fees.fast Estimated Satoshis per bytes to get included in the next block (~10 min)
-     * @param fees.half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
-     * @param fees.hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
-     */
     async setBtcTxFeesPerByte({ fast, half, hour }: BtcTxFees): Promise<void> {
         if (!this.account) {
             throw new Error("cannot set tx fees without setting account");
@@ -115,32 +131,20 @@ export class DefaultOracleAPI implements OracleAPI {
         await sendLoggedTx(tx, this.account, this.api);
     }
 
-    /**
-     * @returns An array with the oracle names
-     */
     async getOracleNames(): Promise<Array<string>> {
         const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
         return oracles.map((v) => v[1].toUtf8());
     }
 
-    /**
-     * @returns The feed name (such as "DOT/BTC")
-     */
     getFeed(): Promise<string> {
         return Promise.resolve(defaultFeedName);
     }
 
-    /**
-     * @returns Last exchange rate time
-     */
     async getLastExchangeRateTime(): Promise<Date> {
         const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime();
         return this.convertMoment(moment);
     }
 
-    /**
-     * @returns Boolean value indicating whether the oracle is online
-     */
     async isOnline(): Promise<boolean> {
         const errors = await this.api.query.security.errors();
         return !this.hasOracleError(errors);
@@ -167,10 +171,6 @@ export class DefaultOracleAPI implements OracleAPI {
         return rateBig.div(divisor).toString();
     }
 
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
     setAccount(account: AddressOrPair): void {
         this.account = account;
     }

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+rm -rf ./docs
+
+./node_modules/typedoc/bin/typedoc --plugin typedoc-plugin-markdown --publicPath "/" --namedAnchors true src/index.ts
+cp docs_helpers/* docs/
+
+# The sidebar is a copy of the modules file (which summarises all project files).
+# We only keep the links and remove the actual definitions, which will be displayed
+# in the main section of the page
+sed -n '/^### Classes$/,$p' ./docs/modules.md > ./docs/tmp.md
+sed -n '/^## Type aliases$/q;p' ./docs/tmp.md > ./docs/_sidebar.md
+rm ./docs/tmp.md

@@ -12,7 +12,7 @@
     "PolkaBTC"
   ],
   "scripts": {
-    "build": "run-s generate:* build:*",
+    "build": "run-s generate:* build:* ./generate_docs",
     "build:tsc": "tsc -p tsconfig.json",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",

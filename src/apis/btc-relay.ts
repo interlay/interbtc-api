@@ -6,37 +6,19 @@ import { H256Le } from "../interfaces/default";
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 
 export interface BTCRelayAPI {
-    getStableBitcoinConfirmations(): Promise<number>;
-    getLatestBlock(): Promise<H256Le>;
-    getLatestBlockHeight(): Promise<u32>;
-    verifyTransactionInclusion(txid: string, confirmations?: number, insecure?: boolean): Promise<void>;
-}
-
-export class DefaultBTCRelayAPI implements BTCRelayAPI {
-    constructor(private api: ApiPromise, private btcCore: BTCCoreAPI) {}
-
     /**
      * @returns A global security parameter: the required block confirmations
      * for a transaction to be considered stable
      */
-    async getStableBitcoinConfirmations(): Promise<number> {
-        return this.api.query.btcRelay.stableBitcoinConfirmations().then((param) => param.toNumber());
-    }
-
+    getStableBitcoinConfirmations(): Promise<number>;
     /**
      * @returns The raw transaction data, represented as a Buffer object
      */
-    async getLatestBlock(): Promise<H256Le> {
-        return await this.api.query.btcRelay.bestBlock();
-    }
-
+    getLatestBlock(): Promise<H256Le>;
     /**
      * @returns The height of the latest Bitcoin block that was rekayed by the BTC-Relay
      */
-    async getLatestBlockHeight(): Promise<u32> {
-        return await this.api.query.btcRelay.bestBlockHeight();
-    }
-
+    getLatestBlockHeight(): Promise<u32>;
     /**
      * Verifies the inclusion of a transaction with `txid` in the Bitcoin blockchain
      *
@@ -44,6 +26,24 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
      * @param confirmations The number of block confirmations needed to accept the inclusion proof.
      * This parameter is only used if the `insecure` parameter is set to `true`.
      */
+    verifyTransactionInclusion(txid: string, confirmations?: number, insecure?: boolean): Promise<void>;
+}
+
+export class DefaultBTCRelayAPI implements BTCRelayAPI {
+    constructor(private api: ApiPromise, private btcCore: BTCCoreAPI) {}
+
+    async getStableBitcoinConfirmations(): Promise<number> {
+        return this.api.query.btcRelay.stableBitcoinConfirmations().then((param) => param.toNumber());
+    }
+
+    async getLatestBlock(): Promise<H256Le> {
+        return await this.api.query.btcRelay.bestBlock();
+    }
+
+    async getLatestBlockHeight(): Promise<u32> {
+        return await this.api.query.btcRelay.bestBlockHeight();
+    }
+
     async verifyTransactionInclusion(
         txid: string,
         confirmations: number = DEFAULT_STABLE_CONFIRMATIONS
