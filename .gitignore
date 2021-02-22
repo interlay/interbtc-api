@@ -11,3 +11,5 @@ src/interfaces/*
 !src/interfaces/default
 src/interfaces/default/*
 !src/interfaces/default/.keep
+docs/*
+!docs/helpers

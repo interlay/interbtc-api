@@ -28,6 +28,9 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
     return encodeParachainRequest<IssueRequest, IssueRequestExt>(req, network);
 }
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface IssueAPI {
     /**
      * Send an issue request transaction

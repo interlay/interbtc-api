@@ -10,6 +10,9 @@ import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface StakedRelayerAPI {
     /**
      * @returns An array containing the active staked relayers

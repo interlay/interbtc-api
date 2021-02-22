@@ -54,6 +54,9 @@ export function encodeVault(vault: Vault, network: Network): VaultExt {
     ) as VaultExt;
 }
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface VaultsAPI {
     /**
      * @returns An array containing the vaults

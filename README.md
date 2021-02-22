@@ -4,7 +4,13 @@ JavaScript library to interact with PolkaBTC
 
 ## Getting started
 
-See [BTC Parachain](https://github.com/interlay/btc-parachain) to get a development node running.
+You can spin up the parachain including the different clients with docker-compose:
+
+```bash
+docker-compose up
+```
+
+If you want to run components individually, you can clone the repositories and run the commands as done in `docker-compose.yml`.
 
 To install dependencies, run
 
@@ -24,11 +30,7 @@ To run only unit tests, use
 yarn test:unit
 ```
 
-Note that the parachain needs to be running for all tests to pass. You can spin up the parachain including the different clients with docker-compose:
-
-```bash
-docker-compose up
-```
+Note that the parachain needs to be running for all tests to pass.
 
 Then, to run tests, run
 

@@ -3,6 +3,9 @@ import { ApiPromise } from "@polkadot/api";
 import { sendLoggedTx } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface CollateralAPI {
     /**
      * Set an account to use when sending transactions from this API

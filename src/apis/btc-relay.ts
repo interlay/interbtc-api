@@ -5,6 +5,9 @@ import { H256Le } from "../interfaces/default";
 
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface BTCRelayAPI {
     /**
      * @returns A global security parameter: the required block confirmations

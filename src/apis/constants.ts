@@ -1,10 +1,12 @@
 import { Balance, BalanceOf, BlockNumber, Moment, RuntimeDbWeight, Weight } from "@polkadot/types/interfaces/runtime";
 import { DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { u32, u64 } from "@polkadot/types/primitive";
 import { Vec } from "@polkadot/types/codec";
 import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface ConstantsAPI {
     /**
      * @returns The minimum amount of DOT required to keep an account open.

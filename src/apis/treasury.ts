@@ -4,6 +4,9 @@ import { sendLoggedTx } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { EventRecord } from "@polkadot/types/interfaces";
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface TreasuryAPI {
     /**
      * @returns The total PolkaBTC issued in the system, denoted in Satoshi

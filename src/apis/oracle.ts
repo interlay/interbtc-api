@@ -22,6 +22,9 @@ export type BtcTxFees = {
     hour: number;
 };
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface OracleAPI {
     /**
      * @returns The DOT/BTC exchange rate

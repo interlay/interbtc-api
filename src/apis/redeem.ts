@@ -22,6 +22,9 @@ export function encodeRedeemRequest(req: RedeemRequest, network: Network): Redee
     return encodeParachainRequest<RedeemRequest, RedeemRequestExt>(req, network);
 }
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface RedeemAPI {
     /**
      * @returns An array containing the redeem requests

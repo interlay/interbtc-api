@@ -14,6 +14,9 @@ export function encodeRefundRequest(req: RefundRequest, network: Network): Refun
     return encodeParachainRequest<RefundRequest, RefundRequestExt>(req, network);
 }
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface RefundAPI {
     /**
      * Set an account to use when sending transactions from this API

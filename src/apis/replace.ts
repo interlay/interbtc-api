@@ -27,6 +27,9 @@ export function encodeReplaceRequest(req: ReplaceRequest, network: Network): Rep
     } as unknown) as ReplaceRequestExt;
 }
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export interface ReplaceAPI {
     /**
      * @returns The minimum amount of btc that is accepted for replace requests; any lower values would

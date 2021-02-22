@@ -50,6 +50,9 @@ export interface PolkaBTCAPI {
     readonly account: AddressOrPair | undefined;
 }
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
