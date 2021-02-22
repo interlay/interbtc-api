@@ -330,10 +330,10 @@ export class DefaultVaultsAPI {
         try {
             collateralization = newCollateral
                 ? await customAPIRPC.vaultRegistry.getCollateralizationFromVaultAndCollateral(
-                      vaultId,
-                      this.wrapCurrency(newCollateral),
-                      onlyIssued
-                  )
+                    vaultId,
+                    this.wrapCurrency(newCollateral),
+                    onlyIssued
+                )
                 : await customAPIRPC.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {

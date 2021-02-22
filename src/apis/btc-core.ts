@@ -114,14 +114,14 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
     constructor(network: string = "mainnet") {
         let basePath = "";
         switch (network) {
-            case "mainnet":
-                basePath = mainnetApiBasePath;
-                break;
-            case "testnet":
-                basePath = testnetApiBasePath;
-                break;
-            default:
-                basePath = network;
+        case "mainnet":
+            basePath = mainnetApiBasePath;
+            break;
+        case "testnet":
+            basePath = testnetApiBasePath;
+            break;
+        default:
+            basePath = network;
         }
         const conf = new Configuration({ basePath });
         this.blockApi = new BlockApi(conf);
