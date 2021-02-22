@@ -1,4 +1,4 @@
-import { PolkaBTC, RedeemRequest, Vault, DOT, H256Le } from "../../interfaces/default";
+import { PolkaBTC, RedeemRequest, DOT, H256Le } from "../../interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";

@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, DOT, BalanceWrapper } from "../../interfaces/default";
+import { PolkaBTC, Vault, DOT } from "../../interfaces/default";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";

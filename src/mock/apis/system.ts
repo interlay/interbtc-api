@@ -1,5 +1,4 @@
 import { SystemAPI } from "../../parachain/system";
-import { ApiPromise } from "@polkadot/api";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { TypeRegistry, u32 } from "@polkadot/types";
 

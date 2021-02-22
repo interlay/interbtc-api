@@ -30,7 +30,7 @@ export class JsonRpcClient<T> {
         this.url = url;
     }
 
-    async post<T>(method: string, params?: RequestParams): Promise<JsonRpcResponse<T>> {
+    async post(method: string, params?: RequestParams): Promise<JsonRpcResponse<T>> {
         const id = Math.random().toString(16).substring(7);
         const body: JsonRpcRequest = {
             jsonrpc: "2.0",

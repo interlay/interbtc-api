@@ -1,4 +1,4 @@
-import { DOT, IssueRequest, PolkaBTC, H256Le, Vault } from "../../interfaces/default";
+import { DOT, IssueRequest, PolkaBTC, H256Le } from "../../interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
 import { Bytes, bool } from "@polkadot/types/primitive";
@@ -88,7 +88,7 @@ export class MockIssueAPI implements IssueAPI {
         };
     }
 
-    isRequestSuccessful(events: EventRecord[]): boolean {
+    isRequestSuccessful(_events: EventRecord[]): boolean {
         return true;
     }
 

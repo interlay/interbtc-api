@@ -1,4 +1,4 @@
-import { PolkaBTC, RedeemRequest, Vault, H256Le, DOT } from "../interfaces/default";
+import { PolkaBTC, RedeemRequest, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";

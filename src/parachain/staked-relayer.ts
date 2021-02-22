@@ -2,9 +2,9 @@ import { DOT, StakedRelayer, StatusCode, StatusUpdate } from "../interfaces/defa
 import { u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { VaultsAPI, DefaultVaultsAPI, VaultExt } from "./vaults";
+import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { calculateAPY, FIXEDI128_SCALING_FACTOR, pagedIterator, decodeFixedPointType } from "../utils";
+import { calculateAPY, pagedIterator, decodeFixedPointType } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";

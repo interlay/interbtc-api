@@ -10,16 +10,16 @@ export class MockTreasuryAPI implements TreasuryAPI {
         return new u128(registry, 128);
     }
 
-    async balancePolkaBTC(id: AccountId): Promise<Balance> {
+    async balancePolkaBTC(_id: AccountId): Promise<Balance> {
         const registry = new TypeRegistry();
         return new u128(registry, 128);
     }
 
-    async transfer(destination: string, amountSatoshi: string): Promise<void> {
+    async transfer(_destination: string, _amountSatoshi: string): Promise<void> {
         return;
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(_account: AddressOrPair): void {
         return;
     }
 }

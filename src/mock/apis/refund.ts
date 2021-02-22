@@ -5,7 +5,7 @@ import { GenericAccountId } from "@polkadot/types/generic";
 
 import { TypeRegistry, bool, U8aFixed } from "@polkadot/types";
 import BN from "bn.js";
-import { RefundAPI, RefundRequestExt, ReplaceAPI, ReplaceRequestExt } from "../../parachain";
+import { RefundAPI, RefundRequestExt } from "../../parachain";
 
 export class MockRefundAPI implements RefundAPI {
     list(): Promise<RefundRequestExt[]> {

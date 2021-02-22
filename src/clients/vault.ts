@@ -12,7 +12,6 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 import { JsonRpcClient } from "./client";
-import { bitcoin } from "../utils/bitcoin";
 
 /**
  * @category Clients

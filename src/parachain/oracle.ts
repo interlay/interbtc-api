@@ -1,4 +1,4 @@
-import { BtcTxFeesPerByte, ErrorCode } from "../interfaces/default";
+import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";

@@ -72,13 +72,11 @@ export class DefaultRefundAPI {
     }
 
     async getRequestByIssueId(issueId: string): Promise<RefundRequestExt> {
-        const customAPIRPC = this.api.rpc as any;
-        let keyValuePair = undefined;
         try {
-            keyValuePair = await customAPIRPC.refund.getRefundRequestsByIssueId(issueId);
+            const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(issueId);
+            return encodeRefundRequest(keyValuePair[1], this.btcNetwork);
         } catch (error) {
-            Promise.reject(`Error fetching refund request by issue id: ${error}`);
+            return Promise.reject(`Error fetching refund request by issue id: ${error}`);
         }
-        return encodeRefundRequest(keyValuePair[1], this.btcNetwork);
     }
 }

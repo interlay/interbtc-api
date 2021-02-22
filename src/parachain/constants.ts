@@ -1,4 +1,4 @@
-import { Balance, BalanceOf, BlockNumber, Moment, RuntimeDbWeight, Weight } from "@polkadot/types/interfaces/runtime";
+import { Balance, BalanceOf, BlockNumber, Moment, RuntimeDbWeight } from "@polkadot/types/interfaces/runtime";
 import { DOT } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { Vec } from "@polkadot/types/codec";
