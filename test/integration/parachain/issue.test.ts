@@ -363,11 +363,10 @@ export async function issue(
     try {
         issueRequest = await issueAPI.getRequestById(issueRequestId);
     } catch (e) {
-        // TODO: Prevent non-critical IssueCompleted errors from happening
+        // IssueCompleted errors occur when multiple vaults attempt to execute the same request
         console.log(e);
     }
 
-    // Force type inference until the IssueCompleted errors are avoided
     amountAsBtcString = satToBTC(
         (issueRequest as IssueRequestExt).amount.add((issueRequest as IssueRequestExt).fee).toString()
     );

@@ -138,11 +138,9 @@ export class DefaultIssueAPI implements IssueAPI {
      * contain issue request events, the function throws an error.
      */
     private getIssueIdFromEvents(events: EventRecord[]): Hash {
-        for (const {
-            event: { method, section, data },
-        } of events) {
-            if (section == "issue" && method == "RequestIssue") {
-                const hash = this.api.createType("Hash", data[0]);
+        for (const { event } of events) {
+            if (this.api.events.issue.RequestIssue.is(event)) {
+                const hash = this.api.createType("Hash", event.data[0]);
                 return hash;
             }
         }
@@ -150,10 +148,8 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     isRequestSuccessful(events: EventRecord[]): boolean {
-        for (const {
-            event: { method, section },
-        } of events) {
-            if (section == "issue" && method == "RequestIssue") {
+        for (const { event } of events) {
+            if (this.api.events.issue.RequestIssue.is(event)) {
                 return true;
             }
         }
@@ -161,10 +157,8 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     isExecutionSuccessful(events: EventRecord[]): boolean {
-        for (const {
-            event: { method, section },
-        } of events) {
-            if (section == "issue" && method == "ExecuteIssue") {
+        for (const { event } of events) {
+            if (this.api.events.issue.ExecuteIssue.is(event)) {
                 return true;
             }
         }

@@ -50,10 +50,8 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
      * @returns A boolean value
      */
     isTransferSuccessful(events: EventRecord[]): boolean {
-        for (const {
-            event: { method, section },
-        } of events) {
-            if (section == "polkaBtc" && method == "Transfer") {
+        for (const { event } of events) {
+            if (this.api.events.polkaBtc.Transfer.is(event)) {
                 return true;
             }
         }

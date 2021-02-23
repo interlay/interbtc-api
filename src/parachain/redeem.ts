@@ -10,6 +10,8 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
+import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
+import type { AnyTuple } from "@polkadot/types/types";
 
 export type RequestResult = { id: Hash; vault: VaultExt };
 
@@ -128,13 +130,11 @@ export class DefaultRedeemAPI {
      * @returns The redeemId associated with the transaction. If the EventRecord array does not
      * contain redeem events, the function throws an error.
      */
-    private getRedeemIdFromEvents(events: EventRecord[], methodToCheck: string): Hash {
-        for (const {
-            event: { method, section, data },
-        } of events) {
-            if (section == "redeem" && methodToCheck === method) {
-                // the redeem id as H256 is always the first item of the event
-                const id = this.api.createType("Hash", data[0]);
+    private getRedeemIdFromEvents(events: EventRecord[], eventToFind: AugmentedEvent<ApiTypes, AnyTuple>): Hash {
+        for (const { event } of events) {
+            if (eventToFind.is(event)) {
+                // the redeem id has type H256 and is the first item of the event data array
+                const id = this.api.createType("Hash", event.data[0]);
                 return id;
             }
         }
@@ -153,14 +153,11 @@ export class DefaultRedeemAPI {
      * @returns A boolean value
      */
     isRequestSuccessful(events: EventRecord[]): boolean {
-        for (const {
-            event: { method, section },
-        } of events) {
-            if (section == "redeem" && method == "RequestRedeem") {
+        for (const { event } of events) {
+            if (this.api.events.redeem.RequestRedeem.is(event)) {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -169,14 +166,11 @@ export class DefaultRedeemAPI {
      * @returns A boolean value
      */
     isExecutionSuccessful(events: EventRecord[]): boolean {
-        for (const {
-            event: { method, section },
-        } of events) {
-            if (section == "redeem" && method == "ExecuteRedeem") {
+        for (const { event } of events) {
+            if (this.api.events.redeem.ExecuteRedeem.is(event)) {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -199,7 +193,7 @@ export class DefaultRedeemAPI {
         if (!this.isRequestSuccessful(result.events)) {
             throw new Error("Request failed");
         }
-        const id = this.getRedeemIdFromEvents(result.events, "RequestRedeem");
+        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
         return { id, vault };
     }
 
@@ -212,7 +206,7 @@ export class DefaultRedeemAPI {
         if (!this.isExecutionSuccessful(result.events)) {
             throw new Error("Execution failed");
         }
-        const id = this.getRedeemIdFromEvents(result.events, "ExecuteRedeem");
+        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
         if (id) {
             return true;
         }
@@ -226,7 +220,7 @@ export class DefaultRedeemAPI {
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
         const result = await sendLoggedTx(cancelRedeemTx, this.account, this.api);
-        const id = this.getRedeemIdFromEvents(result.events, "CancelRedeem");
+        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.CancelRedeem);
         if (id) {
             return true;
         }

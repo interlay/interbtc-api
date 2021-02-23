@@ -38,7 +38,7 @@ describe("stakedRelayerClient", async () => {
             .post("/")
             .reply(
                 500,
-                (_, body: JsonRpcRequest): JsonRpcResponse => {
+                (_, body: JsonRpcRequest): JsonRpcResponse<void> => {
                     return {
                         jsonrpc: "2.0",
                         id: body.id,
@@ -61,7 +61,7 @@ describe("stakedRelayerClient", async () => {
             .post("/")
             .reply(
                 200,
-                (_, body: JsonRpcRequest): JsonRpcResponse => {
+                (_, body: JsonRpcRequest): JsonRpcResponse<void> => {
                     return {
                         jsonrpc: "2.0",
                         id: body.id,
