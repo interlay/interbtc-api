@@ -36,7 +36,7 @@ export class MockRefundAPI implements RefundAPI {
         };
     }
 
-    async getRequestByIssueId(_issueId: string): Promise<RefundRequestExt> {
+    async getRequestByIssueId(_issueId: H256): Promise<RefundRequestExt> {
         const registry = new TypeRegistry();
         const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
 

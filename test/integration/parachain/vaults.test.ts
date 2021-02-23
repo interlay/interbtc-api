@@ -6,6 +6,7 @@ import { assert } from "../../chai";
 import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import Big from "big.js";
+import { TypeRegistry } from "@polkadot/types";
 
 describe("vaultsAPI", () => {
     let bob: KeyringPair;
@@ -14,6 +15,7 @@ describe("vaultsAPI", () => {
     let eve: KeyringPair;
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
+    const registry = new TypeRegistry();
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
@@ -44,8 +46,8 @@ describe("vaultsAPI", () => {
         const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
-            randomVault.toHuman() === charlie.address ||
-            randomVault.toHuman() === eve.address
+                randomVault.toHuman() === charlie.address ||
+                randomVault.toHuman() === eve.address
         );
     });
 
@@ -59,8 +61,8 @@ describe("vaultsAPI", () => {
         const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
-            randomVault.toHuman() === charlie.address ||
-            randomVault.toHuman() === eve.address
+                randomVault.toHuman() === charlie.address ||
+                randomVault.toHuman() === eve.address
         );
     });
 
@@ -132,22 +134,22 @@ describe("vaultsAPI", () => {
         });
 
         it("should get SLA", async () => {
-            const sla = await vaultsAPI.getSLA(charlie.address);
+            const sla = await vaultsAPI.getSLA(registry.createType("AccountId", charlie.address));
             assert.isString(sla);
         });
     });
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await vaultsAPI.getFeesPolkaBTC(charlie.address);
-            const feesDOT = await vaultsAPI.getFeesDOT(charlie.address);
+            const feesPolkaBTC = await vaultsAPI.getFeesPolkaBTC(registry.createType("AccountId", charlie.address));
+            const feesDOT = await vaultsAPI.getFeesDOT(registry.createType("AccountId", charlie.address));
             const benchmarkFees = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(benchmarkFees));
             assert.isTrue(new Big(feesDOT).gte(benchmarkFees));
         });
 
         it("should getAPY", async () => {
-            const apy = await vaultsAPI.getAPY(charlie.address);
+            const apy = await vaultsAPI.getAPY(registry.createType("AccountId", charlie.address));
             const apyBig = new Big(apy);
             const apyBenchmark = new Big("0");
             assert.isTrue(apyBig.gte(apyBenchmark));

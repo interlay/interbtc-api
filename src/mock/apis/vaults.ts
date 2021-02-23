@@ -173,23 +173,23 @@ export class MockVaultsAPI implements VaultsAPI {
         return new Big(0);
     }
 
-    async getFeesPolkaBTC(_vaultId: string): Promise<string> {
+    async getFeesPolkaBTC(_vaultId: AccountId): Promise<string> {
         return "368";
     }
 
-    async getFeesDOT(_vaultId: string): Promise<string> {
+    async getFeesDOT(_vaultId: AccountId): Promise<string> {
         return "368";
     }
 
-    async getAPY(_vaultId: string): Promise<string> {
+    async getAPY(_vaultId: AccountId): Promise<string> {
         return "3.23988247";
     }
 
-    async getSLA(_vaultId: string): Promise<string> {
+    async getSLA(_vaultId: AccountId): Promise<string> {
         return "62";
     }
 
-    async getSlashableCollateral(_vaultId: string, _amount: string): Promise<string> {
+    async getSlashableCollateral(_vaultId: AccountId, _amount: string): Promise<string> {
         return "55.325";
     }
 

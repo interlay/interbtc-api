@@ -83,7 +83,7 @@ describe("issue", () => {
             const requestResult = await issueAPI.request(amount);
             assert.equal(requestResult.id.length, 32);
 
-            const issueRequest = await issueAPI.getRequestById(requestResult.id.toString());
+            const issueRequest = await issueAPI.getRequestById(requestResult.id);
             assert.deepEqual(issueRequest.amount, amount, "Amount different than expected");
         });
 
@@ -232,8 +232,7 @@ describe("issue", () => {
             await bitcoinCoreClient.mineBlocks(50);
             await issueAPI.cancel(requestResult.id);
 
-            const issueRequestId = requestResult.id.toString();
-            const issueRequest = await issueAPI.getRequestById(issueRequestId);
+            const issueRequest = await issueAPI.getRequestById(requestResult.id);
 
             assert.isTrue(issueRequest.cancelled.isTrue, "Failed to cancel issue request");
         });
@@ -358,10 +357,9 @@ export async function issue(
     }
     const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
     const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
-    const issueRequestId = requestResult.id.toString();
     let issueRequest;
     try {
-        issueRequest = await issueAPI.getRequestById(issueRequestId);
+        issueRequest = await issueAPI.getRequestById(requestResult.id);
     } catch (e) {
         // IssueCompleted errors occur when multiple vaults attempt to execute the same request
         console.log(e);
@@ -395,7 +393,7 @@ export async function issue(
         await issueAPI.execute(parsedIssuedId, parsedTxId, parsedMerkleProof, parsedRawTx);
     } else {
         // wait for vault to execute issue
-        while (!(await issueAPI.getRequestById(issueRequestId)).completed.isTrue) {
+        while (!(await issueAPI.getRequestById(requestResult.id)).completed.isTrue) {
             await sleep(1000);
         }
     }

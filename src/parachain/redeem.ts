@@ -80,7 +80,7 @@ export interface RedeemAPI {
      * @param redeemId The ID of the redeem request to fetch
      * @returns A redeem request object
      */
-    getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt>;
+    getRequestById(redeemId: H256): Promise<RedeemRequestExt>;
     /**
      * Whenever a redeem request associated with `account` expires, call the callback function with the
      * ID of the expired request. Already expired requests are stored in memory, so as not to call back
@@ -88,7 +88,7 @@ export interface RedeemAPI {
      * @param account The ID of the account whose redeem requests are to be checked for expiry
      * @param callback Function to be called whenever a redeem request expires
      */
-    subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: string) => void): Promise<() => void>;
+    subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void>;
     /**
      * @returns The minimum amount of btc that is accepted for redeem requests; any lower values would
      * risk the bitcoin client to reject the payment
@@ -241,10 +241,7 @@ export class DefaultRedeemAPI {
         return mapForUser;
     }
 
-    async subscribeToRedeemExpiry(
-        account: AccountId,
-        callback: (requestRedeemId: string) => void
-    ): Promise<() => void> {
+    async subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
         const expired = new Set();
         try {
             const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
@@ -254,7 +251,7 @@ export class DefaultRedeemAPI {
                 redeemRequests.forEach((request, id) => {
                     if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
                         expired.add(id);
-                        callback(stripHexPrefix(id.toString()));
+                        callback(this.api.createType("H256", stripHexPrefix(id.toString())));
                     }
                 });
             });
@@ -297,7 +294,7 @@ export class DefaultRedeemAPI {
         return pagedIterator<RedeemRequest>(this.api.query.redeem.redeemRequests, perPage);
     }
 
-    async getRequestById(redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt> {
+    async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {
         return encodeRedeemRequest(await this.api.query.redeem.redeemRequests(redeemId), this.btcNetwork);
     }
 

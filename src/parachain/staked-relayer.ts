@@ -1,5 +1,5 @@
 import { DOT, StakedRelayer, StatusCode, StatusUpdate } from "../interfaces/default";
-import { u128, u256 } from "@polkadot/types/primitive";
+import { u64, u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
@@ -66,7 +66,7 @@ export interface StakedRelayerAPI {
     /**
      * @returns A tuple denoting [statusUpdateStorageKey, statusUpdateEnd, statusUpdateAyes, statusUpdateNays]
      */
-    getOngoingStatusUpdateVotes(): Promise<Array<[string, BlockNumber, number, number]>>;
+    getOngoingStatusUpdateVotes(): Promise<Array<PendingStatusUpdate>>;
     /**
      * @returns An array of { id, statusUpdate } objects
      */
@@ -83,12 +83,12 @@ export interface StakedRelayerAPI {
      * @param stakedRelayerId The ID of a staked relayer
      * @returns Total rewards in PolkaBTC, denoted in Satoshi, for the given staked relayer
      */
-    getFeesPolkaBTC(stakedRelayerId: string): Promise<string>;
+    getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<string>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
      * @returns Total rewards in DOT, denoted in Planck, for the given staked relayer
      */
-    getFeesDOT(stakedRelayerId: string): Promise<string>;
+    getFeesDOT(stakedRelayerId: AccountId): Promise<string>;
     /**
      * Get the total APY for a staked relayer based on the income in PolkaBTC and DOT
      * divided by the locked DOT.
@@ -98,20 +98,27 @@ export interface StakedRelayerAPI {
      * @param stakedRelayerId the id of the relayer
      * @returns the APY as a percentage string
      */
-    getAPY(stakedRelayerId: string): Promise<string>;
+    getAPY(stakedRelayerId: AccountId): Promise<string>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
      * @returns The SLA score, an integer in the range [0, MaxSLA]
      */
-    getSLA(stakedRelayerId: string): Promise<string>;
+    getSLA(stakedRelayerId: AccountId): Promise<number>;
     /**
      * @returns The maximum SLA score, a positive integer
      */
-    getMaxSLA(): Promise<string>;
+    getMaxSLA(): Promise<number>;
     /**
      * @returns The number of blocks to wait until eligible to vote
      */
     getStakedRelayersMaturityPeriod(): Promise<BlockNumber>;
+}
+
+export interface PendingStatusUpdate {
+    statusUpdateStorageKey: u64;
+    statusUpdateEnd: BlockNumber;
+    statusUpdateAyes: number;
+    statusUpdateNays: number;
 }
 
 export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
@@ -216,16 +223,16 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return await this.api.query.security.parachainStatus();
     }
 
-    async getOngoingStatusUpdateVotes(): Promise<Array<[string, BlockNumber, number, number]>> {
+    async getOngoingStatusUpdateVotes(): Promise<Array<PendingStatusUpdate>> {
         const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entries();
-        const statusUpdates = statusUpdatesMappings.map<[string, StatusUpdate]>((v) => [v[0].toString(), v[1]]);
+        const statusUpdates = statusUpdatesMappings.map<[u64, StatusUpdate]>((v) => [v[0].args[0], v[1]]);
         const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate[1].proposal_status.isPending);
-        return pendingUpdates.map((pendingUpdate) => [
-            pendingUpdate[0],
-            pendingUpdate[1].end,
-            pendingUpdate[1].tally.aye.size,
-            pendingUpdate[1].tally.nay.size,
-        ]);
+        return pendingUpdates.map((pendingUpdate) => ({
+            statusUpdateStorageKey: pendingUpdate[0],
+            statusUpdateEnd: pendingUpdate[1].end,
+            statusUpdateAyes: pendingUpdate[1].tally.aye.size,
+            statusUpdateNays: pendingUpdate[1].tally.nay.size,
+        }));
     }
 
     async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
@@ -243,44 +250,39 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        // TODO: page this so we don't fetch ALL status updates at once
         const activeStatusUpdates = await this.getAllActiveStatusUpdates();
         const inactiveStatusUpdates = await this.getAllInactiveStatusUpdates();
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
 
-    async getFeesPolkaBTC(stakedRelayerId: string): Promise<string> {
-        const parseId = this.api.createType("AccountId", stakedRelayerId);
-        const fees = await this.api.query.fee.totalRewardsPolkaBTC(parseId);
+    async getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<string> {
+        const fees = await this.api.query.fee.totalRewardsPolkaBTC(stakedRelayerId);
         return fees.toString();
     }
 
-    async getFeesDOT(stakedRelayerId: string): Promise<string> {
-        const parseId = this.api.createType("AccountId", stakedRelayerId);
-        const fees = await this.api.query.fee.totalRewardsDOT(parseId);
+    async getFeesDOT(stakedRelayerId: AccountId): Promise<string> {
+        const fees = await this.api.query.fee.totalRewardsDOT(stakedRelayerId);
         return fees.toString();
     }
 
-    async getAPY(stakedRelayerId: string): Promise<string> {
-        const parsedStakedRelayerId = this.api.createType("AccountId", stakedRelayerId);
+    async getAPY(stakedRelayerId: AccountId): Promise<string> {
         const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
             await this.getFeesPolkaBTC(stakedRelayerId),
             await this.getFeesDOT(stakedRelayerId),
             await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLockedDOT(parsedStakedRelayerId)).toString(),
+            await (await this.collateralAPI.balanceLockedDOT(stakedRelayerId)).toString(),
         ]);
         return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
-    async getSLA(stakedRelayerId: string): Promise<string> {
-        const parsedId = this.api.createType("AccountId", stakedRelayerId);
-        const sla = await this.api.query.sla.relayerSla(parsedId);
-        return decodeFixedPointType(sla);
+    async getSLA(stakedRelayerId: AccountId): Promise<number> {
+        const sla = await this.api.query.sla.relayerSla(stakedRelayerId);
+        return Number(decodeFixedPointType(sla));
     }
 
-    async getMaxSLA(): Promise<string> {
+    async getMaxSLA(): Promise<number> {
         const maxSLA = await this.api.query.sla.relayerTargetSla();
-        return decodeFixedPointType(maxSLA);
+        return Number(decodeFixedPointType(maxSLA));
     }
 
     async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {

@@ -10,6 +10,7 @@ import { defaultParachainEndpoint } from "../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
+import { TypeRegistry } from "@polkadot/types";
 
 describe("stakedRelayerAPI", () => {
     function numberToDOT(x: number): DOT {
@@ -20,6 +21,7 @@ describe("stakedRelayerAPI", () => {
     let stakedRelayerAPI: StakedRelayerAPI;
     let keyring: Keyring;
     let eve: KeyringPair;
+    const registry = new TypeRegistry();
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
@@ -37,9 +39,7 @@ describe("stakedRelayerAPI", () => {
 
     describe("request", () => {
         it("should getStakedDOTAmount", async () => {
-            sinon
-                .stub(stakedRelayerAPI, "get")
-                .returns(Promise.resolve(<StakedRelayer>{ stake: new BN(100) as DOT,  }));
+            sinon.stub(stakedRelayerAPI, "get").returns(Promise.resolve(<StakedRelayer>{ stake: new BN(100) as DOT }));
             const activeStakedRelayerId = <AccountId>{};
             const stakedDOTAmount: DOT = await stakedRelayerAPI.getStakedDOTAmount(activeStakedRelayerId);
             assert.equal(stakedDOTAmount.toNumber(), 100);
@@ -110,11 +110,11 @@ describe("stakedRelayerAPI", () => {
     describe("sla", () => {
         it("should getMaxSLA", async () => {
             const feesToPay = await stakedRelayerAPI.getMaxSLA();
-            assert.equal(feesToPay, "100");
+            assert.equal(feesToPay, 100);
         });
 
         it("should get SLA", async () => {
-            const sla = await stakedRelayerAPI.getSLA(eve.address);
+            const sla = await stakedRelayerAPI.getSLA(registry.createType("AccountId", eve.address));
             const slaBig = new Big(sla);
             const slaBenchmark = new Big("0");
             assert.isTrue(slaBig.gte(slaBenchmark));
@@ -123,8 +123,8 @@ describe("stakedRelayerAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await stakedRelayerAPI.getFeesPolkaBTC(eve.address);
-            const feesDOT = await stakedRelayerAPI.getFeesDOT(eve.address);
+            const feesPolkaBTC = await stakedRelayerAPI.getFeesPolkaBTC(registry.createType("AccountId", eve.address));
+            const feesDOT = await stakedRelayerAPI.getFeesDOT(registry.createType("AccountId", eve.address));
             const feeBenchmark = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
             assert.isTrue(new Big(feesDOT).gte(feeBenchmark));

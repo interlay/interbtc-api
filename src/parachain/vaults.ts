@@ -194,12 +194,12 @@ export interface VaultsAPI {
      * @param vaultId The vault account ID
      * @returns The total PolkaBTC reward collected by the vault, denoted in Satoshi
      */
-    getFeesPolkaBTC(vaultId: string): Promise<string>;
+    getFeesPolkaBTC(vaultId: AccountId): Promise<string>;
     /**
      * @param vaultId The vault account ID
      * @returns The total DOT reward collected by the vault, denoted in Planck
      */
-    getFeesDOT(vaultId: string): Promise<string>;
+    getFeesDOT(vaultId: AccountId): Promise<string>;
     /**
      * Get the total APY for a vault based on the income in PolkaBTC and DOT
      * divided by the locked DOT.
@@ -209,12 +209,12 @@ export interface VaultsAPI {
      * @param vaultId the id of the vault
      * @returns the APY as a percentage string
      */
-    getAPY(vaultId: string): Promise<string>;
+    getAPY(vaultId: AccountId): Promise<string>;
     /**
      * @param vaultId The vault account ID
      * @returns The SLA score of the given vault, an integer in the range [0, MaxSLA]
      */
-    getSLA(vaultId: string): Promise<string>;
+    getSLA(vaultId: AccountId): Promise<string>;
     /**
      * @returns The maximum SLA score, a positive integer
      */
@@ -228,7 +228,7 @@ export interface VaultsAPI {
     /**
      * This function is currently just a stub
      */
-    getSlashableCollateral(vaultId: string, amount: string): Promise<string>;
+    getSlashableCollateral(vaultId: AccountId, amount: string): Promise<string>;
     /**
      * @returns Total PolkaBTC that the total collateral in the system can back.
      * If every vault is properly collateralized, this value is equivalent to the sum of
@@ -476,30 +476,27 @@ export class DefaultVaultsAPI {
         return new Big(decodeFixedPointType(threshold));
     }
 
-    async getFeesPolkaBTC(vaultId: string): Promise<string> {
+    async getFeesPolkaBTC(vaultId: AccountId): Promise<string> {
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewardsPolkaBTC(parsedId)).toString();
     }
 
-    async getFeesDOT(vaultId: string): Promise<string> {
-        const parsedId = this.api.createType("AccountId", vaultId);
-        return (await this.api.query.fee.totalRewardsDOT(parsedId)).toString();
+    async getFeesDOT(vaultId: AccountId): Promise<string> {
+        return (await this.api.query.fee.totalRewardsDOT(vaultId)).toString();
     }
 
-    async getAPY(vaultId: string): Promise<string> {
-        const parsedVaultId = this.api.createType("AccountId", vaultId);
+    async getAPY(vaultId: AccountId): Promise<string> {
         const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
             await this.getFeesPolkaBTC(vaultId),
             await this.getFeesDOT(vaultId),
             await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLockedDOT(parsedVaultId)).toString(),
+            await (await this.collateralAPI.balanceLockedDOT(vaultId)).toString(),
         ]);
         return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
-    async getSLA(vaultId: string): Promise<string> {
-        const parsedId = this.api.createType("AccountId", vaultId);
-        const sla = await this.api.query.sla.vaultSla(parsedId);
+    async getSLA(vaultId: AccountId): Promise<string> {
+        const sla = await this.api.query.sla.vaultSla(vaultId);
         return decodeFixedPointType(sla);
     }
 
@@ -510,7 +507,7 @@ export class DefaultVaultsAPI {
         return maxSlaBig.div(divisor).toString();
     }
 
-    async getSlashableCollateral(_vaultId: string, _amount: string): Promise<string> {
+    async getSlashableCollateral(_vaultId: AccountId, _amount: string): Promise<string> {
         // TODO: get real value from backend
         return "123";
     }

@@ -85,8 +85,7 @@ describe.skip("redeem", () => {
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
-            const issueRequestId = requestResult.id.toString();
-            const issueRequest = await issueAPI.getRequestById(issueRequestId);
+            const issueRequest = await issueAPI.getRequestById(requestResult.id);
             const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
             // send btc tx
@@ -98,7 +97,7 @@ describe.skip("redeem", () => {
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, txAmountRequired, blocksToMine);
             assert.equal(Buffer.from(txData.txid, "hex").length, 32, "Transaction length not 32 bytes");
 
-            while (!(await issueAPI.getRequestById(issueRequestId)).completed.isTrue) {
+            while (!(await issueAPI.getRequestById(requestResult.id)).completed.isTrue) {
                 await sleep(1000);
             }
 

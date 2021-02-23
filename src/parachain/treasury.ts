@@ -55,7 +55,6 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
                 return true;
             }
         }
-
         return false;
     }
 

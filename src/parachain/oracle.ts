@@ -103,11 +103,11 @@ export class DefaultOracleAPI implements OracleAPI {
         return new Big(decodeFixedPointType(encodedRawRate));
     }
 
-    async setExchangeRate(exchangeRate: string): Promise<void> {
+    async setExchangeRate(dotPerBtc: string): Promise<void> {
         if (!this.account) {
             throw new Error("cannot set exchange rate without setting account");
         }
-        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate);
+        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
         await sendLoggedTx(tx, this.account, this.api);
     }

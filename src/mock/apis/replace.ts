@@ -3,6 +3,7 @@ import { BlockNumber } from "@polkadot/types/interfaces";
 import { PolkaBTC, DOT } from "../../interfaces/default";
 import BN from "bn.js";
 import { ReplaceRequestExt } from "../../parachain/replace";
+import { AccountId } from "@polkadot/types/interfaces";
 
 export class MockReplaceAPI implements ReplaceAPI {
     async getBtcDustValue(): Promise<PolkaBTC> {
@@ -21,7 +22,7 @@ export class MockReplaceAPI implements ReplaceAPI {
         return Promise.resolve([]);
     }
 
-    async map(): Promise<Map<string, ReplaceRequestExt>> {
-        return Promise.resolve(new Map<string, ReplaceRequestExt>());
+    async map(): Promise<Map<AccountId, ReplaceRequestExt>> {
+        return Promise.resolve(new Map<AccountId, ReplaceRequestExt>());
     }
 }

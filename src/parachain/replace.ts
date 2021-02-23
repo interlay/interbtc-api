@@ -4,6 +4,7 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Network } from "bitcoinjs-lib";
 import { encodeBtcAddress } from "../utils";
+import { H256 } from "@polkadot/types/interfaces";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
@@ -55,7 +56,7 @@ export interface ReplaceAPI {
     /**
      * @returns A mapping from the replace request ID to the replace request object
      */
-    map(): Promise<Map<string, ReplaceRequestExt>>;
+    map(): Promise<Map<H256, ReplaceRequestExt>>;
 }
 
 export class DefaultReplaceAPI implements ReplaceAPI {
@@ -85,13 +86,13 @@ export class DefaultReplaceAPI implements ReplaceAPI {
             .map((req: ReplaceRequest) => encodeReplaceRequest(req, this.btcNetwork));
     }
 
-    private storageKeyToIdString(s: StorageKey): string {
-        return s.args.map((k) => k.toString())[0];
+    private storageKeyToIdString(s: StorageKey<[H256]>): H256 {
+        return s.args[0];
     }
 
-    async map(): Promise<Map<string, ReplaceRequestExt>> {
+    async map(): Promise<Map<H256, ReplaceRequestExt>> {
         const redeemRequests = await this.api.query.replace.replaceRequests.entries();
-        const redeemRequestMap = new Map<string, ReplaceRequestExt>();
+        const redeemRequestMap = new Map<H256, ReplaceRequestExt>();
         redeemRequests
             .filter((v) => v[1].isSome)
             .map((v) => {

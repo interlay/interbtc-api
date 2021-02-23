@@ -36,12 +36,12 @@ export interface RefundAPI {
      * @param issueId The ID of the refund to fetch
      * @returns A refund object
      */
-    getRequestById(refundId: string): Promise<RefundRequestExt>;
+    getRequestById(refundId: H256): Promise<RefundRequestExt>;
     /**
      * @param issueId The ID of the refund request to fetch
      * @returns A refund request object
      */
-    getRequestByIssueId(issueId: string): Promise<RefundRequestExt>;
+    getRequestByIssueId(issueId: H256): Promise<RefundRequestExt>;
 }
 
 export class DefaultRefundAPI {
@@ -65,11 +65,11 @@ export class DefaultRefundAPI {
         return mapForUser;
     }
 
-    async getRequestById(refundId: string): Promise<RefundRequestExt> {
+    async getRequestById(refundId: H256): Promise<RefundRequestExt> {
         return encodeRefundRequest(await this.api.query.refund.refundRequests(refundId), this.btcNetwork);
     }
 
-    async getRequestByIssueId(issueId: string): Promise<RefundRequestExt> {
+    async getRequestByIssueId(issueId: H256): Promise<RefundRequestExt> {
         try {
             const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(issueId);
             return encodeRefundRequest(keyValuePair[1], this.btcNetwork);

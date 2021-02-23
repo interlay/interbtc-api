@@ -86,7 +86,7 @@ export interface IssueAPI {
      * @param issueId The ID of the issue request to fetch
      * @returns An issue request object
      */
-    getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt>;
+    getRequestById(issueId: H256): Promise<IssueRequestExt>;
     /**
      * @returns The time difference in number of blocks between when an issue request is created
      * and required completion time by a user.
@@ -261,7 +261,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return griefingCollateralPlanckRoundedUp;
     }
 
-    async getRequestById(issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {
+    async getRequestById(issueId: H256): Promise<IssueRequestExt> {
         return encodeIssueRequest(await this.api.query.issue.issueRequests(issueId), this.btcNetwork);
     }
 

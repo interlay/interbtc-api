@@ -1,11 +1,11 @@
 import { DOT, StakedRelayer, StatusCode, StatusUpdate } from "../../interfaces/default";
-import { u128, u256 } from "@polkadot/types/primitive";
+import { u32, u64, u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
-import { StakedRelayerAPI } from "../../parachain/staked-relayer";
+import { PendingStatusUpdate, StakedRelayerAPI } from "../../parachain/staked-relayer";
 import Big from "big.js";
 
 function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
@@ -16,6 +16,8 @@ function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
 }
 
 export class MockStakedRelayerAPI implements StakedRelayerAPI {
+    registry = new TypeRegistry();
+
     async list(): Promise<StakedRelayer[]> {
         return [
             <StakedRelayer>{
@@ -28,11 +30,10 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async map(): Promise<Map<AccountId, StakedRelayer>> {
-        const registry = new TypeRegistry();
         const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
         return new Map([
-            [new GenericAccountId(registry, decodedAccountId), <StakedRelayer>{ stake: new BN(10.2) as DOT }],
-            [new GenericAccountId(registry, decodedAccountId), <StakedRelayer>{ stake: new BN(11.9) as DOT }],
+            [new GenericAccountId(this.registry, decodedAccountId), <StakedRelayer>{ stake: new BN(10.2) as DOT }],
+            [new GenericAccountId(this.registry, decodedAccountId), <StakedRelayer>{ stake: new BN(11.9) as DOT }],
         ]);
     }
 
@@ -95,8 +96,15 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         };
     }
 
-    async getOngoingStatusUpdateVotes(): Promise<Array<[string, BlockNumber, number, number]>> {
-        return [["1", new BN(11208) as BlockNumber, 5, 5]];
+    async getOngoingStatusUpdateVotes(): Promise<Array<PendingStatusUpdate>> {
+        return [
+            {
+                statusUpdateStorageKey: new u64(this.registry, 1),
+                statusUpdateEnd: new u32(this.registry, 11208) as BlockNumber,
+                statusUpdateAyes: 5,
+                statusUpdateNays: 5,
+            },
+        ];
     }
 
     async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
@@ -111,24 +119,24 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return [createStatusUpdate()];
     }
 
-    async getFeesPolkaBTC(_stakedRelayerId: string): Promise<string> {
+    async getFeesPolkaBTC(_stakedRelayerId: AccountId): Promise<string> {
         return "10.22";
     }
 
-    async getFeesDOT(_stakedRelayerId: string): Promise<string> {
+    async getFeesDOT(_stakedRelayerId: AccountId): Promise<string> {
         return "10.22";
     }
 
-    async getAPY(_vaultId: string): Promise<string> {
+    async getAPY(_stakedRelayerId: AccountId): Promise<string> {
         return "130.23988247";
     }
 
-    async getSLA(_stakedRelayerId: string): Promise<string> {
-        return "20";
+    async getSLA(_stakedRelayerId: AccountId): Promise<number> {
+        return 20;
     }
 
-    async getMaxSLA(): Promise<string> {
-        return "100";
+    async getMaxSLA(): Promise<number> {
+        return 100;
     }
 
     async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {

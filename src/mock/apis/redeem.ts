@@ -80,7 +80,7 @@ export class MockRedeemAPI implements RedeemAPI {
         return;
     }
 
-    subscribeToRedeemExpiry(_account: AccountId, _callback: (requestRedeemId: string) => void): Promise<() => void> {
+    subscribeToRedeemExpiry(_account: AccountId, _callback: (requestRedeemId: H256) => void): Promise<() => void> {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         return Promise.resolve(() => {});
     }
