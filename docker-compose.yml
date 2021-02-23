@@ -6,6 +6,8 @@ services:
             - btc-parachain
             - --rpc-external
             - --ws-external
+            - --rpc-methods
+            - Unsafe
             - --dev
         ports:
             - "9933:9933"
