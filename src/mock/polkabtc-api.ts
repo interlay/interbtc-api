@@ -16,20 +16,20 @@ import {
     RefundAPI,
 } from "../parachain";
 import { BTCCoreAPI } from "../external";
-import { MockIssueAPI } from "./apis/issue";
-import { MockRedeemAPI } from "./apis/redeem";
-import { MockVaultsAPI } from "./apis/vaults";
-import { MockStakedRelayerAPI } from "./apis/staked-relayer";
+import { MockIssueAPI } from "./parachain/issue";
+import { MockRedeemAPI } from "./parachain/redeem";
+import { MockVaultsAPI } from "./parachain/vaults";
+import { MockStakedRelayerAPI } from "./parachain/staked-relayer";
 import { PolkaBTCAPI } from "../polkabtc-api";
 import { FaucetClient, StakedRelayerClient } from "../clients";
-import { MockOracleAPI } from "./apis/oracle";
-import { MockBTCCoreAPI } from "./apis/btc-core";
-import { MockBTCRelayAPI } from "./apis/btc-relay";
-import { MockCollateralAPI } from "./apis/collateral";
-import { MockTreasuryAPI } from "./apis/treasury";
-import { MockSystemAPI } from "./apis/system";
-import { MockReplaceAPI } from "./apis/replace";
-import { MockRefundAPI } from "./apis/refund";
+import { MockOracleAPI } from "./parachain/oracle";
+import { MockBTCCoreAPI } from "./external/btc-core";
+import { MockBTCRelayAPI } from "./parachain/btc-relay";
+import { MockCollateralAPI } from "./parachain/collateral";
+import { MockTreasuryAPI } from "./parachain/treasury";
+import { MockSystemAPI } from "./parachain/system";
+import { MockReplaceAPI } from "./parachain/replace";
+import { MockRefundAPI } from "./parachain/refund";
 
 export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
