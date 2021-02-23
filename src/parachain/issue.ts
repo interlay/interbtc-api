@@ -220,9 +220,7 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
-        const issueRequestPairs: [H256, IssueRequest][] = await customAPIRPC.issue.getIssueRequests(account);
+        const issueRequestPairs: [H256, IssueRequest][] = await this.api.rpc.issue.getIssueRequests(account);
         const mapForUser: Map<H256, IssueRequestExt> = new Map<H256, IssueRequestExt>();
         issueRequestPairs.forEach((issueRequestPair) =>
             mapForUser.set(issueRequestPair[0], encodeIssueRequest(issueRequestPair[1], this.btcNetwork))

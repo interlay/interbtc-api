@@ -14,14 +14,7 @@ export class BitcoinCoreClient {
      * @param port Bitcoin node connection port (e.g. 18443)
      * @param wallet Name of wallet to use (e.g. Alice)
      */
-    constructor(
-        network: string,
-        host: string,
-        username: string,
-        password: string,
-        port: string,
-        wallet: string
-    ) {
+    constructor(network: string, host: string, username: string, password: string, port: string, wallet: string) {
         this.client = new Client({
             network: network,
             host: host,
@@ -67,7 +60,8 @@ export class BitcoinCoreClient {
         if (!this.client) {
             throw new Error("Client needs to be initialized before usage");
         }
-        const paidOutput = {} as any;
+
+        const paidOutput: { [key: string]: string } = {};
         paidOutput[recipient] = amount;
         const raw = await this.client.command(
             "createrawtransaction",
@@ -75,14 +69,8 @@ export class BitcoinCoreClient {
             this.formatRawTxInput(recipient, amount, data)
         );
         const funded = await this.client.command("fundrawtransaction", raw);
-        const signed = await this.client.command(
-            "signrawtransactionwithwallet",
-            funded.hex
-        );
-        const response = await this.client.command(
-            "sendrawtransaction",
-            signed.hex
-        );
+        const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
+        const response = await this.client.command("sendrawtransaction", signed.hex);
         const txid = response;
         return {
             txid: txid,

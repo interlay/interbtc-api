@@ -57,9 +57,7 @@ export class DefaultRefundAPI {
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, RefundRequestExt>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
-        const refundPairs: [H256, RefundRequest][] = await customAPIRPC.refund.getRefundRequests(account);
+        const refundPairs: [H256, RefundRequest][] = await this.api.rpc.refund.getRefundRequests(account);
         const mapForUser: Map<H256, RefundRequestExt> = new Map<H256, RefundRequestExt>();
         refundPairs.forEach((refundPair) =>
             mapForUser.set(refundPair[0], encodeRefundRequest(refundPair[1], this.btcNetwork))

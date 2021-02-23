@@ -239,9 +239,7 @@ export class DefaultRedeemAPI {
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, RedeemRequestExt>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
-        const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getRedeemRequests(account);
+        const redeemRequestPairs: [H256, RedeemRequest][] = await this.api.rpc.redeem.getRedeemRequests(account);
         const mapForUser: Map<H256, RedeemRequestExt> = new Map<H256, RedeemRequestExt>();
         redeemRequestPairs.forEach((redeemRequestPair) =>
             mapForUser.set(redeemRequestPair[0], encodeRedeemRequest(redeemRequestPair[1], this.btcNetwork))

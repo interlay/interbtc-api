@@ -23,14 +23,14 @@ describe("oracle", () => {
         const timestamp = new BN(Math.floor(lastRate.getTime() / 1000));
         return {
             exchangeRateOracle: {
-                exchangeRate: () => Promise.resolve(new UInt(registry, rawFixedPointExchangeRate) as UnsignedFixedPoint),
+                exchangeRate: () =>
+                    Promise.resolve(new UInt(registry, rawFixedPointExchangeRate) as UnsignedFixedPoint),
                 lastExchangeRateTime: () => Promise.resolve(timestamp),
                 authorizedOracles: {
                     entries: () => Promise.resolve([[1, new Raw(registry, "test")]]),
                 },
             },
             security: {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 errors: () => {
                     const stateErrors = new BTreeSet(registry, "ErrorCode");
                     if (errors) {

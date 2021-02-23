@@ -261,10 +261,8 @@ export class DefaultVaultsAPI {
     }
 
     async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
         try {
-            const issueRequestPairs: [H256, IssueRequest][] = await customAPIRPC.issue.getVaultIssueRequests(vaultId);
+            const issueRequestPairs: [H256, IssueRequest][] = await this.api.rpc.issue.getVaultIssueRequests(vaultId);
             return new Map(issueRequestPairs.map(([id, req]) => [id, encodeIssueRequest(req, this.btcNetwork)]));
         } catch (err) {
             return Promise.reject(`Error during issue request retrieval: ${err}`);
@@ -272,10 +270,8 @@ export class DefaultVaultsAPI {
     }
 
     async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const customAPIRPC = this.api.rpc as any;
         try {
-            const redeemRequestPairs: [H256, RedeemRequest][] = await customAPIRPC.redeem.getVaultRedeemRequests(
+            const redeemRequestPairs: [H256, RedeemRequest][] = await this.api.rpc.redeem.getVaultRedeemRequests(
                 vaultId
             );
             return new Map(redeemRequestPairs.map(([id, req]) => [id, encodeRedeemRequest(req, this.btcNetwork)]));
