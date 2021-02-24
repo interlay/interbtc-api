@@ -1,6 +1,5 @@
 #!/bin/sh
 
-# 
 cp -r docs/helpers tmp_docs_helpers/
 rm -rf ./docs
 
