@@ -24,11 +24,13 @@ describe("BTCCore", function () {
     });
 
     it("should getLatestBTCBlockFromBTCRelay", async () => {
+        this.timeout(500);
         const latestBTCBlockFromBTCRelay = await btcRelay.getLatestBlock();
         assert.isDefined(latestBTCBlockFromBTCRelay);
     });
 
     it("should getLatestBTCBlockHeightFromBTCRelay", async () => {
+        this.timeout(500);
         const latestBTCBlockHeightFromBTCRelay = await btcRelay.getLatestBlockHeight();
         assert.isDefined(latestBTCBlockHeightFromBTCRelay);
     });
