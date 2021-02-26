@@ -17,7 +17,7 @@ import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
-export type IssueRequestResult = { id: Hash; vault: VaultExt };
+export type IssueRequestResult = { id: Hash; vaultBtcAddress: string };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -170,15 +170,11 @@ export class DefaultIssueAPI implements IssueAPI {
             throw new Error("cannot request without setting account");
         }
 
-        let vault: VaultExt;
-        if (vaultId) {
-            vault = await this.vaultsAPI.get(vaultId);
-        } else {
+        if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
-            vault = await this.vaultsAPI.get(vaultId);
         }
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat.toString());
-        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vault.id, griefingCollateralPlanck);
+        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck);
         const result = await sendLoggedTx(requestIssueTx, this.account, this.api);
         if (!this.isRequestSuccessful(result.events)) {
             Promise.reject("Request failed");
@@ -186,8 +182,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
         const id = this.getIssueIdFromEvents(result.events);
         const issueRequest = await this.getRequestById(id);
-        vault.wallet.btcAddress = issueRequest.btc_address;
-        return { id, vault };
+        return { id, vaultBtcAddress: issueRequest.btc_address };
     }
 
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
