@@ -5,6 +5,9 @@ import { Constructor } from "@polkadot/types/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import { JsonRpcClient } from "./client";
 
+/**
+ * @category Clients
+ */
 export class FaucetClient extends JsonRpcClient {
     registry: TypeRegistry;
 

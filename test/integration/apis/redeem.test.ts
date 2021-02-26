@@ -15,7 +15,7 @@ import BN from "bn.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-describe("redeem", () => {
+describe.skip("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
     let issueAPI: DefaultIssueAPI;
     let treasuryAPI: DefaultTreasuryAPI;
@@ -63,7 +63,11 @@ describe("redeem", () => {
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
 
-        async function requestAndCallRedeem(blocksToMine: number, amountAsBtcString = "0.1", redeemAmountAsBtcString = "0.09") {
+        async function requestAndCallRedeem(
+            blocksToMine: number,
+            amountAsBtcString = "0.1",
+            redeemAmountAsBtcString = "0.09"
+        ) {
             const bitcoinCoreClient = new BitcoinCoreClient(
                 "regtest",
                 "0.0.0.0",

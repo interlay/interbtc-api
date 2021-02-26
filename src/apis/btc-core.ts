@@ -42,15 +42,90 @@ export type TxInput = {
     prevout: TxOutput;
 };
 
+/**
+ * Bitcoin Core API
+ * @category Bitcoin Core
+ */
 export interface BTCCoreAPI {
+    /**
+     * @returns The block hash of the latest Bitcoin block
+     */
     getLatestBlock(): Promise<string>;
+    /**
+     * @returns The height of the latest Bitcoin block
+     */
     getLatestBlockHeight(): Promise<number>;
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The merkle inclusion proof for the transaction using bitcoind's merkleblock format.
+     */
     getMerkleProof(txid: string): Promise<string>;
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns A TxStatus object, containing the confirmation status and number of confirmations
+     */
     getTransactionStatus(txid: string): Promise<TxStatus>;
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The height of the block the transaction was included in. If the block has not been confirmed, returns undefined.
+     */
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns The raw transaction data, represented as a Buffer object
+     */
     getRawTransaction(txid: string): Promise<Buffer>;
+    /**
+     * Fetch the first bitcoin transaction ID based on the OP_RETURN field, recipient and amount.
+     * Throw an error unless there is exactly one transaction with the given opcode.
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora. Requires the input string to be a hex
+     *
+     * @param opReturn Data string used for matching the OP_CODE of Bitcoin transactions
+     * @param recipientAddress Match the receiving address of a transaction that contains said op_return
+     * @param amountAsBTC Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
+     * This parameter is only considered if `recipientAddress` is defined.
+     *
+     * @returns A Bitcoin transaction ID
+     */
     getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
+    /**
+     * Fetch the last bitcoin transaction ID based on the recipient address and amount.
+     * Throw an error if no such transaction is found.
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param recipientAddress Match the receiving address of a UTXO
+     * @param amountAsBTC Match the amount (in BTC) of a UTXO that contains said recipientAddress.
+     *
+     * @returns A Bitcoin transaction ID
+     */
     getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string>;
+    /**
+     * Fetch the Bitcoin transaction that matches the given TxId
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param txid A Bitcoin transaction ID
+     *
+     * @returns A Bitcoin Transaction object
+     */
+    getTx(txid: string): Promise<Transaction>;
+    /**
+     * Fetch the Bitcoin UTXO amount that matches the given TxId and recipient
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param txid A Bitcoin transaction ID
+     * @param recipient A Bitcoin scriptpubkey address
+     *
+     * @returns A UTXO amount if found, 0 otherwise
+     */
+    getUtxoAmount(txid: string, recipient: string): Promise<number>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
@@ -78,40 +153,39 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         this.addressApi = new AddressApi(conf);
     }
 
-    /**
-     * @returns The block hash of the latest Bitcoin block
-     */
     getLatestBlock(): Promise<string> {
         return this.getData(this.blockApi.getLastBlockHash());
     }
 
-    /**
-     * @returns The height of the latest Bitcoin block
-     */
     getLatestBlockHeight(): Promise<number> {
         return this.getData(this.blockApi.getLastBlockHeight());
     }
 
-    /**
-     * @param txid The ID of a Bitcoin transaction
-     * @returns The merkle inclusion proof for the transaction using bitcoind's merkleblock format.
-     */
     getMerkleProof(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
     }
 
-    /**
-     * Fetch the last bitcoin transaction ID based on the recipient address and amount.
-     * Throw an error if no such transaction is found.
-     *
-     * @remarks
-     * Performs the lookup using an external service, Esplora
-     *
-     * @param recipientAddress Match the receiving address of a UTXO
-     * @param amountAsBTC Match the amount (in BTC) of a UTXO that contains said recipientAddress.
-     *
-     * @returns A Bitcoin transaction ID
-     */
+    getTx(txid: string): Promise<Transaction> {
+        return this.getData(this.txApi.getTx(txid));
+    }
+
+    async getUtxoAmount(txid: string, recipient: string): Promise<number> {
+        let amount = 0;
+        if(!txid) {
+            return amount;
+        }
+        const tx = await this.getTx(txid);
+        if(!tx.vout) {
+            return amount;
+        }
+        tx.vout.forEach(vout=> {
+            if (vout.scriptpubkey_address === recipient && vout.value) {
+                amount = vout.value;
+            }
+        });
+        return amount;
+    }
+
     async getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string> {
         try {
             const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
@@ -143,20 +217,6 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return true;
     }
 
-    /**
-     * Fetch the first bitcoin transaction ID based on the OP_RETURN field, recipient and amount.
-     * Throw an error unless there is exactly one transaction with the given opcode.
-     *
-     * @remarks
-     * Performs the lookup using an external service, Esplora. Requires the input string to be a hex
-     *
-     * @param opReturn Data string used for matching the OP_CODE of Bitcoin transactions
-     * @param recipientAddress Match the receiving address of a transaction that contains said op_return
-     * @param amountAsBTC Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
-     * This parameter is only considered if `recipientAddress` is defined.
-     *
-     * @returns A Bitcoin transaction ID
-     */
     async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string> {
         const data = Buffer.from(opReturn, "hex");
         if (data.length !== 32) {
@@ -213,10 +273,6 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return await this.txApi.postTx(hex);
     }
 
-    /**
-     * @param txid The ID of a Bitcoin transaction
-     * @returns A TxStatus object, containing the confirmation status and number of confirmations
-     */
     async getTransactionStatus(txid: string): Promise<TxStatus> {
         const status = {
             confirmed: false,
@@ -235,18 +291,10 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return status;
     }
 
-    /**
-     * @param txid The ID of a Bitcoin transaction
-     * @returns The height of the block the transaction was included in. If the block has not been confirmed, returns undefined.
-     */
     async getTransactionBlockHeight(txid: string): Promise<number | undefined> {
         return (await this.getTxStatus(txid)).block_height;
     }
 
-    /**
-     * @param txid The ID of a Bitcoin transaction
-     * @returns The raw transaction data, represented as a Buffer object
-     */
     getRawTransaction(txid: string): Promise<Buffer> {
         return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
     }

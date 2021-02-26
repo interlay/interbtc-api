@@ -14,6 +14,9 @@ import { Constructor } from "@polkadot/types/types";
 import BN from "bn.js";
 import { JsonRpcClient } from "./client";
 
+/**
+ * @category Clients
+ */
 export class StakedRelayerClient extends JsonRpcClient {
     registry: TypeRegistry;
 

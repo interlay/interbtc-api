@@ -14,6 +14,9 @@ import BN from "bn.js";
 import { JsonRpcClient } from "./client";
 import { bitcoin } from "../utils/bitcoin";
 
+/**
+ * @category Clients
+ */
 export class VaultClient extends JsonRpcClient {
     registry: TypeRegistry;
 

@@ -1,6 +1,6 @@
 {
   "name": "@interlay/polkabtc",
-  "version": "0.8.7",
+  "version": "0.8.9",
   "description": "JavaScript library to interact with PolkaBTC",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -18,6 +18,7 @@
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint --fix . --ext .ts",
     "ci:test": "run-s build test:lint test:unit test:integration",
+    "docs": "./generate_docs",
     "generate:defs": "ts-node --skip-project node_modules/.bin/polkadot-types-from-defs --package @interlay/polkabtc/interfaces --input ./src/interfaces",
     "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/polkabtc/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "test": "run-s build test:*",
@@ -33,7 +34,7 @@
   "engineStrict": true,
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
-    "@interlay/polkabtc-types": "0.4.8",
+    "@interlay/polkabtc-types": "0.5.2",
     "@types/big.js": "^4.0.5",
     "big.js": "^6.0.1",
     "bitcoinjs-lib": "^5.2.0",
@@ -43,11 +44,11 @@
     "ts-mock-imports": "^1.3.0"
   },
   "peerDependencies": {
-    "@polkadot/api": "3.9.3"
+    "@polkadot/api": "3.10.2"
   },
   "devDependencies": {
-    "@polkadot/api": "3.9.3",
-    "@polkadot/typegen": "3.9.3",
+    "@polkadot/api": "3.10.2",
+    "@polkadot/typegen": "3.10.2",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
     "@types/mocha": "^8.0.3",
@@ -55,6 +56,7 @@
     "@types/sinon": "^9.0.5",
     "@typescript-eslint/eslint-plugin": "^4.1.0",
     "@typescript-eslint/parser": "^4.1.0",
+    "bitcoin-core": "^3.0.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "eslint": "^7.8.0",
@@ -64,8 +66,9 @@
     "npm-run-all": "^4.1.5",
     "prettier": "^2.0.5",
     "ts-node": "^9.0.0",
-    "typescript": "^4.1.3",
-    "bitcoin-core": "^3.0.0"
+    "typedoc": "^0.20.27",
+    "typedoc-plugin-markdown": "^3.5.0",
+    "typescript": "^4.1.3"
   },
   "files": [
     "build/main",
