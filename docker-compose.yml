@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     polkabtc:
-        image: "registry.gitlab.com/interlay/btc-parachain:0-4-0"
+        image: "registry.gitlab.com/interlay/btc-parachain/standalone:0.5.3"
         command:
             - btc-parachain
             - --rpc-external
@@ -33,6 +33,11 @@ services:
                 bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Charlie
                 bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Dave
                 bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Eve
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Alice
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Bob
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Charlie
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Dave
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Eve
                 ALICE_ADDRESS=$$(bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword -rpcwallet=Alice getnewaddress)
                 # coins need 100 confirmations to be spendable
                 bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword generatetoaddress 101 $${ALICE_ADDRESS}
@@ -49,7 +54,7 @@ services:
             - "3002:3002"
     staked-relayer:
         # only start staked relayer after mining to prevent long catch-up
-        image: "registry.gitlab.com/interlay/polkabtc-clients/staked-relayer:0-4-0"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/staked-relayer:0.5.3"
         command:
             - /bin/sh
             - -c
@@ -65,7 +70,7 @@ services:
         ports:
             - "3030:3030"
     oracle:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/oracle:0-4-0"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/oracle:0.5.3"
         command:
             - /bin/sh
             - -c
@@ -76,7 +81,7 @@ services:
         environment:
             RUST_LOG: info
     faucet:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/faucet:0-4-0"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/faucet:0.5.3"
         command:
             - /bin/sh
             - -c
@@ -89,7 +94,7 @@ services:
         ports:
             - "3035:3035"
     vault_1:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0-4-0"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.5.3"
         command:
             - /bin/sh
             - -c
@@ -104,7 +109,7 @@ services:
         ports:
             - "3032:3032"
     vault_2:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0-4-0"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.5.3"
         command:
             - /bin/sh
             - -c
@@ -119,7 +124,7 @@ services:
         ports:
             - "3033:3033"
     vault_3:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0-4-0"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.5.3"
         command:
             - /bin/sh
             - -c
@@ -135,7 +140,7 @@ services:
             - "3034:3034"
 
     testdata_gen:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/testdata-gen:0-4-0"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/testdata-gen:0.5.3"
         command:
             - /bin/sh
             - -c
