@@ -35,7 +35,7 @@ describe("refund", () => {
         api.disconnect();
     });
 
-    it("should not generate a refund request", async () => {
+    it.skip("should not generate a refund request", async () => {
         const isueResult = await issue(
             api,
             btcCoreAPI,
@@ -53,7 +53,7 @@ describe("refund", () => {
         assert.equal(refund.amount_btc.toString(), "0");
     });
 
-    it("should generate a refund request", async () => {
+    it.skip("should generate a refund request", async () => {
         const isueResult = await issue(
             api,
             btcCoreAPI,
@@ -69,7 +69,7 @@ describe("refund", () => {
         assert.notEqual(refund.amount_btc.toString(), "0");
     });
 
-    it("should list a single refund request", async () => {
+    it.skip("should list a single refund request", async () => {
         const refundRequests = await refundAPI.list();
         assert.equal(refundRequests.length, 1);
     });

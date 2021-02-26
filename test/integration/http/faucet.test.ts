@@ -28,7 +28,7 @@ describe("Faucet", function () {
     });
 
     describe("Funding", () => {
-        it("should get funds from faucet", async () => {
+        it.skip("should get funds from faucet", async () => {
             const bobAccountId = api.createType("AccountId", bob.address);
             const expectedAllowance = 10000000000;
             const balanceBeforeFunding = (await api.query.dot.account(bobAccountId)) as AccountData;
