@@ -1,3 +1,4 @@
+import { Transaction } from "@interlay/esplora-btc-api";
 import { BTCCoreAPI, TxStatus } from "../../apis/btc-core";
 
 export class MockBTCCoreAPI implements BTCCoreAPI {
@@ -42,6 +43,17 @@ export class MockBTCCoreAPI implements BTCCoreAPI {
 
     getTransactionBlockHeight(): Promise<number> {
         return Promise.resolve(213132);
+    }
+
+    getTx(_txid: string): Promise<Transaction> {
+        return Promise.resolve({
+            txid: "1b27ea225bed1ba2e42fd7dd5fde95c75a51dfdd74bc6bda8315d3282c647963",
+            version: 1,
+        });
+    }
+    
+    getUtxoAmount(_txid: string, _recipient: string): Promise<number> {
+        return Promise.resolve(1);
     }
 
     getRawTransaction(): Promise<Buffer> {

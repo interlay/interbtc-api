@@ -103,6 +103,29 @@ export interface BTCCoreAPI {
      * @returns A Bitcoin transaction ID
      */
     getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string>;
+    /**
+     * Fetch the Bitcoin transaction that matches the given TxId
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param txid A Bitcoin transaction ID
+     *
+     * @returns A Bitcoin Transaction object
+     */
+    getTx(txid: string): Promise<Transaction>;
+    /**
+     * Fetch the Bitcoin UTXO amount that matches the given TxId and recipient
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param txid A Bitcoin transaction ID
+     * @param recipient A Bitcoin scriptpubkey address
+     *
+     * @returns A UTXO amount if found, 0 otherwise
+     */
+    getUtxoAmount(txid: string, recipient: string): Promise<number>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
@@ -140,6 +163,27 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
 
     getMerkleProof(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
+    }
+
+    getTx(txid: string): Promise<Transaction> {
+        return this.getData(this.txApi.getTx(txid));
+    }
+
+    async getUtxoAmount(txid: string, recipient: string): Promise<number> {
+        let amount = 0;
+        if(!txid) {
+            return amount;
+        }
+        const tx = await this.getTx(txid);
+        if(!tx.vout) {
+            return amount;
+        }
+        tx.vout.forEach(vout=> {
+            if (vout.scriptpubkey_address === recipient && vout.value) {
+                amount = vout.value;
+            }
+        });
+        return amount;
     }
 
     async getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string> {
