@@ -46,6 +46,11 @@ export class JsonRpcClient {
             },
         });
 
+        // 502 Bad Gateway
+        if (httpResponse.status == 502) {
+            throw new Error("Invalid response");
+        }
+
         const jsonResponse: JsonRpcResponse = await httpResponse.json();
         if (jsonResponse.id != id) {
             throw new Error("Invalid id in JsonRpcResponse");
