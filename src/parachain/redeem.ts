@@ -4,7 +4,7 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-import { VaultsAPI, DefaultVaultsAPI, VaultExt } from "./vaults";
+import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { decodeBtcAddress, pagedIterator, decodeFixedPointType, sendLoggedTx, encodeParachainRequest } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
@@ -13,7 +13,7 @@ import Big from "big.js";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 
-export type RequestResult = { id: Hash; vault: VaultExt };
+export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
 export interface RedeemRequestExt extends Omit<RedeemRequest, "btc_address"> {
     // network encoded btc address
@@ -179,22 +179,18 @@ export class DefaultRedeemAPI {
             throw new Error("cannot request without setting account");
         }
 
-        let vault: VaultExt;
-        if (vaultId) {
-            vault = await this.vaultsAPI.get(vaultId);
-        } else {
-            vaultId = await this.vaultsAPI.selectRandomVaultRedeem(amountSat);
-            vault = await this.vaultsAPI.get(vaultId);
+        if (!vaultId) {
+            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
         }
-
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
-        const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vault.id);
+        const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
         const result = await sendLoggedTx(requestRedeemTx, this.account, this.api);
         if (!this.isRequestSuccessful(result.events)) {
             throw new Error("Request failed");
         }
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
-        return { id, vault };
+        const redeemRequest = await this.getRequestById(id);
+        return { id, redeemRequest };
     }
 
     async execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {

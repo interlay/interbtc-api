@@ -375,7 +375,7 @@ export async function issue(
     }
 
     // send btc tx
-    const vaultBtcAddress = requestResult.vaultBtcAddress;
+    const vaultBtcAddress = requestResult.issueRequest.btc_address;
     if (vaultBtcAddress === undefined) {
         throw new Error("Undefined vault address returned from RequestIssue");
     }

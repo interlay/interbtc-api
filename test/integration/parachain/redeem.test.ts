@@ -89,7 +89,7 @@ describe.skip("redeem", () => {
             const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
             // send btc tx
-            const vaultBtcAddress = requestResult.vaultBtcAddress;
+            const vaultBtcAddress = requestResult.issueRequest.btc_address;
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
@@ -107,8 +107,12 @@ describe.skip("redeem", () => {
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
             const vaultId = api.createType("AccountId", charlie.address);
-            const { id, vault } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
-            assert.equal(vault.id.toString(), vaultId.toString(), "Requested for redeem with the wrong vault");
+            const { id, redeemRequest } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
+            assert.equal(
+                redeemRequest.vault.toString(),
+                vaultId.toString(),
+                "Requested for redeem with the wrong vault"
+            );
             assert.equal(Buffer.from(stripHexPrefix(id.toString()), "hex").length, 32, "Redeem ID length not 32 bytes");
         }
 

@@ -4,7 +4,7 @@ import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
 import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
-import { DefaultVaultsAPI, VaultsAPI, VaultExt } from "./vaults";
+import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
     decodeFixedPointType,
@@ -17,7 +17,7 @@ import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
-export type IssueRequestResult = { id: Hash; vaultBtcAddress: string };
+export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -182,7 +182,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
         const id = this.getIssueIdFromEvents(result.events);
         const issueRequest = await this.getRequestById(id);
-        return { id, vaultBtcAddress: issueRequest.btc_address };
+        return { id, issueRequest };
     }
 
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {

@@ -5,7 +5,6 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../parachain/redeem";
-import { VaultExt } from "../../parachain/vaults";
 
 export class MockRedeemAPI implements RedeemAPI {
     execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
@@ -17,7 +16,7 @@ export class MockRedeemAPI implements RedeemAPI {
     }
 
     async request(_amount: PolkaBTC, _btcAddressEnc: string, _vaultId?: AccountId): Promise<RequestResult> {
-        return Promise.resolve({ id: <Hash>{}, vault: <VaultExt>{} });
+        return Promise.resolve({ id: <Hash>{}, redeemRequest: (await this.list())[0] });
     }
 
     async list(): Promise<RedeemRequestExt[]> {

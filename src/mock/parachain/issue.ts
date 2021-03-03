@@ -7,7 +7,6 @@ import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
 import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../parachain/issue";
-import { VaultExt } from "../../parachain/vaults";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 
 export class MockIssueAPI implements IssueAPI {
@@ -19,11 +18,10 @@ export class MockIssueAPI implements IssueAPI {
         throw new Error("Method not implemented.");
     }
 
-    request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<IssueRequestResult> {
+    async request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<IssueRequestResult> {
         const registry = new TypeRegistry();
         const id = new U8aFixed(registry, "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c") as Hash;
-        const vaultBtcAddress = "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq";
-        return Promise.resolve({ id, vaultBtcAddress });
+        return Promise.resolve({ id, issueRequest: (await this.list())[0] });
     }
 
     setAccount(_account?: AddressOrPair): void {
