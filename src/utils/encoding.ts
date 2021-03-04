@@ -40,7 +40,7 @@ export function stripHexPrefix(str: string): string {
  * @dev Will remove `0x` prefix if present
  * @param hex
  */
-export function reverseEndiannessHex(hex: string) {
+export function reverseEndiannessHex(hex: string): string {
     const arr = stripHexPrefix(hex).match(/.{1,2}/g) || [];
     const bytes = new Uint8Array(arr.map((byte) => parseInt(byte, 16)));
     return reverseEndianness(bytes).reduce((str, byte) => str + byte.toString(16).padStart(2, "0"), "");
