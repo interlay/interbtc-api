@@ -3,8 +3,9 @@ import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ApiPromise } from "@polkadot/api";
+import { IGNORED_ERROR_MESSAGES } from "./constants";
 
-export interface TransactionUtilsAPI {
+export interface TransactionAPI {
     /**
      * Send a transaction using PolkadotJs API and log the events to console 
      * @param transaction Transaction object bundled with auto-generated polkadot-js methods. For instance,
@@ -12,15 +13,16 @@ export interface TransactionUtilsAPI {
      * @param signer The account to sign this transaction with
      * @returns A result object with information from the attempt to broadcast this transaction
      */
-     sendLoggedTx(
+     sendLogged(
         transaction: SubmittableExtrinsic<"promise">,
         signer: AddressOrPair
     ): Promise<ISubmittableResult>;
 }
-export class TransactionUtils implements TransactionUtilsAPI {
+
+export class Transaction implements TransactionAPI {
     constructor(private api: ApiPromise) {}
 
-    async sendLoggedTx(
+    async sendLogged(
         transaction: SubmittableExtrinsic<"promise">,
         signer: AddressOrPair
     ): Promise<ISubmittableResult> {
@@ -79,9 +81,7 @@ export class TransactionUtils implements TransactionUtilsAPI {
             events.forEach(({ phase, event: { data, method, section } }) => {
                 console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
             });
-        } else if (errorMessage !== "issue.IssueCompleted") {
-            // IssueCompleted errors occur due to the vault having
-            // already auto-executed the issuance
+        } else if (!IGNORED_ERROR_MESSAGES.includes(errorMessage)) {
             throw new Error(errorMessage);
         }
     }

@@ -1,6 +1,6 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { TransactionUtils } from "../utils";
+import { Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 
 /**
@@ -35,10 +35,10 @@ export interface CollateralAPI {
 }
 
 export class DefaultCollateralAPI implements CollateralAPI {
-    transactionUtils: TransactionUtils;
+    transaction: Transaction;
 
     constructor(private api: ApiPromise, private account?: AddressOrPair) {
-        this.transactionUtils = new TransactionUtils(api);
+        this.transaction = new Transaction(api);
     }
 
     totalLockedDOT(): Promise<Balance> {
@@ -61,7 +61,7 @@ export class DefaultCollateralAPI implements CollateralAPI {
         }
 
         const transferTx = this.api.tx.dot.transfer(address, amount);
-        await this.transactionUtils.sendLoggedTx(transferTx, this.account);
+        await this.transaction.sendLogged(transferTx, this.account);
     }
 
     setAccount(account: AddressOrPair): void {

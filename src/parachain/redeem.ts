@@ -5,7 +5,7 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, pagedIterator, decodeFixedPointType, TransactionUtils, encodeParachainRequest } from "../utils";
+import { decodeBtcAddress, pagedIterator, decodeFixedPointType, Transaction, encodeParachainRequest } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -119,11 +119,11 @@ export class DefaultRedeemAPI {
     private vaultsAPI: VaultsAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
-    transactionUtils: TransactionUtils;
+    transaction: Transaction;
 
     constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
-        this.transactionUtils = new TransactionUtils(api);
+        this.transaction = new Transaction(api);
     }
 
     /**
@@ -186,7 +186,7 @@ export class DefaultRedeemAPI {
         }
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
-        const result = await this.transactionUtils.sendLoggedTx(requestRedeemTx, this.account);
+        const result = await this.transaction.sendLogged(requestRedeemTx, this.account);
         if (!this.isRequestSuccessful(result.events)) {
             throw new Error("Request failed");
         }
@@ -200,7 +200,7 @@ export class DefaultRedeemAPI {
             throw new Error("cannot execute without setting account");
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
-        const result = await this.transactionUtils.sendLoggedTx(executeRedeemTx, this.account);
+        const result = await this.transaction.sendLogged(executeRedeemTx, this.account);
         if (!this.isExecutionSuccessful(result.events)) {
             throw new Error("Execution failed");
         }
@@ -217,7 +217,7 @@ export class DefaultRedeemAPI {
         }
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
-        const result = await this.transactionUtils.sendLoggedTx(cancelRedeemTx, this.account);
+        const result = await this.transaction.sendLogged(cancelRedeemTx, this.account);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.CancelRedeem);
         if (id) {
             return true;

@@ -8,7 +8,7 @@ import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
     decodeFixedPointType,
-    TransactionUtils,
+    Transaction,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
 } from "../utils";
@@ -120,13 +120,13 @@ export class DefaultIssueAPI implements IssueAPI {
     private vaultsAPI: VaultsAPI;
     private oracleAPI: OracleAPI;
     requestHash: Hash;
-    transactionUtils: TransactionUtils;
+    transaction: Transaction;
 
     constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.oracleAPI = new DefaultOracleAPI(api);
         this.requestHash = this.api.createType("Hash");
-        this.transactionUtils = new TransactionUtils(api);
+        this.transaction = new Transaction(api);
     }
 
     /**
@@ -177,7 +177,7 @@ export class DefaultIssueAPI implements IssueAPI {
         }
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat.toString());
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck);
-        const result = await this.transactionUtils.sendLoggedTx(requestIssueTx, this.account);
+        const result = await this.transaction.sendLogged(requestIssueTx, this.account);
         if (!this.isRequestSuccessful(result.events)) {
             Promise.reject("Request failed");
         }
@@ -192,7 +192,7 @@ export class DefaultIssueAPI implements IssueAPI {
             throw new Error("cannot request without setting account");
         }
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
-        const result = await this.transactionUtils.sendLoggedTx(executeIssueTx, this.account);
+        const result = await this.transaction.sendLogged(executeIssueTx, this.account);
         return this.isExecutionSuccessful(result.events);
     }
 
@@ -202,7 +202,7 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
-        await this.transactionUtils.sendLoggedTx(cancelIssueTx, this.account);
+        await this.transaction.sendLogged(cancelIssueTx, this.account);
     }
 
     async list(): Promise<IssueRequestExt[]> {

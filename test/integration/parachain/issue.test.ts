@@ -17,7 +17,7 @@ import { Buffer } from "buffer";
 import sinon from "sinon";
 import { DefaultCollateralAPI } from "../../../src/parachain/collateral";
 import Big from "big.js";
-import { TransactionUtils } from "../../../src/utils";
+import { Transaction } from "../../../src/utils";
 import { ISubmittableResult } from "@polkadot/types/types";
 
 function sleep(ms: number): Promise<void> {
@@ -110,7 +110,7 @@ describe("issue", () => {
             const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
             const iSubmittableResult = {} as ISubmittableResult;
-            sandbox.stub(TransactionUtils.prototype, "sendLoggedTx").returns(Promise.resolve(iSubmittableResult));
+            sandbox.stub(Transaction.prototype, "sendLogged").returns(Promise.resolve(iSubmittableResult));
             sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(true);
             const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isTrue(isExecutionCorrect);
@@ -121,7 +121,7 @@ describe("issue", () => {
             const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
             issueAPI.setAccount(alice);
             const iSubmittableResult = {} as ISubmittableResult;
-            sandbox.stub(TransactionUtils.prototype, "sendLoggedTx").returns(Promise.resolve(iSubmittableResult));
+            sandbox.stub(Transaction.prototype, "sendLogged").returns(Promise.resolve(iSubmittableResult));
             sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(false);
             const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
             assert.isFalse(isExecutionCorrect);
