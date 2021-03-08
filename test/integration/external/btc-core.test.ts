@@ -153,7 +153,7 @@ describe("BTCCore regtest", function () {
     });
 
     describe("getTxStatus", () => {
-        it.skip("should return 0 confirmations", async () => {
+        it("should return 0 confirmations", async () => {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00029";

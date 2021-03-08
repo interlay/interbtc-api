@@ -15,7 +15,7 @@ import BN from "bn.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
-describe.skip("redeem", () => {
+describe("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
     let issueAPI: DefaultIssueAPI;
     let treasuryAPI: DefaultTreasuryAPI;
@@ -120,11 +120,6 @@ describe.skip("redeem", () => {
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
-        it("should request and execute issue, request redeem", async () => {
-            const blocksToMine = 3;
-            await requestAndCallRedeem(blocksToMine);
-        });
-
         it("should request and execute issue, request (and wait for execute) redeem", async () => {
             const initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
@@ -138,7 +133,7 @@ describe.skip("redeem", () => {
             const expectedBalanceDifferenceAfterRedeem = issueAmountAsSatoshi.sub(redeemAmountAsSatoshi);
             const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem).toString(), finalBalance.toString());
-        });
+        }).timeout(100000);
     });
 
     describe("fees", () => {
