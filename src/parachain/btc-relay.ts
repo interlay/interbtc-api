@@ -33,18 +33,21 @@ export interface BTCRelayAPI {
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {
-    constructor(private api: ApiPromise, private btcCore: BTCCoreAPI) {}
+    constructor(private api: ApiPromise, private btcCore: BTCCoreAPI) { }
 
     async getStableBitcoinConfirmations(): Promise<number> {
-        return this.api.query.btcRelay.stableBitcoinConfirmations().then((param) => param.toNumber());
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.btcRelay.stableBitcoinConfirmations.at(hash).then((param) => param.toNumber());
     }
 
     async getLatestBlock(): Promise<H256Le> {
-        return await this.api.query.btcRelay.bestBlock();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.btcRelay.bestBlock.at(hash);
     }
 
     async getLatestBlockHeight(): Promise<u32> {
-        return await this.api.query.btcRelay.bestBlockHeight();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.btcRelay.bestBlockHeight.at(hash);
     }
 
     async verifyTransactionInclusion(

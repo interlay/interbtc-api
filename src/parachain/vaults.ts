@@ -286,12 +286,13 @@ export class DefaultVaultsAPI {
     }
 
     async list(): Promise<VaultExt[]> {
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(hash);
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
+    // TODO: Finish or remove this function
     async listPaged(): Promise<VaultExt[]> {
-        // TODO: Finish or remove this function
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
@@ -343,7 +344,8 @@ export class DefaultVaultsAPI {
     }
 
     async get(vaultId: AccountId): Promise<VaultExt> {
-        const vault = await this.api.query.vaultRegistry.vaults(vaultId);
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const vault = await this.api.query.vaultRegistry.vaults.at(hash, vaultId);
         if (!vaultId.eq(vault.id)) {
             throw new Error(`No vault registered with id ${vaultId}`);
         }
@@ -488,36 +490,43 @@ export class DefaultVaultsAPI {
     }
 
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
-        const theftReports = await this.api.query.stakedRelayers.theftReports(vaultId);
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const theftReports = await this.api.query.stakedRelayers.theftReports.at(hash, vaultId);
         return theftReports.isEmpty;
     }
 
     async getLiquidationCollateralThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold.at(hash);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getPremiumRedeemThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold.at(hash);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getAuctionCollateralThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold.at(hash);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getSecureCollateralThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold.at(hash);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getFeesPolkaBTC(vaultId: AccountId): Promise<string> {
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewardsPolkaBTC(parsedId)).toString();
     }
 
     async getFeesDOT(vaultId: AccountId): Promise<string> {
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
         return (await this.api.query.fee.totalRewardsDOT(vaultId)).toString();
     }
 
@@ -532,12 +541,14 @@ export class DefaultVaultsAPI {
     }
 
     async getSLA(vaultId: AccountId): Promise<string> {
-        const sla = await this.api.query.sla.vaultSla(vaultId);
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const sla = await this.api.query.sla.vaultSla.at(hash, vaultId);
         return decodeFixedPointType(sla);
     }
 
     async getMaxSLA(): Promise<string> {
-        const maxSLA = await this.api.query.sla.relayerTargetSla();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const maxSLA = await this.api.query.sla.relayerTargetSla.at(hash);
         const maxSlaBig = new Big(maxSLA.toString());
         const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
         return maxSlaBig.div(divisor).toString();
@@ -554,7 +565,8 @@ export class DefaultVaultsAPI {
      * paid in DOT based on the PolkaBTC amount at the current exchange rate.
      */
     async getPunishmentFee(): Promise<string> {
-        const fee = await this.api.query.fee.punishmentFee();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const fee = await this.api.query.fee.punishmentFee.at(hash);
         return decodeFixedPointType(fee);
     }
 

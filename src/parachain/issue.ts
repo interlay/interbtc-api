@@ -162,7 +162,8 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async list(): Promise<IssueRequestExt[]> {
-        const issueRequests = await this.api.query.issue.issueRequests.entries();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const issueRequests = await this.api.query.issue.issueRequests.entriesAt(hash);
         return issueRequests.map((v) => v[1]).map((req: IssueRequest) => encodeIssueRequest(req, this.btcNetwork));
     }
 
@@ -192,7 +193,8 @@ export class DefaultIssueAPI implements IssueAPI {
      * @returns The fee percentage charged for issuing. For instance, "0.005" stands for 0.005%
      */
     async getFeePercentage(): Promise<string> {
-        const issueFee = await this.api.query.fee.issueFee();
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        const issueFee = await this.api.query.fee.issueFee.at(hash);
         return decodeFixedPointType(issueFee);
     }
 
@@ -201,11 +203,13 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getIssuePeriod(): Promise<BlockNumber> {
-        return (await this.api.query.issue.issuePeriod()) as BlockNumber;
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        return (await this.api.query.issue.issuePeriod.at(hash)) as BlockNumber;
     }
 
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {
-        return encodeIssueRequest(await this.api.query.issue.issueRequests(issueId), this.btcNetwork);
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        return encodeIssueRequest(await this.api.query.issue.issueRequests.at(hash, issueId), this.btcNetwork);
     }
 
     setAccount(account: AddressOrPair): void {

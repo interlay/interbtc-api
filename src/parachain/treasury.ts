@@ -39,8 +39,9 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
         this.account = account;
     }
 
-    totalPolkaBTC(): Promise<Balance> {
-        return this.api.query.polkaBtc.totalIssuance();
+    async totalPolkaBTC(): Promise<Balance> {
+        const { hash } = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.polkaBtc.totalIssuance.at(hash);
     }
 
     async balancePolkaBTC(id: AccountId): Promise<Balance> {
