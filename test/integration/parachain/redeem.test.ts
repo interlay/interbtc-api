@@ -133,7 +133,7 @@ describe("redeem", () => {
             const expectedBalanceDifferenceAfterRedeem = issueAmountAsSatoshi.sub(redeemAmountAsSatoshi);
             const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem).toString(), finalBalance.toString());
-        }).timeout(100000);
+        }).timeout(1000000);
     });
 
     describe("fees", () => {

@@ -154,14 +154,14 @@ describe("issue", () => {
                 issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
                 "Issue-Redeem were more expensive than 1 DOT"
             );
-        }).timeout(50000);
+        }).timeout(500000);
 
         it("should fail to request a value finer than 1 Satoshi", async () => {
             const amount = "0.00000121";
             await assert.isRejected(
                 issue(api, btcCoreAPI, bitcoinCoreClient, keyring, amount, "Alice", "Charlie", true, false)
             );
-        }).timeout(50000);
+        }).timeout(500000);
 
         it("should request and auto-execute issue", async () => {
             const amount = "0.0000121";
@@ -188,7 +188,7 @@ describe("issue", () => {
                 issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
                 "Issue-Redeem were more expensive than 1 DOT"
             );
-        }).timeout(50000);
+        }).timeout(500000);
 
         it("should request and manually execute issue", async () => {
             const amount = "0.001";
@@ -215,7 +215,7 @@ describe("issue", () => {
                 issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
                 "Issue-Redeem were more expensive than 1 DOT"
             );
-        }).timeout(50000);
+        }).timeout(500000);
     });
 
     describe("cancel", () => {
@@ -238,7 +238,7 @@ describe("issue", () => {
 
             assert.isTrue(issueRequest.cancelled.isTrue, "Failed to cancel issue request");
         });
-    }).timeout(350000);
+    }).timeout(700000);
 
     describe("fees", () => {
         it("should getFeesToPay", async () => {
