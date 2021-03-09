@@ -284,8 +284,12 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         status.confirmed = txStatus.confirmed;
         // NOTE: the second part of the check is only to ensure that the -1 we sometimes see
         // in the UI is not caused by the lib
-        if (txStatus.block_height && latest_block_height - txStatus.block_height > 0) {
-            status.confirmations = latest_block_height - txStatus.block_height;
+        if (txStatus.block_height && latest_block_height - txStatus.block_height >= 0) {
+            // use Bitoin Core definition of confirmations (= block depth)
+            status.confirmations = latest_block_height - txStatus.block_height + 1;
+            // note that block_height will only be set if confirmed == true, i.e. block
+            // depth is at least 1. So confirmations 0 will only be returned while unconfirmed.
+            // This is correct.
         }
 
         return status;
