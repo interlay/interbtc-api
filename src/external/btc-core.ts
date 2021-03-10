@@ -197,7 +197,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         } catch (e) {
             console.log(`Error during tx lookup by address: ${e}`);
         }
-        return Promise.reject("No transaction found for recipient and amount");
+        return Promise.reject(new Error("No transaction found for recipient and amount"));
     }
 
     /**
