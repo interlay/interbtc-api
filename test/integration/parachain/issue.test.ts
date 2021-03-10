@@ -90,9 +90,10 @@ describe("issue", () => {
 
         it("should getGriefingCollateral (rounded)", async () => {
             const amountBtc = "0.001";
-            const amountAsSat = btcToSat(amountBtc) as string;
+            const amountAsSatoshiString = btcToSat(amountBtc) as string;
+            const amountAsSat = api.createType("Balance", amountAsSatoshiString) as PolkaBTC;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck, "1927616");
+            assert.equal(griefingCollateralPlanck.toString(), "1927616");
         });
     });
 
@@ -104,28 +105,6 @@ describe("issue", () => {
             const merkleProof: Bytes = <Bytes>{};
             const rawTx: Bytes = <Bytes>{};
             await assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
-        });
-
-        it("should consider execution successful if `isExecutionSuccessful` returns true", async () => {
-            const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
-            issueAPI.setAccount(alice);
-            const iSubmittableResult = {} as ISubmittableResult;
-            sandbox.stub(Transaction.prototype, "sendLogged").returns(Promise.resolve(iSubmittableResult));
-            sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(true);
-            const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
-            assert.isTrue(isExecutionCorrect);
-            sandbox.restore();
-        });
-
-        it("should consider execution failed if `isExecutionSuccessful` returns false", async () => {
-            const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
-            issueAPI.setAccount(alice);
-            const iSubmittableResult = {} as ISubmittableResult;
-            sandbox.stub(Transaction.prototype, "sendLogged").returns(Promise.resolve(iSubmittableResult));
-            sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(false);
-            const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
-            assert.isFalse(isExecutionCorrect);
-            sandbox.restore();
         });
 
         it("should request and auto-execute issue", async () => {

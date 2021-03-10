@@ -113,7 +113,7 @@ export class DefaultOracleAPI implements OracleAPI {
         }
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
-        await this.transaction.sendLogged(tx, this.account);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
@@ -135,7 +135,7 @@ export class DefaultOracleAPI implements OracleAPI {
             }
         });
         const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
-        await this.transaction.sendLogged(tx, this.account);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
     }
 
     async getOracleNames(): Promise<Array<string>> {

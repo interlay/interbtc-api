@@ -15,7 +15,7 @@ import {
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import { DefaultFeeAPI, FeeAPI } from "./fee";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 
@@ -46,9 +46,8 @@ export interface IssueAPI {
      * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
      * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
      * @param rawTx The raw bytes of the Bitcoin transaction
-     * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
      */
-    execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
+    execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -61,12 +60,6 @@ export interface IssueAPI {
      * @param account Keyring account
      */
     setAccount(account: AddressOrPair): void;
-    /**
-     * @param amountSat Amount, in Satoshi, for which to compute the required
-     * griefing collateral, in Planck
-     * @returns The griefing collateral, in Planck
-     */
-    getGriefingCollateralInPlanck(amountBtc: string): Promise<string>;
     /**
      * @returns An array containing the issue requests
      */
@@ -93,39 +86,25 @@ export interface IssueAPI {
      */
     getIssuePeriod(): Promise<BlockNumber>;
     /**
-     * @param events The EventRecord array returned after sending an request issue transaction
-     * @returns A boolean value
-     */
-    isRequestSuccessful(events: EventRecord[]): boolean;
-    /**
-     * A successful `execute` produces the following events:
-        - vaultRegistry.IssueTokens
-        - system.NewAccount
-        - polkaBtc.Endowed
-        - treasury.Mint
-        - issue.ExecuteIssue
-        - system.ExtrinsicSuccess
-     * @param events The EventRecord array returned after sending an execute request transaction
-     * @returns A boolean value
-     */
-    isExecutionSuccessful(events: EventRecord[]): boolean;
-    /**
      * @param amountBtc The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
     getFeesToPay(amountBtc: string): Promise<string>;
+    /**
+     * @param amountBtc The amount, in Satoshi, for which to compute the griefing collateral
+     * @returns The griefing collateral, in Planck
+     */
+    getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
     private vaultsAPI: VaultsAPI;
-    private oracleAPI: OracleAPI;
-    requestHash: Hash;
+    private feeAPI: FeeAPI;
     transaction: Transaction;
 
     constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
-        this.oracleAPI = new DefaultOracleAPI(api);
-        this.requestHash = this.api.createType("Hash");
+        this.feeAPI = new DefaultFeeAPI(api);
         this.transaction = new Transaction(api);
     }
 
@@ -149,24 +128,6 @@ export class DefaultIssueAPI implements IssueAPI {
         throw new Error("Request transaction failed");
     }
 
-    isRequestSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.issue.RequestIssue.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    isExecutionSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.issue.ExecuteIssue.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
@@ -175,25 +136,20 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
         }
-        const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat.toString());
-        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck);
-        const result = await this.transaction.sendLogged(requestIssueTx, this.account);
-        if (!this.isRequestSuccessful(result.events)) {
-            Promise.reject("Request failed");
-        }
-
+        const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
+        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck.toString());
+        const result = await this.transaction.sendLogged(requestIssueTx, this.account, this.api.events.issue.RequestIssue);
         const id = this.getIssueIdFromEvents(result.events);
         const issueRequest = await this.getRequestById(id);
         return { id, issueRequest };
     }
 
-    async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
+    async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
-        const result = await this.transaction.sendLogged(executeIssueTx, this.account);
-        return this.isExecutionSuccessful(result.events);
+        await this.transaction.sendLogged(executeIssueTx, this.account, this.api.events.issue.ExecuteIssue);
     }
 
     async cancel(issueId: H256): Promise<void> {
@@ -202,7 +158,7 @@ export class DefaultIssueAPI implements IssueAPI {
         }
 
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
-        await this.transaction.sendLogged(cancelIssueTx, this.account);
+        await this.transaction.sendLogged(cancelIssueTx, this.account, this.api.events.issue.CancelIssue);
     }
 
     async list(): Promise<IssueRequestExt[]> {
@@ -217,6 +173,11 @@ export class DefaultIssueAPI implements IssueAPI {
             mapForUser.set(issueRequestPair[0], encodeIssueRequest(issueRequestPair[1], this.btcNetwork))
         );
         return mapForUser;
+    }
+
+    async getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big> {
+        const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
+        return await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
     }
 
     async getFeesToPay(amountBtc: string): Promise<string> {
@@ -241,21 +202,6 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async getIssuePeriod(): Promise<BlockNumber> {
         return (await this.api.query.issue.issuePeriod()) as BlockNumber;
-    }
-
-    async getGriefingCollateralInPlanck(amountSat: string): Promise<string> {
-        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
-        const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
-        const planckPerSatoshi = await this.oracleAPI.getRawExchangeRate();
-        const amountSatoshiBig = new Big(amountSat);
-        const amountInPlanck = planckPerSatoshi.mul(amountSatoshiBig);
-        const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRateBig).toString();
-
-        // Compute the ceiling of the griefing collateral, because the parachain
-        // ignores the decimal place (123.456 -> 123456), because there is nothing
-        // smaller than 1 Planck
-        const griefingCollateralPlanckRoundedUp = new Big(griefingCollateralPlanck).round(0, 3).toString();
-        return griefingCollateralPlanckRoundedUp;
     }
 
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {

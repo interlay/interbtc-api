@@ -56,10 +56,8 @@ export interface RedeemAPI {
      * @param reimburse (Optional) In case of redeem failure:
      *  - `false` = retry redeeming, with a different Vault
      *  - `true` = accept reimbursement in polkaBTC
-     * @returns A boolean value indicating whether the cancellation was successful.
-     * The function throws an error otherwise.
      */
-    cancel(redeemId: H256, reimburse?: boolean): Promise<boolean>;
+    cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
     /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
@@ -144,38 +142,6 @@ export class DefaultRedeemAPI {
         throw new Error("Transaction failed");
     }
 
-    /**
-     * A successful `execute` produces the following events:
-        - vaultRegistry.IncreaseToBeRedeemedTokens
-        - polkaBtc.Reserved
-        - treasury.Lock
-        - redeem.RequestRedeem
-        - system.ExtrinsicSuccess
-     * @param events The EventRecord array returned after sending a redeem request transaction
-     * @returns A boolean value
-     */
-    isRequestSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.redeem.RequestRedeem.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @param events The EventRecord array returned after sending a redeem execution transaction
-     * @returns A boolean value
-     */
-    isExecutionSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.redeem.ExecuteRedeem.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
@@ -186,10 +152,7 @@ export class DefaultRedeemAPI {
         }
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
-        const result = await this.transaction.sendLogged(requestRedeemTx, this.account);
-        if (!this.isRequestSuccessful(result.events)) {
-            throw new Error("Request failed");
-        }
+        const result = await this.transaction.sendLogged(requestRedeemTx, this.account, this.api.events.redeem.RequestRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
         const redeemRequest = await this.getRequestById(id);
         return { id, redeemRequest };
@@ -200,10 +163,7 @@ export class DefaultRedeemAPI {
             throw new Error("cannot execute without setting account");
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
-        const result = await this.transaction.sendLogged(executeRedeemTx, this.account);
-        if (!this.isExecutionSuccessful(result.events)) {
-            throw new Error("Execution failed");
-        }
+        const result = await this.transaction.sendLogged(executeRedeemTx, this.account, this.api.events.redeem.ExecuteRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
         if (id) {
             return true;
@@ -211,18 +171,13 @@ export class DefaultRedeemAPI {
         return false;
     }
 
-    async cancel(redeemId: H256, reimburse?: boolean): Promise<boolean> {
+    async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
-        const result = await this.transaction.sendLogged(cancelRedeemTx, this.account);
-        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.CancelRedeem);
-        if (id) {
-            return true;
-        }
-        return false;
+        await this.transaction.sendLogged(cancelRedeemTx, this.account, this.api.events.redeem.CancelRedeem);
     }
 
     async list(): Promise<RedeemRequestExt[]> {

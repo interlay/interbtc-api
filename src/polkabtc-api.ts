@@ -7,6 +7,7 @@ import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
 import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./parachain/redeem";
 import { DefaultRefundAPI, RefundAPI } from "./parachain/refund";
+import { DefaultFeeAPI, FeeAPI } from "./parachain/fee";
 import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "./parachain/staked-relayer";
 import { DefaultVaultsAPI, VaultsAPI } from "./parachain/vaults";
 import { DefaultSystemAPI, SystemAPI } from "./parachain/system";
@@ -46,6 +47,7 @@ export interface PolkaBTCAPI {
     readonly treasury: TreasuryAPI;
     readonly system: SystemAPI;
     readonly replace: ReplaceAPI;
+    readonly fee: FeeAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
@@ -68,6 +70,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly treasury: TreasuryAPI;
     public readonly system: SystemAPI;
     public readonly replace: ReplaceAPI;
+    public readonly fee: FeeAPI;
 
     constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
@@ -84,7 +87,8 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.collateral = new DefaultCollateralAPI(api);
         this.treasury = new DefaultTreasuryAPI(api);
         this.system = new DefaultSystemAPI(api);
-        this.replace = new DefaultReplaceAPI(api, btcNetwork);
+        this.replace = new DefaultReplaceAPI(api, btcNetwork, _account);
+        this.fee = new DefaultFeeAPI(api);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {
@@ -98,6 +102,9 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.issue.setAccount(account);
         this.redeem.setAccount(account);
         this.collateral.setAccount(account);
+        this.replace.setAccount(account);
+        this.vaults.setAccount(account);
+        this.stakedRelayer.setAccount(account);
     }
 
     get account(): AddressOrPair | undefined {
