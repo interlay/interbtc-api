@@ -153,7 +153,7 @@ describe("BTCCore regtest", function () {
     });
 
     describe("getTxStatus", () => {
-        it("should return 0 confirmations", async () => {
+        it("should return correct confirmations", async () => {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00029";
@@ -165,12 +165,12 @@ describe("BTCCore regtest", function () {
             // transaction in the latest block
             await bitcoinCoreClient.mineBlocks(1);
             status = await btcCore.getTransactionStatus(txData.txid);
-            assert.strictEqual(status.confirmations, 0);
+            assert.strictEqual(status.confirmations, 1);
 
             // transaction in the parent of the latest block
             await bitcoinCoreClient.mineBlocks(1);
             status = await btcCore.getTransactionStatus(txData.txid);
-            assert.strictEqual(status.confirmations, 1);
+            assert.strictEqual(status.confirmations, 2);
         });
     });
 });
