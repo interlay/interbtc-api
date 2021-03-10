@@ -14,13 +14,13 @@ describe("Faucet", function () {
     let faucet: FaucetClient;
 
     let keyring: Keyring;
-    let bob: KeyringPair;
+    let helen: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         faucet = new FaucetClient(defaultFaucetEndpoint);
         keyring = new Keyring({ type: "sr25519" });
-        bob = keyring.addFromUri("//Bob");
+        helen = keyring.addFromUri("//Helen");
     });
 
     after(async () => {
@@ -28,20 +28,20 @@ describe("Faucet", function () {
     });
 
     describe("Funding", () => {
-        it.skip("should get funds from faucet", async () => {
-            const bobAccountId = api.createType("AccountId", bob.address);
+        it("should get funds from faucet", async () => {
+            const helenAccountId = api.createType("AccountId", helen.address);
             const expectedAllowance = 10000000000;
-            const balanceBeforeFunding = (await api.query.dot.account(bobAccountId)) as AccountData;
-            await faucet.fundAccount(bobAccountId);
-            const balanceAfterFunding = (await api.query.dot.account(bobAccountId)) as AccountData;
+            const balanceBeforeFunding = (await api.query.dot.account(helenAccountId)) as AccountData;
+            await faucet.fundAccount(helenAccountId);
+            const balanceAfterFunding = (await api.query.dot.account(helenAccountId)) as AccountData;
             const balanceBeforeFundingBig = new Big(balanceBeforeFunding.free.toString());
             const balanceAfterFundingBig = new Big(balanceAfterFunding.free.toString());
             assert.isTrue(balanceBeforeFundingBig.add(new Big(expectedAllowance)).eq(balanceAfterFundingBig));
         });
 
         it("should fail to get funds from faucet again", async () => {
-            const bobAccountId = api.createType("AccountId", bob.address);
-            assert.isRejected(faucet.fundAccount(bobAccountId));
+            const helenAccountId = api.createType("AccountId", helen.address);
+            assert.isRejected(faucet.fundAccount(helenAccountId));
         });
     });
 });

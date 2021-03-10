@@ -1,6 +1,6 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { sendLoggedTx } from "../utils";
+import { Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { EventRecord } from "@polkadot/types/interfaces";
 
@@ -30,7 +30,11 @@ export interface TreasuryAPI {
 }
 
 export class DefaultTreasuryAPI implements TreasuryAPI {
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {}
+    transaction: Transaction;
+
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {
+        this.transaction = new Transaction(api);
+    }
 
     setAccount(account: AddressOrPair): void {
         this.account = account;
@@ -64,7 +68,7 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
         }
 
         const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSatoshi);
-        const result = await sendLoggedTx(transferTransaction, this.account, this.api);
+        const result = await this.transaction.sendLogged(transferTransaction, this.account);
 
         if (!this.isTransferSuccessful(result.events)) {
             Promise.reject("Transfer failed");

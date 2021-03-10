@@ -80,10 +80,10 @@ describe("BTCCore testnet", function () {
 
     describe("get tx by recipient", () => {
         it("should return correct tx id when called with amount and receiver", async () => {
-            const recipientAddress = "tb1qt49nhv6cqx5edp85awwd4a40fw0mh7cln0v9s0";
-            const amountAsBTC = "0.00012364";
+            const recipientAddress = "tb1q9dxnjz0qwh7yj6axl0q9r7lyc9n3gat8nlrvhf";
+            const amountAsBTC = "0.0001236";
             const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBTC);
-            assert.strictEqual(txid, "97c4a73a971fd9410416ee46bc9bd62f08e68efc35d4f52c5b4a50307d5f6b93");
+            assert.strictEqual(txid, "41640c7703ebd972dd913f89c6d66941894d03ef3934edc59259342c7cc8126e");
         });
     });
 
@@ -153,7 +153,7 @@ describe("BTCCore regtest", function () {
     });
 
     describe("getTxStatus", () => {
-        it.skip("should return 0 confirmations", async () => {
+        it("should return 0 confirmations", async () => {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = "0.00029";
