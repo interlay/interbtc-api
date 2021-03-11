@@ -1,0 +1,9 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep ".ts$") || exit 0
+
+yarn fix:lint
+
+# Re-add files since they may have been fixed
+git add $STAGED_FILES

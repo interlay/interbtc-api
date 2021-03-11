@@ -1,0 +1,6 @@
+{
+    "categoryOrder": ["PolkaBTC Bridge", "PolkaBTC Bridge", "Clients", "Bitcoin Core", "*"],
+    "plugin": "typedoc-plugin-markdown",
+    "publicPath": "/",
+    "namedAnchors": true
+}

@@ -2,19 +2,19 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "./apis/btc-core";
-import { DefaultIssueAPI, IssueAPI } from "./apis/issue";
-import { DefaultOracleAPI, OracleAPI } from "./apis/oracle";
-import { DefaultRedeemAPI, RedeemAPI } from "./apis/redeem";
-import { DefaultRefundAPI, RefundAPI } from "./apis/refund";
-import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "./apis/staked-relayer";
-import { DefaultVaultsAPI, VaultsAPI } from "./apis/vaults";
-import { DefaultSystemAPI, SystemAPI } from "./apis/system";
-import { DefaultCollateralAPI, CollateralAPI } from "./apis/collateral";
-import { DefaultTreasuryAPI, TreasuryAPI } from "./apis/treasury";
-import { FaucetClient, StakedRelayerClient } from "./http";
-import { BTCRelayAPI, DefaultBTCRelayAPI } from "./apis/btc-relay";
-import { DefaultReplaceAPI, ReplaceAPI } from "./apis/replace";
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "./external/btc-core";
+import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
+import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
+import { DefaultRedeemAPI, RedeemAPI } from "./parachain/redeem";
+import { DefaultRefundAPI, RefundAPI } from "./parachain/refund";
+import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "./parachain/staked-relayer";
+import { DefaultVaultsAPI, VaultsAPI } from "./parachain/vaults";
+import { DefaultSystemAPI, SystemAPI } from "./parachain/system";
+import { DefaultCollateralAPI, CollateralAPI } from "./parachain/collateral";
+import { DefaultTreasuryAPI, TreasuryAPI } from "./parachain/treasury";
+import { FaucetClient, StakedRelayerClient } from "./clients";
+import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
+import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 
 export * from "./factory";
@@ -50,6 +50,9 @@ export interface PolkaBTCAPI {
     readonly account: AddressOrPair | undefined;
 }
 
+/**
+ * @category PolkaBTC Bridge
+ */
 export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;

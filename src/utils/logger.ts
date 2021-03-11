@@ -48,7 +48,7 @@ function printEvents(events: EventRecord[], api: ApiPromise) {
                 try {
                     const decoded = api.registry.findMetaError(eventData.asModule);
                     const { documentation, name, section } = decoded;
-                    if (documentation) {
+                    if (documentation && documentation.length > 0) {
                         errorMessage = `${section}.${name}: ${documentation.join(" ")}`;
                     } else {
                         errorMessage = `${section}.${name}`;
@@ -64,7 +64,7 @@ function printEvents(events: EventRecord[], api: ApiPromise) {
         events.forEach(({ phase, event: { data, method, section } }) => {
             console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
         });
-    } else if (errorMessage !== "issue.IssueCompleted: ") {
+    } else if (errorMessage !== "issue.IssueCompleted") {
         // IssueCompleted errors occur due to the vault having
         // already auto-executed the issuance
         throw new Error(errorMessage);

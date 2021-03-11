@@ -41,7 +41,7 @@ export class BitcoinCoreClient {
     }
 
     formatRawTxInput(recipient: string, amount: string, data?: string) {
-        const paidOutput = {} as any;
+        const paidOutput: { [key: string]: string } = {};
         paidOutput[recipient] = amount;
         if (data !== undefined) {
             return [{ data }, paidOutput];
@@ -60,9 +60,14 @@ export class BitcoinCoreClient {
         if (!this.client) {
             throw new Error("Client needs to be initialized before usage");
         }
-        const paidOutput = {} as any;
+
+        const paidOutput: { [key: string]: string } = {};
         paidOutput[recipient] = amount;
-        const raw = await this.client.command("createrawtransaction", [], this.formatRawTxInput(recipient, amount, data));
+        const raw = await this.client.command(
+            "createrawtransaction",
+            [],
+            this.formatRawTxInput(recipient, amount, data)
+        );
         const funded = await this.client.command("fundrawtransaction", raw);
         const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
         const response = await this.client.command("sendrawtransaction", signed.hex);
@@ -75,7 +80,7 @@ export class BitcoinCoreClient {
 
     async mineBlocks(n: number): Promise<void> {
         const newWalletAddress = await this.client.command("getnewaddress");
-        const minedTxs = await this.client.command("generatetoaddress", n, newWalletAddress);
+        await this.client.command("generatetoaddress", n, newWalletAddress);
         // A block is relayed every 6000ms by the staked-relayer.
         // Wait an additional 100ms to be sure
         const relayPeriodWithBuffer = 6100;
