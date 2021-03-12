@@ -17,7 +17,7 @@ export interface FeeAPI {
      */
      getGriefingCollateralInPlanck(
         amountSat: PolkaBTC,
-        griefingCollateralRate: UnsignedFixedPoint
+        griefingCollateralRate: Big
     ): Promise<Big>;
     /**
      * @param feesPolkaBTC Satoshi value representing the BTC fees accrued
@@ -30,7 +30,11 @@ export interface FeeAPI {
     /**
      * @returns The griefing collateral rate for issuing PolkaBTC
      */
-    getIssueGriefingCollateralRate(): Promise<UnsignedFixedPoint>;
+    getIssueGriefingCollateralRate(): Promise<Big>;
+    /**
+     * @returns The griefing collateral rate for the Vault replace request
+     */
+    getReplaceGriefingCollateralRate(): Promise<Big>;
 }
 
 export class DefaultFeeAPI implements FeeAPI {
@@ -42,13 +46,10 @@ export class DefaultFeeAPI implements FeeAPI {
 
     async getGriefingCollateralInPlanck(
         amountSat: PolkaBTC,
-        griefingCollateralRate: UnsignedFixedPoint
+        griefingCollateralRate: Big
     ): Promise<Big> {
-        const griefingCollateralRateBig = new Big(decodeFixedPointType(griefingCollateralRate));
-        const planckPerSatoshi = await this.oracleAPI.getRawExchangeRate();
-        const amountSatoshiBig = new Big(amountSat.toString());
-        const amountInPlanck = planckPerSatoshi.mul(amountSatoshiBig);
-        const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRateBig).toString();
+        const amountInPlanck = await this.oracleAPI.convertSatoshiToPlanck(amountSat);
+        const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRate).toString();
     
         // Compute the ceiling of the griefing collateral, because the parachain
         // ignores the decimal place (123.456 -> 123456), because there is nothing
@@ -57,16 +58,21 @@ export class DefaultFeeAPI implements FeeAPI {
         return griefingCollateralPlanckRoundedUp;
     }
 
-    async getIssueGriefingCollateralRate(): Promise<UnsignedFixedPoint> {
-        return await this.api.query.fee.issueGriefingCollateral();
+    async getIssueGriefingCollateralRate(): Promise<Big> {
+        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
+        return new Big(decodeFixedPointType(griefingCollateralRate));
+    }
+
+    async getReplaceGriefingCollateralRate(): Promise<Big> {
+        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral();
+        return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 
     calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: Big): string {
-        const feesPolkaBTCBig = new Big(feesPolkaBTC.toString());
+        const feesPolkaBTCBig = new Big(feesPolkaBTC);
         const feesPolkaBTCInDot = feesPolkaBTCBig.mul(dotToBtcRate);
         const totalFees = new Big(feesDOT).add(feesPolkaBTCInDot);
-    
-        const lockedDotBig = new Big(lockedDOT.toString());
+        const lockedDotBig = new Big(lockedDOT);
     
         // convert to percent
         return totalFees.div(lockedDotBig).mul(100).toString();

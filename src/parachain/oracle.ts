@@ -1,4 +1,4 @@
-import { ErrorCode } from "../interfaces/default";
+import { ErrorCode, PolkaBTC } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
@@ -78,6 +78,10 @@ export interface OracleAPI {
      * @returns The Planck/Satoshi exchange rate
      */
     getRawExchangeRate(): Promise<Big>;
+    /**
+     * @returns Convert a Satoshi amount to Planck
+     */
+    convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -95,6 +99,12 @@ export class DefaultOracleAPI implements OracleAPI {
             online: await this.isOnline(),
             lastUpdate: await this.getLastExchangeRateTime(),
         };
+    }
+
+    async convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big> {
+        const planckPerSatoshi = await this.getRawExchangeRate();
+        const amountSatoshiBig = new Big(satoshi.toString());
+        return planckPerSatoshi.mul(amountSatoshiBig);
     }
 
     async getExchangeRate(): Promise<Big> {

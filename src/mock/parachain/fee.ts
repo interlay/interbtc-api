@@ -1,15 +1,19 @@
 import { FeeAPI } from "../../parachain";
-import { PolkaBTC, UnsignedFixedPoint } from "../../interfaces/default";
+import { PolkaBTC } from "../../interfaces/default";
 import { ReplaceRequestExt } from "../../parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
 import Big from "big.js";
 
 export class MockFeeAPI implements FeeAPI {
-    getIssueGriefingCollateralRate(): Promise<UnsignedFixedPoint> {
+    getReplaceGriefingCollateralRate(): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+
+    getIssueGriefingCollateralRate(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     
-    getGriefingCollateralInPlanck(_amountSat: PolkaBTC, _griefingCollateralRate: UnsignedFixedPoint): Promise<Big> {
+    getGriefingCollateralInPlanck(_amountSat: PolkaBTC, _griefingCollateralRate: Big): Promise<Big> {
         throw new Error("Method not implemented.");
     }
 

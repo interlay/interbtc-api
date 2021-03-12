@@ -13,11 +13,14 @@ export interface TransactionAPI {
      * @param transaction Transaction object bundled with auto-generated polkadot-js methods. For instance,
      * `this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck)`
      * @param signer The account to sign this transaction with
+     * @param successEventType (Optional) The type of the event whose emission confirms successful
+     * transaction execution. If this event is absent, reject the promise.
      * @returns A result object with information from the attempt to broadcast this transaction
      */
-     sendLogged(
+     sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
-        signer: AddressOrPair
+        signer: AddressOrPair,
+        successEventType?: AugmentedEvent<ApiTypes, T>
     ): Promise<ISubmittableResult>;
 }
 
@@ -51,7 +54,7 @@ export class Transaction implements TransactionAPI {
                 }
             }
         });
-    
+
         console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         unsubscribe(result);
         this.printEvents(result.events);

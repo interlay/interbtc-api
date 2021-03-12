@@ -7,6 +7,7 @@ import { encodeBtcAddress, Transaction } from "../utils";
 import { H256 } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
+import Big from "big.js";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
@@ -80,14 +81,17 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         this.feeAPI = new DefaultFeeAPI(api);
         this.transaction = new Transaction(api);
     }
+    
+    getGriefingCollateralRate(): Promise<DOT> {
+        throw new Error("Method not implemented.");
+    }
 
     async request(amountSat: PolkaBTC): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
 
-        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral();
-        const griefingCollateralPlanck = await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
+        const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
         const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck.toString());
         await this.transaction.sendLogged(requestTx, this.account, this.api.events.replace.RequestReplace);
     }
@@ -96,8 +100,9 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         return await this.api.query.replace.replaceBtcDustValue();
     }
 
-    async getGriefingCollateralRate(): Promise<DOT> {
-        return await this.api.query.fee.replaceGriefingCollateral();
+    async getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big> {
+        const griefingCollateralRate = await this.feeAPI.getReplaceGriefingCollateralRate();
+        return await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {
