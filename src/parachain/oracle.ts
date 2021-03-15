@@ -2,7 +2,7 @@ import { ErrorCode } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
-import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, sendLoggedTx, encodeUnsignedFixedPoint } from "../utils";
+import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, Transaction, encodeUnsignedFixedPoint } from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
@@ -81,7 +81,11 @@ export interface OracleAPI {
 }
 
 export class DefaultOracleAPI implements OracleAPI {
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {}
+    transaction: Transaction;
+
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {
+        this.transaction = new Transaction(api);
+    }
 
     async getInfo(): Promise<OracleInfo> {
         return {
@@ -109,7 +113,7 @@ export class DefaultOracleAPI implements OracleAPI {
         }
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
-        await sendLoggedTx(tx, this.account, this.api);
+        await this.transaction.sendLogged(tx, this.account);
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
@@ -131,7 +135,7 @@ export class DefaultOracleAPI implements OracleAPI {
             }
         });
         const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
-        await sendLoggedTx(tx, this.account, this.api);
+        await this.transaction.sendLogged(tx, this.account);
     }
 
     async getOracleNames(): Promise<Array<string>> {
