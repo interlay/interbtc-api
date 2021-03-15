@@ -17,6 +17,8 @@ import { Buffer } from "buffer";
 import sinon from "sinon";
 import { DefaultCollateralAPI } from "../../../src/parachain/collateral";
 import Big from "big.js";
+import { Transaction } from "../../../src/utils";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,7 +35,6 @@ describe("issue", () => {
     // alice is the root account
     let alice: KeyringPair;
     let bob: KeyringPair;
-    let dave: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
@@ -89,9 +90,10 @@ describe("issue", () => {
 
         it("should getGriefingCollateral (rounded)", async () => {
             const amountBtc = "0.001";
-            const amountAsSat = btcToSat(amountBtc) as string;
+            const amountAsSatoshiString = btcToSat(amountBtc) as string;
+            const amountAsSat = api.createType("Balance", amountAsSatoshiString) as PolkaBTC;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck, "1927616");
+            assert.equal(griefingCollateralPlanck.toString(), "1927616");
         });
     });
 
@@ -105,27 +107,7 @@ describe("issue", () => {
             await assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
         });
 
-        // Mock sendLoggedTx to unskip
-        it.skip("should consider execution successful if `isExecutionSuccessful` returns true", async () => {
-            const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
-            issueAPI.setAccount(alice);
-            sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(true);
-            const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
-            assert.isTrue(isExecutionCorrect);
-            sandbox.restore();
-        });
-
-        // Mock sendLoggedTx to unskip
-        it.skip("should consider execution failed if `isExecutionSuccessful` returns false", async () => {
-            const { issueId, txId, merkleProof, rawTx } = makeExecutionData();
-            issueAPI.setAccount(alice);
-            sandbox.stub(DefaultIssueAPI.prototype, "isExecutionSuccessful").returns(false);
-            const isExecutionCorrect = await issueAPI.execute(issueId, txId, merkleProof, rawTx);
-            assert.isFalse(isExecutionCorrect);
-            sandbox.restore();
-        });
-
-        it.skip("should request and auto-execute issue", async () => {
+        it("should request and auto-execute issue", async () => {
             const amount = "0.001";
             const issueResult = await issue(
                 api,
@@ -151,9 +133,16 @@ describe("issue", () => {
                 issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
                 "Issue-Redeem were more expensive than 1 DOT"
             );
-        });
+        }).timeout(500000);
 
-        it.skip("should request and auto-execute issue", async () => {
+        it("should fail to request a value finer than 1 Satoshi", async () => {
+            const amount = "0.00000121";
+            await assert.isRejected(
+                issue(api, btcCoreAPI, bitcoinCoreClient, keyring, amount, "Alice", "Charlie", true, false)
+            );
+        }).timeout(500000);
+
+        it("should request and auto-execute issue", async () => {
             const amount = "0.0000121";
             const issueResult = await issue(
                 api,
@@ -178,16 +167,9 @@ describe("issue", () => {
                 issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
                 "Issue-Redeem were more expensive than 1 DOT"
             );
-        });
+        }).timeout(500000);
 
-        it("should fail to request a value finer than 1 Satoshi", async () => {
-            const amount = "0.00000121";
-            await assert.isRejected(
-                issue(api, btcCoreAPI, bitcoinCoreClient, keyring, amount, "Alice", "Charlie", true, false)
-            );
-        });
-
-        it.skip("should request and manually execute issue", async () => {
+        it("should request and manually execute issue", async () => {
             const amount = "0.001";
             const issueResult = await issue(
                 api,
@@ -212,14 +194,13 @@ describe("issue", () => {
                 issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
                 "Issue-Redeem were more expensive than 1 DOT"
             );
-        });
+        }).timeout(500000);
     });
 
-    describe.skip("cancel", () => {
+    describe("cancel", () => {
         it("should cancel a request issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
-            dave = keyring.addFromUri("//Dave");
 
             // request issue
             issueAPI.setAccount(alice);
@@ -236,7 +217,7 @@ describe("issue", () => {
 
             assert.isTrue(issueRequest.cancelled.isTrue, "Failed to cancel issue request");
         });
-    });
+    }).timeout(700000);
 
     describe("fees", () => {
         it("should getFeesToPay", async () => {

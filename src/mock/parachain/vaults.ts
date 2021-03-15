@@ -10,8 +10,13 @@ import { RedeemRequestExt } from "../../parachain/redeem";
 import { ReplaceRequestExt } from "../../parachain/replace";
 import { VaultsAPI, VaultExt } from "../../parachain/vaults";
 import Big from "big.js";
+import { AddressOrPair } from "@polkadot/api/types";
 
 export class MockVaultsAPI implements VaultsAPI {
+    setAccount(_account: AddressOrPair): void {
+        return;
+    }
+
     async list(): Promise<VaultExt[]> {
         const registry = new TypeRegistry();
 
@@ -90,6 +95,10 @@ export class MockVaultsAPI implements VaultsAPI {
     }
 
     get(_vaultId: AccountId): Promise<VaultExt> {
+        return Promise.resolve(<VaultExt>{});
+    }
+
+    getVaultFromAddressList(_ids: AccountId[]): Promise<VaultExt> {
         return Promise.resolve(<VaultExt>{});
     }
 
@@ -199,5 +208,13 @@ export class MockVaultsAPI implements VaultsAPI {
 
     async getPunishmentFee(): Promise<string> {
         return "368";
+    }
+
+    async withdrawCollateral(_amountAsPlanck: DOT): Promise<void> {
+        return Promise.resolve();
+    }
+
+    async lockAdditionalCollateral(_amountAsPlanck: DOT): Promise<void> {
+        return Promise.resolve();
     }
 }

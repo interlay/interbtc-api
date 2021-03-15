@@ -2,13 +2,13 @@ import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wall
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import {
-    calculateAPY,
     FIXEDI128_SCALING_FACTOR,
     pagedIterator,
     planckToDOT,
     decodeFixedPointType,
     encodeBtcAddress,
     satToBTC,
+    Transaction,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
@@ -18,6 +18,9 @@ import { IssueRequestExt, encodeIssueRequest } from "./issue";
 import { RedeemRequestExt, encodeRedeemRequest } from "./redeem";
 import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
 import { Network } from "bitcoinjs-lib";
+import { FeeAPI } from "..";
+import { DefaultFeeAPI } from "./fee";
+import { AddressOrPair } from "@polkadot/api/types";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -235,6 +238,19 @@ export interface VaultsAPI {
      * issued PolkaBTC and issuable PolkaBTC
      */
     getPolkaBTCCapacity(): Promise<string>;
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
+    setAccount(account: AddressOrPair): void;
+    /**
+     * @param amountAsPlanck Value to withdraw from staking
+     */
+    withdrawCollateral(amountAsPlanck: DOT): Promise<void>;
+    /**
+     * @param amountAsPlanck Value to increase stake by
+     */
+    lockAdditionalCollateral(amountAsPlanck: DOT): Promise<void>;
 }
 
 export class DefaultVaultsAPI {
@@ -242,11 +258,31 @@ export class DefaultVaultsAPI {
     private btcNetwork: Network;
     collateralAPI: CollateralAPI;
     oracleAPI: OracleAPI;
+    feeAPI: FeeAPI;
+    transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network) {
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
         this.btcNetwork = btcNetwork;
-        this.collateralAPI = new DefaultCollateralAPI(this.api);
-        this.oracleAPI = new DefaultOracleAPI(this.api);
+        this.collateralAPI = new DefaultCollateralAPI(api);
+        this.oracleAPI = new DefaultOracleAPI(api);
+        this.feeAPI = new DefaultFeeAPI(api);
+        this.transaction = new Transaction(api);
+    }
+
+    async withdrawCollateral(amountAsPlanck: DOT): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot request without setting account");
+        }
+        const tx = this.api.tx.vaultRegistry.withdrawCollateral(amountAsPlanck);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.WithdrawCollateral);
+    }
+
+    async lockAdditionalCollateral(amountAsPlanck: DOT): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot request without setting account");
+        }
+        const tx = this.api.tx.vaultRegistry.lockAdditionalCollateral(amountAsPlanck);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.LockAdditionalCollateral);
     }
 
     async list(): Promise<VaultExt[]> {
@@ -492,7 +528,7 @@ export class DefaultVaultsAPI {
             await this.oracleAPI.getExchangeRate(),
             await (await this.collateralAPI.balanceLockedDOT(vaultId)).toString(),
         ]);
-        return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
+        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
     async getSLA(vaultId: AccountId): Promise<string> {
@@ -530,5 +566,9 @@ export class DefaultVaultsAPI {
 
     private unwrapCurrency(wrappedBalance: BalanceWrapper): Balance {
         return this.api.createType("Balance", wrappedBalance.amount.toString());
+    }
+
+    setAccount(account: AddressOrPair): void {
+        this.account = account;
     }
 }

@@ -11,7 +11,7 @@ export class MockRedeemAPI implements RedeemAPI {
         throw new Error("Method not implemented.");
     }
 
-    cancel(_redeemId: H256, _reimburse?: boolean): Promise<boolean> {
+    cancel(_redeemId: H256, _reimburse?: boolean): Promise<void> {
         throw new Error("Method not implemented.");
     }
 

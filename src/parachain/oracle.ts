@@ -1,8 +1,8 @@
-import { ErrorCode } from "../interfaces/default";
+import { ErrorCode, PolkaBTC } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
-import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, sendLoggedTx, encodeUnsignedFixedPoint } from "../utils";
+import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, Transaction, encodeUnsignedFixedPoint } from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
@@ -78,10 +78,18 @@ export interface OracleAPI {
      * @returns The Planck/Satoshi exchange rate
      */
     getRawExchangeRate(): Promise<Big>;
+    /**
+     * @returns Convert a Satoshi amount to Planck
+     */
+    convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {}
+    transaction: Transaction;
+
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {
+        this.transaction = new Transaction(api);
+    }
 
     async getInfo(): Promise<OracleInfo> {
         return {
@@ -91,6 +99,12 @@ export class DefaultOracleAPI implements OracleAPI {
             online: await this.isOnline(),
             lastUpdate: await this.getLastExchangeRateTime(),
         };
+    }
+
+    async convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big> {
+        const planckPerSatoshi = await this.getRawExchangeRate();
+        const amountSatoshiBig = new Big(satoshi.toString());
+        return planckPerSatoshi.mul(amountSatoshiBig);
     }
 
     async getExchangeRate(): Promise<Big> {
@@ -109,7 +123,7 @@ export class DefaultOracleAPI implements OracleAPI {
         }
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
-        await sendLoggedTx(tx, this.account, this.api);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
@@ -131,7 +145,7 @@ export class DefaultOracleAPI implements OracleAPI {
             }
         });
         const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
-        await sendLoggedTx(tx, this.account, this.api);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
     }
 
     async getOracleNames(): Promise<Array<string>> {

@@ -1,8 +1,7 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { sendLoggedTx } from "../utils";
+import { Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { EventRecord } from "@polkadot/types/interfaces";
 
 /**
  * @category PolkaBTC Bridge
@@ -30,7 +29,11 @@ export interface TreasuryAPI {
 }
 
 export class DefaultTreasuryAPI implements TreasuryAPI {
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {}
+    transaction: Transaction;
+
+    constructor(private api: ApiPromise, private account?: AddressOrPair) {
+        this.transaction = new Transaction(api);
+    }
 
     setAccount(account: AddressOrPair): void {
         this.account = account;
@@ -45,29 +48,12 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
         return account.free;
     }
 
-    /**
-     * @param events The EventRecord array returned after sending transfer transaction
-     * @returns A boolean value
-     */
-    isTransferSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.polkaBtc.Transfer.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     async transfer(destination: string, amountSatoshi: string): Promise<void> {
         if (!this.account) {
             throw new Error("cannot request without setting account");
         }
 
         const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSatoshi);
-        const result = await sendLoggedTx(transferTransaction, this.account, this.api);
-
-        if (!this.isTransferSuccessful(result.events)) {
-            Promise.reject("Transfer failed");
-        }
+        await this.transaction.sendLogged(transferTransaction, this.account, this.api.events.polkaBtc.Transfer);
     }
 }
