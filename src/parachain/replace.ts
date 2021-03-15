@@ -3,8 +3,11 @@ import { DOT, PolkaBTC, ReplaceRequest } from "../interfaces/default";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Network } from "bitcoinjs-lib";
-import { encodeBtcAddress } from "../utils";
+import { encodeBtcAddress, Transaction } from "../utils";
 import { H256 } from "@polkadot/types/interfaces";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { DefaultFeeAPI, FeeAPI } from "./fee";
+import Big from "big.js";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
@@ -42,7 +45,7 @@ export interface ReplaceAPI {
      * of the new Vault. This collateral will be slashed and allocated to the replacing Vault
      * if the to-be-replaced Vault does not transfer BTC on time.
      */
-    getGriefingCollateral(): Promise<DOT>;
+    getGriefingCollateralRate(): Promise<DOT>;
     /**
      * @returns The time difference in number of blocks between when a replace request is created
      * and required completion time by a vault. The replace period has an upper limit
@@ -57,21 +60,49 @@ export interface ReplaceAPI {
      * @returns A mapping from the replace request ID to the replace request object
      */
     map(): Promise<Map<H256, ReplaceRequestExt>>;
+    /**
+     * @param amountSat Amount issued, in Satoshi, to have replaced by another vault
+     */
+    request(amountSat: PolkaBTC): Promise<void>;
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
+    setAccount(account: AddressOrPair): void;
 }
 
 export class DefaultReplaceAPI implements ReplaceAPI {
     private btcNetwork: Network;
+    private feeAPI: FeeAPI;
+    transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network) {
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
         this.btcNetwork = btcNetwork;
+        this.feeAPI = new DefaultFeeAPI(api);
+        this.transaction = new Transaction(api);
+    }
+    
+    getGriefingCollateralRate(): Promise<DOT> {
+        throw new Error("Method not implemented.");
+    }
+
+    async request(amountSat: PolkaBTC): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot request without setting account");
+        }
+
+        const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
+        const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck.toString());
+        await this.transaction.sendLogged(requestTx, this.account, this.api.events.replace.RequestReplace);
     }
 
     async getBtcDustValue(): Promise<PolkaBTC> {
         return await this.api.query.replace.replaceBtcDustValue();
     }
 
-    async getGriefingCollateral(): Promise<DOT> {
-        return await this.api.query.fee.replaceGriefingCollateral();
+    async getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big> {
+        const griefingCollateralRate = await this.feeAPI.getReplaceGriefingCollateralRate();
+        return await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {
@@ -102,5 +133,9 @@ export class DefaultReplaceAPI implements ReplaceAPI {
                 redeemRequestMap.set(this.storageKeyToIdString(id), encodeReplaceRequest(req, this.btcNetwork));
             });
         return redeemRequestMap;
+    }
+
+    setAccount(account: AddressOrPair): void {
+        this.account = account;
     }
 }

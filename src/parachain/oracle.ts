@@ -1,4 +1,4 @@
-import { ErrorCode } from "../interfaces/default";
+import { ErrorCode, PolkaBTC } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
@@ -78,6 +78,10 @@ export interface OracleAPI {
      * @returns The Planck/Satoshi exchange rate
      */
     getRawExchangeRate(): Promise<Big>;
+    /**
+     * @returns Convert a Satoshi amount to Planck
+     */
+    convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -97,6 +101,12 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
+    async convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big> {
+        const planckPerSatoshi = await this.getRawExchangeRate();
+        const amountSatoshiBig = new Big(satoshi.toString());
+        return planckPerSatoshi.mul(amountSatoshiBig);
+    }
+
     async getExchangeRate(): Promise<Big> {
         const rawRate = await this.getRawExchangeRate();
         return new Big(this.convertFromRawExchangeRate(rawRate.toString()));
@@ -113,7 +123,7 @@ export class DefaultOracleAPI implements OracleAPI {
         }
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
-        await this.transaction.sendLogged(tx, this.account);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
@@ -135,7 +145,7 @@ export class DefaultOracleAPI implements OracleAPI {
             }
         });
         const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
-        await this.transaction.sendLogged(tx, this.account);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
     }
 
     async getOracleNames(): Promise<Array<string>> {

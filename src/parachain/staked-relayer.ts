@@ -4,11 +4,13 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { calculateAPY, pagedIterator, decodeFixedPointType } from "../utils";
+import { pagedIterator, decodeFixedPointType, Transaction } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
+import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { AddressOrPair } from "@polkadot/api/types";
 
 /**
  * @category PolkaBTC Bridge
@@ -112,6 +114,12 @@ export interface StakedRelayerAPI {
      * @returns The number of blocks to wait until eligible to vote
      */
     getStakedRelayersMaturityPeriod(): Promise<BlockNumber>;
+    deregisterStakedRelayer(): Promise<void>;
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
+    setAccount(account: AddressOrPair): void;
 }
 
 export interface PendingStatusUpdate {
@@ -125,11 +133,23 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     private vaultsAPI: VaultsAPI;
     private collateralAPI: CollateralAPI;
     private oracleAPI: OracleAPI;
+    private feeAPI: FeeAPI;
+    transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network) {
-        this.collateralAPI = new DefaultCollateralAPI(this.api);
-        this.oracleAPI = new DefaultOracleAPI(this.api);
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+        this.collateralAPI = new DefaultCollateralAPI(api);
+        this.oracleAPI = new DefaultOracleAPI(api);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
+        this.feeAPI = new DefaultFeeAPI(api);
+        this.transaction = new Transaction(api);
+    }
+
+    async deregisterStakedRelayer(): Promise<void> {
+        if (!this.account) {
+            throw new Error("cannot request without setting account");
+        }
+        const tx = this.api.tx.stakedRelayers.deregisterStakedRelayer();
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.DeregisterStakedRelayer);
     }
 
     async list(): Promise<StakedRelayer[]> {
@@ -272,7 +292,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
             await this.oracleAPI.getExchangeRate(),
             await (await this.collateralAPI.balanceLockedDOT(stakedRelayerId)).toString(),
         ]);
-        return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
+        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
     async getSLA(stakedRelayerId: AccountId): Promise<number> {
@@ -287,5 +307,9 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
 
     async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
         return await this.api.query.stakedRelayers.maturityPeriod();
+    }
+
+    setAccount(account: AddressOrPair): void {
+        this.account = account;
     }
 }

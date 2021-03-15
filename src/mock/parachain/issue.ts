@@ -8,10 +8,11 @@ import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
 import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../parachain/issue";
 import { EventRecord } from "@polkadot/types/interfaces/system";
+import Big from "big.js";
 
 export class MockIssueAPI implements IssueAPI {
-    execute(_issueId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
-        return Promise.resolve(true);
+    execute(_issueId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
+        return Promise.resolve();
     }
 
     cancel(_issueId: H256): Promise<void> {
@@ -28,8 +29,8 @@ export class MockIssueAPI implements IssueAPI {
         return;
     }
 
-    getGriefingCollateralInPlanck(_amountBtc: string): Promise<string> {
-        return Promise.resolve("100");
+    getGriefingCollateralInPlanck(_amountSat: PolkaBTC): Promise<Big> {
+        return Promise.resolve(new Big("100"));
     }
 
     list(): Promise<IssueRequestExt[]> {

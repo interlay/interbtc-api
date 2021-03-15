@@ -61,7 +61,7 @@ export class DefaultCollateralAPI implements CollateralAPI {
         }
 
         const transferTx = this.api.tx.dot.transfer(address, amount);
-        await this.transaction.sendLogged(transferTx, this.account);
+        await this.transaction.sendLogged(transferTx, this.account, this.api.events.dot.Transfer);
     }
 
     setAccount(account: AddressOrPair): void {

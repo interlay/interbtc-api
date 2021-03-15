@@ -2,8 +2,13 @@ import { AddressOrPair } from "@polkadot/api/types";
 import { OracleAPI } from "../../parachain";
 import { BtcTxFees, OracleInfo } from "../../parachain/oracle";
 import Big from "big.js";
+import { PolkaBTC } from "@interlay/polkabtc/interfaces";
 
 export class MockOracleAPI implements OracleAPI {
+    convertSatoshiToPlanck(_satoshi: PolkaBTC): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    
     async getInfo(): Promise<OracleInfo> {
         const oracle_info: OracleInfo = {
             exchangeRate: await this.getExchangeRate(),

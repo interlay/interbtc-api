@@ -4,4 +4,3 @@ export * from "./encoding";
 export * from "./pagedIterator";
 export * from "./transaction";
 export * from "./constants";
-export * from "./fee";
