@@ -99,7 +99,7 @@ export class MockIssueAPI implements IssueAPI {
         return "0.01";
     }
 
-    async getFeePercentage(): Promise<string> {
-        return "5.3";
+    async getFeeRate(): Promise<Big> {
+        return new Big("0.005");
     }
 }

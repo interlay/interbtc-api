@@ -87,6 +87,10 @@ export interface IssueAPI {
      */
     getIssuePeriod(): Promise<BlockNumber>;
     /**
+     * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
+     */
+    getFeeRate(): Promise<Big>;
+    /**
      * @param amountBtc The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
@@ -142,7 +146,7 @@ export class DefaultIssueAPI implements IssueAPI {
         } catch (e) {
             return Promise.reject(e.message);
         }
-        
+
     }
 
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
@@ -183,20 +187,20 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getFeesToPay(amountBtc: string): Promise<string> {
-        const feePercentage = await this.getFeePercentage();
-        const feePercentageBN = new Big(feePercentage);
+        const feePercentage = await this.getFeeRate();
         const amountBig = new Big(amountBtc);
-        const feeBtc = amountBig.mul(feePercentageBN);
+        const feeBtc = amountBig.mul(feePercentage);
         return roundUpBtcToNearestSatoshi(feeBtc.toString());
     }
 
     /**
-     * @returns The fee percentage charged for issuing. For instance, "0.005" stands for 0.005%
+     * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
-    async getFeePercentage(): Promise<string> {
+    async getFeeRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const issueFee = await this.api.query.fee.issueFee.at(head);
-        return decodeFixedPointType(issueFee);
+        // TODO: return Big from decodeFixedPointType
+        return new Big(decodeFixedPointType(issueFee));
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
