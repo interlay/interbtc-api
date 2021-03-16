@@ -143,9 +143,9 @@ describe("redeem", () => {
             assert.equal(feesToPay, "0.01");
         });
 
-        it("should getFeePercentage", async () => {
-            const feePercentage = await redeemAPI.getFeePercentage();
-            assert.equal(feePercentage, "0.005");
+        it("should getFeeRate", async () => {
+            const feePercentage = await redeemAPI.getFeeRate();
+            assert.equal(feePercentage.toString(), "0.005");
         });
 
         it("should getPremiumRedeemFee", async () => {
