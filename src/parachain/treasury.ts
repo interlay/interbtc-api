@@ -1,6 +1,6 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 
 /**
@@ -51,7 +51,7 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
 
     async transfer(destination: string, amountSatoshi: string): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSatoshi);

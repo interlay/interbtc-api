@@ -111,5 +111,5 @@ export class Transaction implements TransactionAPI {
         }
         return false;
     }
-    
+
 }

@@ -7,6 +7,10 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 
 export class MockReplaceAPI implements ReplaceAPI {
+    withdraw(_requestId: string): Promise<void> {
+        return Promise.resolve();
+    }
+    
     setAccount(_account: AddressOrPair): void {
         return;
     }
@@ -31,7 +35,7 @@ export class MockReplaceAPI implements ReplaceAPI {
         return Promise.resolve(new Map<AccountId, ReplaceRequestExt>());
     }
 
-    async request(_amount: PolkaBTC): Promise<void> {
-        return;
+    async request(_amount: PolkaBTC): Promise<string> {
+        return "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c";
     }
 }

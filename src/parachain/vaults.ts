@@ -9,6 +9,7 @@ import {
     encodeBtcAddress,
     satToBTC,
     Transaction,
+    ACCOUNT_NOT_SET_ERROR_MESSAGE,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
@@ -21,6 +22,7 @@ import { Network } from "bitcoinjs-lib";
 import { FeeAPI } from "..";
 import { DefaultFeeAPI } from "./fee";
 import { AddressOrPair } from "@polkadot/api/types";
+import BN from "bn.js";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -269,9 +271,17 @@ export class DefaultVaultsAPI {
         this.transaction = new Transaction(api);
     }
 
+    async register(planckCollateral: BN, publicKey: string): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const tx = this.api.tx.vaultRegistry.registerVault(planckCollateral, publicKey);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.RegisterVault);
+    }
+
     async withdrawCollateral(amountAsPlanck: DOT): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const tx = this.api.tx.vaultRegistry.withdrawCollateral(amountAsPlanck);
         await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.WithdrawCollateral);
@@ -279,7 +289,7 @@ export class DefaultVaultsAPI {
 
     async lockAdditionalCollateral(amountAsPlanck: DOT): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const tx = this.api.tx.vaultRegistry.lockAdditionalCollateral(amountAsPlanck);
         await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.LockAdditionalCollateral);

@@ -1,6 +1,6 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 
 /**
@@ -60,9 +60,8 @@ export class DefaultCollateralAPI implements CollateralAPI {
 
     async transferDOT(address: string, amount: string | number): Promise<void> {
         if (!this.account) {
-            throw new Error("Cannot transfer without account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
-
         const transferTx = this.api.tx.dot.transfer(address, amount);
         await this.transaction.sendLogged(transferTx, this.account, this.api.events.dot.Transfer);
     }

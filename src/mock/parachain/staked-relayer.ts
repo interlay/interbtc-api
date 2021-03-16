@@ -1,4 +1,4 @@
-import { DOT, StakedRelayer, StatusCode, StatusUpdate } from "../../interfaces/default";
+import { DOT, ErrorCode, StakedRelayer, StatusCode, StatusUpdate } from "../../interfaces/default";
 import { u32, u64, u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -18,6 +18,26 @@ function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
 
 export class MockStakedRelayerAPI implements StakedRelayerAPI {
     registry = new TypeRegistry();
+
+    register(_planckStake: BN): Promise<void> {
+        return Promise.resolve();
+    }
+    suggestStatusUpdate(
+        _depositPlanck: BN,
+        _statusCode: StatusCode,
+        _message: string, 
+        _addError?: ErrorCode, 
+        _removeError?: string, 
+        _blockHash?: string
+    ): Promise<void> {
+        return Promise.resolve();
+    }
+    suggestInvalidBlock(_deposit: BN, _blockHash: string, _message: string): Promise<void> {
+        return Promise.resolve();
+    }
+    voteOnStatusUpdate(_statusUpdateId: BN, _approve: boolean): Promise<void> {
+        return Promise.resolve();
+    }
 
     setAccount(_account: AddressOrPair): void {
         return;
@@ -50,7 +70,7 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return Promise.resolve(<StakedRelayer>{});
     }
 
-    deregisterStakedRelayer(): Promise<void> {
+    deregister(): Promise<void> {
         return Promise.resolve();
     }
 

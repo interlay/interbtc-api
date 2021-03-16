@@ -1,13 +1,15 @@
 import { ApiPromise } from "@polkadot/api";
-import { DOT, PolkaBTC, ReplaceRequest } from "../interfaces/default";
+import { PolkaBTC, ReplaceRequest } from "../interfaces/default";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
+import { Hash } from "@polkadot/types/interfaces";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Network } from "bitcoinjs-lib";
-import { encodeBtcAddress, Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, encodeBtcAddress, Transaction } from "../utils";
 import { H256 } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import Big from "big.js";
+import { EventRecord } from "@polkadot/types/interfaces/system";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
@@ -41,12 +43,6 @@ export interface ReplaceAPI {
      */
     getBtcDustValue(): Promise<PolkaBTC>;
     /**
-     * @returns Default griefing collateral (in DOT) as a percentage of the to-be-locked DOT collateral
-     * of the new Vault. This collateral will be slashed and allocated to the replacing Vault
-     * if the to-be-replaced Vault does not transfer BTC on time.
-     */
-    getGriefingCollateralRate(): Promise<DOT>;
-    /**
      * @returns The time difference in number of blocks between when a replace request is created
      * and required completion time by a vault. The replace period has an upper limit
      * to prevent griefing of vault collateral.
@@ -62,13 +58,19 @@ export interface ReplaceAPI {
     map(): Promise<Map<H256, ReplaceRequestExt>>;
     /**
      * @param amountSat Amount issued, in Satoshi, to have replaced by another vault
+     * @returns The request id
      */
-    request(amountSat: PolkaBTC): Promise<void>;
+     request(amountSat: PolkaBTC): Promise<string>;
     /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
     setAccount(account: AddressOrPair): void;
+    /**
+     * Wihdraw a replace request
+     * @param requestId The id of the replace request to withdraw (cancel)
+     */
+    withdraw(requestId: string): Promise<void>;
 }
 
 export class DefaultReplaceAPI implements ReplaceAPI {
@@ -82,18 +84,43 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         this.transaction = new Transaction(api);
     }
 
-    getGriefingCollateralRate(): Promise<DOT> {
-        throw new Error("Method not implemented.");
+    /**
+     * @param events The EventRecord array returned after sending a replace request transaction
+     * @returns The id associated with the replace request. If the EventRecord array does not
+     * contain replace request events, the function throws an error.
+     */
+    private getRequestIdFromEvents(events: EventRecord[]): Hash {
+        for (const { event } of events) {
+            if (this.api.events.replace.RequestReplace.is(event)) {
+                const hash = this.api.createType("Hash", event.data[0]);
+                return hash;
+            }
+        }
+        throw new Error("Request transaction failed");
     }
 
-    async request(amountSat: PolkaBTC): Promise<void> {
+    async request(amountSat: PolkaBTC): Promise<string> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
         const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck.toString());
-        await this.transaction.sendLogged(requestTx, this.account, this.api.events.replace.RequestReplace);
+        const result = await this.transaction.sendLogged(requestTx, this.account, this.api.events.replace.RequestReplace);
+        try {
+            return this.getRequestIdFromEvents(result.events).toString();
+        } catch (e) {
+            return Promise.reject(e.message);
+        }
+    }
+
+    async withdraw(requestId: string): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+
+        const requestTx = this.api.tx.replace.withdrawReplace(requestId);
+        await this.transaction.sendLogged(requestTx, this.account, this.api.events.replace.WithdrawReplace);
     }
 
     async getBtcDustValue(): Promise<PolkaBTC> {
