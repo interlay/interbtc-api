@@ -228,9 +228,8 @@ export class DefaultRedeemAPI {
 
     async getFeesToPay(amount: string): Promise<string> {
         const feePercentage = await this.getFeeRate();
-        const feePercentageBN = new Big(feePercentage);
         const amountBig = new Big(amount);
-        return amountBig.mul(feePercentageBN).toString();
+        return amountBig.mul(feePercentage).toString();
     }
 
     async getFeeRate(): Promise<Big> {
