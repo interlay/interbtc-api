@@ -1,8 +1,7 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { EventRecord } from "@polkadot/types/interfaces";
 
 /**
  * @category PolkaBTC Bridge
@@ -40,8 +39,9 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
         this.account = account;
     }
 
-    totalPolkaBTC(): Promise<Balance> {
-        return this.api.query.polkaBtc.totalIssuance();
+    async totalPolkaBTC(): Promise<Balance> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.polkaBtc.totalIssuance.at(head);
     }
 
     async balancePolkaBTC(id: AccountId): Promise<Balance> {
@@ -49,29 +49,12 @@ export class DefaultTreasuryAPI implements TreasuryAPI {
         return account.free;
     }
 
-    /**
-     * @param events The EventRecord array returned after sending transfer transaction
-     * @returns A boolean value
-     */
-    isTransferSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.polkaBtc.Transfer.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     async transfer(destination: string, amountSatoshi: string): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSatoshi);
-        const result = await this.transaction.sendLogged(transferTransaction, this.account);
-
-        if (!this.isTransferSuccessful(result.events)) {
-            Promise.reject("Transfer failed");
-        }
+        await this.transaction.sendLogged(transferTransaction, this.account, this.api.events.polkaBtc.Transfer);
     }
 }

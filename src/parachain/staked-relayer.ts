@@ -4,11 +4,14 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { calculateAPY, pagedIterator, decodeFixedPointType } from "../utils";
+import { pagedIterator, decodeFixedPointType, Transaction, ACCOUNT_NOT_SET_ERROR_MESSAGE } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
+import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { AddressOrPair } from "@polkadot/api/types";
+import { ErrorCode } from "../interfaces/default";
 
 /**
  * @category PolkaBTC Bridge
@@ -112,6 +115,46 @@ export interface StakedRelayerAPI {
      * @returns The number of blocks to wait until eligible to vote
      */
     getStakedRelayersMaturityPeriod(): Promise<BlockNumber>;
+    /**
+     * @param planckStake Stake amount (denoted in Planck) to register with
+     */
+    register(planckStake: BN): Promise<void>;
+    /**
+     * @param depositPlanck Deposit required to suggest the status update
+     * @param statusCode Suggested BTC Parachain status
+     * @param message Message detailing reason for status update
+     * @param addError If the suggested status is Error, this set of ErrorCode indicates which error is to be added to the Errors mapping.
+     * @param removeError ErrorCode to be removed from the Errors list.
+     * @param blockHash When reporting an error related to BTC-Relay, this field indicates the affected Bitcoin block (header).
+     */
+     suggestStatusUpdate(
+        depositPlanck: BN,
+        statusCode: StatusCode,
+        message: string,
+        addError?: ErrorCode,
+        removeError?: string,
+        blockHash?: string,
+    ): Promise<void>;
+    /**
+     * @param depositPlanck Deposit required to suggest the status update
+     * @param blockHash When reporting an error related to BTC-Relay, this field indicates the affected Bitcoin block (header).
+     * @param message Message detailing reason for status update
+    */
+    suggestInvalidBlock(deposit: BN, blockHash: string, message: string): Promise<void>
+    /**
+     * @param statusUpdateId Identifier of the `StatusUpdate` voted upon in `ActiveStatusUpdates`.
+     * @param approve `true` or `false`, depending on whether the Staked Relayer agrees or disagrees with the suggested `StatusUpdate`.
+     */
+    voteOnStatusUpdate(statusUpdateId: BN, approve: boolean): Promise<void>;
+    /**
+     * Deregister the Staked Relayer
+     */
+    deregister(): Promise<void>;
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
+    setAccount(account: AddressOrPair): void;
 }
 
 export interface PendingStatusUpdate {
@@ -125,20 +168,84 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     private vaultsAPI: VaultsAPI;
     private collateralAPI: CollateralAPI;
     private oracleAPI: OracleAPI;
+    private feeAPI: FeeAPI;
+    transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network) {
-        this.collateralAPI = new DefaultCollateralAPI(this.api);
-        this.oracleAPI = new DefaultOracleAPI(this.api);
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+        this.collateralAPI = new DefaultCollateralAPI(api);
+        this.oracleAPI = new DefaultOracleAPI(api);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
+        this.feeAPI = new DefaultFeeAPI(api);
+        this.transaction = new Transaction(api);
+    }
+
+    async register(planckStake: BN): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const tx = this.api.tx.stakedRelayers.registerStakedRelayer(planckStake);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.RegisterStakedRelayer);
+    }
+
+    async deregister(): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const tx = this.api.tx.stakedRelayers.deregisterStakedRelayer();
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.DeregisterStakedRelayer);    
+    }
+
+    async suggestStatusUpdate(
+        depositPlanck: BN,
+        statusCode: StatusCode,
+        message: string,
+        addError?: ErrorCode,
+        removeError?: string,
+        blockHash?: string,
+    ): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const parsedAddError = addError ? addError : null;
+        const parsedRemoveError = removeError ? this.api.createType("H256", removeError) : null;
+        const parsedBlockHash = blockHash ? blockHash : null;
+        const tx = this.api.tx.stakedRelayers.suggestStatusUpdate(
+            depositPlanck,
+            statusCode,
+            parsedAddError,
+            parsedRemoveError,
+            parsedBlockHash,
+            message
+        );
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.StatusUpdateSuggested);
+    }
+
+    async suggestInvalidBlock(deposit: BN, blockHash: string, message: string): Promise<void> {
+        const statusCode = this.api.registry.createType("StatusCode", { error: true });
+        const addError = this.api.registry.createType("ErrorCode", { invalidbtcrelay: true });
+        return this.suggestStatusUpdate(deposit, statusCode, message, addError, undefined, blockHash);
+    }
+
+    async voteOnStatusUpdate(statusUpdateId: BN, approve: boolean): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const tx = this.api.tx.stakedRelayers.voteOnStatusUpdate(
+            statusUpdateId,
+            approve,
+        );
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.VoteOnStatusUpdate);
     }
 
     async list(): Promise<StakedRelayer[]> {
-        const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(head);
         return activeStakedRelayersMap.map((v) => v[1]);
     }
 
     async map(): Promise<Map<AccountId, StakedRelayer>> {
-        const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(head);
         const activeStakedRelayerPairs: [AccountId, StakedRelayer][] = activeStakedRelayers.map(
             (activeStakedRelayer) => {
                 return [
@@ -158,17 +265,20 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return pagedIterator<StakedRelayer>(this.api.query.issue.issueRequests, perPage);
     }
 
-    get(activeStakedRelayerId: AccountId): Promise<StakedRelayer> {
-        return this.api.query.stakedRelayers.activeStakedRelayers(activeStakedRelayerId);
+    async get(activeStakedRelayerId: AccountId): Promise<StakedRelayer> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.stakedRelayers.activeStakedRelayers.at(head, activeStakedRelayerId);
     }
 
     async isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean> {
-        const active = await this.api.query.stakedRelayers.activeStakedRelayers(stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const active = await this.api.query.stakedRelayers.activeStakedRelayers.at(head, stakedRelayerId);
         return active.stake.gt(new BN(0));
     }
 
     async isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean> {
-        const inactive = await this.api.query.stakedRelayers.inactiveStakedRelayers(stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const inactive = await this.api.query.stakedRelayers.inactiveStakedRelayers.at(head, stakedRelayerId);
         return inactive.stake.gt(new BN(0));
     }
 
@@ -214,17 +324,20 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]> {
-        const lastBTCDOTExchangeRate = await this.api.query.exchangeRateOracle.exchangeRate();
-        const lastBTCDOTExchangeRateTime = await this.api.query.exchangeRateOracle.lastExchangeRateTime();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const lastBTCDOTExchangeRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
+        const lastBTCDOTExchangeRateTime = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(head);
         return [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime];
     }
 
     async getCurrentStateOfBTCParachain(): Promise<StatusCode> {
-        return await this.api.query.security.parachainStatus();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.security.parachainStatus.at(head);
     }
 
     async getOngoingStatusUpdateVotes(): Promise<Array<PendingStatusUpdate>> {
-        const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(head);
         const statusUpdates = statusUpdatesMappings.map<[u64, StatusUpdate]>((v) => [v[0].args[0], v[1]]);
         const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate[1].proposal_status.isPending);
         return pendingUpdates.map((pendingUpdate) => ({
@@ -236,14 +349,16 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const result = await this.api.query.stakedRelayers.activeStatusUpdates.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const result = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(head);
         return result.map(([key, value]) => {
             return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
         });
     }
 
     async getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const result = await this.api.query.stakedRelayers.inactiveStatusUpdates.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const result = await this.api.query.stakedRelayers.inactiveStatusUpdates.entriesAt(head);
         return result.map(([key, value]) => {
             return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
         });
@@ -256,12 +371,14 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<string> {
-        const fees = await this.api.query.fee.totalRewardsPolkaBTC(stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const fees = await this.api.query.fee.totalRewardsPolkaBTC.at(head, stakedRelayerId);
         return fees.toString();
     }
 
     async getFeesDOT(stakedRelayerId: AccountId): Promise<string> {
-        const fees = await this.api.query.fee.totalRewardsDOT(stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const fees = await this.api.query.fee.totalRewardsDOT.at(head, stakedRelayerId);
         return fees.toString();
     }
 
@@ -272,20 +389,27 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
             await this.oracleAPI.getExchangeRate(),
             await (await this.collateralAPI.balanceLockedDOT(stakedRelayerId)).toString(),
         ]);
-        return calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
+        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
 
     async getSLA(stakedRelayerId: AccountId): Promise<number> {
-        const sla = await this.api.query.sla.relayerSla(stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const sla = await this.api.query.sla.relayerSla.at(head, stakedRelayerId);
         return Number(decodeFixedPointType(sla));
     }
 
     async getMaxSLA(): Promise<number> {
-        const maxSLA = await this.api.query.sla.relayerTargetSla();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const maxSLA = await this.api.query.sla.relayerTargetSla.at(head);
         return Number(decodeFixedPointType(maxSLA));
     }
 
     async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
-        return await this.api.query.stakedRelayers.maturityPeriod();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.stakedRelayers.maturityPeriod.at(head);
+    }
+
+    setAccount(account: AddressOrPair): void {
+        this.account = account;
     }
 }

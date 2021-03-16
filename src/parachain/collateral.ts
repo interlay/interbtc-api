@@ -1,6 +1,6 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 
 /**
@@ -41,27 +41,29 @@ export class DefaultCollateralAPI implements CollateralAPI {
         this.transaction = new Transaction(api);
     }
 
-    totalLockedDOT(): Promise<Balance> {
-        return this.api.query.collateral.totalCollateral();
+    async totalLockedDOT(): Promise<Balance> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.collateral.totalCollateral.at(head);
     }
 
     async balanceLockedDOT(id: AccountId): Promise<Balance> {
-        const account = await this.api.query.dot.account(id);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const account = await this.api.query.dot.account.at(head, id);
         return account.reserved;
     }
 
     async balanceDOT(id: AccountId): Promise<Balance> {
-        const account = await this.api.query.dot.account(id);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const account = await this.api.query.dot.account.at(head, id);
         return account.free;
     }
 
     async transferDOT(address: string, amount: string | number): Promise<void> {
         if (!this.account) {
-            throw new Error("Cannot transfer without account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
-
         const transferTx = this.api.tx.dot.transfer(address, amount);
-        await this.transaction.sendLogged(transferTx, this.account);
+        await this.transaction.sendLogged(transferTx, this.account, this.api.events.dot.Transfer);
     }
 
     setAccount(account: AddressOrPair): void {

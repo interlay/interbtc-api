@@ -5,7 +5,14 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, pagedIterator, decodeFixedPointType, Transaction, encodeParachainRequest } from "../utils";
+import { 
+    decodeBtcAddress,
+    pagedIterator, 
+    decodeFixedPointType, 
+    Transaction, 
+    encodeParachainRequest, 
+    ACCOUNT_NOT_SET_ERROR_MESSAGE 
+} from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -56,10 +63,8 @@ export interface RedeemAPI {
      * @param reimburse (Optional) In case of redeem failure:
      *  - `false` = retry redeeming, with a different Vault
      *  - `true` = accept reimbursement in polkaBTC
-     * @returns A boolean value indicating whether the cancellation was successful.
-     * The function throws an error otherwise.
      */
-    cancel(redeemId: H256, reimburse?: boolean): Promise<boolean>;
+    cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
     /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
@@ -144,41 +149,9 @@ export class DefaultRedeemAPI {
         throw new Error("Transaction failed");
     }
 
-    /**
-     * A successful `execute` produces the following events:
-        - vaultRegistry.IncreaseToBeRedeemedTokens
-        - polkaBtc.Reserved
-        - treasury.Lock
-        - redeem.RequestRedeem
-        - system.ExtrinsicSuccess
-     * @param events The EventRecord array returned after sending a redeem request transaction
-     * @returns A boolean value
-     */
-    isRequestSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.redeem.RequestRedeem.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @param events The EventRecord array returned after sending a redeem execution transaction
-     * @returns A boolean value
-     */
-    isExecutionSuccessful(events: EventRecord[]): boolean {
-        for (const { event } of events) {
-            if (this.api.events.redeem.ExecuteRedeem.is(event)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         if (!vaultId) {
@@ -186,10 +159,7 @@ export class DefaultRedeemAPI {
         }
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
-        const result = await this.transaction.sendLogged(requestRedeemTx, this.account);
-        if (!this.isRequestSuccessful(result.events)) {
-            throw new Error("Request failed");
-        }
+        const result = await this.transaction.sendLogged(requestRedeemTx, this.account, this.api.events.redeem.RequestRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
         const redeemRequest = await this.getRequestById(id);
         return { id, redeemRequest };
@@ -200,10 +170,7 @@ export class DefaultRedeemAPI {
             throw new Error("cannot execute without setting account");
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
-        const result = await this.transaction.sendLogged(executeRedeemTx, this.account);
-        if (!this.isExecutionSuccessful(result.events)) {
-            throw new Error("Execution failed");
-        }
+        const result = await this.transaction.sendLogged(executeRedeemTx, this.account, this.api.events.redeem.ExecuteRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
         if (id) {
             return true;
@@ -211,22 +178,18 @@ export class DefaultRedeemAPI {
         return false;
     }
 
-    async cancel(redeemId: H256, reimburse?: boolean): Promise<boolean> {
+    async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
-        const result = await this.transaction.sendLogged(cancelRedeemTx, this.account);
-        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.CancelRedeem);
-        if (id) {
-            return true;
-        }
-        return false;
+        await this.transaction.sendLogged(cancelRedeemTx, this.account, this.api.events.redeem.CancelRedeem);
     }
 
     async list(): Promise<RedeemRequestExt[]> {
-        const redeemRequests = await this.api.query.redeem.redeemRequests.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const redeemRequests = await this.api.query.redeem.redeemRequests.entriesAt(head);
         return redeemRequests.map((v) => encodeRedeemRequest(v[1], this.btcNetwork));
     }
 
@@ -242,7 +205,7 @@ export class DefaultRedeemAPI {
     async subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
         const expired = new Set();
         try {
-            const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
+            const unsubscribe = await this.api.rpc.chain.subscribeFinalizedHeads(async (header: Header) => {
                 const redeemRequests = await this.mapForUser(account);
                 const redeemPeriod = await this.getRedeemPeriod();
                 const currentParachainBlockHeight = header.number.toBn();
@@ -271,20 +234,24 @@ export class DefaultRedeemAPI {
     }
 
     async getFeePercentage(): Promise<string> {
-        const redeemFee = await this.api.query.fee.redeemFee();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const redeemFee = await this.api.query.fee.redeemFee.at(head);
         return decodeFixedPointType(redeemFee);
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {
-        return await this.api.query.redeem.redeemPeriod();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.redeem.redeemPeriod.at(head);
     }
 
     async getDustValue(): Promise<PolkaBTC> {
-        return await this.api.query.redeem.redeemBtcDustValue();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.redeem.redeemBtcDustValue.at(head);
     }
 
     async getPremiumRedeemFee(): Promise<string> {
-        const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
         return decodeFixedPointType(premiumRedeemFee);
     }
 
@@ -293,7 +260,8 @@ export class DefaultRedeemAPI {
     }
 
     async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {
-        return encodeRedeemRequest(await this.api.query.redeem.redeemRequests(redeemId), this.btcNetwork);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork);
     }
 
     setAccount(account: AddressOrPair): void {

@@ -43,7 +43,7 @@ describe("redeem", () => {
     });
 
     describe("load requests", () => {
-        it("should load existing requests", async () => {
+        it("should load existing redeem requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             redeemAPI.setAccount(alice);

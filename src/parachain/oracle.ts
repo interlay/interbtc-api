@@ -1,8 +1,15 @@
-import { ErrorCode } from "../interfaces/default";
+import { ErrorCode, PolkaBTC } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
-import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, Transaction, encodeUnsignedFixedPoint } from "../utils";
+import { 
+    BTC_IN_SAT, 
+    DOT_IN_PLANCK, 
+    decodeFixedPointType, 
+    Transaction, 
+    encodeUnsignedFixedPoint, 
+    ACCOUNT_NOT_SET_ERROR_MESSAGE 
+} from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
@@ -78,6 +85,10 @@ export interface OracleAPI {
      * @returns The Planck/Satoshi exchange rate
      */
     getRawExchangeRate(): Promise<Big>;
+    /**
+     * @returns Convert a Satoshi amount to Planck
+     */
+    convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -97,13 +108,20 @@ export class DefaultOracleAPI implements OracleAPI {
         };
     }
 
+    async convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big> {
+        const planckPerSatoshi = await this.getRawExchangeRate();
+        const amountSatoshiBig = new Big(satoshi.toString());
+        return planckPerSatoshi.mul(amountSatoshiBig);
+    }
+
     async getExchangeRate(): Promise<Big> {
         const rawRate = await this.getRawExchangeRate();
         return new Big(this.convertFromRawExchangeRate(rawRate.toString()));
     }
 
     async getRawExchangeRate(): Promise<Big> {
-        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
         return new Big(decodeFixedPointType(encodedRawRate));
     }
 
@@ -113,17 +131,18 @@ export class DefaultOracleAPI implements OracleAPI {
         }
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
-        await this.transaction.sendLogged(tx, this.account);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
-        const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes.at(head);
         return { fast: fees.fast.toNumber(), half: fees.half.toNumber(), hour: fees.hour.toNumber() };
     }
 
     async setBtcTxFeesPerByte({ fast, half, hour }: BtcTxFees): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot set tx fees without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         [fast, half, hour].forEach((param) => {
             const big = new Big(param);
@@ -135,11 +154,12 @@ export class DefaultOracleAPI implements OracleAPI {
             }
         });
         const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
-        await this.transaction.sendLogged(tx, this.account);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
     }
 
     async getOracleNames(): Promise<Array<string>> {
-        const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entriesAt(head);
         return oracles.map((v) => v[1].toUtf8());
     }
 
@@ -148,12 +168,14 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async getLastExchangeRateTime(): Promise<Date> {
-        const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(head);
         return this.convertMoment(moment);
     }
 
     async isOnline(): Promise<boolean> {
-        const errors = await this.api.query.security.errors();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const errors = await this.api.query.security.errors.at(head);
         return !this.hasOracleError(errors);
     }
 
