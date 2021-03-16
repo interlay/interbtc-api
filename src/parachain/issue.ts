@@ -11,6 +11,7 @@ import {
     Transaction,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
+    ACCOUNT_NOT_SET_ERROR_MESSAGE,
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
@@ -109,16 +110,11 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     /**
-     * A successful `request` produces four events:
-        - collateral.LockCollateral
-        - vaultRegistry.IncreaseToBeIssuedTokens
-        - issue.RequestIssue
-        - system.ExtrinsicSuccess
      * @param events The EventRecord array returned after sending an issue request transaction
      * @returns The issueId associated with the request. If the EventRecord array does not
      * contain issue request events, the function throws an error.
      */
-    private getIssueIdFromEvents(events: EventRecord[]): Hash {
+    private getRequestIdFromEvents(events: EventRecord[]): Hash {
         for (const { event } of events) {
             if (this.api.events.issue.RequestIssue.is(event)) {
                 const hash = this.api.createType("Hash", event.data[0]);
@@ -130,7 +126,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         if (!vaultId) {
@@ -139,14 +135,19 @@ export class DefaultIssueAPI implements IssueAPI {
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck.toString());
         const result = await this.transaction.sendLogged(requestIssueTx, this.account, this.api.events.issue.RequestIssue);
-        const id = this.getIssueIdFromEvents(result.events);
-        const issueRequest = await this.getRequestById(id);
-        return { id, issueRequest };
+        try {
+            const id = this.getRequestIdFromEvents(result.events);
+            const issueRequest = await this.getRequestById(id);
+            return { id, issueRequest };
+        } catch (e) {
+            return Promise.reject(e.message);
+        }
+        
     }
 
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
         await this.transaction.sendLogged(executeIssueTx, this.account, this.api.events.issue.ExecuteIssue);
@@ -154,7 +155,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async cancel(issueId: H256): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);

@@ -4,13 +4,14 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { pagedIterator, decodeFixedPointType, Transaction } from "../utils";
+import { pagedIterator, decodeFixedPointType, Transaction, ACCOUNT_NOT_SET_ERROR_MESSAGE } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { AddressOrPair } from "@polkadot/api/types";
+import { ErrorCode } from "../interfaces/default";
 
 /**
  * @category PolkaBTC Bridge
@@ -114,7 +115,41 @@ export interface StakedRelayerAPI {
      * @returns The number of blocks to wait until eligible to vote
      */
     getStakedRelayersMaturityPeriod(): Promise<BlockNumber>;
-    deregisterStakedRelayer(): Promise<void>;
+    /**
+     * @param planckStake Stake amount (denoted in Planck) to register with
+     */
+    register(planckStake: BN): Promise<void>;
+    /**
+     * @param depositPlanck Deposit required to suggest the status update
+     * @param statusCode Suggested BTC Parachain status
+     * @param message Message detailing reason for status update
+     * @param addError If the suggested status is Error, this set of ErrorCode indicates which error is to be added to the Errors mapping.
+     * @param removeError ErrorCode to be removed from the Errors list.
+     * @param blockHash When reporting an error related to BTC-Relay, this field indicates the affected Bitcoin block (header).
+     */
+     suggestStatusUpdate(
+        depositPlanck: BN,
+        statusCode: StatusCode,
+        message: string,
+        addError?: ErrorCode,
+        removeError?: string,
+        blockHash?: string,
+    ): Promise<void>;
+    /**
+     * @param depositPlanck Deposit required to suggest the status update
+     * @param blockHash When reporting an error related to BTC-Relay, this field indicates the affected Bitcoin block (header).
+     * @param message Message detailing reason for status update
+    */
+    suggestInvalidBlock(deposit: BN, blockHash: string, message: string): Promise<void>
+    /**
+     * @param statusUpdateId Identifier of the `StatusUpdate` voted upon in `ActiveStatusUpdates`.
+     * @param approve `true` or `false`, depending on whether the Staked Relayer agrees or disagrees with the suggested `StatusUpdate`.
+     */
+    voteOnStatusUpdate(statusUpdateId: BN, approve: boolean): Promise<void>;
+    /**
+     * Deregister the Staked Relayer
+     */
+    deregister(): Promise<void>;
     /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
@@ -144,12 +179,62 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         this.transaction = new Transaction(api);
     }
 
-    async deregisterStakedRelayer(): Promise<void> {
+    async register(planckStake: BN): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const tx = this.api.tx.stakedRelayers.registerStakedRelayer(planckStake);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.RegisterStakedRelayer);
+    }
+
+    async deregister(): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const tx = this.api.tx.stakedRelayers.deregisterStakedRelayer();
-        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.DeregisterStakedRelayer);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.DeregisterStakedRelayer);    
+    }
+
+    async suggestStatusUpdate(
+        depositPlanck: BN,
+        statusCode: StatusCode,
+        message: string,
+        addError?: ErrorCode,
+        removeError?: string,
+        blockHash?: string,
+    ): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const parsedAddError = addError ? addError : null;
+        const parsedRemoveError = removeError ? this.api.createType("H256", removeError) : null;
+        const parsedBlockHash = blockHash ? blockHash : null;
+        const tx = this.api.tx.stakedRelayers.suggestStatusUpdate(
+            depositPlanck,
+            statusCode,
+            parsedAddError,
+            parsedRemoveError,
+            parsedBlockHash,
+            message
+        );
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.StatusUpdateSuggested);
+    }
+
+    async suggestInvalidBlock(deposit: BN, blockHash: string, message: string): Promise<void> {
+        const statusCode = this.api.registry.createType("StatusCode", { error: true });
+        const addError = this.api.registry.createType("ErrorCode", { invalidbtcrelay: true });
+        return this.suggestStatusUpdate(deposit, statusCode, message, addError, undefined, blockHash);
+    }
+
+    async voteOnStatusUpdate(statusUpdateId: BN, approve: boolean): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const tx = this.api.tx.stakedRelayers.voteOnStatusUpdate(
+            statusUpdateId,
+            approve,
+        );
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.VoteOnStatusUpdate);
     }
 
     async list(): Promise<StakedRelayer[]> {

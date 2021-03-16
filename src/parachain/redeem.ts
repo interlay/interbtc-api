@@ -5,7 +5,14 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, pagedIterator, decodeFixedPointType, Transaction, encodeParachainRequest } from "../utils";
+import { 
+    decodeBtcAddress,
+    pagedIterator, 
+    decodeFixedPointType, 
+    Transaction, 
+    encodeParachainRequest, 
+    ACCOUNT_NOT_SET_ERROR_MESSAGE 
+} from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -144,7 +151,7 @@ export class DefaultRedeemAPI {
 
     async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         if (!vaultId) {
@@ -173,7 +180,7 @@ export class DefaultRedeemAPI {
 
     async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);

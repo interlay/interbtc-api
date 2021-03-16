@@ -2,7 +2,14 @@ import { ErrorCode, PolkaBTC } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
-import { BTC_IN_SAT, DOT_IN_PLANCK, decodeFixedPointType, Transaction, encodeUnsignedFixedPoint } from "../utils";
+import { 
+    BTC_IN_SAT, 
+    DOT_IN_PLANCK, 
+    decodeFixedPointType, 
+    Transaction, 
+    encodeUnsignedFixedPoint, 
+    ACCOUNT_NOT_SET_ERROR_MESSAGE 
+} from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
@@ -135,7 +142,7 @@ export class DefaultOracleAPI implements OracleAPI {
 
     async setBtcTxFeesPerByte({ fast, half, hour }: BtcTxFees): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot set tx fees without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         [fast, half, hour].forEach((param) => {
             const big = new Big(param);

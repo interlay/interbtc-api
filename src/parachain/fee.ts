@@ -1,5 +1,5 @@
 import { decodeFixedPointType } from "..";
-import { PolkaBTC, UnsignedFixedPoint } from "../interfaces";
+import { PolkaBTC } from "../interfaces";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";

@@ -13,7 +13,7 @@ import { DefaultVaultsAPI, VaultsAPI } from "./parachain/vaults";
 import { DefaultSystemAPI, SystemAPI } from "./parachain/system";
 import { DefaultCollateralAPI, CollateralAPI } from "./parachain/collateral";
 import { DefaultTreasuryAPI, TreasuryAPI } from "./parachain/treasury";
-import { FaucetClient, StakedRelayerClient } from "./clients";
+import { FaucetClient } from "./clients";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
@@ -38,7 +38,6 @@ export interface PolkaBTCAPI {
     readonly redeem: RedeemAPI;
     readonly refund: RefundAPI;
     readonly stakedRelayer: StakedRelayerAPI;
-    readonly relayer: StakedRelayerClient;
     readonly faucet: FaucetClient;
     readonly oracle: OracleAPI;
     readonly btcCore: BTCCoreAPI;
@@ -61,7 +60,6 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly redeem: RedeemAPI;
     public readonly refund: RefundAPI;
     public readonly stakedRelayer: StakedRelayerAPI;
-    public readonly relayer: StakedRelayerClient;
     public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
     public readonly btcCore: BTCCoreAPI;
@@ -79,7 +77,6 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, _account);
         this.refund = new DefaultRefundAPI(api, btcNetwork, _account);
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork);
-        this.relayer = new StakedRelayerClient("");
         this.faucet = new FaucetClient("");
         this.oracle = new DefaultOracleAPI(api);
         this.btcCore = new DefaultBTCCoreAPI(network);
