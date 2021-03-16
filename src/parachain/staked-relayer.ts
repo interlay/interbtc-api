@@ -234,7 +234,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
             statusUpdateId,
             approve,
         );
-        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.StatusUpdateSuggested);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.VoteOnStatusUpdate);
     }
 
     async list(): Promise<StakedRelayer[]> {
