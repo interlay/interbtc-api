@@ -113,7 +113,8 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async getRawExchangeRate(): Promise<Big> {
-        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
         return new Big(decodeFixedPointType(encodedRawRate));
     }
 
@@ -127,7 +128,8 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
-        const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes.at(head);
         return { fast: fees.fast.toNumber(), half: fees.half.toNumber(), hour: fees.hour.toNumber() };
     }
 
@@ -149,7 +151,8 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async getOracleNames(): Promise<Array<string>> {
-        const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entriesAt(head);
         return oracles.map((v) => v[1].toUtf8());
     }
 
@@ -158,12 +161,14 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async getLastExchangeRateTime(): Promise<Date> {
-        const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(head);
         return this.convertMoment(moment);
     }
 
     async isOnline(): Promise<boolean> {
-        const errors = await this.api.query.security.errors();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const errors = await this.api.query.security.errors.at(head);
         return !this.hasOracleError(errors);
     }
 
