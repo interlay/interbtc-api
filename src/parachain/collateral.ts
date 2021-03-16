@@ -42,19 +42,19 @@ export class DefaultCollateralAPI implements CollateralAPI {
     }
 
     async totalLockedDOT(): Promise<Balance> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.collateral.totalCollateral.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.collateral.totalCollateral.at(head);
     }
 
     async balanceLockedDOT(id: AccountId): Promise<Balance> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const account = await this.api.query.dot.account.at(hash, id);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const account = await this.api.query.dot.account.at(head, id);
         return account.reserved;
     }
 
     async balanceDOT(id: AccountId): Promise<Balance> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const account = await this.api.query.dot.account.at(hash, id);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const account = await this.api.query.dot.account.at(head, id);
         return account.free;
     }
 

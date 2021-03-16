@@ -15,7 +15,7 @@ export class DefaultSystemAPI implements SystemAPI {
     constructor(private api: ApiPromise) { }
 
     async getCurrentBlockNumber(): Promise<BlockNumber> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.system.number.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.system.number.at(head);
     }
 }

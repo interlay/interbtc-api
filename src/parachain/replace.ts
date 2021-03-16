@@ -97,8 +97,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async getBtcDustValue(): Promise<PolkaBTC> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.replace.replaceBtcDustValue.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.replace.replaceBtcDustValue.at(head);
     }
 
     async getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big> {
@@ -107,13 +107,13 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.replace.replacePeriod.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.replace.replacePeriod.at(head);
     }
 
     async list(): Promise<ReplaceRequestExt[]> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const replaceRequests = await this.api.query.replace.replaceRequests.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const replaceRequests = await this.api.query.replace.replaceRequests.entriesAt(head);
         return replaceRequests
             .filter((v) => v[1].isSome)
             .map((v) => v[1].unwrap())
@@ -125,8 +125,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async map(): Promise<Map<H256, ReplaceRequestExt>> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const redeemRequests = await this.api.query.replace.replaceRequests.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const redeemRequests = await this.api.query.replace.replaceRequests.entriesAt(head);
         const redeemRequestMap = new Map<H256, ReplaceRequestExt>();
         redeemRequests
             .filter((v) => v[1].isSome)

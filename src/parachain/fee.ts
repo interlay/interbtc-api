@@ -59,14 +59,14 @@ export class DefaultFeeAPI implements FeeAPI {
     }
 
     async getIssueGriefingCollateralRate(): Promise<Big> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral.at(head);
         return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 
     async getReplaceGriefingCollateralRate(): Promise<Big> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral.at(head);
         return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 

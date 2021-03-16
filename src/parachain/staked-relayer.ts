@@ -153,14 +153,14 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async list(): Promise<StakedRelayer[]> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(head);
         return activeStakedRelayersMap.map((v) => v[1]);
     }
 
     async map(): Promise<Map<AccountId, StakedRelayer>> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(head);
         const activeStakedRelayerPairs: [AccountId, StakedRelayer][] = activeStakedRelayers.map(
             (activeStakedRelayer) => {
                 return [
@@ -181,19 +181,19 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async get(activeStakedRelayerId: AccountId): Promise<StakedRelayer> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.stakedRelayers.activeStakedRelayers.at(hash, activeStakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.stakedRelayers.activeStakedRelayers.at(head, activeStakedRelayerId);
     }
 
     async isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const active = await this.api.query.stakedRelayers.activeStakedRelayers.at(hash, stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const active = await this.api.query.stakedRelayers.activeStakedRelayers.at(head, stakedRelayerId);
         return active.stake.gt(new BN(0));
     }
 
     async isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const inactive = await this.api.query.stakedRelayers.inactiveStakedRelayers.at(hash, stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const inactive = await this.api.query.stakedRelayers.inactiveStakedRelayers.at(head, stakedRelayerId);
         return inactive.stake.gt(new BN(0));
     }
 
@@ -239,20 +239,20 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getLastBTCDOTExchangeRateAndTime(): Promise<[u128, Moment]> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const lastBTCDOTExchangeRate = await this.api.query.exchangeRateOracle.exchangeRate.at(hash);
-        const lastBTCDOTExchangeRateTime = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const lastBTCDOTExchangeRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
+        const lastBTCDOTExchangeRateTime = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(head);
         return [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime];
     }
 
     async getCurrentStateOfBTCParachain(): Promise<StatusCode> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.security.parachainStatus.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.security.parachainStatus.at(head);
     }
 
     async getOngoingStatusUpdateVotes(): Promise<Array<PendingStatusUpdate>> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(head);
         const statusUpdates = statusUpdatesMappings.map<[u64, StatusUpdate]>((v) => [v[0].args[0], v[1]]);
         const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate[1].proposal_status.isPending);
         return pendingUpdates.map((pendingUpdate) => ({
@@ -264,16 +264,16 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const result = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const result = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(head);
         return result.map(([key, value]) => {
             return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
         });
     }
 
     async getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const result = await this.api.query.stakedRelayers.inactiveStatusUpdates.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const result = await this.api.query.stakedRelayers.inactiveStatusUpdates.entriesAt(head);
         return result.map(([key, value]) => {
             return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
         });
@@ -286,14 +286,14 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<string> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.fee.totalRewardsPolkaBTC.at(hash, stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const fees = await this.api.query.fee.totalRewardsPolkaBTC.at(head, stakedRelayerId);
         return fees.toString();
     }
 
     async getFeesDOT(stakedRelayerId: AccountId): Promise<string> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.fee.totalRewardsDOT.at(hash, stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const fees = await this.api.query.fee.totalRewardsDOT.at(head, stakedRelayerId);
         return fees.toString();
     }
 
@@ -308,20 +308,20 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async getSLA(stakedRelayerId: AccountId): Promise<number> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const sla = await this.api.query.sla.relayerSla.at(hash, stakedRelayerId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const sla = await this.api.query.sla.relayerSla.at(head, stakedRelayerId);
         return Number(decodeFixedPointType(sla));
     }
 
     async getMaxSLA(): Promise<number> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const maxSLA = await this.api.query.sla.relayerTargetSla.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const maxSLA = await this.api.query.sla.relayerTargetSla.at(head);
         return Number(decodeFixedPointType(maxSLA));
     }
 
     async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.stakedRelayers.maturityPeriod.at(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.stakedRelayers.maturityPeriod.at(head);
     }
 
     setAccount(account: AddressOrPair): void {

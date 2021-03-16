@@ -52,8 +52,8 @@ export class DefaultRefundAPI {
     }
 
     async list(): Promise<RefundRequestExt[]> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        const refundRequests = await this.api.query.refund.refundRequests.entriesAt(hash);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const refundRequests = await this.api.query.refund.refundRequests.entriesAt(head);
         return refundRequests.map((v) => encodeRefundRequest(v[1], this.btcNetwork));
     }
 
@@ -67,8 +67,8 @@ export class DefaultRefundAPI {
     }
 
     async getRequestById(refundId: H256): Promise<RefundRequestExt> {
-        const { hash } = await this.api.rpc.chain.getFinalizedHead();
-        return encodeRefundRequest(await this.api.query.refund.refundRequests.at(hash, refundId), this.btcNetwork);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return encodeRefundRequest(await this.api.query.refund.refundRequests.at(head, refundId), this.btcNetwork);
     }
 
     async getRequestByIssueId(issueId: H256): Promise<RefundRequestExt> {
