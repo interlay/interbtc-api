@@ -5,7 +5,14 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { decodeBtcAddress, pagedIterator, decodeFixedPointType, Transaction, encodeParachainRequest } from "../utils";
+import {
+    decodeBtcAddress,
+    pagedIterator,
+    decodeFixedPointType,
+    Transaction,
+    encodeParachainRequest,
+    ACCOUNT_NOT_SET_ERROR_MESSAGE
+} from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
 import { Network } from "bitcoinjs-lib";
@@ -93,6 +100,10 @@ export interface RedeemAPI {
      */
     getDustValue(): Promise<PolkaBTC>;
     /**
+     * @returns The fee charged for redeeming. For instance, "0.005" stands for 0.5%
+     */
+    getFeeRate(): Promise<Big>;
+    /**
      * @param amountBtc The amount, in BTC, for which to compute the redeem fees
      * @returns The fees, in BTC
      */
@@ -107,10 +118,6 @@ export interface RedeemAPI {
      * and required completion time by a user.
      */
     getRedeemPeriod(): Promise<BlockNumber>;
-    /**
-     * @returns The fee percentage charged for redeeming. For instance, "0.005" stands for 0.005%
-     */
-    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultRedeemAPI {
@@ -144,7 +151,7 @@ export class DefaultRedeemAPI {
 
     async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         if (!vaultId) {
@@ -173,7 +180,7 @@ export class DefaultRedeemAPI {
 
     async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
@@ -181,7 +188,8 @@ export class DefaultRedeemAPI {
     }
 
     async list(): Promise<RedeemRequestExt[]> {
-        const redeemRequests = await this.api.query.redeem.redeemRequests.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const redeemRequests = await this.api.query.redeem.redeemRequests.entriesAt(head);
         return redeemRequests.map((v) => encodeRedeemRequest(v[1], this.btcNetwork));
     }
 
@@ -197,7 +205,7 @@ export class DefaultRedeemAPI {
     async subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
         const expired = new Set();
         try {
-            const unsubscribe = await this.api.rpc.chain.subscribeNewHeads(async (header: Header) => {
+            const unsubscribe = await this.api.rpc.chain.subscribeFinalizedHeads(async (header: Header) => {
                 const redeemRequests = await this.mapForUser(account);
                 const redeemPeriod = await this.getRedeemPeriod();
                 const currentParachainBlockHeight = header.number.toBn();
@@ -219,27 +227,30 @@ export class DefaultRedeemAPI {
     }
 
     async getFeesToPay(amount: string): Promise<string> {
-        const feePercentage = await this.getFeePercentage();
-        const feePercentageBN = new Big(feePercentage);
+        const feePercentage = await this.getFeeRate();
         const amountBig = new Big(amount);
-        return amountBig.mul(feePercentageBN).toString();
+        return amountBig.mul(feePercentage).toString();
     }
 
-    async getFeePercentage(): Promise<string> {
-        const redeemFee = await this.api.query.fee.redeemFee();
-        return decodeFixedPointType(redeemFee);
+    async getFeeRate(): Promise<Big> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const redeemFee = await this.api.query.fee.redeemFee.at(head);
+        return new Big(decodeFixedPointType(redeemFee));
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {
-        return await this.api.query.redeem.redeemPeriod();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.redeem.redeemPeriod.at(head);
     }
 
     async getDustValue(): Promise<PolkaBTC> {
-        return await this.api.query.redeem.redeemBtcDustValue();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return await this.api.query.redeem.redeemBtcDustValue.at(head);
     }
 
     async getPremiumRedeemFee(): Promise<string> {
-        const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
         return decodeFixedPointType(premiumRedeemFee);
     }
 
@@ -248,7 +259,8 @@ export class DefaultRedeemAPI {
     }
 
     async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {
-        return encodeRedeemRequest(await this.api.query.redeem.redeemRequests(redeemId), this.btcNetwork);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork);
     }
 
     setAccount(account: AddressOrPair): void {

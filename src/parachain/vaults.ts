@@ -9,6 +9,7 @@ import {
     encodeBtcAddress,
     satToBTC,
     Transaction,
+    ACCOUNT_NOT_SET_ERROR_MESSAGE,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
@@ -21,6 +22,7 @@ import { Network } from "bitcoinjs-lib";
 import { FeeAPI } from "..";
 import { DefaultFeeAPI } from "./fee";
 import { AddressOrPair } from "@polkadot/api/types";
+import BN from "bn.js";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -269,9 +271,17 @@ export class DefaultVaultsAPI {
         this.transaction = new Transaction(api);
     }
 
+    async register(planckCollateral: BN, publicKey: string): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const tx = this.api.tx.vaultRegistry.registerVault(planckCollateral, publicKey);
+        await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.RegisterVault);
+    }
+
     async withdrawCollateral(amountAsPlanck: DOT): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const tx = this.api.tx.vaultRegistry.withdrawCollateral(amountAsPlanck);
         await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.WithdrawCollateral);
@@ -279,19 +289,20 @@ export class DefaultVaultsAPI {
 
     async lockAdditionalCollateral(amountAsPlanck: DOT): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const tx = this.api.tx.vaultRegistry.lockAdditionalCollateral(amountAsPlanck);
         await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.LockAdditionalCollateral);
     }
 
     async list(): Promise<VaultExt[]> {
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(head);
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
+    // TODO: Finish or remove this function
     async listPaged(): Promise<VaultExt[]> {
-        // TODO: Finish or remove this function
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
         return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
     }
@@ -343,7 +354,8 @@ export class DefaultVaultsAPI {
     }
 
     async get(vaultId: AccountId): Promise<VaultExt> {
-        const vault = await this.api.query.vaultRegistry.vaults(vaultId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const vault = await this.api.query.vaultRegistry.vaults.at(head, vaultId);
         if (!vaultId.eq(vault.id)) {
             throw new Error(`No vault registered with id ${vaultId}`);
         }
@@ -488,36 +500,43 @@ export class DefaultVaultsAPI {
     }
 
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
-        const theftReports = await this.api.query.stakedRelayers.theftReports(vaultId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const theftReports = await this.api.query.stakedRelayers.theftReports.at(head, vaultId);
         return theftReports.isEmpty;
     }
 
     async getLiquidationCollateralThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold.at(head);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getPremiumRedeemThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold.at(head);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getAuctionCollateralThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold.at(head);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getSecureCollateralThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold.at(head);
         return new Big(decodeFixedPointType(threshold));
     }
 
     async getFeesPolkaBTC(vaultId: AccountId): Promise<string> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
         const parsedId = this.api.createType("AccountId", vaultId);
         return (await this.api.query.fee.totalRewardsPolkaBTC(parsedId)).toString();
     }
 
     async getFeesDOT(vaultId: AccountId): Promise<string> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
         return (await this.api.query.fee.totalRewardsDOT(vaultId)).toString();
     }
 
@@ -532,12 +551,14 @@ export class DefaultVaultsAPI {
     }
 
     async getSLA(vaultId: AccountId): Promise<string> {
-        const sla = await this.api.query.sla.vaultSla(vaultId);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const sla = await this.api.query.sla.vaultSla.at(head, vaultId);
         return decodeFixedPointType(sla);
     }
 
     async getMaxSLA(): Promise<string> {
-        const maxSLA = await this.api.query.sla.relayerTargetSla();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const maxSLA = await this.api.query.sla.relayerTargetSla.at(head);
         const maxSlaBig = new Big(maxSLA.toString());
         const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
         return maxSlaBig.div(divisor).toString();
@@ -554,7 +575,8 @@ export class DefaultVaultsAPI {
      * paid in DOT based on the PolkaBTC amount at the current exchange rate.
      */
     async getPunishmentFee(): Promise<string> {
-        const fee = await this.api.query.fee.punishmentFee();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const fee = await this.api.query.fee.punishmentFee.at(head);
         return decodeFixedPointType(fee);
     }
 

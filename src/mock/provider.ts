@@ -32,7 +32,7 @@ const SUBSCRIPTIONS: string[] = Array.prototype.concat.apply(
         Object.values(section)
             .filter(({ isSubscription }) => isSubscription)
             .map(({ jsonrpc }) => jsonrpc)
-            .concat("chain_subscribeNewHead")
+            .concat("chain_subscribeFinalizedHeads")
     )
 ) as string[];
 
@@ -203,7 +203,7 @@ export default class Mock implements ProviderInterface {
 
             // set the timestamp for the current block
             this.setStateBn(expandedMetadata.query.timestamp.now(), Math.floor(Date.now() / 1000));
-            this.updateSubs("chain_subscribeNewHead", newHead);
+            this.updateSubs("chain_subscribeFinalizedHeads", newHead);
 
             // We emit connected/disconnected at intervals
             if (++counter % 2 === 1) {

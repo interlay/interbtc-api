@@ -1,5 +1,5 @@
 import { decodeFixedPointType } from "..";
-import { PolkaBTC, UnsignedFixedPoint } from "../interfaces";
+import { PolkaBTC } from "../interfaces";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
@@ -15,7 +15,7 @@ export interface FeeAPI {
      * @param oracleAPI
      * @returns The griefing collateral, in Planck
      */
-     getGriefingCollateralInPlanck(
+    getGriefingCollateralInPlanck(
         amountSat: PolkaBTC,
         griefingCollateralRate: Big
     ): Promise<Big>;
@@ -50,7 +50,7 @@ export class DefaultFeeAPI implements FeeAPI {
     ): Promise<Big> {
         const amountInPlanck = await this.oracleAPI.convertSatoshiToPlanck(amountSat);
         const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRate).toString();
-    
+
         // Compute the ceiling of the griefing collateral, because the parachain
         // ignores the decimal place (123.456 -> 123456), because there is nothing
         // smaller than 1 Planck
@@ -59,12 +59,14 @@ export class DefaultFeeAPI implements FeeAPI {
     }
 
     async getIssueGriefingCollateralRate(): Promise<Big> {
-        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral.at(head);
         return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 
     async getReplaceGriefingCollateralRate(): Promise<Big> {
-        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral.at(head);
         return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 
@@ -73,7 +75,7 @@ export class DefaultFeeAPI implements FeeAPI {
         const feesPolkaBTCInDot = feesPolkaBTCBig.mul(dotToBtcRate);
         const totalFees = new Big(feesDOT).add(feesPolkaBTCInDot);
         const lockedDotBig = new Big(lockedDOT);
-    
+
         // convert to percent
         return totalFees.div(lockedDotBig).mul(100).toString();
     }

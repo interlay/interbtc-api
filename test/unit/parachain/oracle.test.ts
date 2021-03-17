@@ -18,33 +18,50 @@ describe("oracle", () => {
     let errors: ErrorCode[];
     let registry: TypeRegistry;
 
-    const makeStubs = () => {
-        registry = createAPIRegistry();
+    const makeQueryStubs = () => {
         const timestamp = new BN(Math.floor(lastRate.getTime() / 1000));
         return {
             exchangeRateOracle: {
-                exchangeRate: () =>
-                    Promise.resolve(new UInt(registry, rawFixedPointExchangeRate) as UnsignedFixedPoint),
-                lastExchangeRateTime: () => Promise.resolve(timestamp),
+                exchangeRate: {
+                    at: () =>
+                        Promise.resolve(new UInt(registry, rawFixedPointExchangeRate) as UnsignedFixedPoint),
+                },
+                lastExchangeRateTime: {
+                    at: () => Promise.resolve(timestamp),
+                },
                 authorizedOracles: {
-                    entries: () => Promise.resolve([[1, new Raw(registry, "test")]]),
+                    entriesAt: () => Promise.resolve([[1, new Raw(registry, "test")]]),
                 },
             },
             security: {
-                errors: () => {
-                    const stateErrors = new BTreeSet(registry, "ErrorCode");
-                    if (errors) {
-                        errors.forEach((e) => stateErrors.add(e));
-                    }
-                    return Promise.resolve(stateErrors);
-                },
+                errors: {
+                    at: () => {
+                        const stateErrors = new BTreeSet(registry, "ErrorCode");
+                        if (errors) {
+                            errors.forEach((e) => stateErrors.add(e));
+                        }
+                        return Promise.resolve(stateErrors);
+                    },
+                }
             },
         };
     };
 
-    beforeEach(async () => {
+    const makeRpcStubs = () => {
+        return {
+            chain: {
+                getFinalizedHead: () =>
+                    Promise.resolve(registry.createType("BlockHash", "123")),
+            },
+        };
+    };
+
+    before(async () => {
+        registry = createAPIRegistry();
         const api = sinon.createStubInstance(ApiPromise);
-        sinon.stub(api, "query").get(() => makeStubs());
+        sinon.stub(api, "query").get(() => makeQueryStubs());
+        sinon.stub(api, "rpc").get(() => makeRpcStubs());
+        sinon.stub(api, "isReady").returns(Promise.resolve(ApiPromise));
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         oracle = new DefaultOracleAPI(<any>api);
     });

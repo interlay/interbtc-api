@@ -11,6 +11,7 @@ import {
     Transaction,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
+    ACCOUNT_NOT_SET_ERROR_MESSAGE,
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
@@ -86,6 +87,10 @@ export interface IssueAPI {
      */
     getIssuePeriod(): Promise<BlockNumber>;
     /**
+     * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
+     */
+    getFeeRate(): Promise<Big>;
+    /**
      * @param amountBtc The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
@@ -109,16 +114,11 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     /**
-     * A successful `request` produces four events:
-        - collateral.LockCollateral
-        - vaultRegistry.IncreaseToBeIssuedTokens
-        - issue.RequestIssue
-        - system.ExtrinsicSuccess
      * @param events The EventRecord array returned after sending an issue request transaction
      * @returns The issueId associated with the request. If the EventRecord array does not
      * contain issue request events, the function throws an error.
      */
-    private getIssueIdFromEvents(events: EventRecord[]): Hash {
+    private getRequestIdFromEvents(events: EventRecord[]): Hash {
         for (const { event } of events) {
             if (this.api.events.issue.RequestIssue.is(event)) {
                 const hash = this.api.createType("Hash", event.data[0]);
@@ -130,7 +130,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         if (!vaultId) {
@@ -139,14 +139,19 @@ export class DefaultIssueAPI implements IssueAPI {
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck.toString());
         const result = await this.transaction.sendLogged(requestIssueTx, this.account, this.api.events.issue.RequestIssue);
-        const id = this.getIssueIdFromEvents(result.events);
-        const issueRequest = await this.getRequestById(id);
-        return { id, issueRequest };
+        try {
+            const id = this.getRequestIdFromEvents(result.events);
+            const issueRequest = await this.getRequestById(id);
+            return { id, issueRequest };
+        } catch (e) {
+            return Promise.reject(e.message);
+        }
+
     }
 
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
         await this.transaction.sendLogged(executeIssueTx, this.account, this.api.events.issue.ExecuteIssue);
@@ -154,7 +159,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async cancel(issueId: H256): Promise<void> {
         if (!this.account) {
-            throw new Error("cannot request without setting account");
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
@@ -162,7 +167,8 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async list(): Promise<IssueRequestExt[]> {
-        const issueRequests = await this.api.query.issue.issueRequests.entries();
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const issueRequests = await this.api.query.issue.issueRequests.entriesAt(head);
         return issueRequests.map((v) => v[1]).map((req: IssueRequest) => encodeIssueRequest(req, this.btcNetwork));
     }
 
@@ -181,19 +187,20 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getFeesToPay(amountBtc: string): Promise<string> {
-        const feePercentage = await this.getFeePercentage();
-        const feePercentageBN = new Big(feePercentage);
+        const feePercentage = await this.getFeeRate();
         const amountBig = new Big(amountBtc);
-        const feeBtc = amountBig.mul(feePercentageBN);
+        const feeBtc = amountBig.mul(feePercentage);
         return roundUpBtcToNearestSatoshi(feeBtc.toString());
     }
 
     /**
-     * @returns The fee percentage charged for issuing. For instance, "0.005" stands for 0.005%
+     * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
-    async getFeePercentage(): Promise<string> {
-        const issueFee = await this.api.query.fee.issueFee();
-        return decodeFixedPointType(issueFee);
+    async getFeeRate(): Promise<Big> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const issueFee = await this.api.query.fee.issueFee.at(head);
+        // TODO: return Big from decodeFixedPointType
+        return new Big(decodeFixedPointType(issueFee));
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
@@ -201,11 +208,13 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getIssuePeriod(): Promise<BlockNumber> {
-        return (await this.api.query.issue.issuePeriod()) as BlockNumber;
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return (await this.api.query.issue.issuePeriod.at(head)) as BlockNumber;
     }
 
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {
-        return encodeIssueRequest(await this.api.query.issue.issueRequests(issueId), this.btcNetwork);
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return encodeIssueRequest(await this.api.query.issue.issueRequests.at(head, issueId), this.btcNetwork);
     }
 
     setAccount(account: AddressOrPair): void {
