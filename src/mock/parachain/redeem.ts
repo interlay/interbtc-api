@@ -4,6 +4,7 @@ import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
+import Big from "big.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../parachain/redeem";
 
 export class MockRedeemAPI implements RedeemAPI {
@@ -88,8 +89,8 @@ export class MockRedeemAPI implements RedeemAPI {
         return "0.08";
     }
 
-    async getFeePercentage(): Promise<string> {
-        return "4.4";
+    async getFeeRate(): Promise<Big> {
+        return new Big("0.005");
     }
 
     async getPremiumRedeemFee(): Promise<string> {

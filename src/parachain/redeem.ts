@@ -5,13 +5,13 @@ import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { 
+import {
     decodeBtcAddress,
-    pagedIterator, 
-    decodeFixedPointType, 
-    Transaction, 
-    encodeParachainRequest, 
-    ACCOUNT_NOT_SET_ERROR_MESSAGE 
+    pagedIterator,
+    decodeFixedPointType,
+    Transaction,
+    encodeParachainRequest,
+    ACCOUNT_NOT_SET_ERROR_MESSAGE
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
@@ -100,6 +100,10 @@ export interface RedeemAPI {
      */
     getDustValue(): Promise<PolkaBTC>;
     /**
+     * @returns The fee charged for redeeming. For instance, "0.005" stands for 0.5%
+     */
+    getFeeRate(): Promise<Big>;
+    /**
      * @param amountBtc The amount, in BTC, for which to compute the redeem fees
      * @returns The fees, in BTC
      */
@@ -114,10 +118,6 @@ export interface RedeemAPI {
      * and required completion time by a user.
      */
     getRedeemPeriod(): Promise<BlockNumber>;
-    /**
-     * @returns The fee percentage charged for redeeming. For instance, "0.005" stands for 0.005%
-     */
-    getFeePercentage(): Promise<string>;
 }
 
 export class DefaultRedeemAPI {
@@ -227,16 +227,15 @@ export class DefaultRedeemAPI {
     }
 
     async getFeesToPay(amount: string): Promise<string> {
-        const feePercentage = await this.getFeePercentage();
-        const feePercentageBN = new Big(feePercentage);
+        const feePercentage = await this.getFeeRate();
         const amountBig = new Big(amount);
-        return amountBig.mul(feePercentageBN).toString();
+        return amountBig.mul(feePercentage).toString();
     }
 
-    async getFeePercentage(): Promise<string> {
+    async getFeeRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemFee = await this.api.query.fee.redeemFee.at(head);
-        return decodeFixedPointType(redeemFee);
+        return new Big(decodeFixedPointType(redeemFee));
     }
 
     async getRedeemPeriod(): Promise<BlockNumber> {
