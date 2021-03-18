@@ -21,9 +21,9 @@ import { createTestKeyring } from "@polkadot/keyring/testing";
 import { bnToU8a, logger, u8aToHex } from "@polkadot/util";
 import { randomAsU8a } from "@polkadot/util-crypto";
 
-import rpcHeader from "../json/Header.004.json";
-import rpcSignedBlock from "../json/SignedBlock.004.immortal.json";
-import rpcMethods from "../json/RpcMethods.json";
+import rpcHeader from "./Header.004.json";
+import rpcSignedBlock from "./SignedBlock.004.immortal.json";
+import rpcMethods from "./RpcMethods.json";
 
 const INTERVAL = 1000;
 const SUBSCRIPTIONS: string[] = Array.prototype.concat.apply(

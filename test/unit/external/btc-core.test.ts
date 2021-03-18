@@ -1,6 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import sinon from "sinon";
-import { createPolkadotAPI } from "../../../src/factory";
+import { createPolkadotAPI } from "../../mock/factory";
 import { assert } from "../../chai";
 import { BTCCoreAPI } from "../../../src/external";
 import { DefaultBTCCoreAPI } from "../../../src/external/btc-core";
@@ -12,7 +12,7 @@ describe("btc-core", () => {
     let sandbox: sinon.SinonSandbox;
 
     before(async () => {
-        api = await createPolkadotAPI("mock");
+        api = await createPolkadotAPI();
         sandbox = sinon.createSandbox();
     });
 

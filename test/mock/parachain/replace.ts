@@ -1,8 +1,8 @@
-import { ReplaceAPI } from "../../parachain";
+import { ReplaceAPI } from "../../../src/parachain";
 import { BlockNumber } from "@polkadot/types/interfaces";
-import { PolkaBTC, DOT } from "../../interfaces/default";
+import { PolkaBTC, DOT } from "../../../src/interfaces/default";
 import BN from "bn.js";
-import { ReplaceRequestExt } from "../../parachain/replace";
+import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 

@@ -1,6 +1,6 @@
-import { BTCRelayAPI, DEFAULT_STABLE_CONFIRMATIONS } from "../../parachain/btc-relay";
+import { BTCRelayAPI, DEFAULT_STABLE_CONFIRMATIONS } from "../../../src/parachain/btc-relay";
 import { u32 } from "@polkadot/types/primitive";
-import { H256Le } from "../../interfaces/default";
+import { H256Le } from "../../../src/interfaces/default";
 import { U8aFixed, UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 

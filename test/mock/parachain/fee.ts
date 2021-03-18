@@ -1,6 +1,6 @@
-import { FeeAPI } from "../../parachain";
-import { PolkaBTC } from "../../interfaces/default";
-import { ReplaceRequestExt } from "../../parachain/replace";
+import { FeeAPI } from "../../../src/parachain";
+import { PolkaBTC } from "../../../src/interfaces/default";
+import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
 import Big from "big.js";
 

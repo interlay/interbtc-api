@@ -1,14 +1,14 @@
-import { PolkaBTC, Vault, DOT } from "../../interfaces/default";
+import { PolkaBTC, Vault, DOT } from "../../../src/interfaces/default";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { Option } from "@polkadot/types/codec";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
-import { IssueRequestExt } from "../../parachain/issue";
-import { RedeemRequestExt } from "../../parachain/redeem";
-import { ReplaceRequestExt } from "../../parachain/replace";
-import { VaultsAPI, VaultExt } from "../../parachain/vaults";
+import { IssueRequestExt } from "../../../src/parachain/issue";
+import { RedeemRequestExt } from "../../../src/parachain/redeem";
+import { ReplaceRequestExt } from "../../../src/parachain/replace";
+import { VaultsAPI, VaultExt } from "../../../src/parachain/vaults";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 

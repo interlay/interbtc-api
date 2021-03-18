@@ -1,4 +1,4 @@
-import { DOT, IssueRequest, PolkaBTC, H256Le } from "../../interfaces/default";
+import { DOT, IssueRequest, PolkaBTC, H256Le } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
 import { Bytes, bool } from "@polkadot/types/primitive";
@@ -6,7 +6,7 @@ import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
-import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../parachain/issue";
+import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../../src/parachain/issue";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import Big from "big.js";
 
