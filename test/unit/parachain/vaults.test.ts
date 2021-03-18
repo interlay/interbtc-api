@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import BN from "bn.js";
 import sinon from "sinon";
 import { DefaultVaultsAPI, VaultExt } from "../../../src/parachain/vaults";
-import { createPolkadotAPI } from "../../../src/factory";
+import { createPolkadotAPI } from "../../mock/factory";
 import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { AccountId } from "@polkadot/types/interfaces";
@@ -24,7 +24,7 @@ describe("vaultsAPI", () => {
     }
 
     before(async () => {
-        api = await createPolkadotAPI("mock");
+        api = await createPolkadotAPI();
     });
 
     beforeEach(async () => {

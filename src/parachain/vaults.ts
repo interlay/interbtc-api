@@ -532,12 +532,12 @@ export class DefaultVaultsAPI {
     async getFeesPolkaBTC(vaultId: AccountId): Promise<string> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const parsedId = this.api.createType("AccountId", vaultId);
-        return (await this.api.query.fee.totalRewardsPolkaBTC(parsedId)).toString();
+        return (await this.api.query.fee.totalRewardsPolkaBTC.at(head, parsedId)).toString();
     }
 
     async getFeesDOT(vaultId: AccountId): Promise<string> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return (await this.api.query.fee.totalRewardsDOT(vaultId)).toString();
+        return (await this.api.query.fee.totalRewardsDOT.at(head, vaultId)).toString();
     }
 
     async getAPY(vaultId: AccountId): Promise<string> {

@@ -1,11 +1,11 @@
-import { PolkaBTC, RedeemRequest, DOT, H256Le } from "../../interfaces/default";
+import { PolkaBTC, RedeemRequest, DOT, H256Le } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import Big from "big.js";
-import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../parachain/redeem";
+import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
 
 export class MockRedeemAPI implements RedeemAPI {
     execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {

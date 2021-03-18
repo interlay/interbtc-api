@@ -15,14 +15,14 @@ import {
     ReplaceAPI,
     RefundAPI,
     FeeAPI,
-} from "../parachain";
-import { BTCCoreAPI } from "../external";
+} from "../../src/parachain";
+import { BTCCoreAPI } from "../../src/external";
 import { MockIssueAPI } from "./parachain/issue";
 import { MockRedeemAPI } from "./parachain/redeem";
 import { MockVaultsAPI } from "./parachain/vaults";
 import { MockStakedRelayerAPI } from "./parachain/staked-relayer";
-import { PolkaBTCAPI } from "../polkabtc-api";
-import { FaucetClient } from "../clients";
+import { PolkaBTCAPI } from "../../src";
+import { FaucetClient } from "../../src/clients";
 import { MockOracleAPI } from "./parachain/oracle";
 import { MockBTCCoreAPI } from "./external/btc-core";
 import { MockBTCRelayAPI } from "./parachain/btc-relay";

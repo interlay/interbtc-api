@@ -1,6 +1,6 @@
 import { AddressOrPair } from "@polkadot/api/types";
-import { OracleAPI } from "../../parachain";
-import { BtcTxFees, OracleInfo } from "../../parachain/oracle";
+import { OracleAPI } from "../../../src/parachain";
+import { BtcTxFees, OracleInfo } from "../../../src/parachain/oracle";
 import Big from "big.js";
 import { PolkaBTC } from "@interlay/polkabtc/interfaces";
 

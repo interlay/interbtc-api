@@ -1,4 +1,4 @@
-import { SystemAPI } from "../../parachain/system";
+import { SystemAPI } from "../../../src/parachain/system";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { TypeRegistry, u32 } from "@polkadot/types";
 

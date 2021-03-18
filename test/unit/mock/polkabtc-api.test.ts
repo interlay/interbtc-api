@@ -1,4 +1,4 @@
-import { createPolkabtcAPI } from "../../../src/factory";
+import { createPolkabtcAPI } from "../../mock/factory";
 import { PolkaBTCAPI } from "../../../src/polkabtc-api";
 import { assert } from "../../chai";
 
@@ -6,7 +6,7 @@ describe.skip("PolkaBTCAPIMock", () => {
     let polkaBTC: PolkaBTCAPI;
 
     before(async () => {
-        polkaBTC = await createPolkabtcAPI("mock");
+        polkaBTC = await createPolkabtcAPI();
     });
 
     after(() => {
