@@ -25,9 +25,9 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
     suggestStatusUpdate(
         _depositPlanck: BN,
         _statusCode: StatusCode,
-        _message: string,
-        _addError?: ErrorCode,
-        _removeError?: string,
+        _message: string, 
+        _addError?: ErrorCode, 
+        _removeError?: string, 
         _blockHash?: string
     ): Promise<void> {
         return Promise.resolve();
