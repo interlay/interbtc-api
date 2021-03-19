@@ -1,11 +1,11 @@
-import { PolkaBTC } from "../../interfaces/default";
+import { PolkaBTC } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 
 import { TypeRegistry, bool, U8aFixed } from "@polkadot/types";
 import BN from "bn.js";
-import { RefundAPI, RefundRequestExt } from "../../parachain";
+import { RefundAPI, RefundRequestExt } from "../../../src/parachain";
 
 export class MockRefundAPI implements RefundAPI {
     list(): Promise<RefundRequestExt[]> {

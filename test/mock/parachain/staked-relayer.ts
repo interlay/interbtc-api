@@ -1,11 +1,11 @@
-import { DOT, ErrorCode, StakedRelayer, StatusCode, StatusUpdate } from "../../interfaces/default";
+import { DOT, ErrorCode, StakedRelayer, StatusCode, StatusUpdate } from "../../../src/interfaces/default";
 import { u32, u64, u128, u256 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
-import { PendingStatusUpdate, StakedRelayerAPI } from "../../parachain/staked-relayer";
+import { PendingStatusUpdate, StakedRelayerAPI } from "../../../src/parachain/staked-relayer";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
@@ -25,9 +25,9 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
     suggestStatusUpdate(
         _depositPlanck: BN,
         _statusCode: StatusCode,
-        _message: string, 
-        _addError?: ErrorCode, 
-        _removeError?: string, 
+        _message: string,
+        _addError?: ErrorCode,
+        _removeError?: string,
         _blockHash?: string
     ): Promise<void> {
         return Promise.resolve();

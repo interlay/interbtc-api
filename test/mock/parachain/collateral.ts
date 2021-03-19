@@ -1,5 +1,5 @@
 import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
-import { CollateralAPI } from "../../parachain/collateral";
+import { CollateralAPI } from "../../../src/parachain/collateral";
 import { u128 } from "@polkadot/types/primitive";
 import { TypeRegistry } from "@polkadot/types";
 import { AddressOrPair } from "@polkadot/api/submittable/types";

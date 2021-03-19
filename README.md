@@ -79,22 +79,6 @@ polkaBTC.setAccount(keypair);
 
 The different functionalities are then exposed through the `PolkaBTCAPI` instance.
 
-## Testing without a running BTC-Parachain
-
-For testing purposes, you can mock the BTC-Parachain and use a mock endpoint that emulates the behavior of the BTC-Parachain.
-
-```typescript
-import { createPolkabtcAPI } from "@interlay/polkabtc";
-
-const polkaBTC = await createPolkabtcAPI("mock");
-```
-
-Example usage:
-
-```typescript
-const issueRequests = await polkaBTC.issue.list();
-const totalStakedDOTAmount = await polkaBTC.stakedRelayer.getTotalStakedDOTAmount();
-```
 
 Certain API calls require a parameters of type `AccountId`. For testing, an empty accountId will suffice:
 
