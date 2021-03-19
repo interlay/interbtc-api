@@ -53,7 +53,7 @@ pipeline {
         }
         stage('Build') {
           steps {
-            sh 'yarn build --production'
+            sh 'yarn build'
           }
         }
 
