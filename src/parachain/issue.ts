@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
@@ -34,21 +34,34 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
  */
 export interface IssueAPI {
     /**
-     * Send an issue request transaction
-     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue
-     * @param vaultId (optional) Request the issue from a specific vault. If this parameter is unspecified,
-     * a random vault will be selected
-     * @returns An object of type {issueId, vault} if the request succeeded. The function throws an error otherwise.
+     * Request issuing of PolkaBTC.
+     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue.
+     * @returns An array of type {issueId, vault, error} if the requests succeeded. error will be null for successful
+     * requests; issueId and vault will be null for failed ones.
      */
-    request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<IssueRequestResult>;
+    request(amountSat: PolkaBTC): Promise<IssueRequestResult[]>;
+
+    /**
+     * Send a batch of aggregated issue transactions (to one or more vaults)
+     * @param amountSat PolkaBTC amounts (denoted in Satoshi) to issue using each vault
+     * @param vaultId The vaults from which to request issue
+     * @returns An array of type {issueId, vault, error} if the requests succeeded. error will be null for successful
+     * requests; issueId and vault will be null for failed ones.
+     */
+    requestAdvanced(
+        amountsPerVault: Map<AccountId, PolkaBTC>,
+        griefingCollateralRate: Big
+    ): Promise<IssueRequestResult[]>;
+
     /**
      * Send an issue execution transaction
-     * @param issueId The ID returned by the issue request transaction
-     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
+     * @param issueId The ID or IDs returned by the issue request transaction
+     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address(es)
      * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
      * @param rawTx The raw bytes of the Bitcoin transaction
      */
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
+
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -81,6 +94,11 @@ export interface IssueAPI {
      * @returns An issue request object
      */
     getRequestById(issueId: H256): Promise<IssueRequestExt>;
+    /**
+     * @param issueId The IDs of the batch of issue request to fetch
+     * @returns The issue request objects
+     */
+    getRequestsByIds(issueIds: H256[]): Promise<IssueRequestExt[]>;
     /**
      * @returns The time difference in number of blocks between when an issue request is created
      * and required completion time by a user.
@@ -118,35 +136,76 @@ export class DefaultIssueAPI implements IssueAPI {
      * @returns The issueId associated with the request. If the EventRecord array does not
      * contain issue request events, the function throws an error.
      */
-    private getRequestIdFromEvents(events: EventRecord[]): Hash {
+    private getRequestIdsFromEvents(events: EventRecord[]): Hash[] {
+        const ids = new Array<Hash>();
         for (const { event } of events) {
             if (this.api.events.issue.RequestIssue.is(event)) {
                 const hash = this.api.createType("Hash", event.data[0]);
-                return hash;
+                ids.push(hash);
             }
         }
+        if (ids.length > 0) return ids;
         throw new Error("Request transaction failed");
     }
 
-    async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
+    private allocateAmountsToVaults(
+        vaultsWithIssuableTokens: Map<AccountId, PolkaBTC>,
+        amountToAllocate: PolkaBTC
+    ): Map<AccountId, PolkaBTC> {
+        return new Map(
+            [...vaultsWithIssuableTokens.entries()]
+                .sort((a, b) => b[1].sub(a[1]).toNumber()) // vaults in descending order of capacity
+                .map(([vault, available]): [AccountId, PolkaBTC] => {
+                    const allocated = available.lte(amountToAllocate) ? available : amountToAllocate; // bootleg min
+                    amountToAllocate = amountToAllocate.sub(allocated) as PolkaBTC;
+                    return [vault, allocated];
+                })
+                .filter(([_, allocated]) => allocated.gtn(0))
+        );
+    }
+
+    async request(amountSat: PolkaBTC): Promise<IssueRequestResult[]> {
         if (!this.account) {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
-        if (!vaultId) {
-            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
-        }
-        const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
-        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck.toString());
-        const result = await this.transaction.sendLogged(requestIssueTx, this.account, this.api.events.issue.RequestIssue);
         try {
-            const id = this.getRequestIdFromEvents(result.events);
-            const issueRequest = await this.getRequestById(id);
-            return { id, issueRequest };
+            const availableVaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
+            const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
+            const amountsPerVault = this.allocateAmountsToVaults(availableVaults, amountSat);
+            return this.requestAdvanced(amountsPerVault, griefingCollateralRate);
         } catch (e) {
             return Promise.reject(e.message);
         }
+    }
 
+    async requestAdvanced(
+        amountsPerVault: Map<AccountId, PolkaBTC>,
+        griefingCollateralRate: Big
+    ): Promise<IssueRequestResult[]> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+
+        const txes = new Array<SubmittableExtrinsic<"promise">>();
+        for (const [vault, amount] of amountsPerVault) {
+            console.log(`Vault: ${vault}, amount: ${amount}`);
+            const griefingCollateral = await this.feeAPI.getGriefingCollateralInPlanck(amount, griefingCollateralRate);
+            txes.push(this.api.tx.issue.requestIssue(amount, vault, griefingCollateral.toString()));
+        }
+        const batch = this.api.tx.utils.batch(txes);
+        try {
+            const result = await this.transaction.sendLogged(batch, this.account, this.api.events.issue.RequestIssue);
+            const ids = this.getRequestIdsFromEvents(result.events);
+            const issueRequests = await this.getRequestsByIds(ids);
+            console.log("\n\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n");
+            console.log(ids);
+            console.log(issueRequests);
+            console.log("\n\nBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n\n");
+            return ids.map((issueId, idx) => ({ id: issueId, issueRequest: issueRequests[idx] }));
+        } catch (e) {
+            return Promise.reject(e.message);
+        }
     }
 
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
@@ -213,8 +272,16 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {
+        return (await this.getRequestsByIds([issueId]))[0];
+    }
+
+    async getRequestsByIds(issueIds: H256[]): Promise<IssueRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return encodeIssueRequest(await this.api.query.issue.issueRequests.at(head, issueId), this.btcNetwork);
+        return Promise.all(
+            issueIds.map(async (issueId) =>
+                encodeIssueRequest(await this.api.query.issue.issueRequests.at(head, issueId), this.btcNetwork)
+            )
+        );
     }
 
     setAccount(account: AddressOrPair): void {

@@ -155,7 +155,7 @@ export class DefaultRedeemAPI {
         }
 
         if (!vaultId) {
-            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
+            vaultId = await this.vaultsAPI.selectRandomVaultRedeem(amountSat);
         }
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
