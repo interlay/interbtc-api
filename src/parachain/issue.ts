@@ -3,7 +3,7 @@ import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/t
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
-import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
+import { H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
@@ -17,8 +17,10 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
+import BN from "bn.js";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
+export type IssueLimits = {singleVault: PolkaBTC; maxTotal: PolkaBTC; vaultsCache: Map<AccountId, PolkaBTC> };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -34,12 +36,20 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
  */
 export interface IssueAPI {
     /**
+     * Gets the threshold for issuing with a single vault, and the maximum total
+     * issue request size. Additionally passes the list of vaults for caching.
+     * @returns An object of type {singleVault, maxTotal, vaultsCache}
+     */
+    getRequestLimits(): Promise<IssueLimits>;
+
+    /**
      * Request issuing of PolkaBTC.
      * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue.
+     * @param availableVaults (optional) A list of all vaults usable for issue, to avoid re-querying the parachain
      * @returns An array of type {issueId, vault, error} if the requests succeeded. error will be null for successful
      * requests; issueId and vault will be null for failed ones.
      */
-    request(amountSat: PolkaBTC): Promise<IssueRequestResult[]>;
+    request(amountSat: PolkaBTC, availableVaults?: Map<AccountId, PolkaBTC>): Promise<IssueRequestResult[]>;
 
     /**
      * Send a batch of aggregated issue transactions (to one or more vaults)
@@ -55,13 +65,12 @@ export interface IssueAPI {
 
     /**
      * Send an issue execution transaction
-     * @param issueId The ID or IDs returned by the issue request transaction
-     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address(es)
+     * @param issueId The ID returned by the issue request transaction
+     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
      * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
      * @param rawTx The raw bytes of the Bitcoin transaction
      */
     execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
-
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -131,6 +140,16 @@ export class DefaultIssueAPI implements IssueAPI {
         this.transaction = new Transaction(api);
     }
 
+    async getRequestLimits(): Promise<IssueLimits> {
+        const vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
+        const [singleVault, maxTotal] = [...vaults.entries()].reduce(([singleVault, maxTotal], [_, vaultAvailable]) => {
+            maxTotal.iadd(vaultAvailable);
+            singleVault = BN.max(singleVault, vaultAvailable) as PolkaBTC;
+            return [singleVault, maxTotal];
+        }, [new BN(0) as PolkaBTC, new BN(0) as PolkaBTC]);
+        return {singleVault, maxTotal, vaultsCache: vaults};
+    }
+
     /**
      * @param events The EventRecord array returned after sending an issue request transaction
      * @returns The issueId associated with the request. If the EventRecord array does not
@@ -152,25 +171,39 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultsWithIssuableTokens: Map<AccountId, PolkaBTC>,
         amountToAllocate: PolkaBTC
     ): Map<AccountId, PolkaBTC> {
-        return new Map(
-            [...vaultsWithIssuableTokens.entries()]
-                .sort((a, b) => b[1].sub(a[1]).toNumber()) // vaults in descending order of capacity
-                .map(([vault, available]): [AccountId, PolkaBTC] => {
-                    const allocated = available.lte(amountToAllocate) ? available : amountToAllocate; // bootleg min
-                    amountToAllocate = amountToAllocate.sub(allocated) as PolkaBTC;
-                    return [vault, allocated];
-                })
-                .filter(([_, allocated]) => allocated.gtn(0))
-        );
+        const allocations = new Map<AccountId, PolkaBTC>();
+        // iterable array in ascending order of issuing capacity:
+        const vaultsArray = [...vaultsWithIssuableTokens.entries()].reverse();
+        while (amountToAllocate.gtn(0)) {
+            // find first vault that can fulfill request (or undefined if none)
+            const firstSuitable = vaultsArray.findIndex(([_, available]) => available.gte(amountToAllocate));
+            let vault, amount;
+            if (firstSuitable !== undefined) { // at least one vault can fulfill in full
+                // select random vault able to fulfill request
+                const range = vaultsArray.length - firstSuitable;
+                const idx = Math.floor(Math.random() * range) + firstSuitable;
+                vault = vaultsArray[idx][0];
+                amount = amountToAllocate;
+            } else { // else allocate greedily
+                if (vaultsArray.length === 0) throw new Error("Insufficient capacity to fulfill request");
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const largestVault = vaultsArray.pop()!; // length >= 1, so never undefined
+                [vault, amount] = largestVault;
+            }
+            allocations.set(vault, amount);
+            amountToAllocate.isub(amount);
+        }
+
+        return allocations;
     }
 
-    async request(amountSat: PolkaBTC): Promise<IssueRequestResult[]> {
+    async request(amountSat: PolkaBTC, availableVaults?: Map<AccountId, PolkaBTC>): Promise<IssueRequestResult[]> {
         if (!this.account) {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         try {
-            const availableVaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
+            if (!availableVaults) availableVaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
             const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
             const amountsPerVault = this.allocateAmountsToVaults(availableVaults, amountSat);
             return this.requestAdvanced(amountsPerVault, griefingCollateralRate);
@@ -189,19 +222,14 @@ export class DefaultIssueAPI implements IssueAPI {
 
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            console.log(`Vault: ${vault}, amount: ${amount}`);
             const griefingCollateral = await this.feeAPI.getGriefingCollateralInPlanck(amount, griefingCollateralRate);
             txes.push(this.api.tx.issue.requestIssue(amount, vault, griefingCollateral.toString()));
         }
-        const batch = this.api.tx.utils.batch(txes);
+        const batch = this.api.tx.utility.batchAll(txes);
         try {
             const result = await this.transaction.sendLogged(batch, this.account, this.api.events.issue.RequestIssue);
             const ids = this.getRequestIdsFromEvents(result.events);
             const issueRequests = await this.getRequestsByIds(ids);
-            console.log("\n\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n");
-            console.log(ids);
-            console.log(issueRequests);
-            console.log("\n\nBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n\n");
             return ids.map((issueId, idx) => ({ id: issueId, issueRequest: issueRequests[idx] }));
         } catch (e) {
             return Promise.reject(e.message);
