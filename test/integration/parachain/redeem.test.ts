@@ -97,7 +97,7 @@ describe("redeem", () => {
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, txAmountRequired, blocksToMine);
             assert.equal(Buffer.from(txData.txid, "hex").length, 32, "Transaction length not 32 bytes");
 
-            while (!(await issueAPI.getRequestById(requestResult.id)).completed.isTrue) {
+            while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {
                 await sleep(1000);
             }
 
