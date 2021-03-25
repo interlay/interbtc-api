@@ -44,7 +44,6 @@ export class MockIssueAPI implements IssueAPI {
                 amount: new BN(600) as PolkaBTC,
                 opentime: new BN(10908) as BlockNumber,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-                completed: new bool(registry, true),
                 requester: new GenericAccountId(registry, decodedAccountId1),
                 griefing_collateral: new BN(10) as DOT,
             },
@@ -53,7 +52,6 @@ export class MockIssueAPI implements IssueAPI {
                 amount: new BN(4510) as PolkaBTC,
                 opentime: new BN(11938) as BlockNumber,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-                completed: new bool(registry, true),
                 requester: new GenericAccountId(registry, decodedAccountId2),
                 griefing_collateral: new BN(76) as DOT,
             },
@@ -81,7 +79,6 @@ export class MockIssueAPI implements IssueAPI {
             amount: new BN(4510) as PolkaBTC,
             opentime: new BN(11938) as BlockNumber,
             btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-            completed: new bool(registry, true),
             requester: new GenericAccountId(registry, decodedAccountId1),
             griefing_collateral: new BN(76) as DOT,
         };
