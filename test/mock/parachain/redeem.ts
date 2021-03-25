@@ -28,9 +28,7 @@ export class MockRedeemAPI implements RedeemAPI {
             <RedeemRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId),
                 opentime: new BN(10908) as BlockNumber,
-                amount_polka_btc: new BN(4141) as PolkaBTC,
                 amount_btc: new BN(4141) as PolkaBTC,
-                amount_dot: new BN(7090) as DOT,
                 premium_dot: new BN(140) as DOT,
                 redeemer: new GenericAccountId(registry, decodedAccountId),
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
@@ -38,9 +36,7 @@ export class MockRedeemAPI implements RedeemAPI {
             <RedeemRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId),
                 opentime: new BN(11208) as BlockNumber,
-                amount_polka_btc: new BN(400) as PolkaBTC,
                 amount_btc: new BN(411) as PolkaBTC,
-                amount_dot: new BN(709) as DOT,
                 premium_dot: new BN(10) as DOT,
                 redeemer: new GenericAccountId(registry, decodedAccountId),
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
@@ -63,9 +59,7 @@ export class MockRedeemAPI implements RedeemAPI {
         return <RedeemRequestExt>{
             vault: new GenericAccountId(registry, decodedAccountId),
             opentime: new BN(11208) as BlockNumber,
-            amount_polka_btc: new BN(400) as PolkaBTC,
             amount_btc: new BN(411) as PolkaBTC,
-            amount_dot: new BN(709) as DOT,
             premium_dot: new BN(10) as DOT,
             redeemer: new GenericAccountId(registry, decodedAccountId),
             btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
@@ -82,7 +76,7 @@ export class MockRedeemAPI implements RedeemAPI {
 
     subscribeToRedeemExpiry(_account: AccountId, _callback: (requestRedeemId: H256) => void): Promise<() => void> {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
-        return Promise.resolve(() => {});
+        return Promise.resolve(() => { });
     }
 
     async getFeesToPay(_amount: string): Promise<string> {
