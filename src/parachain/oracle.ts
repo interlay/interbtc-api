@@ -46,7 +46,7 @@ export interface OracleAPI {
      */
     getLastExchangeRateTime(): Promise<Date>;
     /**
-     * @returns A map from the oracle's account id to its
+     * @returns A map from the oracle's account id to its name
      */
     getSourcesById(): Promise<Map<string, string>>;
     /**
@@ -82,7 +82,7 @@ export interface OracleAPI {
      * @returns The period of time (in milliseconds) after an oracle's last submission
      * during which it is considered online
      */
-    getMaxDelay(): Promise<number>;
+    getOnlineTimeout(): Promise<number>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -103,7 +103,7 @@ export class DefaultOracleAPI implements OracleAPI {
         return new Big(this.convertFromRawExchangeRate(rawRate.toString()));
     }
 
-    async getMaxDelay(): Promise<number> {
+    async getOnlineTimeout(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const moment = await this.api.query.exchangeRateOracle.maxDelay.at(head);
         return moment.toNumber();

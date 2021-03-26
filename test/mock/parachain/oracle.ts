@@ -5,7 +5,7 @@ import Big from "big.js";
 import { PolkaBTC } from "@interlay/polkabtc/interfaces";
 
 export class MockOracleAPI implements OracleAPI {
-    getMaxDelay(): Promise<number> {
+    getOnlineTimeout(): Promise<number> {
         return Promise.resolve(100);
     }
     
