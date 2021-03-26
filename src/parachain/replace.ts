@@ -2,9 +2,8 @@ import { ApiPromise } from "@polkadot/api";
 import { PolkaBTC, ReplaceRequest } from "../interfaces/default";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Hash } from "@polkadot/types/interfaces";
-import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Network } from "bitcoinjs-lib";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, encodeBtcAddress, Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, encodeBtcAddress, storageKeyToFirstInner, Transaction } from "../utils";
 import { H256 } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
@@ -147,10 +146,6 @@ export class DefaultReplaceAPI implements ReplaceAPI {
             .map((req: ReplaceRequest) => encodeReplaceRequest(req, this.btcNetwork));
     }
 
-    private storageKeyToIdString(s: StorageKey<[H256]>): H256 {
-        return s.args[0];
-    }
-
     async map(): Promise<Map<H256, ReplaceRequestExt>> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemRequests = await this.api.query.replace.replaceRequests.entriesAt(head);
@@ -161,7 +156,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
                 return { id: v[0], req: v[1].unwrap() };
             })
             .forEach(({ id, req }) => {
-                redeemRequestMap.set(this.storageKeyToIdString(id), encodeReplaceRequest(req, this.btcNetwork));
+                redeemRequestMap.set(storageKeyToFirstInner(id), encodeReplaceRequest(req, this.btcNetwork));
             });
         return redeemRequestMap;
     }

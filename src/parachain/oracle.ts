@@ -8,20 +8,13 @@ import {
     decodeFixedPointType, 
     Transaction, 
     encodeUnsignedFixedPoint, 
-    ACCOUNT_NOT_SET_ERROR_MESSAGE 
+    ACCOUNT_NOT_SET_ERROR_MESSAGE, 
+    storageKeyToFirstInner
 } from "../utils";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
 const defaultFeedName = "DOT/BTC";
-
-export type OracleInfo = {
-    exchangeRate: Big;
-    feed: string;
-    names: Array<string>;
-    online: boolean;
-    lastUpdate: Date;
-};
 
 export type BtcTxFees = {
     fast: number;
@@ -53,17 +46,13 @@ export interface OracleAPI {
      */
     getLastExchangeRateTime(): Promise<Date>;
     /**
-     * @returns An array with the oracle names
+     * @returns A map from the oracle's account id to its name
      */
-    getOracleNames(): Promise<Array<string>>;
+    getSourcesById(): Promise<Map<string, string>>;
     /**
      * @returns Boolean value indicating whether the oracle is online
      */
     isOnline(): Promise<boolean>;
-    /**
-     * @returns An object of type OracleInfo
-     */
-    getInfo(): Promise<OracleInfo>;
     /**
      * Send a transaction to set the DOT/BTC exchange rate
      * @param exchangeRate The rate to set
@@ -89,6 +78,11 @@ export interface OracleAPI {
      * @returns Convert a Satoshi amount to Planck
      */
     convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big>;
+    /**
+     * @returns The period of time (in milliseconds) after an oracle's last submission
+     * during which it is considered online
+     */
+    getOnlineTimeout(): Promise<number>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -96,16 +90,6 @@ export class DefaultOracleAPI implements OracleAPI {
 
     constructor(private api: ApiPromise, private account?: AddressOrPair) {
         this.transaction = new Transaction(api);
-    }
-
-    async getInfo(): Promise<OracleInfo> {
-        return {
-            exchangeRate: await this.getExchangeRate(),
-            feed: await this.getFeed(),
-            names: await this.getOracleNames(),
-            online: await this.isOnline(),
-            lastUpdate: await this.getLastExchangeRateTime(),
-        };
     }
 
     async convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big> {
@@ -117,6 +101,12 @@ export class DefaultOracleAPI implements OracleAPI {
     async getExchangeRate(): Promise<Big> {
         const rawRate = await this.getRawExchangeRate();
         return new Big(this.convertFromRawExchangeRate(rawRate.toString()));
+    }
+
+    async getOnlineTimeout(): Promise<number> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const moment = await this.api.query.exchangeRateOracle.maxDelay.at(head);
+        return moment.toNumber();
     }
 
     async getRawExchangeRate(): Promise<Big> {
@@ -157,10 +147,14 @@ export class DefaultOracleAPI implements OracleAPI {
         await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
     }
 
-    async getOracleNames(): Promise<Array<string>> {
+    async getSourcesById(): Promise<Map<string, string>> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entriesAt(head);
-        return oracles.map((v) => v[1].toUtf8());
+        const nameMap = new Map<string, string>();
+        oracles.forEach((oracle) =>
+            nameMap.set(storageKeyToFirstInner(oracle[0]).toString(), oracle[1].toUtf8())
+        );
+        return nameMap;
     }
 
     getFeed(): Promise<string> {
