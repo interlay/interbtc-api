@@ -8,13 +8,11 @@ import { defaultParachainEndpoint } from "../../config";
 describe("OracleAPI", () => {
     let api: ApiPromise;
     let oracle: OracleAPI;
-    let alice: KeyringPair;
     let bob: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         const keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
         bob = keyring.addFromUri("//Bob");
     });
 
@@ -28,13 +26,6 @@ describe("OracleAPI", () => {
     });
 
     describe("Oracle", () => {
-        it("should return oracle info", async () => {
-            const info = await oracle.getInfo();
-            assert.equal(info.names[0], "Bob");
-            assert.isTrue(info.online);
-            assert.equal(info.feed, "DOT/BTC");
-        });
-
         it("[docker-compose initial setup] should set a rate of 3855.23187", async () => {
             const exchangeRate = await oracle.getExchangeRate();
             assert.equal(exchangeRate.toString(), "3855.23187");
@@ -60,6 +51,15 @@ describe("OracleAPI", () => {
             assert.deepEqual(fees, newTxFees);
 
             await oracle.setBtcTxFeesPerByte(prev);
+        });
+
+        it("should get names by id", async () => {
+            const expectedSources = new Map<string, string>();
+            expectedSources.set("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", "Bob");
+            const sources = await oracle.getSourcesById();
+            for (const entry of sources.entries()) {
+                assert.equal(entry[1], expectedSources.get(entry[0]));
+            }
         });
     });
 });

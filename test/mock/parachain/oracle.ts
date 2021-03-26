@@ -1,24 +1,16 @@
 import { AddressOrPair } from "@polkadot/api/types";
 import { OracleAPI } from "../../../src/parachain";
-import { BtcTxFees, OracleInfo } from "../../../src/parachain/oracle";
+import { BtcTxFees } from "../../../src/parachain/oracle";
 import Big from "big.js";
 import { PolkaBTC } from "@interlay/polkabtc/interfaces";
 
 export class MockOracleAPI implements OracleAPI {
-    convertSatoshiToPlanck(_satoshi: PolkaBTC): Promise<Big> {
-        throw new Error("Method not implemented.");
+    getMaxDelay(): Promise<number> {
+        return Promise.resolve(100);
     }
     
-    async getInfo(): Promise<OracleInfo> {
-        const oracle_info: OracleInfo = {
-            exchangeRate: await this.getExchangeRate(),
-            feed: await this.getFeed(),
-            names: await this.getOracleNames(),
-            online: await this.isOnline(),
-            lastUpdate: await this.getLastExchangeRateTime(),
-        };
-
-        return Promise.resolve(oracle_info);
+    convertSatoshiToPlanck(_satoshi: PolkaBTC): Promise<Big> {
+        throw new Error("Method not implemented.");
     }
 
     getExchangeRate(): Promise<Big> {
@@ -33,8 +25,8 @@ export class MockOracleAPI implements OracleAPI {
         return Promise.resolve({ fast: 500, half: 300, hour: 200 });
     }
 
-    getOracleNames(): Promise<Array<string>> {
-        return Promise.resolve(["ChainLink"]);
+    getSourcesById(): Promise<Map<string, string>> {
+        return Promise.resolve(new Map());
     }
 
     getFeed(): Promise<string> {
