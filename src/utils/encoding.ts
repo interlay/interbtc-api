@@ -4,6 +4,8 @@ import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
+import { StorageKey } from "@polkadot/types/primitive/StorageKey";
+import { H256 } from "@polkadot/types/interfaces";
 
 /**
  * Converts endianness of a Uint8Array
@@ -67,6 +69,10 @@ export function encodeUnsignedFixedPoint(api: ApiPromise, x: string): UnsignedFi
     const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
     const xScaled = xBig.mul(scalingFactor);
     return api.createType("FixedU128", xScaled.toFixed());
+}
+
+export function storageKeyToFirstInner(s: StorageKey<[H256]>): H256 {
+    return s.args[0];
 }
 
 export interface DecodedRequest extends Struct {

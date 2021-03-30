@@ -215,7 +215,7 @@ describe("issue", () => {
 
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
 
-            assert.isTrue(issueRequest.cancelled.isTrue, "Failed to cancel issue request");
+            assert.isTrue(issueRequest.status.isCancelled, "Failed to cancel issue request");
         });
     }).timeout(700000);
 
@@ -374,7 +374,7 @@ export async function issue(
         await issueAPI.execute(parsedIssuedId, parsedTxId, parsedMerkleProof, parsedRawTx);
     } else {
         // wait for vault to execute issue
-        while (!(await issueAPI.getRequestById(requestResult.id)).completed.isTrue) {
+        while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {
             await sleep(1000);
         }
     }

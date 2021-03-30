@@ -105,12 +105,6 @@ describe("oracle", () => {
         });
     });
 
-    describe("oracleName", () => {
-        it("should return name", () => {
-            return assert.eventually.deepEqual(oracle.getOracleNames(), ["test"]);
-        });
-    });
-
     describe("convert exchange rate", () => {
         it("should return the correct rate", () => {
             const oracleProto = Object.getPrototypeOf(oracle);

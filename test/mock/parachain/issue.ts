@@ -67,12 +67,6 @@ export class MockIssueAPI implements IssueAPI {
                 opentime: new BN(10908) as BlockNumber,
                 fee: new BN(6) as PolkaBTC,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-                status: {
-                    isPending: false,
-                    isCompleted: true,
-                    asCompleted: null,
-                    isCancelled: false
-                },
                 requester: new GenericAccountId(registry, decodedAccountId1),
                 griefing_collateral: new BN(10) as DOT,
             },
@@ -82,12 +76,6 @@ export class MockIssueAPI implements IssueAPI {
                 opentime: new BN(11938) as BlockNumber,
                 fee: new BN(6) as PolkaBTC,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-                status: {
-                    isPending: false,
-                    isCompleted: true,
-                    asCompleted: null,
-                    isCancelled: false
-                },
                 requester: new GenericAccountId(registry, decodedAccountId2),
                 griefing_collateral: new BN(76) as DOT,
             },
@@ -116,12 +104,6 @@ export class MockIssueAPI implements IssueAPI {
             opentime: new BN(11938) as BlockNumber,
             fee: new BN(6) as PolkaBTC,
             btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-            status: {
-                isPending: false,
-                isCompleted: true,
-                asCompleted: null,
-                isCancelled: false
-            },
             requester: new GenericAccountId(registry, decodedAccountId1),
             griefing_collateral: new BN(76) as DOT,
         };
