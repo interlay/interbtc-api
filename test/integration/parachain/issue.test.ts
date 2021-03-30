@@ -19,6 +19,7 @@ import { DefaultCollateralAPI } from "../../../src/parachain/collateral";
 import Big from "big.js";
 import { Transaction } from "../../../src/utils";
 import { ISubmittableResult } from "@polkadot/types/types";
+import { DefaultFeeAPI } from "../../../src/parachain/fee";
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -76,12 +77,18 @@ describe("issue", () => {
             await assert.isRejected(tmpIssueAPI.request(amount));
         });
 
-        it("should request issue", async () => {
+        it("should request one issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
             const amount = api.createType("Balance", 100000) as PolkaBTC;
-            const requestResult = await issueAPI.request(amount);
+            const requestResults = await issueAPI.request(amount);
+            assert.equal(
+                requestResults.length,
+                1,
+                "Created multiple requests instead of one (ensure vault has sufficient collateral"
+            );
+            const requestResult = requestResults[0];
             assert.equal(requestResult.id.length, 32);
 
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
@@ -207,7 +214,9 @@ describe("issue", () => {
             const amountAsBtcString = "0.0000121";
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-            const requestResult = await issueAPI.request(amountAsSatoshi);
+            const requestResults = await issueAPI.request(amountAsSatoshi);
+            assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
+            const requestResult = requestResults[0];
 
             // The cancellation period set by docker-compose is 50 blocks, each being relayed every 6s
             await bitcoinCoreClient.mineBlocks(50);
@@ -319,6 +328,7 @@ export async function issue(
     const treasuryAPI = new DefaultTreasuryAPI(api);
     const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
     const collateralAPI = new DefaultCollateralAPI(api);
+    const feeAPI = new DefaultFeeAPI(api);
 
     const requester = keyring.addFromUri("//" + requesterName);
     issueAPI.setAccount(requester);
@@ -329,6 +339,7 @@ export async function issue(
     keyring = new Keyring({ type: "sr25519" });
     const vault = keyring.addFromUri("//" + vaultName);
     const vaultAccountId = api.createType("AccountId", vault.address);
+    const griefingCollateralRate = await feeAPI.getIssueGriefingCollateralRate();
 
     // request issue
     let amountAsBtcString = amount;
@@ -337,7 +348,13 @@ export async function issue(
         fail();
     }
     const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-    const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
+    const requestResults = await issueAPI.requestAdvanced(
+        new Map([[vaultAccountId, amountAsSatoshi]]),
+        griefingCollateralRate,
+        true
+    );
+    assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
+    const requestResult = requestResults[0];
     let issueRequest;
     try {
         issueRequest = await issueAPI.getRequestById(requestResult.id);
