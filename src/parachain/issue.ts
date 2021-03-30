@@ -20,7 +20,7 @@ import { DefaultFeeAPI, FeeAPI } from "./fee";
 import BN from "bn.js";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
-export type IssueLimits = { singleVaultMaxIssuable: PolkaBTC; totalMaxIssuable: PolkaBTC };
+export type IssueLimits = { singleVaultMaxIssuable: BN; totalMaxIssuable: BN };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -42,7 +42,7 @@ export interface IssueAPI {
      * parachain (incurring an extra request).
      * @returns An object of type {singleVault, maxTotal, vaultsCache}
      */
-    getRequestLimits(vaults?: Map<AccountId, PolkaBTC>): Promise<IssueLimits>;
+    getRequestLimits(vaults?: Map<AccountId, BN>): Promise<IssueLimits>;
 
     /**
      * Request issuing of PolkaBTC.
@@ -55,9 +55,12 @@ export interface IssueAPI {
      * requests; issueId and vault will be null for failed ones.
      */
     request(
-        amountSat: PolkaBTC,
-        availableVaults?: Map<AccountId, PolkaBTC>,
-        atomic?: boolean
+        amountSat: BN,
+        options?: {
+            availableVaults?: Map<AccountId, BN>,
+            atomic?: boolean,
+            retry?: number,
+        }
     ): Promise<IssueRequestResult[]>;
 
     /**
@@ -72,7 +75,7 @@ export interface IssueAPI {
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
     requestAdvanced(
-        amountsPerVault: Map<AccountId, PolkaBTC>,
+        amountsPerVault: Map<AccountId, BN>,
         griefingCollateralRate: Big,
         atomic: boolean
     ): Promise<IssueRequestResult[]>;
@@ -154,15 +157,15 @@ export class DefaultIssueAPI implements IssueAPI {
         this.transaction = new Transaction(api);
     }
 
-    async getRequestLimits(vaults?: Map<AccountId, PolkaBTC>): Promise<IssueLimits> {
+    async getRequestLimits(vaults?: Map<AccountId, BN>): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
         const [singleVaultMaxIssuable, totalMaxIssuable] = [...vaults.entries()].reduce(
             ([singleVault, maxTotal], [_, vaultAvailable]) => {
                 maxTotal.iadd(vaultAvailable);
-                singleVault = BN.max(singleVault, vaultAvailable) as PolkaBTC;
+                singleVault = BN.max(singleVault, vaultAvailable);
                 return [singleVault, maxTotal];
             },
-            [new BN(0) as PolkaBTC, new BN(0) as PolkaBTC]
+            [new BN(0), new BN(0)]
         );
         return { singleVaultMaxIssuable, totalMaxIssuable };
     }
@@ -185,74 +188,79 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     private allocateAmountsToVaults(
-        vaultsWithIssuableTokens: Map<AccountId, PolkaBTC>,
-        amountToAllocate: PolkaBTC
-    ): Map<AccountId, PolkaBTC> {
-        const maxReservationPercent = 100; // don't reserve more than 90% of a vault's collateral
-        const allocations = new Map<AccountId, PolkaBTC>();
+        vaultsWithIssuableTokens: Map<AccountId, BN>,
+        amountToAllocate: BN
+    ): Map<AccountId, BN> {
+        const maxReservationPercent = 90; // don't reserve more than 90% of a vault's collateral
+        const allocations = new Map<AccountId, BN>();
         // iterable array in ascending order of issuing capacity:
         const vaultsArray = [...vaultsWithIssuableTokens.entries()].reverse().map((entry) => [entry[0],
-            entry[1].divn(100).muln(maxReservationPercent)] as [AccountId, PolkaBTC]);
-        console.log(`AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa\n starting to allocate: ${amountToAllocate.toString()}`);
+            entry[1].divn(100).muln(maxReservationPercent)] as [AccountId, BN]);
         while (amountToAllocate.gtn(0)) {
             // find first vault that can fulfil request (or undefined if none)
             const firstSuitable = vaultsArray.findIndex(([_, available]) => available.gte(amountToAllocate));
-            console.log(`index ${firstSuitable} will be used`);
             let vault, amount;
             if (firstSuitable !== -1) {
                 // at least one vault can fulfil in full
                 // select random vault able to fulfil request
                 const range = vaultsArray.length - firstSuitable;
                 const idx = Math.floor(Math.random() * range) + firstSuitable;
-                console.log(`Selecting vault at index ${idx}`);
                 vault = vaultsArray[idx][0];
                 amount = amountToAllocate;
-                console.log(`Allocating ${amount} to ${vault} all at once`);
             } else {
                 // else allocate greedily
                 if (vaultsArray.length === 0) throw new Error("Insufficient capacity to fulfil request");
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 const largestVault = vaultsArray.pop()!; // length >= 1, so never undefined
                 [vault, amount] = largestVault;
-                console.log(`Allocating ${amount} to ${vault} as part of batching`);
             }
-            allocations.set(vault, amount.clone() as PolkaBTC);
+            allocations.set(vault, amount.clone());
             amountToAllocate.isub(amount);
         }
 
-        console.log(`BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n finished allocating`);
         return allocations;
     }
 
-    private printMap(prefix: string, map: Map<AccountId, PolkaBTC>) {
+    private printMap(prefix: string, map: Map<AccountId, BN>) {
         console.log([...map.entries()].reduce((acc, entry) =>
             acc += `vault: ${entry[0]}, amount: ${entry[1]}; `
         , prefix));
     }
 
     async request(
-        amountSat: PolkaBTC,
-        availableVaults?: Map<AccountId, PolkaBTC>,
-        atomic = false
+        amountSat: BN,
+        options?: {
+            availableVaults?: Map<AccountId, BN>,
+            atomic?: boolean,
+            retries?: number,
+        }
     ): Promise<IssueRequestResult[]> {
         if (!this.account) {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
         try {
-            if (!availableVaults) availableVaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
+            const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
+            const atomic = !!options?.atomic;
+            const retries = options?.retries || 0;
             this.printMap("Available vaults: ", availableVaults);
             const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
             const amountsPerVault = this.allocateAmountsToVaults(availableVaults, amountSat);
             this.printMap("Allocated amounts: ", amountsPerVault);
-            return this.requestAdvanced(amountsPerVault, griefingCollateralRate, atomic);
+            const result = await this.requestAdvanced(amountsPerVault, griefingCollateralRate, atomic);
+            const successfulSum = result.reduce((sum, req) => sum.add(req.issueRequest.amount), new BN(0));
+            const remainder = amountSat.sub(successfulSum);
+            if (remainder.eqn(0) || retries === 0) return result;
+            else {
+                return (await this.request(remainder, {availableVaults, atomic, retries: retries - 1})).concat(result);
+            }
         } catch (e) {
             return Promise.reject(e.message);
         }
     }
 
     async requestAdvanced(
-        amountsPerVault: Map<AccountId, PolkaBTC>,
+        amountsPerVault: Map<AccountId, BN>,
         griefingCollateralRate: Big,
         atomic: boolean
     ): Promise<IssueRequestResult[]> {
@@ -262,7 +270,7 @@ export class DefaultIssueAPI implements IssueAPI {
 
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = await this.feeAPI.getGriefingCollateralInPlanck(amount, griefingCollateralRate);
+            const griefingCollateral = await this.feeAPI.getGriefingCollateralInPlanck(amount as PolkaBTC, griefingCollateralRate);
             txes.push(this.api.tx.issue.requestIssue(amount, vault, griefingCollateral.toString()));
         }
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);

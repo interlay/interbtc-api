@@ -1,12 +1,12 @@
 import { DOT, IssueRequest, PolkaBTC, H256Le } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
-import { Bytes, bool } from "@polkadot/types/primitive";
+import { Bytes } from "@polkadot/types/primitive";
 import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
-import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../../src/parachain/issue";
+import { IssueAPI, IssueRequestResult, IssueRequestExt, IssueLimits } from "../../../src/parachain/issue";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import Big from "big.js";
 
@@ -19,10 +19,32 @@ export class MockIssueAPI implements IssueAPI {
         throw new Error("Method not implemented.");
     }
 
-    async request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<IssueRequestResult> {
+    getRequestLimits(_vaults?: Map<AccountId, BN>): Promise<IssueLimits> {
+        return Promise.resolve({
+            singleVaultMaxIssuable: new BN(10000000),
+            totalMaxIssuable: new BN(15000000),
+        });
+    }
+
+    async request(
+        _amountSat: BN,
+        _options?: {
+            availableVaults?: Map<AccountId, BN>;
+            atomic?: boolean;
+            retries?: number;
+        }
+    ): Promise<IssueRequestResult[]> {
         const registry = new TypeRegistry();
         const id = new U8aFixed(registry, "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c") as Hash;
-        return Promise.resolve({ id, issueRequest: (await this.list())[0] });
+        return Promise.resolve([{ id, issueRequest: (await this.list())[0] }]);
+    }
+
+    async requestAdvanced(
+        _amountsPerVault: Map<AccountId, BN>,
+        _griefingCollateralRate: Big,
+        _atomic: boolean
+    ): Promise<IssueRequestResult[]> {
+        return this.request(new BN(0));
     }
 
     setAccount(_account?: AddressOrPair): void {
@@ -43,8 +65,14 @@ export class MockIssueAPI implements IssueAPI {
                 vault: new GenericAccountId(registry, decodedAccountId1),
                 amount: new BN(600) as PolkaBTC,
                 opentime: new BN(10908) as BlockNumber,
+                fee: new BN(6) as PolkaBTC,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-                completed: new bool(registry, true),
+                status: {
+                    isPending: false,
+                    isCompleted: true,
+                    asCompleted: null,
+                    isCancelled: false
+                },
                 requester: new GenericAccountId(registry, decodedAccountId1),
                 griefing_collateral: new BN(10) as DOT,
             },
@@ -52,8 +80,14 @@ export class MockIssueAPI implements IssueAPI {
                 vault: new GenericAccountId(registry, decodedAccountId2),
                 amount: new BN(4510) as PolkaBTC,
                 opentime: new BN(11938) as BlockNumber,
+                fee: new BN(6) as PolkaBTC,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-                completed: new bool(registry, true),
+                status: {
+                    isPending: false,
+                    isCompleted: true,
+                    asCompleted: null,
+                    isCancelled: false
+                },
                 requester: new GenericAccountId(registry, decodedAccountId2),
                 griefing_collateral: new BN(76) as DOT,
             },
@@ -80,11 +114,22 @@ export class MockIssueAPI implements IssueAPI {
             vault: new GenericAccountId(registry, decodedAccountId1),
             amount: new BN(4510) as PolkaBTC,
             opentime: new BN(11938) as BlockNumber,
+            fee: new BN(6) as PolkaBTC,
             btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-            completed: new bool(registry, true),
+            status: {
+                isPending: false,
+                isCompleted: true,
+                asCompleted: null,
+                isCancelled: false
+            },
             requester: new GenericAccountId(registry, decodedAccountId1),
             griefing_collateral: new BN(76) as DOT,
         };
+    }
+
+    async getRequestsByIds(_issueIds: H256[]): Promise<IssueRequestExt[]> {
+        const request = await this.getRequestById("");
+        return [request];
     }
 
     isRequestSuccessful(_events: EventRecord[]): boolean {
