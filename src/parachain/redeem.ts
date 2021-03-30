@@ -1,6 +1,6 @@
 import { PolkaBTC, RedeemRequest, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
@@ -11,7 +11,7 @@ import {
     decodeFixedPointType,
     Transaction,
     encodeParachainRequest,
-    ACCOUNT_NOT_SET_ERROR_MESSAGE
+    ACCOUNT_NOT_SET_ERROR_MESSAGE,
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
@@ -19,6 +19,8 @@ import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
+import { allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions } from "../utils/issueRedeem";
+import BN from "bn.js";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -40,12 +42,33 @@ export interface RedeemAPI {
      */
     list(): Promise<RedeemRequestExt[]>;
     /**
-     * Send a redeem request transaction
+     * Request redeeming PolkaBTC.
      * @param amountSat PolkaBTC amount (denoted in Satoshi) to redeem
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
-     * @returns An object of type {redeemId, vault} if the request succeeded. The function throws an error otherwise.
+     * @param options (optional): an object specifying
+     * - atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
+     * if more than one vault is needed to fulfil it. Defaults to false.
+     * - availableVaults (optional) A list of all vaults usable for redeem. If not provided, will fetch from the parachain.
+     * - retries (optional) Number of times to re-try redeeming, if some of the requests fail. Defaults to 0.
+     * @returns An array of type {redeemId, redeemRequest} if the requests succeeded. The function throws an error otherwise.
      */
-    request(amount: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult>;
+    request(amount: BN, btcAddressEnc: string, options?: RequestOptions): Promise<RequestResult[]>;
+
+    /**
+     * Send a batch of aggregated redeem transactions (to one or more vaults)
+     * @param amountsPerVault A mapping of vaults to redeem from, and PolkaBTC amounts (in Satoshi) to redeem using each vault
+     * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
+     * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
+     * one vault is needed to fulfil it.
+     * @returns An array of type {redeemId, vault} if the requests succeeded.
+     * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
+     */
+    requestAdvanced(
+        amountsPerVault: Map<AccountId, BN>,
+        btcAddressEnc: string,
+        atomic: boolean
+    ): Promise<RequestResult[]>;
+
     /**
      * Send a redeem execution transaction
      * @param redeemId The ID returned by the redeem request transaction
@@ -86,6 +109,7 @@ export interface RedeemAPI {
      * @returns A redeem request object
      */
     getRequestById(redeemId: H256): Promise<RedeemRequestExt>;
+    getRequestsById(redeemIds: H256[]): Promise<RedeemRequestExt[]>;
     /**
      * Whenever a redeem request associated with `account` expires, call the callback function with the
      * ID of the expired request. Already expired requests are stored in memory, so as not to call back
@@ -131,38 +155,55 @@ export class DefaultRedeemAPI {
         this.transaction = new Transaction(api);
     }
 
-    /**
-     * @param events The EventRecord array returned after sending a redeem transaction
-     * @param methodToCheck The name of the event method whose existence to check
-     * @returns The redeemId associated with the transaction. If the EventRecord array does not
-     * contain redeem events, the function throws an error.
-     */
-    private getRedeemIdFromEvents(events: EventRecord[], eventToFind: AugmentedEvent<ApiTypes, AnyTuple>): Hash {
-        for (const { event } of events) {
-            if (eventToFind.is(event)) {
-                // the redeem id has type H256 and is the first item of the event data array
-                const id = this.api.createType("Hash", event.data[0]);
-                return id;
-            }
-        }
-
-        throw new Error("Transaction failed");
+    private getRedeemIdsFromEvents(events: EventRecord[]): Hash[] {
+        return getRequestIdsFromEvents(events, this.api.events.redeem.RequestRedeem, this.api);
     }
 
-    async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
+    async request(amountSat: BN, btcAddressEnc: string, options?: RequestOptions): Promise<RequestResult[]> {
         if (!this.account) {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
 
-        if (!vaultId) {
-            vaultId = await this.vaultsAPI.selectRandomVaultRedeem(amountSat);
+        try {
+            const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
+            const atomic = !!options?.atomic;
+            const retries = options?.retries || 0;
+            const amountsPerVault = allocateAmountsToVaults(availableVaults, amountSat);
+            const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
+            const successfulSum = result.reduce((sum, req) => sum.add(req.redeemRequest.amount_btc), new BN(0));
+            const remainder = amountSat.sub(successfulSum);
+            if (remainder.eqn(0) || retries === 0) return result;
+            else {
+                return (await this.request(remainder, btcAddressEnc, {availableVaults, atomic, retries: retries - 1})).concat(result);
+            }
+        } catch (e) {
+            return Promise.reject(e.message);
         }
+    }
+
+    async requestAdvanced(
+        amountsPerVault: Map<AccountId, BN>,
+        btcAddressEnc: string,
+        atomic: boolean
+    ): Promise<RequestResult[]> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
-        const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
-        const result = await this.transaction.sendLogged(requestRedeemTx, this.account, this.api.events.redeem.RequestRedeem);
-        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
-        const redeemRequest = await this.getRequestById(id);
-        return { id, redeemRequest };
+        const txes = new Array<SubmittableExtrinsic<"promise">>();
+        for (const [vault, amount] of amountsPerVault) {
+            txes.push(this.api.tx.redeem.requestRedeem(amount, btcAddress, vault));
+        }
+        const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
+        try {
+            const result = await this.transaction.sendLogged(batch, this.account, this.api.events.issue.RequestIssue);
+            const ids = this.getRedeemIdsFromEvents(result.events);
+            const redeemRequests = await this.getRequestsById(ids);
+            return ids.map((id, idx) => ({ id, redeemRequest: redeemRequests[idx] }));
+        } catch (e) {
+            return Promise.reject(e.message);
+        }
     }
 
     async execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
@@ -170,9 +211,16 @@ export class DefaultRedeemAPI {
             throw new Error("cannot execute without setting account");
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
-        const result = await this.transaction.sendLogged(executeRedeemTx, this.account, this.api.events.redeem.ExecuteRedeem);
-        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
-        if (id) {
+        const result = await this.transaction.sendLogged(
+            executeRedeemTx,
+            this.account,
+            this.api.events.redeem.ExecuteRedeem
+        );
+        const ids = this.getRedeemIdsFromEvents(result.events);
+        if (ids.length > 1) {
+            throw new Error("Unexpected multiple redeem events from single execute transaction!");
+        }
+        else if (ids.length === 1) {
             return true;
         }
         return false;
@@ -259,8 +307,16 @@ export class DefaultRedeemAPI {
     }
 
     async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {
+        return (await this.getRequestsById([redeemId]))[0];
+    }
+
+    async getRequestsById(redeemIds: H256[]): Promise<RedeemRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork);
+        return Promise.all(
+            redeemIds.map(async (redeemId) =>
+                encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork)
+            )
+        );
     }
 
     setAccount(account: AddressOrPair): void {

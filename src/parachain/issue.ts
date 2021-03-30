@@ -18,6 +18,7 @@ import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import BN from "bn.js";
+import {allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions} from "../utils/issueRedeem";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 export type IssueLimits = { singleVaultMaxIssuable: BN; totalMaxIssuable: BN };
@@ -47,20 +48,16 @@ export interface IssueAPI {
     /**
      * Request issuing of PolkaBTC.
      * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue.
-     * @param availableVaults (optional) A list of all vaults usable for issue. If not provided, will fetch from the
-     * parachain (incurring an extra request).
-     * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
+     * @param options (optional): an object specifying
+     * - atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
-     * @returns An array of type {issueId, vault, error} if the requests succeeded. error will be null for successful
-     * requests; issueId and vault will be null for failed ones.
+     * - availableVaults (optional) A list of all vaults usable for issue. If not provided, will fetch from the parachain.
+     * - retries (optional) Number of times to re-try issuing, if some of the requests fail. Defaults to 0.
+     * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
         amountSat: BN,
-        options?: {
-            availableVaults?: Map<AccountId, BN>,
-            atomic?: boolean,
-            retry?: number,
-        }
+        options?: RequestOptions
     ): Promise<IssueRequestResult[]>;
 
     /**
@@ -70,8 +67,7 @@ export interface IssueAPI {
      * (must correspond to the parachain property)
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
-     * @returns An array of type {issueId, vault, error} if the requests succeeded. error will be null for successful
-     * requests; issueId and vault will be null for failed ones.
+     * @returns An array of type {issueId, vault} if the requests succeeded.
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
     requestAdvanced(
@@ -175,50 +171,8 @@ export class DefaultIssueAPI implements IssueAPI {
      * @returns The issueId associated with the request. If the EventRecord array does not
      * contain issue request events, the function throws an error.
      */
-    private getRequestIdsFromEvents(events: EventRecord[]): Hash[] {
-        const ids = new Array<Hash>();
-        for (const { event } of events) {
-            if (this.api.events.issue.RequestIssue.is(event)) {
-                const hash = this.api.createType("Hash", event.data[0]);
-                ids.push(hash);
-            }
-        }
-        if (ids.length > 0) return ids;
-        throw new Error("Request transaction failed");
-    }
-
-    private allocateAmountsToVaults(
-        vaultsWithIssuableTokens: Map<AccountId, BN>,
-        amountToAllocate: BN
-    ): Map<AccountId, BN> {
-        const maxReservationPercent = 90; // don't reserve more than 90% of a vault's collateral
-        const allocations = new Map<AccountId, BN>();
-        // iterable array in ascending order of issuing capacity:
-        const vaultsArray = [...vaultsWithIssuableTokens.entries()].reverse().map((entry) => [entry[0],
-            entry[1].divn(100).muln(maxReservationPercent)] as [AccountId, BN]);
-        while (amountToAllocate.gtn(0)) {
-            // find first vault that can fulfil request (or undefined if none)
-            const firstSuitable = vaultsArray.findIndex(([_, available]) => available.gte(amountToAllocate));
-            let vault, amount;
-            if (firstSuitable !== -1) {
-                // at least one vault can fulfil in full
-                // select random vault able to fulfil request
-                const range = vaultsArray.length - firstSuitable;
-                const idx = Math.floor(Math.random() * range) + firstSuitable;
-                vault = vaultsArray[idx][0];
-                amount = amountToAllocate;
-            } else {
-                // else allocate greedily
-                if (vaultsArray.length === 0) throw new Error("Insufficient capacity to fulfil request");
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                const largestVault = vaultsArray.pop()!; // length >= 1, so never undefined
-                [vault, amount] = largestVault;
-            }
-            allocations.set(vault, amount.clone());
-            amountToAllocate.isub(amount);
-        }
-
-        return allocations;
+    private getIssueIdsFromEvents(events: EventRecord[]): Hash[] {
+        return getRequestIdsFromEvents(events, this.api.events.issue.RequestIssue, this.api);
     }
 
     private printMap(prefix: string, map: Map<AccountId, BN>) {
@@ -243,10 +197,8 @@ export class DefaultIssueAPI implements IssueAPI {
             const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
             const atomic = !!options?.atomic;
             const retries = options?.retries || 0;
-            this.printMap("Available vaults: ", availableVaults);
             const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
-            const amountsPerVault = this.allocateAmountsToVaults(availableVaults, amountSat);
-            this.printMap("Allocated amounts: ", amountsPerVault);
+            const amountsPerVault = allocateAmountsToVaults(availableVaults, amountSat);
             const result = await this.requestAdvanced(amountsPerVault, griefingCollateralRate, atomic);
             const successfulSum = result.reduce((sum, req) => sum.add(req.issueRequest.amount), new BN(0));
             const remainder = amountSat.sub(successfulSum);
@@ -274,11 +226,9 @@ export class DefaultIssueAPI implements IssueAPI {
             txes.push(this.api.tx.issue.requestIssue(amount, vault, griefingCollateral.toString()));
         }
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
-        console.log(`Atomic: ${atomic}`);
         try {
             const result = await this.transaction.sendLogged(batch, this.account, this.api.events.issue.RequestIssue);
-            const ids = this.getRequestIdsFromEvents(result.events);
-            console.log(ids);
+            const ids = this.getIssueIdsFromEvents(result.events);
             const issueRequests = await this.getRequestsByIds(ids);
             return ids.map((issueId, idx) => ({ id: issueId, issueRequest: issueRequests[idx] }));
         } catch (e) {

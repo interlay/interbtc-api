@@ -78,13 +78,12 @@ describe("redeem", () => {
             );
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
-            charlie = keyring.addFromUri("//Charlie");
 
             // request issue
             issueAPI.setAccount(alice);
             const amountAsSatoshiString = btcToSat(amountAsBtcString);
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-            const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
+            const requestResult = (await issueAPI.request(amountAsSatoshi))[0];
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
             const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
 
@@ -106,7 +105,7 @@ describe("redeem", () => {
             const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
             const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-            const vaultId = api.createType("AccountId", charlie.address);
+            const vaultId = issueRequest.vault;
             const { id, redeemRequest } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
             assert.equal(
                 redeemRequest.vault.toString(),

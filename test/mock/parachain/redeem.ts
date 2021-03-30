@@ -6,6 +6,7 @@ import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import Big from "big.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
+import {RequestOptions} from "../../../src/utils/issueRedeem";
 
 export class MockRedeemAPI implements RedeemAPI {
     execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
@@ -16,8 +17,16 @@ export class MockRedeemAPI implements RedeemAPI {
         throw new Error("Method not implemented.");
     }
 
-    async request(_amount: PolkaBTC, _btcAddressEnc: string, _vaultId?: AccountId): Promise<RequestResult> {
-        return Promise.resolve({ id: <Hash>{}, redeemRequest: (await this.list())[0] });
+    async request(_amount: BN, _btcAddressEnc: string, _options?: RequestOptions): Promise<RequestResult[]> {
+        return Promise.resolve([{ id: <Hash>{}, redeemRequest: (await this.list())[0] }]);
+    }
+
+    async requestAdvanced(
+        _amountsPerVault: Map<AccountId, BN>,
+        _btcAddressEnc: string,
+        _atomic: boolean
+    ): Promise<RequestResult[]> {
+        return this.request(new BN(0), "");
     }
 
     async list(): Promise<RedeemRequestExt[]> {
@@ -50,6 +59,11 @@ export class MockRedeemAPI implements RedeemAPI {
 
     getPagedIterator(_perPage: number): AsyncGenerator<RedeemRequest[]> {
         return {} as AsyncGenerator<RedeemRequest[]>;
+    }
+
+    async getRequestsById(_redeemIds: H256[]): Promise<RedeemRequestExt[]> {
+        const request = await this.getRequestById("");
+        return [request];
     }
 
     async getRequestById(_redeemId: string | Uint8Array | H256): Promise<RedeemRequestExt> {
