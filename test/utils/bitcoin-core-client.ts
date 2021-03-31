@@ -1,4 +1,7 @@
 // disabling linting as `bitcoin-core` has no types, causing the import to fail
+
+import Big from "big.js";
+
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
 
@@ -87,8 +90,12 @@ export class BitcoinCoreClient {
         await delay(n * relayPeriodWithBuffer);
     }
 
-    async getBalance() {
+    async getBalance(): Promise<string> {
         return await this.client.command("getbalance");
+    }
+
+    async sendToAddress(address: string, amount: Big): Promise<void> {
+        return await this.client.command("sendtoaddress", address, amount.toString());
     }
 }
 

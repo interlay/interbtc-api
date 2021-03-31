@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, DOT } from "../../../src/interfaces/default";
+import { PolkaBTC, Vault, DOT, SystemVault } from "../../../src/interfaces/default";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -13,6 +13,12 @@ import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 
 export class MockVaultsAPI implements VaultsAPI {
+    getLiquidationVaultId(): Promise<string> {
+        throw new Error("Method not implemented.");
+    }
+    getLiquidationVault(): Promise<SystemVault> {
+        throw new Error("Method not implemented.");
+    }
     setAccount(_account: AddressOrPair): void {
         return;
     }

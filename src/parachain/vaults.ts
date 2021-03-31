@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet } from "../interfaces/default";
+import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet, SystemVault } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import {
@@ -253,6 +253,14 @@ export interface VaultsAPI {
      * @param amountAsPlanck Value to increase stake by
      */
     lockAdditionalCollateral(amountAsPlanck: DOT): Promise<void>;
+    /**
+     * @returns The account id of the liquidation vault
+     */
+     getLiquidationVaultId(): Promise<string>;
+     /**
+     * @returns A vault object representing the liquidation vault
+     */
+      getLiquidationVault(): Promise<SystemVault>;
 }
 
 export class DefaultVaultsAPI {
@@ -360,6 +368,18 @@ export class DefaultVaultsAPI {
             throw new Error(`No vault registered with id ${vaultId}`);
         }
         return encodeVault(vault, this.btcNetwork);
+    }
+
+    async getLiquidationVaultId(): Promise<string> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const liquidationVaultId = await this.api.query.vaultRegistry.liquidationVaultAccountId.at(head);
+        return liquidationVaultId.toString();
+    }
+
+    async getLiquidationVault(): Promise<SystemVault> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const liquidationVault = await this.api.query.vaultRegistry.liquidationVault.at(head);
+        return liquidationVault;
     }
 
     private isNoTokensIssuedError(e: Error): boolean {

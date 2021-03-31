@@ -17,8 +17,6 @@ import { Buffer } from "buffer";
 import sinon from "sinon";
 import { DefaultCollateralAPI } from "../../../src/parachain/collateral";
 import Big from "big.js";
-import { Transaction } from "../../../src/utils";
-import { ISubmittableResult } from "@polkadot/types/types";
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

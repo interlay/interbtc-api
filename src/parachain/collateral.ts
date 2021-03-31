@@ -1,4 +1,4 @@
-import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
+import { AccountId, Balance as BN } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
@@ -15,17 +15,17 @@ export interface CollateralAPI {
     /**
      * @returns Total locked DOT collateral
      */
-    totalLockedDOT(): Promise<Balance>;
+    totalLockedDOT(): Promise<BN>;
     /**
      * @param id The ID of an account
      * @returns The reserved DOT balance of the given account
      */
-    balanceLockedDOT(id: AccountId): Promise<Balance>;
+    balanceLockedDOT(id: AccountId): Promise<BN>;
     /**
      * @param id The ID of an account
      * @returns The free DOT balance of the given account
      */
-    balanceDOT(id: AccountId): Promise<Balance>;
+    balanceDOT(id: AccountId): Promise<BN>;
     /**
      * Send a transaction that transfers DOT from the caller's address to another address
      * @param address The recipient of the DOT transfer
@@ -41,18 +41,18 @@ export class DefaultCollateralAPI implements CollateralAPI {
         this.transaction = new Transaction(api);
     }
 
-    async totalLockedDOT(): Promise<Balance> {
+    async totalLockedDOT(): Promise<BN> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return this.api.query.collateral.totalCollateral.at(head);
     }
 
-    async balanceLockedDOT(id: AccountId): Promise<Balance> {
+    async balanceLockedDOT(id: AccountId): Promise<BN> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.dot.account.at(head, id);
         return account.reserved;
     }
 
-    async balanceDOT(id: AccountId): Promise<Balance> {
+    async balanceDOT(id: AccountId): Promise<BN> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.dot.account.at(head, id);
         return account.free;
