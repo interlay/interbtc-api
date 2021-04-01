@@ -47,7 +47,8 @@ describe("vaultsAPI", () => {
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
                 randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address
+                randomVault.toHuman() === eve.address ||
+                randomVault.toHuman() === bob.address
         );
     });
 
@@ -62,7 +63,8 @@ describe("vaultsAPI", () => {
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
                 randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address
+                randomVault.toHuman() === eve.address ||
+                randomVault.toHuman() === bob.address
         );
     });
 

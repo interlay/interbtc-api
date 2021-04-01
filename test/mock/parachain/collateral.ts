@@ -5,22 +5,22 @@ import { TypeRegistry } from "@polkadot/types";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 
 export class MockCollateralAPI implements CollateralAPI {
-    async totalLockedDOT(): Promise<Balance> {
+    async totalLocked(): Promise<Balance> {
         const registry = new TypeRegistry();
         return new u128(registry, 128);
     }
 
-    async balanceLockedDOT(_id: AccountId): Promise<Balance> {
+    async balanceLocked(_id: AccountId): Promise<Balance> {
         const registry = new TypeRegistry();
         return new u128(registry, 64);
     }
 
-    async balanceDOT(_id: AccountId): Promise<Balance> {
+    async balance(_id: AccountId): Promise<Balance> {
         const registry = new TypeRegistry();
         return new u128(registry, 32);
     }
 
-    async transferDOT(_address: string, _amount: string | number): Promise<void> {
+    async transfer(_address: string, _amount: string | number): Promise<void> {
         return;
     }
 

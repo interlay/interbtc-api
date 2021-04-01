@@ -165,7 +165,7 @@ describe("redeem", () => {
 
     describe("liquidation redeem", () => {
         it("should liquidate a vault that committed theft", async () => {
-            const vaultToLiquidate = "Ferdie";
+            const vaultToLiquidate = "Bob";
             const aliceBitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
             await issue(api, btcCoreAPI, aliceBitcoinCoreClient, keyring, "0.0001", "Alice", vaultToLiquidate, true, false);
 

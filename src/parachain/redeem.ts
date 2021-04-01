@@ -124,7 +124,7 @@ export interface RedeemAPI {
      */
     getRedeemPeriod(): Promise<BlockNumber>;
     /**
-     * Send a transaction to set the DOT/BTC exchange rate
+     * Burn wrapped tokens for a premium
      * @param amount The amount of PolkaBTC to burn, denominated as PolkaBTC
      */
     burn(amount: Big): Promise<void>;
@@ -134,8 +134,7 @@ export interface RedeemAPI {
     getMaxBurnableTokens(): Promise<Big>;
     /**
      * @returns The exchange rate (collateral currency to wrapped token currency)
-     * used when burning tokens. This exchange rate is at least as favourable to the 
-     * burn requester as the regular exchange rate between the two assets.
+     * used when burning tokens
      */
     getBurnExchangeRate(): Promise<Big>;
 }
@@ -214,8 +213,8 @@ export class DefaultRedeemAPI {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
         const amountSat = this.api.createType("Balance", btcToSat(amount.toString()));
-        const cancelRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
-        await this.transaction.sendLogged(cancelRedeemTx, this.account, this.api.events.redeem.LiquidationRedeem);
+        const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
+        await this.transaction.sendLogged(burnRedeemTx, this.account, this.api.events.redeem.LiquidationRedeem);
     }
 
     async getMaxBurnableTokens(): Promise<Big> {
@@ -230,7 +229,7 @@ export class DefaultRedeemAPI {
             return Promise.reject("There are no burnable tokens. The burn exchange rate is undefined");
         }
         const wrappedBtc = new Big(satToBTC(wrappedSatoshi.toString()));
-        const collateralPlanck = await this.collateralAPI.balanceLockedDOT(liquidationVault.id);
+        const collateralPlanck = await this.collateralAPI.balanceLocked(liquidationVault.id);
         const collateralDot = new Big(planckToDOT(collateralPlanck.toString()));
         return collateralDot.div(wrappedBtc);
     }

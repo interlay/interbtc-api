@@ -144,7 +144,7 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Ferdie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyring=ferdie  --auto-register-with-collateral 1000000000000 --polka-btc-url 'ws://polkabtc:9944'
+                vault --keyring=bob  --auto-register-with-collateral 1000000000000 --polka-btc-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
     testdata_gen:

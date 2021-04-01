@@ -306,7 +306,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         const vaults = await this.vaultsAPI.list();
 
         const collateralizationRates = await Promise.all(
-            vaults.map<Promise<[AccountId, Big | undefined]>>(async (vault) => [
+            vaults.filter(vault => vault.status.isActive).map<Promise<[AccountId, Big | undefined]>>(async (vault) => [
                 vault.id,
                 await this.vaultsAPI.getVaultCollateralization(vault.id),
             ])
@@ -387,7 +387,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
             await this.getFeesPolkaBTC(stakedRelayerId),
             await this.getFeesDOT(stakedRelayerId),
             await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLockedDOT(stakedRelayerId)).toString(),
+            await (await this.collateralAPI.balanceLocked(stakedRelayerId)).toString(),
         ]);
         return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }

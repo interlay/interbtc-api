@@ -464,7 +464,7 @@ export class DefaultVaultsAPI {
     }
 
     async getPolkaBTCCapacity(): Promise<string> {
-        const totalLockedDotAsPlanck = await this.collateralAPI.totalLockedDOT();
+        const totalLockedDotAsPlanck = await this.collateralAPI.totalLocked();
         const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
@@ -565,7 +565,7 @@ export class DefaultVaultsAPI {
             await this.getFeesPolkaBTC(vaultId),
             await this.getFeesDOT(vaultId),
             await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLockedDOT(vaultId)).toString(),
+            await (await this.collateralAPI.balanceLocked(vaultId)).toString(),
         ]);
         return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
     }
