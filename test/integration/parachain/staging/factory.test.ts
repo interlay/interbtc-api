@@ -1,6 +1,6 @@
 import { assert } from "chai";
-import { createPolkadotAPI } from "../../src/factory";
-import { defaultParachainEndpoint } from "../config";
+import { createPolkadotAPI } from "../../../../src/factory";
+import { defaultParachainEndpoint } from "../../../config";
 
 
 describe("createAPI", () => {

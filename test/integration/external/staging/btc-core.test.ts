@@ -1,9 +1,9 @@
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../src/external/btc-core";
-import { createPolkadotAPI } from "../../../src/factory";
-import { defaultParachainEndpoint } from "../../config";
-import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { createPolkadotAPI } from "../../../../src/factory";
+import { defaultParachainEndpoint } from "../../../config";
+import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
 
 describe("BTCCore testnet", function () {
     this.timeout(10000); // API can be slightly slow
