@@ -1,8 +1,8 @@
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, planckToDOT, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-import BN from "bn.js";
+import Big from "big.js";
 /**
  * @category PolkaBTC Bridge
  */
@@ -15,17 +15,17 @@ export interface CollateralAPI {
     /**
      * @returns Total locked collateral
      */
-    totalLocked(): Promise<BN>;
+    totalLocked(): Promise<Big>;
     /**
      * @param id The ID of an account
      * @returns The reserved balance of the given account
      */
-    balanceLocked(id: AccountId): Promise<BN>;
+    balanceLocked(id: AccountId): Promise<Big>;
     /**
      * @param id The ID of an account
      * @returns The free balance of the given account
      */
-    balance(id: AccountId): Promise<BN>;
+    balance(id: AccountId): Promise<Big>;
     /**
      * Send a transaction that transfers from the caller's address to another address
      * @param address The recipient of the transfer
@@ -41,21 +41,22 @@ export class DefaultCollateralAPI implements CollateralAPI {
         this.transaction = new Transaction(api);
     }
 
-    async totalLocked(): Promise<BN> {
+    async totalLocked(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.collateral.totalCollateral.at(head);
+        const totalLockedBN = await this.api.query.collateral.totalCollateral.at(head);
+        return new Big(planckToDOT(totalLockedBN.toString()));
     }
 
-    async balanceLocked(id: AccountId): Promise<BN> {
+    async balanceLocked(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.dot.account.at(head, id);
-        return account.reserved;
+        return new Big(planckToDOT(account.reserved.toString()));
     }
 
-    async balance(id: AccountId): Promise<BN> {
+    async balance(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.dot.account.at(head, id);
-        return account.free;
+        return new Big(planckToDOT(account.free.toString()));
     }
 
     async transfer(address: string, amount: string | number): Promise<void> {

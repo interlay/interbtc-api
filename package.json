@@ -26,6 +26,7 @@
     "test": "run-s build test:*",
     "test:lint": "eslint src --ext .ts",
     "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts",
+    "test:integration": "mocha test/integration/**/*.test.ts --timeout 10000000",
     "test:integration:staging": "mocha test/integration/**/staging/*.test.ts --timeout 10000000",
     "test:integration:release": "mocha test/integration/**/release/*.test.ts --timeout 10000000",
     "watch:build": "tsc -p tsconfig.json -w",
