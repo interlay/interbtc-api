@@ -1,8 +1,8 @@
-import { AccountId, Balance as BN } from "@polkadot/types/interfaces/runtime";
+import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-
+import BN from "bn.js";
 /**
  * @category PolkaBTC Bridge
  */
