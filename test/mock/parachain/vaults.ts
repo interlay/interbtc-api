@@ -188,12 +188,12 @@ export class MockVaultsAPI implements VaultsAPI {
         return new Big(0);
     }
 
-    async getFeesPolkaBTC(_vaultId: AccountId): Promise<string> {
-        return "368";
+    async getFeesPolkaBTC(_vaultId: AccountId): Promise<Big> {
+        return new Big("368");
     }
 
-    async getFeesDOT(_vaultId: AccountId): Promise<string> {
-        return "368";
+    async getFeesDOT(_vaultId: AccountId): Promise<Big> {
+        return new Big("368");
     }
 
     async getAPY(_vaultId: AccountId): Promise<string> {

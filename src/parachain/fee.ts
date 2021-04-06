@@ -26,7 +26,7 @@ export interface FeeAPI {
      * @param dotToBtcRate Conversion rate
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: Big): string;
+    calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big): Promise<string>;
     /**
      * @returns The griefing collateral rate for issuing PolkaBTC
      */
@@ -70,7 +70,8 @@ export class DefaultFeeAPI implements FeeAPI {
         return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 
-    calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: Big): string {
+    async calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big): Promise<string> {
+        const dotToBtcRate = await this.oracleAPI.getExchangeRate();
         const feesPolkaBTCBig = new Big(feesPolkaBTC);
         const feesPolkaBTCInDot = feesPolkaBTCBig.mul(dotToBtcRate);
         const totalFees = new Big(feesDOT).add(feesPolkaBTCInDot);

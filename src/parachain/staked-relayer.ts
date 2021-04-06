@@ -4,7 +4,7 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { pagedIterator, decodeFixedPointType, Transaction, ACCOUNT_NOT_SET_ERROR_MESSAGE } from "../utils";
+import { pagedIterator, decodeFixedPointType, Transaction, ACCOUNT_NOT_SET_ERROR_MESSAGE, satToBTC, planckToDOT } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -84,14 +84,14 @@ export interface StakedRelayerAPI {
     getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
-     * @returns Total rewards in PolkaBTC, denoted in Satoshi, for the given staked relayer
+     * @returns Total rewards in PolkaBTC for the given staked relayer
      */
-    getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<string>;
+    getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
-     * @returns Total rewards in DOT, denoted in Planck, for the given staked relayer
+     * @returns Total rewards in DOT for the given staked relayer
      */
-    getFeesDOT(stakedRelayerId: AccountId): Promise<string>;
+    getFeesDOT(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * Get the total APY for a staked relayer based on the income in PolkaBTC and DOT
      * divided by the locked DOT.
@@ -370,26 +370,25 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return [...activeStatusUpdates, ...inactiveStatusUpdates];
     }
 
-    async getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<string> {
+    async getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const fees = await this.api.query.fee.totalRewardsPolkaBTC.at(head, stakedRelayerId);
-        return fees.toString();
+        return new Big(satToBTC(fees.toString()));
     }
 
-    async getFeesDOT(stakedRelayerId: AccountId): Promise<string> {
+    async getFeesDOT(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const fees = await this.api.query.fee.totalRewardsDOT.at(head, stakedRelayerId);
-        return fees.toString();
+        return new Big(planckToDOT(fees.toString()));
     }
 
     async getAPY(stakedRelayerId: AccountId): Promise<string> {
-        const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
+        const [feesPolkaBTC, feesDOT, lockedDOT] = await Promise.all([
             await this.getFeesPolkaBTC(stakedRelayerId),
             await this.getFeesDOT(stakedRelayerId),
-            await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLocked(stakedRelayerId)).toString(),
+            await this.collateralAPI.balanceLocked(stakedRelayerId),
         ]);
-        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
+        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT);
     }
 
     async getSLA(stakedRelayerId: AccountId): Promise<number> {

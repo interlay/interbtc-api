@@ -17,4 +17,4 @@ jobs:
             - name: Run and set up the parachain, oracle, staked relayer and vault
               run: docker-compose up -d
             - run: yarn install
-            - run: yarn ci:test:release
+            - run: yarn ci:test

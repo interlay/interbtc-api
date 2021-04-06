@@ -148,12 +148,12 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return [createStatusUpdate()];
     }
 
-    async getFeesPolkaBTC(_stakedRelayerId: AccountId): Promise<string> {
-        return "10.22";
+    async getFeesPolkaBTC(_stakedRelayerId: AccountId): Promise<Big> {
+        return new Big("10.22");
     }
 
-    async getFeesDOT(_stakedRelayerId: AccountId): Promise<string> {
-        return "10.22";
+    async getFeesDOT(_stakedRelayerId: AccountId): Promise<Big> {
+        return new Big("10.22");
     }
 
     async getAPY(_stakedRelayerId: AccountId): Promise<string> {
