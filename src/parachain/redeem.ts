@@ -11,7 +11,10 @@ import {
     decodeFixedPointType,
     Transaction,
     encodeParachainRequest,
-    ACCOUNT_NOT_SET_ERROR_MESSAGE
+    ACCOUNT_NOT_SET_ERROR_MESSAGE,
+    btcToSat,
+    satToBTC,
+    planckToDOT
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
@@ -19,6 +22,8 @@ import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
+import { CollateralAPI } from ".";
+import { DefaultCollateralAPI } from "./collateral";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -118,16 +123,32 @@ export interface RedeemAPI {
      * and required completion time by a user.
      */
     getRedeemPeriod(): Promise<BlockNumber>;
+    /**
+     * Burn wrapped tokens for a premium
+     * @param amount The amount of PolkaBTC to burn, denominated as PolkaBTC
+     */
+    burn(amount: Big): Promise<void>;
+    /**
+     * @returns The maximum amount of tokens that can be burned through a liquidation redeem
+     */
+    getMaxBurnableTokens(): Promise<Big>;
+    /**
+     * @returns The exchange rate (collateral currency to wrapped token currency)
+     * used when burning tokens
+     */
+    getBurnExchangeRate(): Promise<Big>;
 }
 
 export class DefaultRedeemAPI {
     private vaultsAPI: VaultsAPI;
+    private collateralAPI: CollateralAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
     transaction: Transaction;
 
     constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
+        this.collateralAPI = new DefaultCollateralAPI(api, account);
         this.transaction = new Transaction(api);
     }
 
@@ -185,6 +206,32 @@ export class DefaultRedeemAPI {
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
         await this.transaction.sendLogged(cancelRedeemTx, this.account, this.api.events.redeem.CancelRedeem);
+    }
+
+    async burn(amount: Big): Promise<void> {
+        if (!this.account) {
+            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+        }
+        const amountSat = this.api.createType("Balance", btcToSat(amount.toString()));
+        const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
+        await this.transaction.sendLogged(burnRedeemTx, this.account, this.api.events.redeem.LiquidationRedeem);
+    }
+
+    async getMaxBurnableTokens(): Promise<Big> {
+        const liquidationVault = await this.vaultsAPI.getLiquidationVault();
+        return new Big(satToBTC(liquidationVault.issued_tokens.toString()));
+    }
+
+    async getBurnExchangeRate(): Promise<Big> {
+        const liquidationVault = await this.vaultsAPI.getLiquidationVault();
+        const wrappedSatoshi = liquidationVault.issued_tokens.add(liquidationVault.to_be_issued_tokens);
+        if(wrappedSatoshi.isZero()) {
+            return Promise.reject("There are no burnable tokens. The burn exchange rate is undefined");
+        }
+        const wrappedBtc = new Big(satToBTC(wrappedSatoshi.toString()));
+        const collateralPlanck = await this.collateralAPI.balanceLocked(liquidationVault.id);
+        const collateralDot = new Big(planckToDOT(collateralPlanck.toString()));
+        return collateralDot.div(wrappedBtc);
     }
 
     async list(): Promise<RedeemRequestExt[]> {

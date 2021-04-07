@@ -1,4 +1,4 @@
-import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet } from "../interfaces/default";
+import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet, SystemVault } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
 import {
@@ -197,14 +197,14 @@ export interface VaultsAPI {
     getSecureCollateralThreshold(): Promise<Big>;
     /**
      * @param vaultId The vault account ID
-     * @returns The total PolkaBTC reward collected by the vault, denoted in Satoshi
+     * @returns The total PolkaBTC reward collected by the vault
      */
-    getFeesPolkaBTC(vaultId: AccountId): Promise<string>;
+    getFeesPolkaBTC(vaultId: AccountId): Promise<Big>;
     /**
      * @param vaultId The vault account ID
-     * @returns The total DOT reward collected by the vault, denoted in Planck
+     * @returns The total DOT reward collected by the vault
      */
-    getFeesDOT(vaultId: AccountId): Promise<string>;
+    getFeesDOT(vaultId: AccountId): Promise<Big>;
     /**
      * Get the total APY for a vault based on the income in PolkaBTC and DOT
      * divided by the locked DOT.
@@ -253,6 +253,14 @@ export interface VaultsAPI {
      * @param amountAsPlanck Value to increase stake by
      */
     lockAdditionalCollateral(amountAsPlanck: DOT): Promise<void>;
+    /**
+     * @returns The account id of the liquidation vault
+     */
+     getLiquidationVaultId(): Promise<string>;
+     /**
+     * @returns A vault object representing the liquidation vault
+     */
+      getLiquidationVault(): Promise<SystemVault>;
 }
 
 export class DefaultVaultsAPI {
@@ -362,6 +370,18 @@ export class DefaultVaultsAPI {
         return encodeVault(vault, this.btcNetwork);
     }
 
+    async getLiquidationVaultId(): Promise<string> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const liquidationVaultId = await this.api.query.vaultRegistry.liquidationVaultAccountId.at(head);
+        return liquidationVaultId.toString();
+    }
+
+    async getLiquidationVault(): Promise<SystemVault> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const liquidationVault = await this.api.query.vaultRegistry.liquidationVault.at(head);
+        return liquidationVault;
+    }
+
     private isNoTokensIssuedError(e: Error): boolean {
         return e.message.includes("NoTokensIssued");
     }
@@ -444,8 +464,7 @@ export class DefaultVaultsAPI {
     }
 
     async getPolkaBTCCapacity(): Promise<string> {
-        const totalLockedDotAsPlanck = await this.collateralAPI.totalLockedDOT();
-        const totalLockedDot = new Big(planckToDOT(totalLockedDotAsPlanck.toString()));
+        const totalLockedDot = await this.collateralAPI.totalLocked();
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
         const exchangeRateU128 = new Big(exchangeRate);
@@ -529,25 +548,25 @@ export class DefaultVaultsAPI {
         return new Big(decodeFixedPointType(threshold));
     }
 
-    async getFeesPolkaBTC(vaultId: AccountId): Promise<string> {
+    async getFeesPolkaBTC(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const parsedId = this.api.createType("AccountId", vaultId);
-        return (await this.api.query.fee.totalRewardsPolkaBTC.at(head, parsedId)).toString();
+        const feesSatoshi = (await this.api.query.fee.totalRewardsPolkaBTC.at(head, vaultId)).toString();
+        return new Big(satToBTC(feesSatoshi));
     }
 
-    async getFeesDOT(vaultId: AccountId): Promise<string> {
+    async getFeesDOT(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return (await this.api.query.fee.totalRewardsDOT.at(head, vaultId)).toString();
+        const feesPlanck = (await this.api.query.fee.totalRewardsDOT.at(head, vaultId)).toString();
+        return new Big(planckToDOT(feesPlanck));
     }
 
     async getAPY(vaultId: AccountId): Promise<string> {
-        const [feesPolkaBTC, feesDOT, dotToBtcRate, lockedDOT] = await Promise.all([
+        const [feesPolkaBTC, feesDOT, lockedDOT] = await Promise.all([
             await this.getFeesPolkaBTC(vaultId),
             await this.getFeesDOT(vaultId),
-            await this.oracleAPI.getExchangeRate(),
-            await (await this.collateralAPI.balanceLockedDOT(vaultId)).toString(),
+            await this.collateralAPI.balanceLocked(vaultId),
         ]);
-        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT, dotToBtcRate);
+        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT);
     }
 
     async getSLA(vaultId: AccountId): Promise<string> {

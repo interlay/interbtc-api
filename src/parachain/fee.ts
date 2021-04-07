@@ -23,10 +23,10 @@ export interface FeeAPI {
      * @param feesPolkaBTC Satoshi value representing the BTC fees accrued
      * @param feesDOT Planck value representing the DOT fees accrued
      * @param lockedDOT Planck value representing the value locked to gain yield
-     * @param dotToBtcRate Conversion rate
+     * @param dotToBtcRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: Big): string;
+    calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string>;
     /**
      * @returns The griefing collateral rate for issuing PolkaBTC
      */
@@ -70,13 +70,14 @@ export class DefaultFeeAPI implements FeeAPI {
         return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 
-    calculateAPY(feesPolkaBTC: string, feesDOT: string, lockedDOT: string, dotToBtcRate: Big): string {
-        const feesPolkaBTCBig = new Big(feesPolkaBTC);
-        const feesPolkaBTCInDot = feesPolkaBTCBig.mul(dotToBtcRate);
-        const totalFees = new Big(feesDOT).add(feesPolkaBTCInDot);
-        const lockedDotBig = new Big(lockedDOT);
+    async calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string> {
+        if(dotToBtcRate === undefined) {
+            dotToBtcRate = await this.oracleAPI.getExchangeRate();
+        }
+        const feesPolkaBTCInDot = feesPolkaBTC.mul(dotToBtcRate);
+        const totalFees = feesDOT.add(feesPolkaBTCInDot);
 
         // convert to percent
-        return totalFees.div(lockedDotBig).mul(100).toString();
+        return totalFees.div(lockedDOT).mul(100).toString();
     }
 }

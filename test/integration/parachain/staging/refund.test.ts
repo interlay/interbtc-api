@@ -1,18 +1,17 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { DefaultIssueAPI } from "../../../src/parachain/issue";
-import { DefaultBTCCoreAPI } from "../../../src/external/btc-core";
-import { issue } from "./issue.test";
-import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
-import { createPolkadotAPI } from "../../../src/factory";
-import { defaultParachainEndpoint } from "../../config";
+import { DefaultIssueAPI } from "../../../../src/parachain/issue";
+import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import { createPolkadotAPI } from "../../../../src/factory";
+import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { DefaultRefundAPI } from "../../../src/parachain/refund";
+import { DefaultRefundAPI } from "../../../../src/parachain/refund";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { assert } from "../../chai";
+import { assert } from "../../../chai";
+import { issue } from "../../../utils/issue";
 
 describe("refund", () => {
     let api: ApiPromise;
-    let issueAPI: DefaultIssueAPI;
     let btcCoreAPI: DefaultBTCCoreAPI;
     let refundAPI: DefaultRefundAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
@@ -26,7 +25,6 @@ describe("refund", () => {
         alice = keyring.addFromUri("//Alice");
         btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
         refundAPI = new DefaultRefundAPI(api, bitcoin.networks.regtest);
         refundAPI.setAccount(alice);
     });

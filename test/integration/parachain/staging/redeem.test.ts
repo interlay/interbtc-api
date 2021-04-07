@@ -1,16 +1,16 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import { DefaultRedeemAPI } from "../../../src/parachain/redeem";
-import { createPolkadotAPI } from "../../../src/factory";
-import { Vault } from "../../../src/interfaces/default";
-import { assert } from "../../chai";
-import { defaultParachainEndpoint } from "../../config";
-import { DefaultIssueAPI } from "../../../src/parachain/issue";
-import { btcToSat, stripHexPrefix, satToBTC } from "../../../src/utils";
+import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
+import { createPolkadotAPI } from "../../../../src/factory";
+import { Vault } from "../../../../src/interfaces/default";
+import { assert } from "../../../chai";
+import { defaultParachainEndpoint } from "../../../config";
+import { DefaultIssueAPI } from "../../../../src/parachain/issue";
+import { btcToSat, stripHexPrefix, satToBTC } from "../../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
-import { DefaultTreasuryAPI } from "../../../src/parachain/treasury";
-import { BitcoinCoreClient } from "../../utils/bitcoin-core-client";
+import { DefaultTreasuryAPI } from "../../../../src/parachain/treasury";
+import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
 import BN from "bn.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -153,4 +153,5 @@ describe("redeem", () => {
             assert.equal(premiumRedeemFee, "0.05");
         });
     });
+
 });

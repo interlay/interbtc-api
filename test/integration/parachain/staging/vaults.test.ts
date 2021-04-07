@@ -1,9 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { DefaultVaultsAPI } from "../../../src/parachain/vaults";
-import { createPolkadotAPI } from "../../../src/factory";
-import { assert } from "../../chai";
-import { defaultParachainEndpoint } from "../../config";
+import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
+import { createPolkadotAPI } from "../../../../src/factory";
+import { assert } from "../../../chai";
+import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import Big from "big.js";
 import { TypeRegistry } from "@polkadot/types";
@@ -42,32 +42,34 @@ describe("vaultsAPI", () => {
     });
 
     it("should select random vault for issue", async () => {
-        const polkaBTCCollateral = api.createType("PolkaBTC", 0);
+        const polkaBTCCollateral = api.createType("Balance", 0);
         const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
                 randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address
+                randomVault.toHuman() === eve.address ||
+                randomVault.toHuman() === bob.address
         );
     });
 
     it("should fail if no vault for issuing is found", async () => {
-        const polkaBTCCollateral = api.createType("PolkaBTC", 90000000000);
+        const polkaBTCCollateral = api.createType("Balance", 90000000000);
         assert.isRejected(vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral));
     });
 
     it("should select random vault for redeem", async () => {
-        const polkaBTCCollateral = api.createType("PolkaBTC", 0);
+        const polkaBTCCollateral = api.createType("Balance", 0);
         const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
         assert.isTrue(
             randomVault.toHuman() === dave.address ||
                 randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address
+                randomVault.toHuman() === eve.address ||
+                randomVault.toHuman() === bob.address
         );
     });
 
     it("should fail if no vault for redeeming is found", async () => {
-        const polkaBTCCollateral = api.createType("PolkaBTC", 90000000000);
+        const polkaBTCCollateral = api.createType("Balance", 90000000000);
         assert.isRejected(vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral));
     });
 
