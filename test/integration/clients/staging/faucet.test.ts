@@ -1,10 +1,10 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { FaucetClient } from "../../../src/clients";
-import { createPolkadotAPI } from "../../../src/factory";
-import { defaultParachainEndpoint, defaultFaucetEndpoint } from "../../config";
+import { FaucetClient } from "../../../../src/clients";
+import { createPolkadotAPI } from "../../../../src/factory";
+import { defaultParachainEndpoint, defaultFaucetEndpoint } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountData } from "@polkadot/types/interfaces/balances";
-import { assert } from "../../chai";
+import { assert } from "../../../chai";
 import Big from "big.js";
 
 describe("Faucet", function () {

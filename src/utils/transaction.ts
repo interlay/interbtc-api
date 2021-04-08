@@ -59,7 +59,7 @@ export class Transaction implements TransactionAPI {
         unsubscribe(result);
         this.printEvents(result.events);
 
-        if (successEventType && !this.isSuccessful(result.events, successEventType)) {
+        if (successEventType && !this.doesArrayContainEvent(result.events, successEventType)) {
             Promise.reject("Transaction failed");
         }
         return result;
@@ -69,7 +69,7 @@ export class Transaction implements TransactionAPI {
         let foundErrorEvent = false;
         let errorMessage = "";
         events
-            .flatMap(({ event }) => event.data)
+            .map(({ event }) => event.data)
             .forEach((eventData) => {
                 if (this.isDispatchError(eventData)) {
                     try {
@@ -95,12 +95,27 @@ export class Transaction implements TransactionAPI {
             throw new Error(errorMessage);
         }
     }
+
+    async waitForEvent<T extends AnyTuple>(event: AugmentedEvent<ApiTypes, T>): Promise<boolean> {
+        // Use this function with a timeout.
+        // Unless the awaited event occurs, this Promise will never resolve. 
+
+        await new Promise<void>((resolve, _reject) => {
+            this.api.query.system.events((eventsVec) => {
+                const events = eventsVec.toArray();
+                if(this.doesArrayContainEvent(events, event)) {
+                    resolve();
+                }
+            });
+        });
+        return true;
+    }
     
     isDispatchError(eventData: unknown): eventData is DispatchError {
         return (eventData as DispatchError).isModule !== undefined;
     }
 
-    isSuccessful<T extends AnyTuple>(
+    doesArrayContainEvent<T extends AnyTuple>(
         events: EventRecord[],
         eventType: AugmentedEvent<ApiTypes, T>
     ): boolean {

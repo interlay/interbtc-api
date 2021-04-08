@@ -9,6 +9,15 @@ import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/paracha
 import {RequestOptions} from "../../../src/utils/issueRedeem";
 
 export class MockRedeemAPI implements RedeemAPI {
+    burn(amount: Big): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    getMaxBurnableTokens(): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getBurnExchangeRate(): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
         throw new Error("Method not implemented.");
     }

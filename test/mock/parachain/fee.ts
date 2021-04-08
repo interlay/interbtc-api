@@ -17,7 +17,7 @@ export class MockFeeAPI implements FeeAPI {
         throw new Error("Method not implemented.");
     }
 
-    calculateAPY(_feesPolkaBTC: string, _feesDOT: string, _lockedDOT: string, _dotToBtcRate: Big): string {
+    calculateAPY(_feesPolkaBTC: Big, _feesDOT: Big, _lockedDOT: Big): Promise<string> {
         throw new Error("Method not implemented.");
     }
 

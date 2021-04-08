@@ -1,8 +1,8 @@
-import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
+import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, planckToDOT, Transaction } from "../utils";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-
+import Big from "big.js";
 /**
  * @category PolkaBTC Bridge
  */
@@ -13,25 +13,25 @@ export interface CollateralAPI {
      */
     setAccount(account: AddressOrPair): void;
     /**
-     * @returns Total locked DOT collateral
+     * @returns Total locked collateral
      */
-    totalLockedDOT(): Promise<Balance>;
+    totalLocked(): Promise<Big>;
     /**
      * @param id The ID of an account
-     * @returns The reserved DOT balance of the given account
+     * @returns The reserved balance of the given account
      */
-    balanceLockedDOT(id: AccountId): Promise<Balance>;
+    balanceLocked(id: AccountId): Promise<Big>;
     /**
      * @param id The ID of an account
-     * @returns The free DOT balance of the given account
+     * @returns The free balance of the given account
      */
-    balanceDOT(id: AccountId): Promise<Balance>;
+    balance(id: AccountId): Promise<Big>;
     /**
-     * Send a transaction that transfers DOT from the caller's address to another address
-     * @param address The recipient of the DOT transfer
-     * @param amount The DOT balance to transfer
+     * Send a transaction that transfers from the caller's address to another address
+     * @param address The recipient of the transfer
+     * @param amount The balance to transfer
      */
-    transferDOT(address: string, amount: string | number): Promise<void>;
+    transfer(address: string, amount: string | number): Promise<void>;
 }
 
 export class DefaultCollateralAPI implements CollateralAPI {
@@ -41,24 +41,25 @@ export class DefaultCollateralAPI implements CollateralAPI {
         this.transaction = new Transaction(api);
     }
 
-    async totalLockedDOT(): Promise<Balance> {
+    async totalLocked(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.collateral.totalCollateral.at(head);
+        const totalLockedBN = await this.api.query.collateral.totalCollateral.at(head);
+        return new Big(planckToDOT(totalLockedBN.toString()));
     }
 
-    async balanceLockedDOT(id: AccountId): Promise<Balance> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const account = await this.api.query.dot.account.at(head, id);
-        return account.reserved;
-    }
-
-    async balanceDOT(id: AccountId): Promise<Balance> {
+    async balanceLocked(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.dot.account.at(head, id);
-        return account.free;
+        return new Big(planckToDOT(account.reserved.toString()));
     }
 
-    async transferDOT(address: string, amount: string | number): Promise<void> {
+    async balance(id: AccountId): Promise<Big> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const account = await this.api.query.dot.account.at(head, id);
+        return new Big(planckToDOT(account.free.toString()));
+    }
+
+    async transfer(address: string, amount: string | number): Promise<void> {
         if (!this.account) {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }

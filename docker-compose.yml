@@ -90,11 +90,11 @@ services:
             - |
                 echo "Sleeping..."
                 sleep 5
-                faucet --keyring=ferdie --polka-btc-url 'ws://polkabtc:9944' --user-allowance 1 --vault-allowance 500 --http-addr '[::0]:3035'
+                faucet --keyring=ferdie --polka-btc-url 'ws://polkabtc:9944' --user-allowance 1 --vault-allowance 500 --http-addr '[::0]:3036'
         environment:
             RUST_LOG: info
         ports:
-            - "3035:3035"
+            - "3036:3036"
     vault_1:
         image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.1"
         command:
@@ -132,6 +132,32 @@ services:
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
                 vault --keyring=eve  --auto-register-with-collateral 1000000000000 --no-issue-execution --polka-btc-url 'ws://polkabtc:9944'
+        environment:
+            <<: *client-env
+    vault_to_liquidate:
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.1"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Ferdie wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                vault --keyring=bob  --auto-register-with-collateral 1000000000000 --polka-btc-url 'ws://polkabtc:9944'
+        environment:
+            <<: *client-env
+    vault_to_fill:
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.1"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Charlie wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                vault --keyring=ferdie  --auto-register-with-collateral 1000000000000001001 --polka-btc-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
     testdata_gen:
