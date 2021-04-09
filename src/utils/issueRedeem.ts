@@ -55,7 +55,6 @@ export function allocateAmountsToVaults(
         .reverse()
         .map((entry) => [entry[0], entry[1].divn(100).muln(maxReservationPercent)] as [AccountId, BN]);
     while (amountToAllocate.gtn(0)) {
-        printMap("current allocation: ", allocations);
         // find first vault that can fulfil request (or undefined if none)
         const firstSuitable = vaultsArray.findIndex(([_, available]) => available.gte(amountToAllocate));
         let vault, amount;

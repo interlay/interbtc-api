@@ -175,12 +175,6 @@ export class DefaultIssueAPI implements IssueAPI {
         return getRequestIdsFromEvents(events, this.api.events.issue.RequestIssue, this.api);
     }
 
-    private printMap(prefix: string, map: Map<AccountId, BN>) {
-        console.log([...map.entries()].reduce((acc, entry) =>
-            acc += `vault: ${entry[0]}, amount: ${entry[1]}; `
-        , prefix));
-    }
-
     async request(
         amountSat: BN,
         options?: {
@@ -202,10 +196,8 @@ export class DefaultIssueAPI implements IssueAPI {
             const result = await this.requestAdvanced(amountsPerVault, griefingCollateralRate, atomic);
             const successfulSum = result.reduce((sum, req) => sum.add(req.issueRequest.amount), new BN(0));
             const remainder = amountSat.sub(successfulSum);
-            console.log("Checking for remainder...");
             if (remainder.eqn(0) || retries === 0) return result;
             else {
-                console.log("    ...retrying");
                 return (await this.request(remainder, {availableVaults, atomic, retries: retries - 1})).concat(result);
             }
         } catch (e) {
@@ -221,8 +213,6 @@ export class DefaultIssueAPI implements IssueAPI {
         if (!this.account) {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
-        console.log("Requesting Advanced...");
-        this.printMap("Allocated vaults: ", amountsPerVault);
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
             const griefingCollateral = await this.feeAPI.getGriefingCollateralInPlanck(amount as PolkaBTC, griefingCollateralRate);
@@ -233,16 +223,6 @@ export class DefaultIssueAPI implements IssueAPI {
             const result = await this.transaction.sendLogged(batch, this.account, this.api.events.issue.RequestIssue);
             const ids = this.getIssueIdsFromEvents(result.events);
             const issueRequests = await this.getRequestsByIds(ids);
-            console.log("Result:");
-            issueRequests.forEach((ir, idx) => {
-                console.log(`    ${idx}:\n`);
-                console.log(`        vault: ${ir.vault.toString()}`);
-                console.log(`        opentime: ${ir.opentime.toString()}`);
-                console.log(`        griefing_collateral: ${ir.griefing_collateral.toString()}`);
-                console.log(`        amount: ${ir.amount.toString()}`);
-                console.log(`        fee: ${ir.fee.toString()}`);
-                console.log(`        requester: ${ir.requester.toString()}`);
-            });
             return ids.map((issueId, idx) => ({ id: issueId, issueRequest: issueRequests[idx] }));
         } catch (e) {
             return Promise.reject(e.message);
