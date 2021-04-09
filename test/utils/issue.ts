@@ -98,10 +98,10 @@ export async function issue(
 
     return {
         request: requestResult,
-        initialDotBalance: new Big(initialBalanceDOT.toString()),
-        finalDotBalance: new Big(finalBalanceDOT.toString()),
-        initialPolkaBtcBalance: new Big(initialBalancePolkaBTC.toString()),
-        finalPolkaBtcBalance: new Big(finalBalancePolkaBTC.toString()),
+        initialDotBalance: initialBalanceDOT,
+        finalDotBalance: finalBalanceDOT,
+        initialPolkaBtcBalance: initialBalancePolkaBTC,
+        finalPolkaBtcBalance: finalBalancePolkaBTC,
     };
 }
 

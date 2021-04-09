@@ -14,7 +14,7 @@ import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
 import Big from "big.js";
 import { issue } from "../../../utils/issue";
 
-describe("issue", () => {
+describe.only("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let btcCoreAPI: DefaultBTCCoreAPI;
@@ -83,7 +83,7 @@ describe("issue", () => {
         });
     });
 
-    describe("execute", () => {
+    describe.only("execute", () => {
         it("should fail if no account is set", async () => {
             const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
             const issueId: H256 = <H256>{};
@@ -110,9 +110,7 @@ describe("issue", () => {
             );
 
             assert.equal(
-                satToBTC(
-                    issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance.toString()).toString()
-                ),
+                issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
                 amount,
                 "Final balance was not increased by the exact amount specified"
             );
@@ -144,9 +142,7 @@ describe("issue", () => {
                 false
             );
             assert.equal(
-                satToBTC(
-                    issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance.toString()).toString()
-                ),
+                issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
                 amount,
                 "Final balance was not increased by the exact amount specified"
             );
@@ -171,9 +167,7 @@ describe("issue", () => {
                 false
             );
             assert.equal(
-                satToBTC(
-                    issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance.toString()).toString()
-                ),
+                issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
                 amount,
                 "Final balance was not increased by the exact amount specified"
             );
