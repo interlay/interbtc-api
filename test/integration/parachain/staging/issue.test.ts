@@ -14,7 +14,7 @@ import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
 import Big from "big.js";
 import { issue } from "../../../utils/issue";
 
-describe.only("issue", () => {
+describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let btcCoreAPI: DefaultBTCCoreAPI;
@@ -83,7 +83,7 @@ describe.only("issue", () => {
         });
     });
 
-    describe.only("execute", () => {
+    describe("execute", () => {
         it("should fail if no account is set", async () => {
             const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
             const issueId: H256 = <H256>{};
@@ -93,34 +93,6 @@ describe.only("issue", () => {
             await assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
         });
 
-        // auto-execution tests may stall indefinitely, due to vault client inaction.
-        // This will cause the testing pipeline to time out.
-        it("should request and auto-execute issue", async () => {
-            const amount = "0.001";
-            const issueResult = await issue(
-                api,
-                btcCoreAPI,
-                bitcoinCoreClient,
-                keyring,
-                amount,
-                "Alice",
-                "Charlie",
-                true,
-                false
-            );
-
-            assert.equal(
-                issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount,
-                "Final balance was not increased by the exact amount specified"
-            );
-
-            assert.isTrue(
-                issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(new Big(dotToPlanck("1") as string)),
-                "Issue-Redeem were more expensive than 1 DOT"
-            );
-        }).timeout(500000);
-
         it("should fail to request a value finer than 1 Satoshi", async () => {
             const amount = "0.00000121";
             await assert.isRejected(
@@ -128,6 +100,8 @@ describe.only("issue", () => {
             );
         }).timeout(500000);
 
+        // auto-execution tests may stall indefinitely, due to vault client inaction.
+        // This will cause the testing pipeline to time out.
         it("should request and auto-execute issue", async () => {
             const amount = "0.0000121";
             const issueResult = await issue(
