@@ -11,7 +11,7 @@ import { btcToSat, stripHexPrefix, satToBTC } from "../../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI } from "../../../../src/parachain/treasury";
 import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
-import BN from "bn.js";
+import Big from "big.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -121,17 +121,15 @@ describe("redeem", () => {
         }
 
         it("should request and execute issue, request (and wait for execute) redeem", async () => {
-            const initialBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+            const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
-            const amountAsBtcString = "0.1";
-            const redeemAmountAsBtcString = "0.09";
-            await requestAndCallRedeem(blocksToMine, amountAsBtcString, redeemAmountAsBtcString);
+            const issueAmount = new Big("0.1");
+            const redeemAmount = new Big("0.09");
+            await requestAndCallRedeem(blocksToMine, issueAmount.toString(), redeemAmount.toString());
 
             // check redeeming worked
-            const issueAmountAsSatoshi = new BN(btcToSat(amountAsBtcString));
-            const redeemAmountAsSatoshi = new BN(btcToSat(redeemAmountAsBtcString));
-            const expectedBalanceDifferenceAfterRedeem = issueAmountAsSatoshi.sub(redeemAmountAsSatoshi);
-            const finalBalance = await treasuryAPI.balancePolkaBTC(api.createType("AccountId", alice.address));
+            const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(redeemAmount);
+            const finalBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem).toString(), finalBalance.toString());
         }).timeout(1000000);
     });

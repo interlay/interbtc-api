@@ -10,7 +10,7 @@ import { RedeemRequestExt } from "../../../src/parachain/redeem";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { VaultsAPI, VaultExt } from "../../../src/parachain/vaults";
 import Big from "big.js";
-import { AddressOrPair } from "@polkadot/api/types";
+import { IKeyringPair } from "@polkadot/types/types";
 
 export class MockVaultsAPI implements VaultsAPI {
     getLiquidationVaultId(): Promise<string> {
@@ -19,7 +19,7 @@ export class MockVaultsAPI implements VaultsAPI {
     getLiquidationVault(): Promise<SystemVault> {
         throw new Error("Method not implemented.");
     }
-    setAccount(_account: AddressOrPair): void {
+    setAccount(_account: IKeyringPair): void {
         return;
     }
 

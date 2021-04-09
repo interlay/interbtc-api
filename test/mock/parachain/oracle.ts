@@ -1,4 +1,4 @@
-import { AddressOrPair } from "@polkadot/api/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { OracleAPI } from "../../../src/parachain";
 import { BtcTxFees } from "../../../src/parachain/oracle";
 import Big from "big.js";
@@ -49,7 +49,7 @@ export class MockOracleAPI implements OracleAPI {
         return;
     }
 
-    async setAccount(_account: AddressOrPair): Promise<void> {
+    async setAccount(_account: IKeyringPair): Promise<void> {
         return;
     }
 }

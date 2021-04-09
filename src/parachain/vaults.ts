@@ -21,7 +21,7 @@ import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
 import { Network } from "bitcoinjs-lib";
 import { FeeAPI } from "..";
 import { DefaultFeeAPI } from "./fee";
-import { AddressOrPair } from "@polkadot/api/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import BN from "bn.js";
 
 export interface WalletExt {
@@ -244,7 +244,7 @@ export interface VaultsAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
     /**
      * @param amountAsPlanck Value to withdraw from staking
      */
@@ -271,7 +271,7 @@ export class DefaultVaultsAPI {
     feeAPI: FeeAPI;
     transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: IKeyringPair) {
         this.btcNetwork = btcNetwork;
         this.collateralAPI = new DefaultCollateralAPI(api);
         this.oracleAPI = new DefaultOracleAPI(api);
@@ -609,7 +609,7 @@ export class DefaultVaultsAPI {
         return this.api.createType("Balance", wrappedBalance.amount.toString());
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 }

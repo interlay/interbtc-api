@@ -4,14 +4,14 @@ import { PolkaBTC, DOT } from "../../../src/interfaces/default";
 import BN from "bn.js";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/types";
+import { IKeyringPair } from "@polkadot/types/types";
 
 export class MockReplaceAPI implements ReplaceAPI {
     withdraw(_requestId: string): Promise<void> {
         return Promise.resolve();
     }
     
-    setAccount(_account: AddressOrPair): void {
+    setAccount(_account: IKeyringPair): void {
         return;
     }
     

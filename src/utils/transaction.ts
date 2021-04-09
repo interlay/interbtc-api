@@ -1,6 +1,5 @@
-import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
-import { ISubmittableResult } from "@polkadot/types/types";
+import { ISubmittableResult, IKeyringPair } from "@polkadot/types/types";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ApiPromise } from "@polkadot/api";
 import { IGNORED_ERROR_MESSAGES } from "./constants";
@@ -19,7 +18,7 @@ export interface TransactionAPI {
      */
      sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
-        signer: AddressOrPair,
+        signer: IKeyringPair,
         successEventType?: AugmentedEvent<ApiTypes, T>
     ): Promise<ISubmittableResult>;
 }
@@ -29,7 +28,7 @@ export class Transaction implements TransactionAPI {
 
     async sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
-        signer: AddressOrPair,
+        signer: IKeyringPair,
         successEventType?: AugmentedEvent<ApiTypes, T>
     ): Promise<ISubmittableResult> {
         // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
@@ -110,7 +109,7 @@ export class Transaction implements TransactionAPI {
         });
         return true;
     }
-    
+
     isDispatchError(eventData: unknown): eventData is DispatchError {
         return (eventData as DispatchError).isModule !== undefined;
     }

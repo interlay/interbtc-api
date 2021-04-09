@@ -36,7 +36,7 @@ export async function issue(
     issueAPI.setAccount(requester);
     const requesterAccountId = api.createType("AccountId", requester.address);
     const initialBalanceDOT = await collateralAPI.balance(requesterAccountId);
-    const initialBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(requesterAccountId);
+    const initialBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
     const blocksToMine = 3;
     keyring = new Keyring({ type: "sr25519" });
     const vault = keyring.addFromUri("//" + vaultName);
@@ -92,7 +92,7 @@ export async function issue(
     }
 
     // check issuing worked
-    const finalBalancePolkaBTC = await treasuryAPI.balancePolkaBTC(requesterAccountId);
+    const finalBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
 
     const finalBalanceDOT = await collateralAPI.balance(requesterAccountId);
 

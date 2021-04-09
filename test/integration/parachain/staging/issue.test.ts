@@ -93,6 +93,8 @@ describe("issue", () => {
             await assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
         });
 
+        // auto-execution tests may stall indefinitely, due to vault client inaction.
+        // This will cause the testing pipeline to time out.
         it("should request and auto-execute issue", async () => {
             const amount = "0.001";
             const issueResult = await issue(

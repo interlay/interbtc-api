@@ -1,60 +1,85 @@
-import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
+import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, Transaction } from "../utils";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, btcToSat, satToBTC, Transaction } from "../utils";
+import { IKeyringPair } from "@polkadot/types/types";
+import Big from "big.js";
 
 /**
  * @category PolkaBTC Bridge
  */
 export interface TreasuryAPI {
     /**
-     * @returns The total PolkaBTC issued in the system, denoted in Satoshi
+     * @returns The total amount issued in the system
      */
-    totalPolkaBTC(): Promise<Balance>;
+    total(): Promise<Big>;
     /**
      * @param id The AccountId of a user
-     * @returns The user's PolkaBTC balance, denoted in Satoshi
+     * @returns The user's balance
      */
-    balancePolkaBTC(id: AccountId): Promise<Balance>;
+    balance(id: AccountId): Promise<Big>;
     /**
      * @param destination The address of a user
-     * @param amountSatoshi The amount in satoshi to transfer
+     * @param amount The amount to transfer
      */
-    transfer(destination: string, amountSatoshi: string): Promise<void>;
+    transfer(destination: string, amount: Big): Promise<void>;
     /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
+    /**
+     * Subscribe to balance updates
+     * @param account AccountId string
+     * @param callback Function to be called whenever the balance of an account is updated.
+     * Its parameters are (accountIdString, freeBalance)
+     */
+    subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void>;
 }
 
 export class DefaultTreasuryAPI implements TreasuryAPI {
     transaction: Transaction;
 
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, private account?: IKeyringPair) {
         this.transaction = new Transaction(api);
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 
-    async totalPolkaBTC(): Promise<Balance> {
+    async total(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.polkaBtc.totalIssuance.at(head);
+        const totalBN =  this.api.query.polkaBtc.totalIssuance.at(head);
+        return new Big(satToBTC(totalBN.toString()));
     }
 
-    async balancePolkaBTC(id: AccountId): Promise<Balance> {
+    async balance(id: AccountId): Promise<Big> {
         const account = await this.api.query.polkaBtc.account(id);
-        return account.free;
+        return new Big(satToBTC(account.free.toString()));
     }
 
-    async transfer(destination: string, amountSatoshi: string): Promise<void> {
+    async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
+        try {
+            const accountId = this.api.createType("AccountId", account);
+            const unsubscribe = await this.api.query.polkaBtc.account(accountId, (balance) => {
+                callback(account, new Big(satToBTC(balance.free.toString())));
+            });
+            return unsubscribe;
+        } catch (error) {
+            console.log(`Error during treasury balance subscription callback: ${error}`);
+        }
+        // as a fallback, return an empty void function
+        return () => {
+            return;
+        };
+    }
+
+    async transfer(destination: string, amount: Big): Promise<void> {
         if (!this.account) {
             return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
         }
-
-        const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSatoshi);
+        const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount.toString()));
+        const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSmallDenomination);
         await this.transaction.sendLogged(transferTransaction, this.account, this.api.events.polkaBtc.Transfer);
     }
 }

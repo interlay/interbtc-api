@@ -1,25 +1,26 @@
-import { AccountId, Balance } from "@polkadot/types/interfaces/runtime";
+import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { TreasuryAPI } from "../../../src/parachain/treasury";
-import { u128 } from "@polkadot/types/primitive";
-import { TypeRegistry } from "@polkadot/types";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { IKeyringPair } from "@polkadot/types/types";
+import Big from "big.js";
 
 export class MockTreasuryAPI implements TreasuryAPI {
-    async totalPolkaBTC(): Promise<Balance> {
-        const registry = new TypeRegistry();
-        return new u128(registry, 128);
+    subscribeToBalance(_account: string, _callback: (account: string, balance: Big) => void): Promise<() => void> {
+        throw new Error("Method not implemented.");
+    }
+    
+    async total(): Promise<Big> {
+        return new Big(199);
     }
 
-    async balancePolkaBTC(_id: AccountId): Promise<Balance> {
-        const registry = new TypeRegistry();
-        return new u128(registry, 128);
+    async balance(_id: AccountId): Promise<Big> {
+        return new Big(100);
     }
 
-    async transfer(_destination: string, _amountSatoshi: string): Promise<void> {
+    async transfer(_destination: string, _amount: Big): Promise<void> {
         return;
     }
 
-    setAccount(_account: AddressOrPair): void {
+    setAccount(_account: IKeyringPair): void {
         return;
     }
 }

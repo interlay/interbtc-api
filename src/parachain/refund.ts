@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import { RefundRequest } from "../interfaces";
@@ -22,7 +22,7 @@ export interface RefundAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
     /**
      * @returns An array containing the refund requests
      */
@@ -45,9 +45,9 @@ export interface RefundAPI {
 }
 
 export class DefaultRefundAPI {
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) { }
+    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: IKeyringPair) { }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 

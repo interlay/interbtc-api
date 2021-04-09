@@ -1,5 +1,5 @@
 import { PolkaBTC, RedeemRequest, DOT, H256Le } from "../../../src/interfaces/default";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
@@ -79,7 +79,7 @@ export class MockRedeemAPI implements RedeemAPI {
         return Promise.resolve(new BN(1) as PolkaBTC);
     }
 
-    setAccount(_account?: AddressOrPair): void {
+    setAccount(_account?: IKeyringPair): void {
         return;
     }
 

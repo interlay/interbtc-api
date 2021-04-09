@@ -1,5 +1,5 @@
 import { DOT, IssueRequest, PolkaBTC, H256Le } from "../../../src/interfaces/default";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
 import { Bytes, bool } from "@polkadot/types/primitive";
 import BN from "bn.js";
@@ -25,7 +25,7 @@ export class MockIssueAPI implements IssueAPI {
         return Promise.resolve({ id, issueRequest: (await this.list())[0] });
     }
 
-    setAccount(_account?: AddressOrPair): void {
+    setAccount(_account?: IKeyringPair): void {
         return;
     }
 

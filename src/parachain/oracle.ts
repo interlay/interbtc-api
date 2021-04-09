@@ -12,7 +12,7 @@ import {
     storageKeyToFirstInner
 } from "../utils";
 import Big from "big.js";
-import { AddressOrPair } from "@polkadot/api/types";
+import { IKeyringPair } from "@polkadot/types/types";
 
 const defaultFeedName = "DOT/BTC";
 
@@ -69,7 +69,7 @@ export interface OracleAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
     /**
      * @returns The Planck/Satoshi exchange rate
      */
@@ -88,7 +88,7 @@ export interface OracleAPI {
 export class DefaultOracleAPI implements OracleAPI {
     transaction: Transaction;
 
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, private account?: IKeyringPair) {
         this.transaction = new Transaction(api);
     }
 
@@ -194,7 +194,7 @@ export class DefaultOracleAPI implements OracleAPI {
         return rateBig.div(divisor).toString();
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 }

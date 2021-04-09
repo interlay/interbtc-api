@@ -5,7 +5,7 @@ import { Hash } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, encodeBtcAddress, storageKeyToFirstInner, Transaction } from "../utils";
 import { H256 } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import Big from "big.js";
 import { EventRecord } from "@polkadot/types/interfaces/system";
@@ -64,7 +64,7 @@ export interface ReplaceAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
     /**
      * Wihdraw a replace request
      * @param requestId The id of the replace request to withdraw (cancel)
@@ -77,7 +77,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     private feeAPI: FeeAPI;
     transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: IKeyringPair) {
         this.btcNetwork = btcNetwork;
         this.feeAPI = new DefaultFeeAPI(api);
         this.transaction = new Transaction(api);
@@ -161,7 +161,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         return redeemRequestMap;
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 }

@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
@@ -60,7 +60,7 @@ export interface IssueAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
     /**
      * @returns An array containing the issue requests
      */
@@ -107,7 +107,7 @@ export class DefaultIssueAPI implements IssueAPI {
     private feeAPI: FeeAPI;
     transaction: Transaction;
 
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: IKeyringPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.feeAPI = new DefaultFeeAPI(api);
         this.transaction = new Transaction(api);
@@ -217,7 +217,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return encodeIssueRequest(await this.api.query.issue.issueRequests.at(head, issueId), this.btcNetwork);
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 }

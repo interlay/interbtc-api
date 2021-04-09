@@ -1,6 +1,6 @@
 import { PolkaBTC, RedeemRequest, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
@@ -74,7 +74,7 @@ export interface RedeemAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
     /**
      * @param perPage Number of redeem requests to iterate through at a time
      * @returns An AsyncGenerator to be used as an iterator
@@ -146,7 +146,7 @@ export class DefaultRedeemAPI {
     events: EventRecord[] = [];
     transaction: Transaction;
 
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: IKeyringPair) {
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
         this.transaction = new Transaction(api);
@@ -310,7 +310,7 @@ export class DefaultRedeemAPI {
         return encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork);
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 }

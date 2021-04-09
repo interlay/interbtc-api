@@ -10,7 +10,7 @@ import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { AddressOrPair } from "@polkadot/api/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { ErrorCode } from "../interfaces/default";
 
 /**
@@ -154,7 +154,7 @@ export interface StakedRelayerAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: AddressOrPair): void;
+    setAccount(account: IKeyringPair): void;
 }
 
 export interface PendingStatusUpdate {
@@ -171,7 +171,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     private feeAPI: FeeAPI;
     transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(private api: ApiPromise, btcNetwork: Network, private account?: IKeyringPair) {
         this.collateralAPI = new DefaultCollateralAPI(api);
         this.oracleAPI = new DefaultOracleAPI(api);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
@@ -408,7 +408,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         return await this.api.query.stakedRelayers.maturityPeriod.at(head);
     }
 
-    setAccount(account: AddressOrPair): void {
+    setAccount(account: IKeyringPair): void {
         this.account = account;
     }
 }

@@ -1,7 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { Signer } from "@polkadot/api/types";
-import { KeyringPair } from "@polkadot/keyring/types";
+import { IKeyringPair } from "@polkadot/types/types";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "./external/btc-core";
 import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
 import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
@@ -47,8 +45,8 @@ export interface PolkaBTCAPI {
     readonly system: SystemAPI;
     readonly replace: ReplaceAPI;
     readonly fee: FeeAPI;
-    setAccount(account: AddressOrPair, signer?: Signer): void;
-    readonly account: AddressOrPair | undefined;
+    setAccount(account: IKeyringPair): void;
+    readonly account: IKeyringPair | undefined;
 }
 
 /**
@@ -70,7 +68,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly replace: ReplaceAPI;
     public readonly fee: FeeAPI;
 
-    constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
+    constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: IKeyringPair) {
         const btcNetwork = getBitcoinNetwork(network);
         this.vaults = new DefaultVaultsAPI(api, btcNetwork);
         this.issue = new DefaultIssueAPI(api, btcNetwork, _account);
@@ -88,13 +86,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.fee = new DefaultFeeAPI(api);
     }
 
-    setAccount(account: AddressOrPair, signer?: Signer): void {
-        if (!(account as KeyringPair).sign && !signer) {
-            throw new Error("signer must be passed if account is not a Keypair");
-        }
-        if (signer) {
-            this.api.setSigner(signer);
-        }
+    setAccount(account: IKeyringPair): void {
         this._account = account;
         this.issue.setAccount(account);
         this.redeem.setAccount(account);
@@ -104,7 +96,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.stakedRelayer.setAccount(account);
     }
 
-    get account(): AddressOrPair | undefined {
+    get account(): IKeyringPair | undefined {
         return this._account;
     }
 }
