@@ -35,12 +35,6 @@ export function getRequestIdsFromEvents(
     throw new Error("Transaction failed");
 }
 
-function printMap(prefix: string, map: Map<AccountId, BN>) {
-    console.log([...map.entries()].reduce((acc, entry) =>
-        acc += `vault: ${entry[0]}, amount: ${entry[1]}; `
-    , prefix));
-}
-
 /**
  * Given a list of vaults with availabilities (e.g. collateral for issue, tokens
  * for redeem) and an amount to allocate, selects one or more vaults to fulfil
@@ -60,10 +54,7 @@ export function allocateAmountsToVaults(
     const vaultsArray = [...vaultsWithAvailableAmounts.entries()]
         .reverse()
         .map((entry) => [entry[0], entry[1].divn(100).muln(maxReservationPercent)] as [AccountId, BN]);
-    let i = 0;
     while (amountToAllocate.gtn(0)) {
-        console.log(`Iteration ${i}`);
-        ++i;
         printMap("current allocation: ", allocations);
         // find first vault that can fulfil request (or undefined if none)
         const firstSuitable = vaultsArray.findIndex(([_, available]) => available.gte(amountToAllocate));
