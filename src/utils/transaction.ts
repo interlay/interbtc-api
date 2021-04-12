@@ -26,7 +26,7 @@ export class DefaultTransactionAPI {
     ): Promise<ISubmittableResult> {
         const { unsubscribe, result } = await new Promise((resolve, reject) => {
             if (this.account === undefined) {
-                return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+                return reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
             }
 
             let unsubscribe: () => void;
