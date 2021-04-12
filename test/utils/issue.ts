@@ -29,7 +29,7 @@ export async function issue(
     triggerRefund: boolean
 ): Promise<IssueResult> {
     const treasuryAPI = new DefaultTreasuryAPI(api);
-    const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+    const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
     const collateralAPI = new DefaultCollateralAPI(api);
 
     const requester = keyring.addFromUri("//" + requesterName);
@@ -77,13 +77,7 @@ export async function issue(
 
     if (autoExecute === false) {
         // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-        const merkleProof = await btcCoreAPI.getMerkleProof(txData.txid);
-        const parsedIssuedId = api.createType("H256", requestResult.id);
-        // reverse endianness (expects little-endian)
-        const parsedTxId = api.createType("H256", "0x" + Buffer.from(txData.txid, "hex").reverse().toString("hex"));
-        const parsedMerkleProof = api.createType("Bytes", "0x" + merkleProof);
-        const parsedRawTx = api.createType("Bytes", "0x" + txData.rawTx);
-        await issueAPI.execute(parsedIssuedId, parsedTxId, parsedMerkleProof, parsedRawTx);
+        await issueAPI.execute(requestResult.id.toString(), txData.txid);
     } else {
         // wait for vault to execute issue
         while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {

@@ -1,7 +1,6 @@
-import { DOT, IssueRequest, PolkaBTC, H256Le } from "../../../src/interfaces/default";
+import { DOT, IssueRequest, PolkaBTC } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
-import { Bytes } from "@polkadot/types/primitive";
 import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -12,7 +11,7 @@ import Big from "big.js";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
-    execute(_issueId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
+    execute(_issueId: string, _btcTxId: string): Promise<void> {
         return Promise.resolve();
     }
 

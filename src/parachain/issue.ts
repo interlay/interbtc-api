@@ -2,8 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-import { Bytes } from "@polkadot/types/primitive";
-import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
+import { DOT, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
@@ -17,6 +16,7 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { BTCCoreAPI } from "../external";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 
@@ -45,10 +45,8 @@ export interface IssueAPI extends TransactionAPI {
      * Send an issue execution transaction
      * @param issueId The ID returned by the issue request transaction
      * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
-     * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
-     * @param rawTx The raw bytes of the Bitcoin transaction
      */
-    execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
+    execute(issueId: string, txId: string): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -106,7 +104,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
     private vaultsAPI: VaultsAPI;
     private feeAPI: FeeAPI;
 
-    constructor(api: ApiPromise, private btcNetwork: Network, account?: AddressOrPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, private btcCoreAPI: BTCCoreAPI, account?: AddressOrPair) {
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.feeAPI = new DefaultFeeAPI(api);
@@ -144,8 +142,20 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
 
     }
 
-    async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
-        const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
+    async execute(requestId: string, btcTxId: string): Promise<void> {
+        const [merkleProof, rawTx] = await Promise.all([
+            this.btcCoreAPI.getMerkleProof(btcTxId),
+            this.btcCoreAPI.getRawTransaction(btcTxId)
+        ]);
+        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedBtcTxId = this.api.createType(
+            "H256",
+            "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
+        );
+        const parsedMerkleProof = this.api.createType("Bytes", "0x" + merkleProof);
+        const parsedRawTx = this.api.createType("Bytes", "0x" + rawTx.toString("hex"));
+
+        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, parsedBtcTxId, parsedMerkleProof, parsedRawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 

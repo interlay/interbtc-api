@@ -1,11 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { H256 } from "@polkadot/types/interfaces";
-import { Bytes } from "@polkadot/types/primitive";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { H256Le, PolkaBTC } from "../../../../src/interfaces/default";
+import { PolkaBTC } from "../../../../src/interfaces/default";
 import { btcToSat, dotToPlanck } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
@@ -32,8 +30,7 @@ describe("issue", () => {
 
         btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
     });
 
     after(async () => {
@@ -57,7 +54,7 @@ describe("issue", () => {
 
     describe("request", () => {
         it("should fail if no account is set", async () => {
-            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
             const amount = api.createType("Balance", 10);
             await assert.isRejected(tmpIssueAPI.request(amount));
         });
@@ -85,12 +82,8 @@ describe("issue", () => {
 
     describe("execute", () => {
         it("should fail if no account is set", async () => {
-            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest);
-            const issueId: H256 = <H256>{};
-            const txId: H256Le = <H256Le>{};
-            const merkleProof: Bytes = <Bytes>{};
-            const rawTx: Bytes = <Bytes>{};
-            await assert.isRejected(tmpIssueAPI.execute(issueId, txId, merkleProof, rawTx));
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+            await assert.isRejected(tmpIssueAPI.execute("", ""));
         });
 
         it("should fail to request a value finer than 1 Satoshi", async () => {
