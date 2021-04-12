@@ -1,4 +1,4 @@
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { ApiPromise } from "@polkadot/api";
 import { Signer } from "@polkadot/api/types";
 
@@ -49,7 +49,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly refund: RefundAPI;
     public readonly fee: FeeAPI;
 
-    constructor(readonly api: ApiPromise, private _account?: IKeyringPair) {
+    constructor(readonly api: ApiPromise, private _account?: AddressOrPair) {
         this.vaults = new MockVaultsAPI();
         this.issue = new MockIssueAPI();
         this.redeem = new MockRedeemAPI();
@@ -66,11 +66,11 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.fee = new MockFeeAPI();
     }
 
-    setAccount(account: IKeyringPair, _signer?: Signer): void {
+    setAccount(account: AddressOrPair, _signer?: Signer): void {
         this._account = account;
     }
 
-    get account(): IKeyringPair | undefined {
+    get account(): AddressOrPair | undefined {
         return this._account;
     }
 }

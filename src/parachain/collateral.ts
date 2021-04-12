@@ -1,17 +1,12 @@
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, dotToPlanck, planckToDOT, Transaction } from "../utils";
-import { IKeyringPair } from "@polkadot/types/types";
+import { dotToPlanck, planckToDOT, DefaultTransactionAPI, TransactionAPI } from "../utils";
+import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 /**
  * @category PolkaBTC Bridge
  */
-export interface CollateralAPI {
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: IKeyringPair): void;
+export interface CollateralAPI extends TransactionAPI {
     /**
      * @returns Total locked collateral
      */
@@ -41,11 +36,10 @@ export interface CollateralAPI {
     transfer(address: string, amount: Big): Promise<void>;
 }
 
-export class DefaultCollateralAPI implements CollateralAPI {
-    transaction: Transaction;
+export class DefaultCollateralAPI extends DefaultTransactionAPI implements CollateralAPI {
 
-    constructor(private api: ApiPromise, private account?: IKeyringPair) {
-        this.transaction = new Transaction(api);
+    constructor(api: ApiPromise, account?: AddressOrPair) {
+        super(api, account);
     }
 
     async totalLocked(): Promise<Big> {
@@ -83,15 +77,8 @@ export class DefaultCollateralAPI implements CollateralAPI {
     }
 
     async transfer(address: string, amount: Big): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const amountSmallDenomination = this.api.createType("Balance", dotToPlanck(amount.toString()));
         const transferTx = this.api.tx.dot.transfer(address, amountSmallDenomination);
-        await this.transaction.sendLogged(transferTx, this.account, this.api.events.dot.Transfer);
-    }
-
-    setAccount(account: IKeyringPair): void {
-        this.account = account;
+        await this.sendLogged(transferTx, this.api.events.dot.Transfer);
     }
 }

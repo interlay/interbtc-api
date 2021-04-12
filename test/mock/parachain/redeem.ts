@@ -1,14 +1,15 @@
 import { PolkaBTC, RedeemRequest, DOT, H256Le } from "../../../src/interfaces/default";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import Big from "big.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockRedeemAPI implements RedeemAPI {
-    burn(amount: Big): Promise<void> {
+export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
+    burn(_amount: Big): Promise<void> {
         throw new Error("Method not implemented.");
     }
     getMaxBurnableTokens(): Promise<Big> {
@@ -79,7 +80,7 @@ export class MockRedeemAPI implements RedeemAPI {
         return Promise.resolve(new BN(1) as PolkaBTC);
     }
 
-    setAccount(_account?: IKeyringPair): void {
+    setAccount(_account?: AddressOrPair): void {
         return;
     }
 

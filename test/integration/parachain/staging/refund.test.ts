@@ -1,32 +1,26 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { DefaultIssueAPI } from "../../../../src/parachain/issue";
-import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
 import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { DefaultRefundAPI } from "../../../../src/parachain/refund";
-import { KeyringPair } from "@polkadot/keyring/types";
+import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
 import { issue } from "../../../utils/issue";
 
 describe("refund", () => {
     let api: ApiPromise;
-    let btcCoreAPI: DefaultBTCCoreAPI;
-    let refundAPI: DefaultRefundAPI;
+    let btcCoreAPI: BTCCoreAPI;
+    let refundAPI: RefundAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
-    let alice: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
-        // Alice is also the root account
-        alice = keyring.addFromUri("//Alice");
         btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
         refundAPI = new DefaultRefundAPI(api, bitcoin.networks.regtest);
-        refundAPI.setAccount(alice);
     });
 
     after(async () => {

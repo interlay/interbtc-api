@@ -1,5 +1,5 @@
 import { PolkaBTC } from "../../../src/interfaces/default";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 
@@ -12,7 +12,7 @@ export class MockRefundAPI implements RefundAPI {
         return Promise.resolve([]);
     }
 
-    setAccount(_account?: IKeyringPair): void {
+    setAccount(_account?: AddressOrPair): void {
         return;
     }
 

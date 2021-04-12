@@ -1,9 +1,10 @@
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { TreasuryAPI } from "../../../src/parachain/treasury";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockTreasuryAPI implements TreasuryAPI {
+export class MockTreasuryAPI extends MockTransactionAPI implements TreasuryAPI {
     subscribeToBalance(_account: string, _callback: (account: string, balance: Big) => void): Promise<() => void> {
         throw new Error("Method not implemented.");
     }
@@ -20,7 +21,7 @@ export class MockTreasuryAPI implements TreasuryAPI {
         return;
     }
 
-    setAccount(_account: IKeyringPair): void {
+    setAccount(_account: AddressOrPair): void {
         return;
     }
 }

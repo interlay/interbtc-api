@@ -1,5 +1,4 @@
 import { ApiPromise } from "@polkadot/api";
-import { IKeyringPair } from "@polkadot/types/types";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import { RefundRequest } from "../interfaces";
@@ -18,11 +17,6 @@ export function encodeRefundRequest(req: RefundRequest, network: Network): Refun
  * @category PolkaBTC Bridge
  */
 export interface RefundAPI {
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: IKeyringPair): void;
     /**
      * @returns An array containing the refund requests
      */
@@ -44,12 +38,8 @@ export interface RefundAPI {
     getRequestByIssueId(issueId: H256): Promise<RefundRequestExt>;
 }
 
-export class DefaultRefundAPI {
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: IKeyringPair) { }
-
-    setAccount(account: IKeyringPair): void {
-        this.account = account;
-    }
+export class DefaultRefundAPI implements RefundAPI {
+    constructor(private api: ApiPromise, private btcNetwork: Network) { }
 
     async list(): Promise<RefundRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();

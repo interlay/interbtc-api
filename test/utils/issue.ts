@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import * as bitcoin from "bitcoinjs-lib";
 import { fail } from "assert";
 import { btcToSat, satToBTC, IssueRequestExt } from "../../src";
-import { DefaultBTCCoreAPI } from "../../src/external/btc-core";
+import { BTCCoreAPI } from "../../src/external/btc-core";
 import { DefaultCollateralAPI } from "../../src/parachain/collateral";
 import { IssueRequestResult, DefaultIssueAPI } from "../../src/parachain/issue";
 import { DefaultTreasuryAPI } from "../../src/parachain/treasury";
@@ -19,7 +19,7 @@ export interface IssueResult {
 
 export async function issue(
     api: ApiPromise,
-    btcCoreAPI: DefaultBTCCoreAPI,
+    btcCoreAPI: BTCCoreAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     keyring: Keyring,
     amount: string,

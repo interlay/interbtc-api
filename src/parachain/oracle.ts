@@ -6,13 +6,13 @@ import {
     BTC_IN_SAT, 
     DOT_IN_PLANCK, 
     decodeFixedPointType, 
-    Transaction, 
+    DefaultTransactionAPI, 
     encodeUnsignedFixedPoint, 
-    ACCOUNT_NOT_SET_ERROR_MESSAGE, 
-    storageKeyToFirstInner
+    storageKeyToFirstInner,
+    TransactionAPI
 } from "../utils";
 import Big from "big.js";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 
 const defaultFeedName = "DOT/BTC";
 
@@ -25,7 +25,7 @@ export type BtcTxFees = {
 /**
  * @category PolkaBTC Bridge
  */
-export interface OracleAPI {
+export interface OracleAPI extends TransactionAPI {
     /**
      * @returns The DOT/BTC exchange rate
      */
@@ -66,11 +66,6 @@ export interface OracleAPI {
      */
     setBtcTxFeesPerByte(fees: BtcTxFees): Promise<void>;
     /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: IKeyringPair): void;
-    /**
      * @returns The Planck/Satoshi exchange rate
      */
     getRawExchangeRate(): Promise<Big>;
@@ -85,11 +80,10 @@ export interface OracleAPI {
     getOnlineTimeout(): Promise<number>;
 }
 
-export class DefaultOracleAPI implements OracleAPI {
-    transaction: Transaction;
+export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI {
 
-    constructor(private api: ApiPromise, private account?: IKeyringPair) {
-        this.transaction = new Transaction(api);
+    constructor(api: ApiPromise, account?: AddressOrPair) {
+        super(api, account);
     }
 
     async convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big> {
@@ -116,12 +110,9 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async setExchangeRate(dotPerBtc: string): Promise<void> {
-        if (!this.account) {
-            throw new Error("cannot set exchange rate without setting account");
-        }
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
-        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetExchangeRate);
+        await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
@@ -131,9 +122,6 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async setBtcTxFeesPerByte({ fast, half, hour }: BtcTxFees): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         [fast, half, hour].forEach((param) => {
             const big = new Big(param);
             if (!big.round().eq(big)) {
@@ -144,7 +132,7 @@ export class DefaultOracleAPI implements OracleAPI {
             }
         });
         const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
-        await this.transaction.sendLogged(tx, this.account, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
+        await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
     }
 
     async getSourcesById(): Promise<Map<string, string>> {
@@ -192,9 +180,5 @@ export class DefaultOracleAPI implements OracleAPI {
         const rateBig = new Big(rate);
         const divisor = new Big(DOT_IN_PLANCK / BTC_IN_SAT);
         return rateBig.div(divisor).toString();
-    }
-
-    setAccount(account: IKeyringPair): void {
-        this.account = account;
     }
 }

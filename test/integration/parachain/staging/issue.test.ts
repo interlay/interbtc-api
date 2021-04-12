@@ -2,11 +2,11 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { H256 } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
-import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
-import { DefaultIssueAPI } from "../../../../src/parachain/issue";
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { H256Le, PolkaBTC } from "../../../../src/interfaces/default";
-import { btcToSat, dotToPlanck, satToBTC } from "../../../../src/utils";
+import { btcToSat, dotToPlanck } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
@@ -16,8 +16,8 @@ import { issue } from "../../../utils/issue";
 
 describe("issue", () => {
     let api: ApiPromise;
-    let issueAPI: DefaultIssueAPI;
-    let btcCoreAPI: DefaultBTCCoreAPI;
+    let issueAPI: IssueAPI;
+    let btcCoreAPI: BTCCoreAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
 

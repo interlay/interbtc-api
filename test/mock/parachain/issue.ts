@@ -1,7 +1,7 @@
 import { DOT, IssueRequest, PolkaBTC, H256Le } from "../../../src/interfaces/default";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
-import { Bytes, bool } from "@polkadot/types/primitive";
+import { Bytes } from "@polkadot/types/primitive";
 import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
@@ -9,8 +9,9 @@ import { U8aFixed } from "@polkadot/types/codec";
 import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../../src/parachain/issue";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import Big from "big.js";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockIssueAPI implements IssueAPI {
+export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
     execute(_issueId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<void> {
         return Promise.resolve();
     }
@@ -25,7 +26,7 @@ export class MockIssueAPI implements IssueAPI {
         return Promise.resolve({ id, issueRequest: (await this.list())[0] });
     }
 
-    setAccount(_account?: IKeyringPair): void {
+    setAccount(_account?: AddressOrPair): void {
         return;
     }
 

@@ -1,6 +1,6 @@
 import { PolkaBTC, RedeemRequest, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
@@ -9,12 +9,12 @@ import {
     decodeBtcAddress,
     pagedIterator,
     decodeFixedPointType,
-    Transaction,
+    DefaultTransactionAPI,
     encodeParachainRequest,
-    ACCOUNT_NOT_SET_ERROR_MESSAGE,
     btcToSat,
     satToBTC,
-    planckToDOT
+    planckToDOT,
+    TransactionAPI
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
@@ -39,7 +39,7 @@ export function encodeRedeemRequest(req: RedeemRequest, network: Network): Redee
 /**
  * @category PolkaBTC Bridge
  */
-export interface RedeemAPI {
+export interface RedeemAPI extends TransactionAPI {
     /**
      * @returns An array containing the redeem requests
      */
@@ -74,7 +74,7 @@ export interface RedeemAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: IKeyringPair): void;
+    setAccount(account: AddressOrPair): void;
     /**
      * @param perPage Number of redeem requests to iterate through at a time
      * @returns An AsyncGenerator to be used as an iterator
@@ -139,17 +139,16 @@ export interface RedeemAPI {
     getBurnExchangeRate(): Promise<Big>;
 }
 
-export class DefaultRedeemAPI {
+export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
     private vaultsAPI: VaultsAPI;
     private collateralAPI: CollateralAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
-    transaction: Transaction;
 
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: IKeyringPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, account?: AddressOrPair) {
+        super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
-        this.transaction = new Transaction(api);
     }
 
     /**
@@ -171,27 +170,20 @@ export class DefaultRedeemAPI {
     }
 
     async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
         }
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
-        const result = await this.transaction.sendLogged(requestRedeemTx, this.account, this.api.events.redeem.RequestRedeem);
+        const result = await this.sendLogged(requestRedeemTx, this.api.events.redeem.RequestRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
         const redeemRequest = await this.getRequestById(id);
         return { id, redeemRequest };
     }
 
     async execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
-        if (!this.account) {
-            throw new Error("cannot execute without setting account");
-        }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
-        const result = await this.transaction.sendLogged(executeRedeemTx, this.account, this.api.events.redeem.ExecuteRedeem);
+        const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
         if (id) {
             return true;
@@ -200,21 +192,15 @@ export class DefaultRedeemAPI {
     }
 
     async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
-        await this.transaction.sendLogged(cancelRedeemTx, this.account, this.api.events.redeem.CancelRedeem);
+        await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
     async burn(amount: Big): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const amountSat = this.api.createType("Balance", btcToSat(amount.toString()));
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
-        await this.transaction.sendLogged(burnRedeemTx, this.account, this.api.events.redeem.LiquidationRedeem);
+        await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
     }
 
     async getMaxBurnableTokens(): Promise<Big> {
@@ -308,9 +294,5 @@ export class DefaultRedeemAPI {
     async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork);
-    }
-
-    setAccount(account: IKeyringPair): void {
-        this.account = account;
     }
 }

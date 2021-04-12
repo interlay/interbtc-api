@@ -1,10 +1,11 @@
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import { OracleAPI } from "../../../src/parachain";
 import { BtcTxFees } from "../../../src/parachain/oracle";
 import Big from "big.js";
 import { PolkaBTC } from "@interlay/polkabtc/interfaces";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockOracleAPI implements OracleAPI {
+export class MockOracleAPI extends MockTransactionAPI implements OracleAPI {
     getOnlineTimeout(): Promise<number> {
         return Promise.resolve(100);
     }
@@ -49,7 +50,7 @@ export class MockOracleAPI implements OracleAPI {
         return;
     }
 
-    async setAccount(_account: IKeyringPair): Promise<void> {
+    async setAccount(_account: AddressOrPair): Promise<void> {
         return;
     }
 }

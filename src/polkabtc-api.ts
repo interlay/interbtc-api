@@ -1,5 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { Signer } from "@polkadot/api/types";
+import { KeyringPair } from "@polkadot/keyring/types";
 import { BTCCoreAPI, DefaultBTCCoreAPI } from "./external/btc-core";
 import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
 import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
@@ -45,8 +47,8 @@ export interface PolkaBTCAPI {
     readonly system: SystemAPI;
     readonly replace: ReplaceAPI;
     readonly fee: FeeAPI;
-    setAccount(account: IKeyringPair): void;
-    readonly account: IKeyringPair | undefined;
+    setAccount(account: AddressOrPair, signer?: Signer): void;
+    readonly account: AddressOrPair | undefined;
 }
 
 /**
@@ -68,12 +70,12 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly replace: ReplaceAPI;
     public readonly fee: FeeAPI;
 
-    constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: IKeyringPair) {
+    constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
         this.vaults = new DefaultVaultsAPI(api, btcNetwork);
         this.issue = new DefaultIssueAPI(api, btcNetwork, _account);
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, _account);
-        this.refund = new DefaultRefundAPI(api, btcNetwork, _account);
+        this.refund = new DefaultRefundAPI(api, btcNetwork);
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork);
         this.faucet = new FaucetClient("");
         this.oracle = new DefaultOracleAPI(api);
@@ -86,17 +88,17 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.fee = new DefaultFeeAPI(api);
     }
 
-    setAccount(account: IKeyringPair): void {
+    setAccount(account: AddressOrPair, signer?: Signer): void {
+        if (!(account as KeyringPair).sign && !signer) {
+            throw new Error("signer must be passed if account is not a Keypair");
+        }
+        if (signer) {
+            this.api.setSigner(signer);
+        }
         this._account = account;
-        this.issue.setAccount(account);
-        this.redeem.setAccount(account);
-        this.collateral.setAccount(account);
-        this.replace.setAccount(account);
-        this.vaults.setAccount(account);
-        this.stakedRelayer.setAccount(account);
     }
 
-    get account(): IKeyringPair | undefined {
+    get account(): AddressOrPair | undefined {
         return this._account;
     }
 }

@@ -10,16 +10,17 @@ import { RedeemRequestExt } from "../../../src/parachain/redeem";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { VaultsAPI, VaultExt } from "../../../src/parachain/vaults";
 import Big from "big.js";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockVaultsAPI implements VaultsAPI {
+export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getLiquidationVaultId(): Promise<string> {
         throw new Error("Method not implemented.");
     }
     getLiquidationVault(): Promise<SystemVault> {
         throw new Error("Method not implemented.");
     }
-    setAccount(_account: IKeyringPair): void {
+    setAccount(_account: AddressOrPair): void {
         return;
     }
 

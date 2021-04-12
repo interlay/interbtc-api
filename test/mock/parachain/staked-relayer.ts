@@ -7,7 +7,8 @@ import { TypeRegistry } from "@polkadot/types";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { PendingStatusUpdate, StakedRelayerAPI } from "../../../src/parachain/staked-relayer";
 import Big from "big.js";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
+import { MockTransactionAPI } from "../transaction";
 
 function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
     const registry = new TypeRegistry();
@@ -16,7 +17,7 @@ function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
     return { id: new UInt(registry, 0), statusUpdate: statusUpdate };
 }
 
-export class MockStakedRelayerAPI implements StakedRelayerAPI {
+export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRelayerAPI {
     registry = new TypeRegistry();
 
     register(_planckStake: BN): Promise<void> {
@@ -39,7 +40,7 @@ export class MockStakedRelayerAPI implements StakedRelayerAPI {
         return Promise.resolve();
     }
 
-    setAccount(_account: IKeyringPair): void {
+    setAccount(_account: AddressOrPair): void {
         return;
     }
 

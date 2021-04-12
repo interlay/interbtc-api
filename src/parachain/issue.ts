@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { IKeyringPair } from "@polkadot/types/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types/primitive";
@@ -8,10 +8,10 @@ import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
     decodeFixedPointType,
-    Transaction,
+    DefaultTransactionAPI,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
-    ACCOUNT_NOT_SET_ERROR_MESSAGE,
+    TransactionAPI,
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
@@ -32,7 +32,7 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 /**
  * @category PolkaBTC Bridge
  */
-export interface IssueAPI {
+export interface IssueAPI extends TransactionAPI {
     /**
      * Send an issue request transaction
      * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue
@@ -60,7 +60,7 @@ export interface IssueAPI {
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
-    setAccount(account: IKeyringPair): void;
+    setAccount(account: AddressOrPair): void;
     /**
      * @returns An array containing the issue requests
      */
@@ -102,15 +102,14 @@ export interface IssueAPI {
     getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big>;
 }
 
-export class DefaultIssueAPI implements IssueAPI {
+export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  {
     private vaultsAPI: VaultsAPI;
     private feeAPI: FeeAPI;
-    transaction: Transaction;
 
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: IKeyringPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, account?: AddressOrPair) {
+        super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.feeAPI = new DefaultFeeAPI(api);
-        this.transaction = new Transaction(api);
     }
 
     /**
@@ -129,16 +128,12 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
         }
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck.toString());
-        const result = await this.transaction.sendLogged(requestIssueTx, this.account, this.api.events.issue.RequestIssue);
+        const result = await this.sendLogged(requestIssueTx, this.api.events.issue.RequestIssue);
         try {
             const id = this.getRequestIdFromEvents(result.events);
             const issueRequest = await this.getRequestById(id);
@@ -150,20 +145,13 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
-        await this.transaction.sendLogged(executeIssueTx, this.account, this.api.events.issue.ExecuteIssue);
+        await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 
     async cancel(issueId: H256): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
-        await this.transaction.sendLogged(cancelIssueTx, this.account, this.api.events.issue.CancelIssue);
+        await this.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
     }
 
     async list(): Promise<IssueRequestExt[]> {
@@ -215,9 +203,5 @@ export class DefaultIssueAPI implements IssueAPI {
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return encodeIssueRequest(await this.api.query.issue.issueRequests.at(head, issueId), this.btcNetwork);
-    }
-
-    setAccount(account: IKeyringPair): void {
-        this.account = account;
     }
 }
