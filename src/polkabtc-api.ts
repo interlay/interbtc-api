@@ -96,6 +96,12 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
             this.api.setSigner(signer);
         }
         this._account = account;
+        this.issue.setAccount(account);
+        this.redeem.setAccount(account);
+        this.collateral.setAccount(account);
+        this.replace.setAccount(account);
+        this.vaults.setAccount(account);
+        this.stakedRelayer.setAccount(account);
     }
 
     get account(): AddressOrPair | undefined {
