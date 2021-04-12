@@ -1,5 +1,5 @@
-import { AugmentedEvent, SubmittableExtrinsic, ApiTypes } from "@polkadot/api/types";
-import { ISubmittableResult, AddressOrPair, AnyTuple } from "@polkadot/types/types";
+import { AugmentedEvent, SubmittableExtrinsic, ApiTypes, AddressOrPair } from "@polkadot/api/types";
+import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
 import { TransactionAPI } from "../../src";
 
 export class MockTransactionAPI implements TransactionAPI {
