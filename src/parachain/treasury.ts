@@ -6,6 +6,8 @@ import Big from "big.js";
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
 export interface TreasuryAPI extends TransactionAPI {
     /**
@@ -23,7 +25,7 @@ export interface TreasuryAPI extends TransactionAPI {
      */
     transfer(destination: string, amount: Big): Promise<void>;
     /**
-     * Subscribe to balance updates
+     * Subscribe to balance updates, denominated in PolkaBTC
      * @param account AccountId string
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)

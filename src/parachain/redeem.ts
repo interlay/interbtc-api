@@ -38,6 +38,8 @@ export function encodeRedeemRequest(req: RedeemRequest, network: Network): Redee
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
 export interface RedeemAPI extends TransactionAPI {
     /**

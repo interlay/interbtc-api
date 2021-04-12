@@ -5,6 +5,8 @@ import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
 export interface CollateralAPI extends TransactionAPI {
     /**
@@ -22,7 +24,7 @@ export interface CollateralAPI extends TransactionAPI {
      */
     balance(id: AccountId): Promise<Big>;
     /**
-     * Subscribe to free balance updates
+     * Subscribe to free balance updates, denominated in DOT
      * @param account AccountId string
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)

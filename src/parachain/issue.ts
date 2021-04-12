@@ -31,6 +31,8 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
 export interface IssueAPI extends TransactionAPI {
     /**
