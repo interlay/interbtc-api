@@ -30,7 +30,7 @@ describe("redeem", () => {
     });
 
     beforeEach(() => {
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, btcCoreAPI);
     });
 
     after(() => {

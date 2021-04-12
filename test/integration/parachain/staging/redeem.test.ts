@@ -33,9 +33,9 @@ describe("redeem", () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest);
         btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
         issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, btcCoreAPI);
         treasuryAPI = new DefaultTreasuryAPI(api);
     });
 

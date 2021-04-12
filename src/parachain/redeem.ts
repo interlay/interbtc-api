@@ -1,8 +1,7 @@
-import { PolkaBTC, RedeemRequest, H256Le } from "../interfaces/default";
+import { PolkaBTC, RedeemRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
-import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
@@ -24,6 +23,7 @@ import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
+import { BTCCoreAPI } from "../external";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -57,11 +57,9 @@ export interface RedeemAPI extends TransactionAPI {
      * Send a redeem execution transaction
      * @param redeemId The ID returned by the redeem request transaction
      * @param txId The ID of the Bitcoin transaction that sends funds from the vault to the redeemer's address
-     * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
-     * @param rawTx The raw bytes of the Bitcoin transaction
      * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
      */
-    execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
+    execute(redeemId: string, txId: string): Promise<boolean>;
     /**
      * Send a redeem cancellation transaction. After the redeem period has elapsed,
      * the redeemal of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -147,7 +145,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
-    constructor(api: ApiPromise, private btcNetwork: Network, account?: AddressOrPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, private btcCoreAPI: BTCCoreAPI, account?: AddressOrPair) {
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
@@ -183,8 +181,19 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return { id, redeemRequest };
     }
 
-    async execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
-        const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
+    async execute(requestId: string, btcTxId: string): Promise<boolean> {
+        const [merkleProof, rawTx] = await Promise.all([
+            this.btcCoreAPI.getMerkleProof(btcTxId),
+            this.btcCoreAPI.getRawTransaction(btcTxId)
+        ]);
+        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedBtcTxId = this.api.createType(
+            "H256",
+            "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
+        );
+        const parsedMerkleProof = this.api.createType("Bytes", "0x" + merkleProof);
+        const parsedRawTx = this.api.createType("Bytes", "0x" + rawTx.toString("hex"));
+        const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, parsedBtcTxId, parsedMerkleProof, parsedRawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
         if (id) {

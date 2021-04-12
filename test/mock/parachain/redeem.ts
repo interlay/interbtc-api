@@ -1,8 +1,8 @@
-import { PolkaBTC, RedeemRequest, DOT, H256Le } from "../../../src/interfaces/default";
+import { PolkaBTC, RedeemRequest, DOT } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
-import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
+import { TypeRegistry, u32 } from "@polkadot/types";
 import BN from "bn.js";
 import Big from "big.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
@@ -18,7 +18,7 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
     getBurnExchangeRate(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
+    execute(_redeemId: string, _txId: string): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 

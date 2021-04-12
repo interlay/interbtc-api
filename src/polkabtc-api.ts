@@ -75,7 +75,6 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
         this.vaults = new DefaultVaultsAPI(api, btcNetwork, _account);
-        this.redeem = new DefaultRedeemAPI(api, btcNetwork, _account);
         this.refund = new DefaultRefundAPI(api, btcNetwork);
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork, _account);
         this.faucet = new FaucetClient("");
@@ -88,6 +87,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.replace = new DefaultReplaceAPI(api, btcNetwork, _account);
         this.fee = new DefaultFeeAPI(api);
         this.issue = new DefaultIssueAPI(api, btcNetwork, this.btcCore, _account);
+        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.btcCore, _account);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {
