@@ -85,18 +85,32 @@ export class DefaultTransactionAPI {
         }
     }
 
-    static async waitForEvent<T extends AnyTuple>(api: ApiPromise, event: AugmentedEvent<ApiTypes, T>): Promise<boolean> {
+    static async waitForEvent<T extends AnyTuple>(
+        api: ApiPromise,
+        event: AugmentedEvent<ApiTypes, T>,
+        timeoutMs: number
+    ): Promise<boolean> {
         // Use this function with a timeout.
         // Unless the awaited event occurs, this Promise will never resolve. 
-
-        await new Promise<void>((resolve, _reject) => {
-            api.query.system.events((eventsVec) => {
-                const events = eventsVec.toArray();
-                if(this.doesArrayContainEvent(events, event)) {
-                    resolve();
-                }
-            });
+        let timeoutHandle: NodeJS.Timeout;
+        const timeoutPromise = new Promise((resolve, reject) => {
+            timeoutHandle = setTimeout(() => reject(), timeoutMs);
         });
+
+        await Promise.race([ 
+            new Promise<void>((resolve, _reject) => {
+                api.query.system.events((eventsVec) => {
+                    const events = eventsVec.toArray();
+                    if(this.doesArrayContainEvent(events, event)) {
+                        resolve();
+                    }
+                });
+            }), 
+            timeoutPromise, 
+        ]).then((_) => {
+            clearTimeout(timeoutHandle);
+        });
+
         return true;
     }
 

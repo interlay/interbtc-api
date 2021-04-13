@@ -57,7 +57,7 @@ describe("redeem", () => {
             const amount = new Big("0.00001");
             await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amount);
             await vaultBitcoinCoreClient.mineBlocks(3);
-            await DefaultTransactionAPI.waitForEvent(api, api.events.stakedRelayers.VaultTheft);
+            await DefaultTransactionAPI.waitForEvent(api, api.events.stakedRelayers.VaultTheft, 17 * 60000);
 
             // Burn PolkaBTC for a premium, to restore peg
             redeemAPI.setAccount(ferdie);

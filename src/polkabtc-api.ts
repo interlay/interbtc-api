@@ -19,6 +19,7 @@ import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 
 export * from "./factory";
+export * from "./utils/transaction";
 
 function getBitcoinNetwork(network: string = "mainnet"): Network {
     switch (network) {

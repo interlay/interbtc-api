@@ -1,7 +1,12 @@
 import { Transaction } from "@interlay/esplora-btc-api";
+import { Bytes } from "@polkadot/types";
 import { BTCCoreAPI, TxStatus } from "../../../src/external/btc-core";
 
 export class MockBTCCoreAPI implements BTCCoreAPI {
+    getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]> {
+        throw new Error("Method not implemented.");
+    }
+    
     getLatestBlock(): Promise<string> {
         return Promise.resolve("00000000000000000006d0d6796fc5ed2e7be8d5511912bc3e8bdc1cf8d4c63f");
     }
