@@ -8,8 +8,8 @@ import {
     decodeFixedPointType,
     encodeBtcAddress,
     satToBTC,
-    Transaction,
-    ACCOUNT_NOT_SET_ERROR_MESSAGE,
+    DefaultTransactionAPI,
+    TransactionAPI,
 } from "../utils";
 import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
@@ -61,8 +61,10 @@ export function encodeVault(vault: Vault, network: Network): VaultExt {
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
-export interface VaultsAPI {
+export interface VaultsAPI extends TransactionAPI {
     /**
      * @returns An array containing the vaults
      */
@@ -263,44 +265,34 @@ export interface VaultsAPI {
       getLiquidationVault(): Promise<SystemVault>;
 }
 
-export class DefaultVaultsAPI {
+export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI {
     granularity = 5;
     private btcNetwork: Network;
     collateralAPI: CollateralAPI;
     oracleAPI: OracleAPI;
     feeAPI: FeeAPI;
-    transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(api: ApiPromise, btcNetwork: Network, account?: AddressOrPair) {
+        super(api, account);
         this.btcNetwork = btcNetwork;
         this.collateralAPI = new DefaultCollateralAPI(api);
         this.oracleAPI = new DefaultOracleAPI(api);
         this.feeAPI = new DefaultFeeAPI(api);
-        this.transaction = new Transaction(api);
     }
 
     async register(planckCollateral: BN, publicKey: string): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const tx = this.api.tx.vaultRegistry.registerVault(planckCollateral, publicKey);
-        await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.RegisterVault);
+        await this.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault);
     }
 
     async withdrawCollateral(amountAsPlanck: DOT): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const tx = this.api.tx.vaultRegistry.withdrawCollateral(amountAsPlanck);
-        await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.WithdrawCollateral);
+        await this.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
     }
 
     async lockAdditionalCollateral(amountAsPlanck: DOT): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const tx = this.api.tx.vaultRegistry.lockAdditionalCollateral(amountAsPlanck);
-        await this.transaction.sendLogged(tx, this.account, this.api.events.vaultRegistry.LockAdditionalCollateral);
+        await this.sendLogged(tx, this.api.events.vaultRegistry.LockAdditionalCollateral);
     }
 
     async list(): Promise<VaultExt[]> {
@@ -609,7 +601,4 @@ export class DefaultVaultsAPI {
         return this.api.createType("Balance", wrappedBalance.amount.toString());
     }
 
-    setAccount(account: AddressOrPair): void {
-        this.account = account;
-    }
 }

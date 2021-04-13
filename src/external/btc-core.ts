@@ -12,6 +12,8 @@ import {
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
+import { TypeRegistry } from "@polkadot/types";
+import { Bytes } from "@polkadot/types";
 
 const mainnetApiBasePath = "https://blockstream.info/api";
 const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
@@ -126,6 +128,17 @@ export interface BTCCoreAPI {
      * @returns A UTXO amount if found, 0 otherwise
      */
     getUtxoAmount(txid: string, recipient: string): Promise<number>;
+    /**
+     * Get the parsed (as Bytes) merkle proof and raw transaction
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param txid A Bitcoin transaction ID
+     *
+     * @returns A tuple of Bytes object, representing [merkleProof, rawTx]
+     */
+    getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]>;
 }
 
 export class DefaultBTCCoreAPI implements BTCCoreAPI {
@@ -297,6 +310,21 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
 
     async getTransactionBlockHeight(txid: string): Promise<number | undefined> {
         return (await this.getTxStatus(txid)).block_height;
+    }
+
+    async getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]> {
+        const [unparsedMerkleProof, unparsedRawTx] = await Promise.all([
+            this.getMerkleProof(txid),
+            this.getRawTransaction(txid)
+        ]);
+        // To avoid taking an ApiPromise object as a constructor parameter,
+        // use the default TypeRegistry (without custom type metadata),
+        // because the Bytes type instantiated is provided by default. 
+        const registry = new TypeRegistry();
+        
+        const merkleProof = registry.createType("Bytes", "0x" + unparsedMerkleProof);
+        const rawTx = registry.createType("Bytes", "0x" + unparsedRawTx.toString("hex"));
+        return [merkleProof, rawTx];
     }
 
     getRawTransaction(txid: string): Promise<Buffer> {

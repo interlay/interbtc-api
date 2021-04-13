@@ -1,22 +1,23 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { AddressOrPair } from "@polkadot/api/types";
+import { Bytes } from "@polkadot/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-import { Bytes } from "@polkadot/types/primitive";
-import { DOT, H256Le, IssueRequest, PolkaBTC } from "../interfaces/default";
+import { DOT, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
     decodeFixedPointType,
-    Transaction,
+    DefaultTransactionAPI,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
-    ACCOUNT_NOT_SET_ERROR_MESSAGE,
+    TransactionAPI,
 } from "../utils";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { BTCCoreAPI } from "../external";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 
@@ -31,8 +32,10 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
-export interface IssueAPI {
+export interface IssueAPI extends TransactionAPI {
     /**
      * Send an issue request transaction
      * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue
@@ -43,12 +46,15 @@ export interface IssueAPI {
     request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<IssueRequestResult>;
     /**
      * Send an issue execution transaction
+     * @remarks Both `merkleProof` and `rawTx` must be passed for them to be used and not overwritten
+     * by data from the Blockstream API.
+     * 
      * @param issueId The ID returned by the issue request transaction
      * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
-     * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
-     * @param rawTx The raw bytes of the Bitcoin transaction
+     * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction. 
+     * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      */
-    execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void>;
+    execute(issueId: string, txId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -102,15 +108,14 @@ export interface IssueAPI {
     getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big>;
 }
 
-export class DefaultIssueAPI implements IssueAPI {
+export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  {
     private vaultsAPI: VaultsAPI;
     private feeAPI: FeeAPI;
-    transaction: Transaction;
 
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, private btcCoreAPI: BTCCoreAPI, account?: AddressOrPair) {
+        super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.feeAPI = new DefaultFeeAPI(api);
-        this.transaction = new Transaction(api);
     }
 
     /**
@@ -129,16 +134,12 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
         }
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck.toString());
-        const result = await this.transaction.sendLogged(requestIssueTx, this.account, this.api.events.issue.RequestIssue);
+        const result = await this.sendLogged(requestIssueTx, this.api.events.issue.RequestIssue);
         try {
             const id = this.getRequestIdFromEvents(result.events);
             const issueRequest = await this.getRequestById(id);
@@ -149,21 +150,22 @@ export class DefaultIssueAPI implements IssueAPI {
 
     }
 
-    async execute(issueId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+    async execute(requestId: string, btcTxId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedBtcTxId = this.api.createType(
+            "H256",
+            "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
+        );
+        if (!merkleProof || !rawTx) {
+            [merkleProof, rawTx] = await this.btcCoreAPI.getParsedExecutionParameters(btcTxId);
         }
-        const executeIssueTx = this.api.tx.issue.executeIssue(issueId, txId, merkleProof, rawTx);
-        await this.transaction.sendLogged(executeIssueTx, this.account, this.api.events.issue.ExecuteIssue);
+        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
+        await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 
     async cancel(issueId: H256): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
-        await this.transaction.sendLogged(cancelIssueTx, this.account, this.api.events.issue.CancelIssue);
+        await this.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
     }
 
     async list(): Promise<IssueRequestExt[]> {
@@ -215,9 +217,5 @@ export class DefaultIssueAPI implements IssueAPI {
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return encodeIssueRequest(await this.api.query.issue.issueRequests.at(head, issueId), this.btcNetwork);
-    }
-
-    setAccount(account: AddressOrPair): void {
-        this.account = account;
     }
 }

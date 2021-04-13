@@ -19,6 +19,7 @@ import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 
 export * from "./factory";
+export * from "./utils/transaction";
 
 function getBitcoinNetwork(network: string = "mainnet"): Network {
     switch (network) {
@@ -53,6 +54,8 @@ export interface PolkaBTCAPI {
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
 export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
@@ -72,20 +75,20 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
 
     constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork);
-        this.issue = new DefaultIssueAPI(api, btcNetwork, _account);
-        this.redeem = new DefaultRedeemAPI(api, btcNetwork, _account);
-        this.refund = new DefaultRefundAPI(api, btcNetwork, _account);
-        this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork);
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork, _account);
+        this.refund = new DefaultRefundAPI(api, btcNetwork);
+        this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork, _account);
         this.faucet = new FaucetClient("");
         this.oracle = new DefaultOracleAPI(api);
         this.btcCore = new DefaultBTCCoreAPI(network);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.btcCore);
-        this.collateral = new DefaultCollateralAPI(api);
+        this.collateral = new DefaultCollateralAPI(api, _account);
         this.treasury = new DefaultTreasuryAPI(api);
         this.system = new DefaultSystemAPI(api);
         this.replace = new DefaultReplaceAPI(api, btcNetwork, _account);
         this.fee = new DefaultFeeAPI(api);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, this.btcCore, _account);
+        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.btcCore, _account);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

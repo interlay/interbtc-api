@@ -4,10 +4,9 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { pagedIterator, decodeFixedPointType, Transaction, ACCOUNT_NOT_SET_ERROR_MESSAGE, satToBTC, planckToDOT } from "../utils";
+import { pagedIterator, decodeFixedPointType, DefaultTransactionAPI, satToBTC, planckToDOT, TransactionAPI } from "../utils";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { AddressOrPair } from "@polkadot/api/types";
@@ -15,8 +14,10 @@ import { ErrorCode } from "../interfaces/default";
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
-export interface StakedRelayerAPI {
+export interface StakedRelayerAPI extends TransactionAPI {
     /**
      * @returns An array containing the active staked relayers
      */
@@ -150,11 +151,6 @@ export interface StakedRelayerAPI {
      * Deregister the Staked Relayer
      */
     deregister(): Promise<void>;
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
 }
 
 export interface PendingStatusUpdate {
@@ -164,35 +160,26 @@ export interface PendingStatusUpdate {
     statusUpdateNays: number;
 }
 
-export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
+export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements StakedRelayerAPI {
     private vaultsAPI: VaultsAPI;
     private collateralAPI: CollateralAPI;
-    private oracleAPI: OracleAPI;
     private feeAPI: FeeAPI;
-    transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(api: ApiPromise, btcNetwork: Network, account?: AddressOrPair) {
+        super(api, account);
         this.collateralAPI = new DefaultCollateralAPI(api);
-        this.oracleAPI = new DefaultOracleAPI(api);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.feeAPI = new DefaultFeeAPI(api);
-        this.transaction = new Transaction(api);
     }
 
     async register(planckStake: BN): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const tx = this.api.tx.stakedRelayers.registerStakedRelayer(planckStake);
-        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.RegisterStakedRelayer);
+        await this.sendLogged(tx, this.api.events.stakedRelayers.RegisterStakedRelayer);
     }
 
     async deregister(): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const tx = this.api.tx.stakedRelayers.deregisterStakedRelayer();
-        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.DeregisterStakedRelayer);    
+        await this.sendLogged(tx, this.api.events.stakedRelayers.DeregisterStakedRelayer);    
     }
 
     async suggestStatusUpdate(
@@ -203,9 +190,6 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
         removeError?: string,
         blockHash?: string,
     ): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const parsedAddError = addError ? addError : null;
         const parsedRemoveError = removeError ? this.api.createType("H256", removeError) : null;
         const parsedBlockHash = blockHash ? blockHash : null;
@@ -217,7 +201,7 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
             parsedBlockHash,
             message
         );
-        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.StatusUpdateSuggested);
+        await this.sendLogged(tx, this.api.events.stakedRelayers.StatusUpdateSuggested);
     }
 
     async suggestInvalidBlock(deposit: BN, blockHash: string, message: string): Promise<void> {
@@ -227,14 +211,11 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     }
 
     async voteOnStatusUpdate(statusUpdateId: BN, approve: boolean): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const tx = this.api.tx.stakedRelayers.voteOnStatusUpdate(
             statusUpdateId,
             approve,
         );
-        await this.transaction.sendLogged(tx, this.account, this.api.events.stakedRelayers.VoteOnStatusUpdate);
+        await this.sendLogged(tx, this.api.events.stakedRelayers.VoteOnStatusUpdate);
     }
 
     async list(): Promise<StakedRelayer[]> {
@@ -406,9 +387,5 @@ export class DefaultStakedRelayerAPI implements StakedRelayerAPI {
     async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return await this.api.query.stakedRelayers.maturityPeriod.at(head);
-    }
-
-    setAccount(account: AddressOrPair): void {
-        this.account = account;
     }
 }

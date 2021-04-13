@@ -5,8 +5,9 @@ import BN from "bn.js";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockReplaceAPI implements ReplaceAPI {
+export class MockReplaceAPI extends MockTransactionAPI implements ReplaceAPI {
     withdraw(_requestId: string): Promise<void> {
         return Promise.resolve();
     }

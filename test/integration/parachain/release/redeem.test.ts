@@ -5,19 +5,18 @@ import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
 import { defaultParachainEndpoint } from "../../../config";
-import { Transaction } from "../../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
 import Big from "big.js";
 import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
 import { issue } from "../../../utils/issue";
+import { DefaultTransactionAPI } from "../../../../src";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
 describe("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
     let btcCoreAPI: DefaultBTCCoreAPI;
-    let transaction: Transaction;
     let api: ApiPromise;
     let keyring: Keyring;
     // alice is the root account
@@ -27,12 +26,11 @@ describe("redeem", () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         ferdie = keyring.addFromUri("//Ferdie");
-        transaction = new Transaction(api);
         btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
     });
 
     beforeEach(() => {
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, btcCoreAPI);
     });
 
     after(() => {
@@ -59,7 +57,7 @@ describe("redeem", () => {
             const amount = new Big("0.00001");
             await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amount);
             await vaultBitcoinCoreClient.mineBlocks(3);
-            await transaction.waitForEvent(api.events.stakedRelayers.VaultTheft);
+            await DefaultTransactionAPI.waitForEvent(api, api.events.stakedRelayers.VaultTheft, 17 * 60000);
 
             // Burn PolkaBTC for a premium, to restore peg
             redeemAPI.setAccount(ferdie);
