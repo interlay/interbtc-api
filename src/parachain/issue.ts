@@ -1,5 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
+import { Bytes } from "@polkadot/types";
 import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { DOT, IssueRequest, PolkaBTC } from "../interfaces/default";
@@ -45,10 +46,15 @@ export interface IssueAPI extends TransactionAPI {
     request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<IssueRequestResult>;
     /**
      * Send an issue execution transaction
+     * @remarks Both `merkleProof` and `rawTx` must be passed for them to be used and not overwritten
+     * by data from the Blockstream API.
+     * 
      * @param issueId The ID returned by the issue request transaction
      * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
+     * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction. 
+     * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      */
-    execute(issueId: string, txId: string): Promise<void>;
+    execute(issueId: string, txId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -144,20 +150,16 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
 
     }
 
-    async execute(requestId: string, btcTxId: string): Promise<void> {
-        const [merkleProof, rawTx] = await Promise.all([
-            this.btcCoreAPI.getMerkleProof(btcTxId),
-            this.btcCoreAPI.getRawTransaction(btcTxId)
-        ]);
+    async execute(requestId: string, btcTxId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
         const parsedRequestId = this.api.createType("H256", "0x" + requestId);
         const parsedBtcTxId = this.api.createType(
             "H256",
             "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
         );
-        const parsedMerkleProof = this.api.createType("Bytes", "0x" + merkleProof);
-        const parsedRawTx = this.api.createType("Bytes", "0x" + rawTx.toString("hex"));
-
-        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, parsedBtcTxId, parsedMerkleProof, parsedRawTx);
+        if (!merkleProof || !rawTx) {
+            [merkleProof, rawTx] = await this.btcCoreAPI.getParsedExecutionParameters(btcTxId);
+        }
+        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 

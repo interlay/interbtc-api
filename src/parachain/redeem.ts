@@ -3,6 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
+import { Bytes } from "@polkadot/types";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
@@ -55,11 +56,16 @@ export interface RedeemAPI extends TransactionAPI {
     request(amount: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult>;
     /**
      * Send a redeem execution transaction
+     * @remarks Both `merkleProof` and `rawTx` must be passed for them to be used and not overwritten
+     * by data from the Blockstream API.
+     * 
      * @param redeemId The ID returned by the redeem request transaction
      * @param txId The ID of the Bitcoin transaction that sends funds from the vault to the redeemer's address
+     * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction. 
+     * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
      */
-    execute(redeemId: string, txId: string): Promise<boolean>;
+    execute(redeemId: string, txId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean>;
     /**
      * Send a redeem cancellation transaction. After the redeem period has elapsed,
      * the redeemal of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -181,19 +187,16 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return { id, redeemRequest };
     }
 
-    async execute(requestId: string, btcTxId: string): Promise<boolean> {
-        const [merkleProof, rawTx] = await Promise.all([
-            this.btcCoreAPI.getMerkleProof(btcTxId),
-            this.btcCoreAPI.getRawTransaction(btcTxId)
-        ]);
+    async execute(requestId: string, btcTxId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
         const parsedRequestId = this.api.createType("H256", "0x" + requestId);
         const parsedBtcTxId = this.api.createType(
             "H256",
             "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
         );
-        const parsedMerkleProof = this.api.createType("Bytes", "0x" + merkleProof);
-        const parsedRawTx = this.api.createType("Bytes", "0x" + rawTx.toString("hex"));
-        const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, parsedBtcTxId, parsedMerkleProof, parsedRawTx);
+        if (!merkleProof || !rawTx) {
+            [merkleProof, rawTx] = await this.btcCoreAPI.getParsedExecutionParameters(btcTxId);
+        }
+        const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
         if (id) {
