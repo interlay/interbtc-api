@@ -4,7 +4,8 @@ import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runti
 import { ApiPromise } from "@polkadot/api";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import BN from "bn.js";
-import { pagedIterator, decodeFixedPointType, DefaultTransactionAPI, satToBTC, planckToDOT, TransactionAPI } from "../utils";
+import { pagedIterator, decodeFixedPointType, satToBTC, planckToDOT } from "../utils";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";

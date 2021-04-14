@@ -1,9 +1,11 @@
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import Big from "big.js";
+
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/electrs";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
-import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 
 describe("BTCCore testnet", function () {
     this.timeout(10000); // API can be slightly slow
@@ -81,7 +83,7 @@ describe("BTCCore testnet", function () {
     describe("get tx by recipient", () => {
         it("should return correct tx id when called with amount and receiver", async () => {
             const recipientAddress = "tb1q9dxnjz0qwh7yj6axl0q9r7lyc9n3gat8nlrvhf";
-            const amountAsBTC = "0.0001236";
+            const amountAsBTC = new Big("0.0001236");
             const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBTC);
             assert.strictEqual(txid, "41640c7703ebd972dd913f89c6d66941894d03ef3934edc59259342c7cc8126e");
         });
@@ -102,7 +104,7 @@ describe("BTCCore testnet", function () {
             // https://blockstream.info/testnet/tx/4b1900dc48aaa9fa84a340e94aa21d20b54371d19ea6b8edd68a558cd36afdd0?expand
             const opReturn = "1165adb125d9703328a37f18b5f8c35732c97a3cd2aab2ead6f28054fd023105";
             const receiverAddress = "tb1qr959hr9t8zd96w3cqke40da4czqfgmwl0yn5mq";
-            const amountAsBTC = "0.00088";
+            const amountAsBTC = new Big("0.00088");
             const txid = await btcCore.getTxIdByOpReturn(opReturn, receiverAddress, amountAsBTC);
             assert.strictEqual(txid, "f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
         });
@@ -129,7 +131,7 @@ describe("BTCCore regtest", function () {
     describe("getTxIdByRecipientAddress", () => {
         it("should return correct tx id", async () => {
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-            const amountAsBtcString = "0.00022244";
+            const amountAsBtcString = new Big("0.00022244");
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amountAsBtcString, 6);
             const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
@@ -140,7 +142,7 @@ describe("BTCCore regtest", function () {
         it("should return correct tx id", async () => {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-            const amountAsBtcString = "0.00029";
+            const amountAsBtcString = new Big("0.00029");
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(
                 recipientAddress,
                 amountAsBtcString,
@@ -156,7 +158,7 @@ describe("BTCCore regtest", function () {
         it("should return correct confirmations", async () => {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-            const amountAsBtcString = "0.00029";
+            const amountAsBtcString = new Big("0.00029");
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amountAsBtcString, opReturnValue);
             // transaction in mempool
             let status = await btcCore.getTransactionStatus(txData.txid);

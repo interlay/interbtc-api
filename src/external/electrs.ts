@@ -14,6 +14,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { btcToSat } from "../utils/currency";
 import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
+import Big from "big.js";
 
 const mainnetApiBasePath = "https://blockstream.info/api";
 const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
@@ -91,7 +92,7 @@ export interface BTCCoreAPI {
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
+    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: Big): Promise<string>;
     /**
      * Fetch the last bitcoin transaction ID based on the recipient address and amount.
      * Throw an error if no such transaction is found.
@@ -104,7 +105,7 @@ export interface BTCCoreAPI {
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string>;
+    getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: Big): Promise<string>;
     /**
      * Fetch the Bitcoin transaction that matches the given TxId
      *
@@ -199,11 +200,11 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return amount;
     }
 
-    async getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string> {
+    async getTxIdByRecipientAddress(recipientAddress: string, amount?: Big): Promise<string> {
         try {
             const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
             for (const utxo of utxos.reverse()) {
-                if (this.utxoHasAmount(utxo, amountAsBTC)) {
+                if (this.utxoHasAmount(utxo, amount)) {
                     return utxo.txid;
                 }
             }
@@ -220,9 +221,9 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      * @param amountAsBTC (Optional) Amount the recipient must receive
      * @returns Boolean value
      */
-    private utxoHasAmount(utxo: UTXO | VOut, amountAsBTC?: string): boolean {
-        if (amountAsBTC) {
-            const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
+    private utxoHasAmount(utxo: UTXO | VOut, amount?: Big): boolean {
+        if (amount) {
+            const expectedBtcAsSatoshi = Number(btcToSat(amount.toString()));
             if (utxo.value === undefined || expectedBtcAsSatoshi > utxo.value) {
                 return false;
             }
@@ -230,7 +231,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return true;
     }
 
-    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string> {
+    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: Big): Promise<string> {
         const data = Buffer.from(opReturn, "hex");
         if (data.length !== 32) {
             return Promise.reject("Requires a 32 byte hash as OP_RETURN");
@@ -250,7 +251,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
                 continue;
             }
             for (const vout of tx.vout) {
-                if (this.txOutputHasRecipientAndAmount(vout, recipientAddress, amountAsBTC)) {
+                if (this.txOutputHasRecipientAndAmount(vout, recipientAddress, amount)) {
                     return tx.txid;
                 }
             }
@@ -267,12 +268,12 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      * `recipientAddress` is defined too
      * @returns Boolean value
      */
-    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amountAsBTC?: string): boolean {
+    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amount?: Big): boolean {
         if (recipientAddress) {
             if (recipientAddress !== vout.scriptpubkey_address) {
                 return false;
             }
-            return this.utxoHasAmount(vout, amountAsBTC);
+            return this.utxoHasAmount(vout, amount);
         }
         return true;
     }

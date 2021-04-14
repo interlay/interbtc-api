@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { PolkaBTC } from "../../../../src/interfaces/default";
@@ -8,9 +8,9 @@ import { btcToSat, dotToPlanck } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { issue } from "../../../utils/issue";
+import { issue } from "../../../../src/utils/issue";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -21,12 +21,16 @@ describe("issue", () => {
 
     // alice is the root account
     let alice: KeyringPair;
+    let charlie: KeyringPair;
+    let dave: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
+        charlie = keyring.addFromUri("//Charlie");
+        dave = keyring.addFromUri("//Dave");
 
         btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
@@ -87,30 +91,29 @@ describe("issue", () => {
         });
 
         it("should fail to request a value finer than 1 Satoshi", async () => {
-            const amount = "0.00000121";
+            const amount = new Big("0.00000121");
             await assert.isRejected(
-                issue(api, btcCoreAPI, bitcoinCoreClient, keyring, amount, "Alice", "Charlie", true, false)
+                issue(api, btcCoreAPI, bitcoinCoreClient, alice, amount, charlie.address, true, false)
             );
         }).timeout(500000);
 
         // auto-execution tests may stall indefinitely, due to vault client inaction.
         // This will cause the testing pipeline to time out.
         it("should request and auto-execute issue", async () => {
-            const amount = "0.0000121";
+            const amount = new Big("0.0000121");
             const issueResult = await issue(
                 api,
                 btcCoreAPI,
                 bitcoinCoreClient,
-                keyring,
+                alice,
                 amount,
-                "Alice",
-                "Charlie",
+                charlie.address,
                 true,
                 false
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount,
+                amount.toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 
@@ -121,21 +124,20 @@ describe("issue", () => {
         }).timeout(500000);
 
         it("should request and manually execute issue", async () => {
-            const amount = "0.001";
+            const amount = new Big("0.001");
             const issueResult = await issue(
                 api,
                 btcCoreAPI,
                 bitcoinCoreClient,
-                keyring,
+                alice,
                 amount,
-                "Alice",
-                "Dave",
+                dave.address,
                 false,
                 false
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount,
+                amount.toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 

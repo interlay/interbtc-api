@@ -3,7 +3,7 @@ import sinon from "sinon";
 import { createPolkadotAPI } from "../../mock/factory";
 import { assert } from "../../chai";
 import { BTCCoreAPI } from "../../../src/external";
-import { DefaultBTCCoreAPI } from "../../../src/external/btc-core";
+import { DefaultBTCCoreAPI } from "../../../src/external/electrs";
 import { UTXO } from "@interlay/esplora-btc-api";
 
 describe("btc-core", () => {

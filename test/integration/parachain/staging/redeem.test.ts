@@ -10,10 +10,10 @@ import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { btcToSat, stripHexPrefix, satToBTC } from "../../../../src/utils";
 import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
-import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
 import { BTCCoreAPI } from "../../../../src";
-import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { DefaultBTCCoreAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -87,7 +87,7 @@ describe("redeem", () => {
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
+            const txAmountRequired = new Big(satToBTC(issueRequest.amount.add(issueRequest.fee).toString()));
 
             // send btc tx
             const vaultBtcAddress = requestResult.issueRequest.btc_address;

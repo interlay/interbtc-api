@@ -11,3 +11,4 @@ export { SystemAPI } from "./system";
 export { ConstantsAPI } from "./constants";
 export { ReplaceAPI, ReplaceRequestExt } from "./replace";
 export { FeeAPI } from "./fee";
+export * from "./transaction";

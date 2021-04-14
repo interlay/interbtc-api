@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { BTCRelayAPI } from "../../../../src/parachain";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/electrs";
 import { DefaultBTCRelayAPI } from "../../../../src/parachain/btc-relay";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";

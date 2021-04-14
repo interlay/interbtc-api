@@ -6,9 +6,9 @@ import { btcToSat } from "../../../../src/utils";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
-import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { BTCCoreAPI } from "../../../../src";
-import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { DefaultBTCCoreAPI } from "../../../../src/external/electrs";
 
 describe("issue", () => {
     let api: ApiPromise;

@@ -1,23 +1,21 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { Bytes } from "@polkadot/types";
-import { AccountId, H256, Hash } from "@polkadot/types/interfaces";
-import { EventRecord } from "@polkadot/types/interfaces/system";
+import { AccountId, H256, Hash, EventRecord, BlockNumber } from "@polkadot/types/interfaces";
+import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
+
 import { DOT, IssueRequest, PolkaBTC } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
     decodeFixedPointType,
-    DefaultTransactionAPI,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
-    TransactionAPI,
 } from "../utils";
-import { BlockNumber } from "@polkadot/types/interfaces/runtime";
-import { Network } from "bitcoinjs-lib";
-import Big from "big.js";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { BTCCoreAPI } from "../external";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 

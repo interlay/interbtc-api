@@ -1,6 +1,21 @@
-import { PolkaBTC, Vault, IssueRequest, RedeemRequest, ReplaceRequest, DOT, Wallet, SystemVault } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
+import { AddressOrPair } from "@polkadot/api/types";
+import Big from "big.js";
+import BN from "bn.js";
+import { Network } from "bitcoinjs-lib";
+
+import { 
+    PolkaBTC,
+    Vault,
+    IssueRequest,
+    RedeemRequest,
+    ReplaceRequest,
+    DOT,
+    Wallet,
+    SystemVault,
+    BalanceWrapper 
+} from "../interfaces/default";
 import {
     FIXEDI128_SCALING_FACTOR,
     pagedIterator,
@@ -8,21 +23,14 @@ import {
     decodeFixedPointType,
     encodeBtcAddress,
     satToBTC,
-    DefaultTransactionAPI,
-    TransactionAPI,
 } from "../utils";
-import { BalanceWrapper } from "../interfaces/default";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import Big from "big.js";
 import { IssueRequestExt, encodeIssueRequest } from "./issue";
 import { RedeemRequestExt, encodeRedeemRequest } from "./redeem";
 import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
-import { Network } from "bitcoinjs-lib";
-import { FeeAPI } from "..";
-import { DefaultFeeAPI } from "./fee";
-import { AddressOrPair } from "@polkadot/api/types";
-import BN from "bn.js";
+import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 export interface WalletExt {
     // network encoded btc addresses

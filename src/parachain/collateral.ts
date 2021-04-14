@@ -1,8 +1,11 @@
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { dotToPlanck, planckToDOT, DefaultTransactionAPI, TransactionAPI } from "../utils";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
+
+import { dotToPlanck, planckToDOT } from "../utils";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+
 /**
  * @category PolkaBTC Bridge
  * The type Big represents DOT or PolkaBTC denominations,

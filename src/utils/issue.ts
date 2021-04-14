@@ -1,13 +1,14 @@
-import { ApiPromise, Keyring } from "@polkadot/api";
+import { ApiPromise } from "@polkadot/api";
+import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoin from "bitcoinjs-lib";
-import { fail } from "assert";
-import { btcToSat, satToBTC, IssueRequestExt } from "../../src";
-import { BTCCoreAPI } from "../../src/external/btc-core";
-import { DefaultCollateralAPI } from "../../src/parachain/collateral";
-import { IssueRequestResult, DefaultIssueAPI } from "../../src/parachain/issue";
-import { DefaultTreasuryAPI } from "../../src/parachain/treasury";
-import { BitcoinCoreClient } from "./bitcoin-core-client";
 import Big from "big.js";
+
+import { btcToSat, satToBTC, IssueRequestExt } from "..";
+import { BTCCoreAPI } from "../external/electrs";
+import { DefaultCollateralAPI } from "../parachain/collateral";
+import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
+import { DefaultTreasuryAPI } from "../parachain/treasury";
+import { BitcoinCoreClient } from "./bitcoin-core-client";
 
 export interface IssueResult {
     request: IssueRequestResult;
@@ -21,34 +22,25 @@ export async function issue(
     api: ApiPromise,
     btcCoreAPI: BTCCoreAPI,
     bitcoinCoreClient: BitcoinCoreClient,
-    keyring: Keyring,
-    amount: string,
-    requesterName: string,
-    vaultName: string,
-    autoExecute: boolean,
-    triggerRefund: boolean
+    issuingAccount: KeyringPair,
+    amount: Big,
+    vaultAddress?: string,
+    autoExecute = true,
+    triggerRefund = false
 ): Promise<IssueResult> {
     const treasuryAPI = new DefaultTreasuryAPI(api);
     const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
     const collateralAPI = new DefaultCollateralAPI(api);
 
-    const requester = keyring.addFromUri("//" + requesterName);
-    issueAPI.setAccount(requester);
-    const requesterAccountId = api.createType("AccountId", requester.address);
+    issueAPI.setAccount(issuingAccount);
+    const requesterAccountId = api.createType("AccountId", issuingAccount.address);
     const initialBalanceDOT = await collateralAPI.balance(requesterAccountId);
     const initialBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
     const blocksToMine = 3;
-    keyring = new Keyring({ type: "sr25519" });
-    const vault = keyring.addFromUri("//" + vaultName);
-    const vaultAccountId = api.createType("AccountId", vault.address);
+    const vaultAccountId = vaultAddress ? api.createType("AccountId", vaultAddress) : undefined;
 
     // request issue
-    let amountAsBtcString = amount;
-    const amountAsSatoshiString = btcToSat(amountAsBtcString);
-    if (amountAsSatoshiString === undefined) {
-        fail();
-    }
-    const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
+    const amountAsSatoshi = api.createType("Balance", btcToSat(amount.toString()));
     const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
     let issueRequest;
     try {
@@ -58,13 +50,13 @@ export async function issue(
         console.log(e);
     }
 
-    amountAsBtcString = satToBTC(
+    let amountAsBtc = new Big(satToBTC(
         (issueRequest as IssueRequestExt).amount.add((issueRequest as IssueRequestExt).fee).toString()
-    );
+    ));
 
     if (triggerRefund) {
         // Send 1 more Btc than needed
-        amountAsBtcString = new Big(amountAsBtcString).add(1).toString();
+        amountAsBtc = amountAsBtc.add(1);
     }
 
     // send btc tx
@@ -73,7 +65,7 @@ export async function issue(
         throw new Error("Undefined vault address returned from RequestIssue");
     }
 
-    const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtcString, blocksToMine);
+    const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtc, blocksToMine);
 
     if (autoExecute === false) {
         // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
@@ -85,11 +77,10 @@ export async function issue(
         }
     }
 
-    // check issuing worked
-    const finalBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
-
-    const finalBalanceDOT = await collateralAPI.balance(requesterAccountId);
-
+    const [finalBalancePolkaBTC, finalBalanceDOT] = await Promise.all([
+        treasuryAPI.balance(requesterAccountId),
+        collateralAPI.balance(requesterAccountId)
+    ]);
     return {
         request: requestResult,
         initialDotBalance: initialBalanceDOT,

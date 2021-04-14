@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "./external/btc-core";
+import { BTCCoreAPI, DefaultBTCCoreAPI } from "./external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
 import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./parachain/redeem";
@@ -19,7 +19,7 @@ import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 
 export * from "./factory";
-export * from "./utils/transaction";
+export * from "./parachain/transaction";
 
 function getBitcoinNetwork(network: string = "mainnet"): Network {
     switch (network) {

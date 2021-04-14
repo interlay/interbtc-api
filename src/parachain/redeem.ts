@@ -1,30 +1,30 @@
-import { PolkaBTC, RedeemRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types";
+import { BlockNumber } from "@polkadot/types/interfaces/runtime";
+import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
+import type { AnyTuple } from "@polkadot/types/types";
+import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
+
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
     pagedIterator,
     decodeFixedPointType,
-    DefaultTransactionAPI,
     encodeParachainRequest,
     btcToSat,
     satToBTC,
     planckToDOT,
-    TransactionAPI
 } from "../utils";
-import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
-import { Network } from "bitcoinjs-lib";
-import Big from "big.js";
-import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
-import type { AnyTuple } from "@polkadot/types/types";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
 import { BTCCoreAPI } from "../external";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { PolkaBTC, RedeemRequest } from "../interfaces/default";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -171,8 +171,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
                 return id;
             }
         }
-
-        throw new Error("Transaction failed");
+        throw new Error("Redeem transaction failed");
     }
 
     async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
