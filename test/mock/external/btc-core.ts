@@ -1,9 +1,11 @@
 import { Transaction } from "@interlay/esplora-btc-api";
 import { Bytes } from "@polkadot/types";
+import Big from "big.js";
+
 import { BTCCoreAPI, TxStatus } from "../../../src/external/electrs";
 
 export class MockBTCCoreAPI implements BTCCoreAPI {
-    getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]> {
+    getParsedExecutionParameters(_txid: string): Promise<[Bytes, Bytes]> {
         throw new Error("Method not implemented.");
     }
 
@@ -78,11 +80,11 @@ export class MockBTCCoreAPI implements BTCCoreAPI {
         );
     }
 
-    getTxIdByRecipientAddress(_recipientAddress: string, _amountAsBTC?: string): Promise<string> {
+    getTxIdByRecipientAddress(_recipientAddress: string, _amountAsBTC?: Big): Promise<string> {
         return Promise.resolve("f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
     }
 
-    getTxIdByOpReturn(_opReturn: string, _recipientAddress?: string, _amountAsBTC?: string): Promise<string> {
+    getTxIdByOpReturn(_opReturn: string, _recipientAddress?: string, _amountAsBTC?: Big): Promise<string> {
         return Promise.resolve("f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
     }
 }

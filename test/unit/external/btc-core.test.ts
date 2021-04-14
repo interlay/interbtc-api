@@ -1,10 +1,12 @@
 import { ApiPromise } from "@polkadot/api";
+import { UTXO } from "@interlay/esplora-btc-api";
 import sinon from "sinon";
+import Big from "big.js";
+
 import { createPolkadotAPI } from "../../mock/factory";
 import { assert } from "../../chai";
 import { BTCCoreAPI } from "../../../src/external";
 import { DefaultBTCCoreAPI } from "../../../src/external/electrs";
-import { UTXO } from "@interlay/esplora-btc-api";
 
 describe("btc-core", () => {
     let api: ApiPromise;
@@ -43,7 +45,7 @@ describe("btc-core", () => {
                 value: 78100
             } as UTXO
         ];
-        const amountAsSat = "0.0007811";
+        const amountAsSat = new Big("0.0007811");
         sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve(txs));
         assert.isRejected(
             btcCore.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b", amountAsSat)
