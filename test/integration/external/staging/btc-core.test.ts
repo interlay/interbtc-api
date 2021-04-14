@@ -2,22 +2,22 @@ import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import Big from "big.js";
 
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/electrs";
+import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 
-describe("BTCCore testnet", function () {
+describe("ElectrsAPI testnet", function () {
     this.timeout(10000); // API can be slightly slow
 
     const txid = "0af83672b9f80f2ad53218a8f67899ea07d7da4f07a16ba2c954030895a91d9a";
 
     let api: ApiPromise;
-    let btcCore: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
 
     beforeEach(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
-        btcCore = new DefaultBTCCoreAPI("testnet");
+        electrsAPI = new DefaultElectrsAPI("testnet");
     });
 
     afterEach(async () => {
@@ -26,28 +26,28 @@ describe("BTCCore testnet", function () {
 
     describe("getLatestBlockHeight", () => {
         it("should return positive height", async () => {
-            const latestBlockHeight = await btcCore.getLatestBlockHeight();
+            const latestBlockHeight = await electrsAPI.getLatestBlockHeight();
             assert.isAbove(latestBlockHeight, 0);
         });
     });
 
     describe("getLatestBlock", () => {
         it("should return block hash", async () => {
-            const latestBlock = await btcCore.getLatestBlock();
+            const latestBlock = await electrsAPI.getLatestBlock();
             assert.isNotEmpty(latestBlock);
         });
     });
 
     describe("getMerkleProof", () => {
         it("should return BTC merkle proof as string", async () => {
-            const proof = await btcCore.getMerkleProof(txid);
+            const proof = await electrsAPI.getMerkleProof(txid);
             assert.isNotEmpty(proof);
         });
     });
 
     describe("getTransactionStatus", () => {
         it("should return confirmed and number of confirmations", async () => {
-            const status = await btcCore.getTransactionStatus(txid);
+            const status = await electrsAPI.getTransactionStatus(txid);
             assert.isAbove(status.confirmations, 90015);
             assert.isTrue(status.confirmed);
         });
@@ -55,7 +55,7 @@ describe("BTCCore testnet", function () {
 
     describe("getTransactionBlockHeight", () => {
         it("should return correct block number", async () => {
-            const height = await btcCore.getTransactionBlockHeight(txid);
+            const height = await electrsAPI.getTransactionBlockHeight(txid);
             assert.strictEqual(height, 1747019);
         });
     });
@@ -75,7 +75,7 @@ describe("BTCCore testnet", function () {
                     "550900000000",
                 "hex"
             );
-            const raw_tx = await btcCore.getRawTransaction(txid);
+            const raw_tx = await electrsAPI.getRawTransaction(txid);
             assert.deepEqual(raw_tx, raw);
         });
     });
@@ -84,16 +84,16 @@ describe("BTCCore testnet", function () {
         it("should return correct tx id when called with amount and receiver", async () => {
             const recipientAddress = "tb1q9dxnjz0qwh7yj6axl0q9r7lyc9n3gat8nlrvhf";
             const amountAsBTC = new Big("0.0001236");
-            const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBTC);
+            const txid = await electrsAPI.getTxIdByRecipientAddress(recipientAddress, amountAsBTC);
             assert.strictEqual(txid, "41640c7703ebd972dd913f89c6d66941894d03ef3934edc59259342c7cc8126e");
         });
     });
 
-    describe("getTxByOpcode", () => {
+    describe("getTxByOpReturn", () => {
         it("should return correct tx id", async () => {
             // uses testnet tx: https://blockstream.info/testnet/tx/cac50845f700c97b0e9f0232d2e876e93d384cd93cfa9dc2bf7883ba202237d4?expand
-            const opcode = "8703723a787b0f989110b49fd5e1cf1c2571525d564bf384b5aa9e340c9ad8bd";
-            const txid = await btcCore.getTxIdByOpReturn(opcode);
+            const opReturn = "8703723a787b0f989110b49fd5e1cf1c2571525d564bf384b5aa9e340c9ad8bd";
+            const txid = await electrsAPI.getTxIdByOpReturn(opReturn);
             assert.strictEqual(txid, "cac50845f700c97b0e9f0232d2e876e93d384cd93cfa9dc2bf7883ba202237d4");
         });
 
@@ -105,22 +105,22 @@ describe("BTCCore testnet", function () {
             const opReturn = "1165adb125d9703328a37f18b5f8c35732c97a3cd2aab2ead6f28054fd023105";
             const receiverAddress = "tb1qr959hr9t8zd96w3cqke40da4czqfgmwl0yn5mq";
             const amountAsBTC = new Big("0.00088");
-            const txid = await btcCore.getTxIdByOpReturn(opReturn, receiverAddress, amountAsBTC);
+            const txid = await electrsAPI.getTxIdByOpReturn(opReturn, receiverAddress, amountAsBTC);
             assert.strictEqual(txid, "f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
         });
     });
 });
 
-describe("BTCCore regtest", function () {
+describe("ElectrsAPI regtest", function () {
     this.timeout(100000);
 
     let api: ApiPromise;
-    let btcCore: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
-        btcCore = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
     });
 
@@ -133,7 +133,7 @@ describe("BTCCore regtest", function () {
             const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountAsBtcString = new Big("0.00022244");
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amountAsBtcString, 6);
-            const txid = await btcCore.getTxIdByRecipientAddress(recipientAddress, amountAsBtcString);
+            const txid = await electrsAPI.getTxIdByRecipientAddress(recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
         });
     });
@@ -149,7 +149,7 @@ describe("BTCCore regtest", function () {
                 6,
                 opReturnValue
             );
-            const txid = await btcCore.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
+            const txid = await electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amountAsBtcString);
             assert.strictEqual(txid, txData.txid);
         });
     });
@@ -161,17 +161,17 @@ describe("BTCCore regtest", function () {
             const amountAsBtcString = new Big("0.00029");
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amountAsBtcString, opReturnValue);
             // transaction in mempool
-            let status = await btcCore.getTransactionStatus(txData.txid);
+            let status = await electrsAPI.getTransactionStatus(txData.txid);
             assert.strictEqual(status.confirmations, 0);
 
             // transaction in the latest block
             await bitcoinCoreClient.mineBlocks(1);
-            status = await btcCore.getTransactionStatus(txData.txid);
+            status = await electrsAPI.getTransactionStatus(txData.txid);
             assert.strictEqual(status.confirmations, 1);
 
             // transaction in the parent of the latest block
             await bitcoinCoreClient.mineBlocks(1);
-            status = await btcCore.getTransactionStatus(txData.txid);
+            status = await electrsAPI.getTransactionStatus(txData.txid);
             assert.strictEqual(status.confirmations, 2);
         });
     });

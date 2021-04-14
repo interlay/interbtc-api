@@ -12,8 +12,8 @@ import * as bitcoin from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { BTCCoreAPI } from "../../../../src";
-import { DefaultBTCCoreAPI } from "../../../../src/external/electrs";
+import { ElectrsAPI } from "../../../../src";
+import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -27,15 +27,15 @@ describe("redeem", () => {
     let alice: KeyringPair;
     let charlie: KeyringPair;
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
-    let btcCoreAPI: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
+        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, electrsAPI);
         treasuryAPI = new DefaultTreasuryAPI(api);
     });
 

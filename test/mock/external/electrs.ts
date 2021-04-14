@@ -2,9 +2,12 @@ import { Transaction } from "@interlay/esplora-btc-api";
 import { Bytes } from "@polkadot/types";
 import Big from "big.js";
 
-import { BTCCoreAPI, TxStatus } from "../../../src/external/electrs";
+import { ElectrsAPI, TxStatus } from "../../../src/external/electrs";
 
-export class MockBTCCoreAPI implements BTCCoreAPI {
+export class MockElectrsAPI implements ElectrsAPI {
+    waitForOpreturn(_data: string, _timeoutMs: number): Promise<string> {
+        throw new Error("Method not implemented.");
+    }
     getParsedExecutionParameters(_txid: string): Promise<[Bytes, Bytes]> {
         throw new Error("Method not implemented.");
     }

@@ -22,7 +22,7 @@ import {
 import { stripHexPrefix } from "../utils";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
-import { BTCCoreAPI } from "../external";
+import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { PolkaBTC, RedeemRequest } from "../interfaces/default";
 
@@ -151,7 +151,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
-    constructor(api: ApiPromise, private btcNetwork: Network, private btcCoreAPI: BTCCoreAPI, account?: AddressOrPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
@@ -193,7 +193,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
         );
         if (!merkleProof || !rawTx) {
-            [merkleProof, rawTx] = await this.btcCoreAPI.getParsedExecutionParameters(btcTxId);
+            [merkleProof, rawTx] = await this.electrsAPI.getParsedExecutionParameters(btcTxId);
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);

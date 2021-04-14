@@ -6,3 +6,7 @@ export const FIXEDI128_SCALING_FACTOR = 18;
 export const IGNORED_ERROR_MESSAGES = ["issue.IssueCompleted"];
 
 export const ACCOUNT_NOT_SET_ERROR_MESSAGE = "cannot request without setting account";
+
+export const mainnetApiBasePath = "https://blockstream.info/api";
+export const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
+export const regtestApiBasePath = "http://0.0.0.0:3002";

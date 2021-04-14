@@ -11,13 +11,12 @@ import {
 } from "@interlay/esplora-btc-api";
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { btcToSat } from "../utils/currency";
 import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
 import Big from "big.js";
 
-const mainnetApiBasePath = "https://blockstream.info/api";
-const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
+import { mainnetApiBasePath, regtestApiBasePath, testnetApiBasePath } from "../utils/constants";
+import { btcToSat } from "../utils/currency";
 
 export type TxStatus = {
     confirmed: boolean;
@@ -49,7 +48,7 @@ export type TxInput = {
  * Bitcoin Core API
  * @category Bitcoin Core
  */
-export interface BTCCoreAPI {
+export interface ElectrsAPI {
     /**
      * @returns The block hash of the latest Bitcoin block
      */
@@ -140,9 +139,23 @@ export interface BTCCoreAPI {
      * @returns A tuple of Bytes object, representing [merkleProof, rawTx]
      */
     getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]>;
+    /**
+     * Return a promise that either resolves to the first txid with the given opreturn `data`, 
+     * or rejects if the `timeout` has elapsed.
+     *
+     * @remarks
+     * Every 5 seconds, performs the lookup using an external service, Esplora
+     *
+     * @param data The opReturn of the bitcoin transaction
+     * @param timeoutMs The duration until the Promise times out (in milliseconds)
+     * @param retryIntervalMs The time to wait (in milliseconds) between retries
+     *
+     * @returns The Bitcoin txid
+     */
+    waitForOpreturn(data: string, timeoutMs: number, retryIntervalMs: number): Promise<string>;
 }
 
-export class DefaultBTCCoreAPI implements BTCCoreAPI {
+export class DefaultElectrsAPI implements ElectrsAPI {
     private blockApi: BlockApi;
     private txApi: TxApi;
     private scripthashApi: ScripthashApi;
@@ -156,6 +169,9 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
             break;
         case "testnet":
             basePath = testnetApiBasePath;
+            break;
+        case "regtest":
+            basePath = regtestApiBasePath;
             break;
         default:
             basePath = network;
@@ -257,6 +273,22 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
             }
         }
         return Promise.reject("No transaction id found");
+    }
+
+    async waitForOpreturn(data: string, timeoutMs: number, retryIntervalMs: number): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            this.getTxIdByOpReturn(data)
+                .then(resolve)
+                .catch((_error) => {
+                    setTimeout(() => {
+                        console.log("Did not find opreturn, retrying...");
+                        if(timeoutMs < retryIntervalMs) {
+                            reject("Timeout elapsed");
+                        }
+                        this.waitForOpreturn(data, timeoutMs - retryIntervalMs, retryIntervalMs).then(resolve);
+                    }, 5000);
+                });
+        });
     }
 
     /**

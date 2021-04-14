@@ -8,7 +8,7 @@ import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { DefaultBTCCoreAPI } from "../../../../src/external/electrs";
+import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issue } from "../../../../src/utils/issue";
 import { DefaultTransactionAPI } from "../../../../src";
 
@@ -16,7 +16,7 @@ export type RequestResult = { hash: Hash; vault: Vault };
 
 describe("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
-    let btcCoreAPI: DefaultBTCCoreAPI;
+    let electrsAPI: DefaultElectrsAPI;
     let api: ApiPromise;
     let keyring: Keyring;
     // alice is the root account
@@ -28,11 +28,11 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         ferdie = keyring.addFromUri("//Ferdie");
         alice = keyring.addFromUri("//Alice");
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
     });
 
     beforeEach(() => {
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, electrsAPI);
     });
 
     after(() => {
@@ -43,7 +43,7 @@ describe("redeem", () => {
         it("should liquidate a vault that committed theft", async () => {
             const vaultToLiquidate = keyring.addFromUri("//Bob");
             const aliceBitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-            await issue(api, btcCoreAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
+            await issue(api, electrsAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
                 "regtest",
                 "0.0.0.0",

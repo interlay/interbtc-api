@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { BTCCoreAPI } from "../external/electrs";
+import { ElectrsAPI } from "../external/electrs";
 import { u32 } from "@polkadot/types/primitive";
 import { H256Le } from "../interfaces/default";
 
@@ -33,7 +33,7 @@ export interface BTCRelayAPI {
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {
-    constructor(private api: ApiPromise, private btcCore: BTCCoreAPI) { }
+    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) { }
 
     async getStableBitcoinConfirmations(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -54,7 +54,7 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
         txid: string,
         confirmations: number = DEFAULT_STABLE_CONFIRMATIONS
     ): Promise<void> {
-        const merkleProof = await this.btcCore.getMerkleProof(txid);
+        const merkleProof = await this.electrsAPI.getMerkleProof(txid);
         const confirmationsU32 = this.api.createType("u32", confirmations);
         // TODO: change this to RPC call
         this.api.tx.btcRelay.verifyTransactionInclusion(txid, merkleProof, confirmationsU32);

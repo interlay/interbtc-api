@@ -2,9 +2,10 @@ import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ApiPromise } from "@polkadot/api";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
 import { AugmentedEvent, ApiTypes } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
+
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
 
 export interface TransactionAPI {
     setAccount(account: AddressOrPair): void;

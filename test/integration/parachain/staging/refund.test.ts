@@ -3,7 +3,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/electrs";
+import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
@@ -13,7 +13,7 @@ import { issue } from "../../../../src/utils/issue";
 
 describe("refund", () => {
     let api: ApiPromise;
-    let btcCoreAPI: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
     let refundAPI: RefundAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -23,7 +23,7 @@ describe("refund", () => {
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
         refundAPI = new DefaultRefundAPI(api, bitcoin.networks.regtest);
         alice = keyring.addFromUri("//Alice");
@@ -37,7 +37,7 @@ describe("refund", () => {
     it("should not generate a refund request", async () => {
         const isueResult = await issue(
             api,
-            btcCoreAPI,
+            electrsAPI,
             bitcoinCoreClient,
             alice,
             new Big("0.001"),
@@ -54,7 +54,7 @@ describe("refund", () => {
     it("should generate a refund request", async () => {
         const isueResult = await issue(
             api,
-            btcCoreAPI,
+            electrsAPI,
             bitcoinCoreClient,
             alice,
             new Big("0.001"),

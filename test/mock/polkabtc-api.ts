@@ -16,7 +16,7 @@ import {
     RefundAPI,
     FeeAPI,
 } from "../../src/parachain";
-import { BTCCoreAPI } from "../../src/external";
+import { ElectrsAPI } from "../../src/external";
 import { MockIssueAPI } from "./parachain/issue";
 import { MockRedeemAPI } from "./parachain/redeem";
 import { MockVaultsAPI } from "./parachain/vaults";
@@ -24,7 +24,7 @@ import { MockStakedRelayerAPI } from "./parachain/staked-relayer";
 import { PolkaBTCAPI } from "../../src";
 import { FaucetClient } from "../../src/clients";
 import { MockOracleAPI } from "./parachain/oracle";
-import { MockBTCCoreAPI } from "./external/btc-core";
+import { MockElectrsAPI } from "./external/electrs";
 import { MockBTCRelayAPI } from "./parachain/btc-relay";
 import { MockCollateralAPI } from "./parachain/collateral";
 import { MockTreasuryAPI } from "./parachain/treasury";
@@ -40,7 +40,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly stakedRelayer: StakedRelayerAPI;
     public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
-    public readonly btcCore: BTCCoreAPI;
+    public readonly electrsAPI: ElectrsAPI;
     public readonly btcRelay: BTCRelayAPI;
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
@@ -56,7 +56,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.stakedRelayer = new MockStakedRelayerAPI();
         this.faucet = new FaucetClient("");
         this.oracle = new MockOracleAPI();
-        this.btcCore = new MockBTCCoreAPI();
+        this.electrsAPI = new MockElectrsAPI();
         this.btcRelay = new MockBTCRelayAPI();
         this.collateral = new MockCollateralAPI();
         this.treasury = new MockTreasuryAPI();

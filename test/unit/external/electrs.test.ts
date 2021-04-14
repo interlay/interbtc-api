@@ -5,12 +5,12 @@ import Big from "big.js";
 
 import { createPolkadotAPI } from "../../mock/factory";
 import { assert } from "../../chai";
-import { BTCCoreAPI } from "../../../src/external";
-import { DefaultBTCCoreAPI } from "../../../src/external/electrs";
+import { ElectrsAPI } from "../../../src/external";
+import { DefaultElectrsAPI } from "../../../src/external/electrs";
 
 describe("btc-core", () => {
     let api: ApiPromise;
-    let btcCore: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
     let sandbox: sinon.SinonSandbox;
 
     before(async () => {
@@ -19,7 +19,7 @@ describe("btc-core", () => {
     });
 
     beforeEach(async () => {
-        btcCore = new DefaultBTCCoreAPI("testnet");
+        electrsAPI = new DefaultElectrsAPI("testnet");
     });
 
     after(() => {
@@ -31,9 +31,9 @@ describe("btc-core", () => {
     });
 
     it("should reject getTxIdByRecipientAddress if query returns empty array", async () => {
-        sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve([]));
+        sandbox.stub(DefaultElectrsAPI.prototype, "getData").returns(Promise.resolve([]));
         assert.isRejected(
-            btcCore.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b")
+            electrsAPI.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b")
         );
     });
 
@@ -46,9 +46,9 @@ describe("btc-core", () => {
             } as UTXO
         ];
         const amountAsSat = new Big("0.0007811");
-        sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve(txs));
+        sandbox.stub(DefaultElectrsAPI.prototype, "getData").returns(Promise.resolve(txs));
         assert.isRejected(
-            btcCore.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b", amountAsSat)
+            electrsAPI.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b", amountAsSat)
         );
     });
 
@@ -65,8 +65,8 @@ describe("btc-core", () => {
                 value: 119000000
             } as UTXO,
         ];
-        sandbox.stub(DefaultBTCCoreAPI.prototype, "getData").returns(Promise.resolve(txs));
-        const tx = await btcCore.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b");
+        sandbox.stub(DefaultElectrsAPI.prototype, "getData").returns(Promise.resolve(txs));
+        const tx = await electrsAPI.getTxIdByRecipientAddress("2e6b22b95a2befa403ad59d0b75d931fd0748cf538b57640826e4692cc4fa24b");
         assert.strictEqual(tx, txs[0].txid);
     });
 });

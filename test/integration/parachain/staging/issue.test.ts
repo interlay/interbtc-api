@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "../../../../src/external/electrs";
+import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { PolkaBTC } from "../../../../src/interfaces/default";
@@ -15,7 +15,7 @@ import { issue } from "../../../../src/utils/issue";
 describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: IssueAPI;
-    let btcCoreAPI: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
 
@@ -32,9 +32,9 @@ describe("issue", () => {
         charlie = keyring.addFromUri("//Charlie");
         dave = keyring.addFromUri("//Dave");
 
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
     });
 
     after(async () => {
@@ -58,7 +58,7 @@ describe("issue", () => {
 
     describe("request", () => {
         it("should fail if no account is set", async () => {
-            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
             const amount = api.createType("Balance", 10);
             await assert.isRejected(tmpIssueAPI.request(amount));
         });
@@ -86,24 +86,24 @@ describe("issue", () => {
 
     describe("execute", () => {
         it("should fail if no account is set", async () => {
-            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
             await assert.isRejected(tmpIssueAPI.execute("", ""));
         });
 
         it("should fail to request a value finer than 1 Satoshi", async () => {
             const amount = new Big("0.00000121");
             await assert.isRejected(
-                issue(api, btcCoreAPI, bitcoinCoreClient, alice, amount, charlie.address, true, false)
+                issue(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie.address, true, false)
             );
         }).timeout(500000);
 
         // auto-execution tests may stall indefinitely, due to vault client inaction.
         // This will cause the testing pipeline to time out.
         it("should request and auto-execute issue", async () => {
-            const amount = new Big("0.0000121");
+            const amount = new Big("0.00121");
             const issueResult = await issue(
                 api,
-                btcCoreAPI,
+                electrsAPI,
                 bitcoinCoreClient,
                 alice,
                 amount,
@@ -127,7 +127,7 @@ describe("issue", () => {
             const amount = new Big("0.001");
             const issueResult = await issue(
                 api,
-                btcCoreAPI,
+                electrsAPI,
                 bitcoinCoreClient,
                 alice,
                 amount,

@@ -7,15 +7,15 @@ import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoin from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { BTCCoreAPI } from "../../../../src";
-import { DefaultBTCCoreAPI } from "../../../../src/external/electrs";
+import { ElectrsAPI } from "../../../../src";
+import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
-    let btcCoreAPI: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
 
     // alice is the root account
     let alice: KeyringPair;
@@ -27,8 +27,8 @@ describe("issue", () => {
         alice = keyring.addFromUri("//Alice");
 
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
+        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
     });
 
     after(async () => {

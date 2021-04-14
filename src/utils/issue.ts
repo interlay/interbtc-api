@@ -4,7 +4,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import Big from "big.js";
 
 import { btcToSat, satToBTC, IssueRequestExt } from "..";
-import { BTCCoreAPI } from "../external/electrs";
+import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
 import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTreasuryAPI } from "../parachain/treasury";
@@ -20,7 +20,7 @@ export interface IssueResult {
 
 export async function issue(
     api: ApiPromise,
-    btcCoreAPI: BTCCoreAPI,
+    electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amount: Big,
@@ -29,7 +29,7 @@ export async function issue(
     triggerRefund = false
 ): Promise<IssueResult> {
     const treasuryAPI = new DefaultTreasuryAPI(api);
-    const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+    const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
     const collateralAPI = new DefaultCollateralAPI(api);
 
     issueAPI.setAccount(issuingAccount);

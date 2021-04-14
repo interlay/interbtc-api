@@ -14,7 +14,7 @@ import {
     encodeParachainRequest,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { BTCCoreAPI } from "../external";
+import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
@@ -110,7 +110,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
     private vaultsAPI: VaultsAPI;
     private feeAPI: FeeAPI;
 
-    constructor(api: ApiPromise, private btcNetwork: Network, private btcCoreAPI: BTCCoreAPI, account?: AddressOrPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
         this.feeAPI = new DefaultFeeAPI(api);
@@ -155,7 +155,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
             "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
         );
         if (!merkleProof || !rawTx) {
-            [merkleProof, rawTx] = await this.btcCoreAPI.getParsedExecutionParameters(btcTxId);
+            [merkleProof, rawTx] = await this.electrsAPI.getParsedExecutionParameters(btcTxId);
         }
         const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
