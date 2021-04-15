@@ -6,7 +6,7 @@ import { DefaultBTCRelayAPI } from "../../../../src/parachain/btc-relay";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
 
-describe("ElectrsAPI", function () {
+describe("BTCRelay", function () {
     this.timeout(10000); // API can be slightly slow
 
     let api: ApiPromise;

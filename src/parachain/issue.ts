@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { Bytes } from "@polkadot/types";
-import { AccountId, H256, Hash, EventRecord, BlockNumber } from "@polkadot/types/interfaces";
+import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
@@ -61,6 +61,20 @@ export interface IssueAPI extends TransactionAPI {
      */
     cancel(issueId: H256): Promise<void>;
     /**
+     * @remarks Testnet utility function
+     * @param blocks The time difference in number of blocks between an issue request is created
+     * and required completion time by a user. The issue period has an upper limit
+     * to prevent griefing of vault collateral.
+     */
+    setIssuePeriod(blocks: number): Promise<void>;
+    /**
+     * 
+     * @returns The time difference in number of blocks between an issue request is created
+     * and required completion time by a user. The issue period has an upper limit
+     * to prevent griefing of vault collateral.
+     */
+    getIssuePeriod(): Promise<number>;
+    /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
@@ -85,11 +99,6 @@ export interface IssueAPI extends TransactionAPI {
      * @returns An issue request object
      */
     getRequestById(issueId: H256): Promise<IssueRequestExt>;
-    /**
-     * @returns The time difference in number of blocks between when an issue request is created
-     * and required completion time by a user.
-     */
-    getIssuePeriod(): Promise<BlockNumber>;
     /**
      * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
@@ -166,6 +175,20 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         await this.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
     }
 
+    async setIssuePeriod(blocks: number): Promise<void> {
+        const period = this.api.createType("BlockNumber", blocks);
+        const tx = this.api.tx.sudo
+            .sudo(
+                this.api.tx.issue.setIssuePeriod(period)
+            );
+        await this.sendLogged(tx);
+    }
+
+    async getIssuePeriod(): Promise<number> {
+        const blockNumber = await this.api.query.issue.issuePeriod();
+        return blockNumber.toNumber();
+    }
+
     async list(): Promise<IssueRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const issueRequests = await this.api.query.issue.issueRequests.entriesAt(head);
@@ -205,11 +228,6 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
 
     getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
         return pagedIterator<IssueRequest>(this.api.query.issue.issueRequests, perPage);
-    }
-
-    async getIssuePeriod(): Promise<BlockNumber> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return (await this.api.query.issue.issuePeriod.at(head)) as BlockNumber;
     }
 
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {
