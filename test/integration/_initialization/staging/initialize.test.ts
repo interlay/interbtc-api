@@ -92,7 +92,7 @@ describe("Initialize parachain state", () => {
 
     it("should redeem 0.05 PolkaBTC", async () => {
         const polkaSatToRedeem = api.createType("Balance", btcToSat("0.05"));
-        const redeemAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
+        const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
         const daveAccountId = api.createType("AccountId", dave.address);
         await redeemAPI.request(polkaSatToRedeem, redeemAddress, daveAccountId);
     });

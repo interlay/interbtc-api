@@ -220,7 +220,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         try {
             const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
             for (const utxo of utxos.reverse()) {
-                if (this.utxoHasAmount(utxo, amount)) {
+                if (this.utxoHasAtLeastAmount(utxo, amount)) {
                     return utxo.txid;
                 }
             }
@@ -237,7 +237,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      * @param amountAsBTC (Optional) Amount the recipient must receive
      * @returns Boolean value
      */
-    private utxoHasAmount(utxo: UTXO | VOut, amount?: Big): boolean {
+    private utxoHasAtLeastAmount(utxo: UTXO | VOut, amount?: Big): boolean {
         if (amount) {
             const expectedBtcAsSatoshi = Number(btcToSat(amount.toString()));
             if (utxo.value === undefined || expectedBtcAsSatoshi > utxo.value) {
@@ -305,7 +305,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
             if (recipientAddress !== vout.scriptpubkey_address) {
                 return false;
             }
-            return this.utxoHasAmount(vout, amount);
+            return this.utxoHasAtLeastAmount(vout, amount);
         }
         return true;
     }
