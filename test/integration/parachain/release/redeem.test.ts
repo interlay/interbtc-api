@@ -5,7 +5,7 @@ import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -32,7 +32,7 @@ describe("redeem", () => {
     });
 
     beforeEach(() => {
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, electrsAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });
 
     after(() => {

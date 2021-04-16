@@ -7,7 +7,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { StakedRelayer, DOT } from "../../../../src/interfaces/default";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 import { TypeRegistry } from "@polkadot/types";
@@ -30,7 +30,7 @@ describe("stakedRelayerAPI", () => {
     });
 
     beforeEach(() => {
-        stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoin.networks.regtest);
+        stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoinjs.networks.regtest);
     });
 
     after(async () => {

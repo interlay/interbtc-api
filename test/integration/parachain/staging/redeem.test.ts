@@ -8,7 +8,7 @@ import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { btcToSat, stripHexPrefix, satToBTC } from "../../../../src/utils";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
@@ -34,8 +34,8 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, electrsAPI);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         treasuryAPI = new DefaultTreasuryAPI(api);
     });
 

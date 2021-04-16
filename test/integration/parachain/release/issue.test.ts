@@ -5,7 +5,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { btcToSat } from "../../../../src/utils";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { ElectrsAPI } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -28,7 +28,7 @@ describe("issue", () => {
 
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });
 
     after(async () => {

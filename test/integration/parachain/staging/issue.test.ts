@@ -7,7 +7,7 @@ import { PolkaBTC } from "../../../../src/interfaces/default";
 import { btcToSat, dotToPlanck } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
 import { issue } from "../../../../src/utils/issue";
@@ -34,7 +34,7 @@ describe("issue", () => {
 
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });
 
     after(async () => {
@@ -58,7 +58,7 @@ describe("issue", () => {
 
     describe("request", () => {
         it("should fail if no account is set", async () => {
-            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
             const amount = api.createType("Balance", 10);
             await assert.isRejected(tmpIssueAPI.request(amount));
         });
@@ -86,7 +86,7 @@ describe("issue", () => {
 
     describe("execute", () => {
         it("should fail if no account is set", async () => {
-            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
+            const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
             await assert.isRejected(tmpIssueAPI.execute("", ""));
         });
 

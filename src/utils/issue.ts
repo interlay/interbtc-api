@@ -1,6 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 
 import { btcToSat, satToBTC, IssueRequestExt } from "..";
@@ -29,7 +29,7 @@ export async function issue(
     triggerRefund = false
 ): Promise<IssueResult> {
     const treasuryAPI = new DefaultTreasuryAPI(api);
-    const issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI);
+    const issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     const collateralAPI = new DefaultCollateralAPI(api);
 
     issueAPI.setAccount(issuingAccount);

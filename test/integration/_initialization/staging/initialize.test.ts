@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { assert } from "chai";
 import Big from "big.js";
 
@@ -50,8 +50,8 @@ describe("Initialize parachain state", () => {
 
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, electrsAPI, alice);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, electrsAPI, alice);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         oracleAPI = new DefaultOracleAPI(api, bob);
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
 

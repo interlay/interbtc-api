@@ -15,7 +15,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
 import Big from "big.js";
 
-import { mainnetApiBasePath, regtestApiBasePath, testnetApiBasePath } from "../utils/constants";
+import { MAINNET_ESPLORA_BASE_PATH, REGTEST_ESPLORA_BASE_PATH, TESTNET_ESPLORA_BASE_PATH } from "../utils/constants";
 import { btcToSat } from "../utils/currency";
 
 export type TxStatus = {
@@ -86,12 +86,12 @@ export interface ElectrsAPI {
      *
      * @param opReturn Data string used for matching the OP_CODE of Bitcoin transactions
      * @param recipientAddress Match the receiving address of a transaction that contains said op_return
-     * @param amountAsBTC Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
+     * @param amount Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
      * This parameter is only considered if `recipientAddress` is defined.
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: Big): Promise<string>;
+    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: Big): Promise<string>;
     /**
      * Fetch the last bitcoin transaction ID based on the recipient address and amount.
      * Throw an error if no such transaction is found.
@@ -165,13 +165,13 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         let basePath = "";
         switch (network) {
         case "mainnet":
-            basePath = mainnetApiBasePath;
+            basePath = MAINNET_ESPLORA_BASE_PATH;
             break;
         case "testnet":
-            basePath = testnetApiBasePath;
+            basePath = TESTNET_ESPLORA_BASE_PATH;
             break;
         case "regtest":
-            basePath = regtestApiBasePath;
+            basePath = REGTEST_ESPLORA_BASE_PATH;
             break;
         default:
             basePath = network;
@@ -286,7 +286,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
                             reject("Timeout elapsed");
                         }
                         this.waitForOpreturn(data, timeoutMs - retryIntervalMs, retryIntervalMs).then(resolve);
-                    }, 5000);
+                    }, retryIntervalMs);
                 });
         });
     }
