@@ -147,26 +147,3 @@ services:
                 vault --keyring=bob  --auto-register-with-collateral 1000000000000 --polka-btc-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
-    testdata_gen:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/testdata-gen:0.6.1"
-        command:
-            - /bin/sh
-            - -c
-            - |
-                echo "Sleeping..."
-                sleep 15
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-issue-period --period=50
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice set-redeem-period --period=50
-
-                # the exchange rate value is 3855.23187
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=bob set-exchange-rate --exchange-rate=385523187
-
-                # wait for the vault to register
-                sleep 45
-                ALICE_ADDRESS=bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-issue --issue-amount=10000 --vault=dave --griefing-collateral 1000000000000
-                sleep 30
-                REDEEM_ID=$$(testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice request-redeem --redeem-amount=5000 --btc-address=$${ALICE_ADDRESS} --vault=dave)
-                testdata-gen --polka-btc-url 'ws://polkabtc:9944' --keyring=alice execute-redeem --redeem-id=$${REDEEM_ID}
-        environment:
-            <<: *client-env

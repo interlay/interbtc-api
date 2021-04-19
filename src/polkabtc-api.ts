@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BTCCoreAPI, DefaultBTCCoreAPI } from "./external/btc-core";
+import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
 import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./parachain/redeem";
@@ -19,7 +19,7 @@ import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 
 export * from "./factory";
-export * from "./utils/transaction";
+export * from "./parachain/transaction";
 
 function getBitcoinNetwork(network: string = "mainnet"): Network {
     switch (network) {
@@ -41,7 +41,7 @@ export interface PolkaBTCAPI {
     readonly stakedRelayer: StakedRelayerAPI;
     readonly faucet: FaucetClient;
     readonly oracle: OracleAPI;
-    readonly btcCore: BTCCoreAPI;
+    readonly electrsAPI: ElectrsAPI;
     readonly btcRelay: BTCRelayAPI;
     readonly collateral: CollateralAPI;
     readonly treasury: TreasuryAPI;
@@ -65,7 +65,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly stakedRelayer: StakedRelayerAPI;
     public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
-    public readonly btcCore: BTCCoreAPI;
+    public readonly electrsAPI: ElectrsAPI;
     public readonly btcRelay: BTCRelayAPI;
     public readonly collateral: CollateralAPI;
     public readonly treasury: TreasuryAPI;
@@ -80,15 +80,15 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork, _account);
         this.faucet = new FaucetClient("");
         this.oracle = new DefaultOracleAPI(api);
-        this.btcCore = new DefaultBTCCoreAPI(network);
-        this.btcRelay = new DefaultBTCRelayAPI(api, this.btcCore);
+        this.electrsAPI = new DefaultElectrsAPI(network);
+        this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
         this.collateral = new DefaultCollateralAPI(api, _account);
         this.treasury = new DefaultTreasuryAPI(api);
         this.system = new DefaultSystemAPI(api);
         this.replace = new DefaultReplaceAPI(api, btcNetwork, _account);
         this.fee = new DefaultFeeAPI(api);
-        this.issue = new DefaultIssueAPI(api, btcNetwork, this.btcCore, _account);
-        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.btcCore, _account);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, _account);
+        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

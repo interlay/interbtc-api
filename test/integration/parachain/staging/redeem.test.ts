@@ -8,12 +8,12 @@ import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { btcToSat, stripHexPrefix, satToBTC } from "../../../../src/utils";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
-import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { BTCCoreAPI } from "../../../../src";
-import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
+import { ElectrsAPI } from "../../../../src";
+import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -27,15 +27,15 @@ describe("redeem", () => {
     let alice: KeyringPair;
     let charlie: KeyringPair;
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
-    let btcCoreAPI: BTCCoreAPI;
+    let electrsAPI: ElectrsAPI;
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
-        issueAPI = new DefaultIssueAPI(api, bitcoin.networks.regtest, btcCoreAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         treasuryAPI = new DefaultTreasuryAPI(api);
     });
 
@@ -87,7 +87,7 @@ describe("redeem", () => {
             const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
             const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee).toString());
+            const txAmountRequired = new Big(satToBTC(issueRequest.amount.add(issueRequest.fee).toString()));
 
             // send btc tx
             const vaultBtcAddress = requestResult.issueRequest.btc_address;

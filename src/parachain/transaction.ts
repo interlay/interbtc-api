@@ -2,9 +2,11 @@ import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ApiPromise } from "@polkadot/api";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "./constants";
 import { AugmentedEvent, ApiTypes } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
+
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
+
 export interface TransactionAPI {
     setAccount(account: AddressOrPair): void;
     sendLogged<T extends AnyTuple>(
@@ -34,7 +36,7 @@ export class DefaultTransactionAPI {
             transaction
                 .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
                 .then((u: () => void) => (unsubscribe = u))
-                .catch((error) => reject(error));
+                .catch((error) => console.log(`Transaction failed: ${error}`));
     
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
@@ -46,15 +48,15 @@ export class DefaultTransactionAPI {
 
         console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         unsubscribe(result);
-        this.printEvents(result.events);
+        DefaultTransactionAPI.printEvents(this.api, result.events);
 
         if (successEventType && !DefaultTransactionAPI.doesArrayContainEvent(result.events, successEventType)) {
-            Promise.reject("Transaction failed");
+            console.log("Transaction failed: Expected event was not emitted");
         }
         return result;
     }
     
-    private printEvents(events: EventRecord[]): void {
+    static printEvents(api: ApiPromise, events: EventRecord[]): void {
         let foundErrorEvent = false;
         let errorMessage = "";
         events
@@ -62,7 +64,7 @@ export class DefaultTransactionAPI {
             .forEach((eventData) => {
                 if (DefaultTransactionAPI.isDispatchError(eventData)) {
                     try {
-                        const decoded = this.api.registry.findMetaError(eventData.asModule);
+                        const decoded = api.registry.findMetaError(eventData.asModule);
                         const { documentation, name, section } = decoded;
                         if (documentation && documentation.length > 0) {
                             errorMessage = `${section}.${name}: ${documentation.join(" ")}`;
@@ -93,7 +95,7 @@ export class DefaultTransactionAPI {
         // Use this function with a timeout.
         // Unless the awaited event occurs, this Promise will never resolve. 
         let timeoutHandle: NodeJS.Timeout;
-        const timeoutPromise = new Promise((resolve, reject) => {
+        const timeoutPromise = new Promise((_, reject) => {
             timeoutHandle = setTimeout(() => reject(), timeoutMs);
         });
 

@@ -1,27 +1,27 @@
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import { H160 } from "@polkadot/types/interfaces";
 import { BtcAddress } from "../interfaces/default";
 import { TypeRegistry } from "@polkadot/types";
 
-export { bitcoin };
+export { bitcoinjs as bitcoin };
 
-export function encodeBtcAddress(address: BtcAddress, network: bitcoin.Network): string {
+export function encodeBtcAddress(address: BtcAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
     try {
         if (address.isP2Pkh) {
-            const result = bitcoin.payments.p2pkh({
+            const result = bitcoinjs.payments.p2pkh({
                 hash: Buffer.from(address.asP2Pkh.buffer),
                 network,
             });
             btcAddress = result.address;
         } else if (address.isP2Sh) {
-            const result = bitcoin.payments.p2sh({
+            const result = bitcoinjs.payments.p2sh({
                 hash: Buffer.from(address.asP2Sh.buffer),
                 network,
             });
             btcAddress = result.address;
         } else if (address.isP2WpkHv0) {
-            const result = bitcoin.payments.p2wpkh({
+            const result = bitcoinjs.payments.p2wpkh({
                 hash: Buffer.from(address.asP2WpkHv0.buffer),
                 network,
             });
@@ -53,15 +53,15 @@ function decode<P extends Payable, O>(p: P, f: (payment: P, options?: O) => P): 
 
 export function decodeBtcAddress(
     address: string,
-    network: bitcoin.Network
+    network: bitcoinjs.Network
 ): { p2pkh: string } | { p2sh: string } | { p2wpkhv0: string } {
-    const p2pkh = decode({ address, network }, bitcoin.payments.p2pkh);
+    const p2pkh = decode({ address, network }, bitcoinjs.payments.p2pkh);
     if (p2pkh) return { p2pkh };
 
-    const p2sh = decode({ address, network }, bitcoin.payments.p2sh);
+    const p2sh = decode({ address, network }, bitcoinjs.payments.p2sh);
     if (p2sh) return { p2sh };
 
-    const p2wpkhv0 = decode({ address, network }, bitcoin.payments.p2wpkh);
+    const p2wpkhv0 = decode({ address, network }, bitcoinjs.payments.p2wpkh);
     if (p2wpkhv0) return { p2wpkhv0 };
 
     throw new Error("Unable to decode address");

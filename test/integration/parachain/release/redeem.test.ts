@@ -5,32 +5,34 @@ import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoin from "bitcoinjs-lib";
-import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import * as bitcoinjs from "bitcoinjs-lib";
+import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
-import { issue } from "../../../utils/issue";
+import { DefaultElectrsAPI } from "../../../../src/external/electrs";
+import { issue } from "../../../../src/utils/issue";
 import { DefaultTransactionAPI } from "../../../../src";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
 describe("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
-    let btcCoreAPI: DefaultBTCCoreAPI;
+    let electrsAPI: DefaultElectrsAPI;
     let api: ApiPromise;
     let keyring: Keyring;
     // alice is the root account
+    let alice: KeyringPair;
     let ferdie: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         ferdie = keyring.addFromUri("//Ferdie");
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        alice = keyring.addFromUri("//Alice");
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
     });
 
     beforeEach(() => {
-        redeemAPI = new DefaultRedeemAPI(api, bitcoin.networks.regtest, btcCoreAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });
 
     after(() => {
@@ -39,17 +41,16 @@ describe("redeem", () => {
 
     describe("liquidation redeem", () => {
         it("should liquidate a vault that committed theft", async () => {
-            const vaultToLiquidate = "Bob";
+            const vaultToLiquidate = keyring.addFromUri("//Bob");
             const aliceBitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-            await issue(api, btcCoreAPI, aliceBitcoinCoreClient, keyring, "0.0001", "Alice", vaultToLiquidate, true, false);
-
+            await issue(api, electrsAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
                 "regtest",
                 "0.0.0.0",
                 "rpcuser",
                 "rpcpassword",
                 "18443",
-                vaultToLiquidate
+                vaultToLiquidate.address
             );
 
             // Steal some bitcoin (spend from the vault's account)

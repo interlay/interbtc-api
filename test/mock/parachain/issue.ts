@@ -11,6 +11,10 @@ import Big from "big.js";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
+    setIssuePeriod(_blocks: number): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    
     execute(_issueId: string, _btcTxId: string): Promise<void> {
         return Promise.resolve();
     }
@@ -58,8 +62,8 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         ]);
     }
 
-    getIssuePeriod(): Promise<BlockNumber> {
-        return Promise.resolve(new BN(200) as BlockNumber);
+    getIssuePeriod(): Promise<number> {
+        return Promise.resolve(200);
     }
 
     mapForUser(_account: AccountId): Promise<Map<H256, IssueRequestExt>> {

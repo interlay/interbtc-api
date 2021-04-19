@@ -1,8 +1,10 @@
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { btcToSat, satToBTC, DefaultTransactionAPI, TransactionAPI } from "../utils";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
+
+import { btcToSat, satToBTC } from "../utils";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
  * @category PolkaBTC Bridge

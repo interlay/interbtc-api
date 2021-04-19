@@ -1,30 +1,29 @@
-import { PolkaBTC, RedeemRequest } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types";
+import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
+import type { AnyTuple } from "@polkadot/types/types";
+import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
+
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
     pagedIterator,
     decodeFixedPointType,
-    DefaultTransactionAPI,
     encodeParachainRequest,
     btcToSat,
     satToBTC,
     planckToDOT,
-    TransactionAPI
 } from "../utils";
-import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
-import { Network } from "bitcoinjs-lib";
-import Big from "big.js";
-import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
-import type { AnyTuple } from "@polkadot/types/types";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
-import { BTCCoreAPI } from "../external";
+import { ElectrsAPI } from "../external";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { PolkaBTC, RedeemRequest } from "../interfaces/default";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -77,6 +76,22 @@ export interface RedeemAPI extends TransactionAPI {
      */
     cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
     /**
+     * @remarks Testnet utility function
+     * @param blocks The time difference in number of blocks between a redeem request
+     * is created and required completion time by a vault.
+     * The redeem period has an upper limit to ensure the user gets their BTC in time 
+     * and to potentially punish a vault for inactivity or stealing BTC.
+     */
+    setRedeemPeriod(blocks: number): Promise<void>;
+     /**
+     * 
+     * @returns The time difference in number of blocks between a redeem request
+     * is created and required completion time by a vault.
+     * The redeem period has an upper limit to ensure the user gets their BTC in time 
+     * and to potentially punish a vault for inactivity or stealing BTC.
+     */
+    getRedeemPeriod(): Promise<number>;
+    /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
@@ -125,11 +140,6 @@ export interface RedeemAPI extends TransactionAPI {
      */
     getPremiumRedeemFee(): Promise<string>;
     /**
-     * @returns The time difference in number of blocks between when a redeem request is created
-     * and required completion time by a user.
-     */
-    getRedeemPeriod(): Promise<BlockNumber>;
-    /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of PolkaBTC to burn, denominated as PolkaBTC
      */
@@ -151,7 +161,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
-    constructor(api: ApiPromise, private btcNetwork: Network, private btcCoreAPI: BTCCoreAPI, account?: AddressOrPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
@@ -171,8 +181,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
                 return id;
             }
         }
-
-        throw new Error("Transaction failed");
+        throw new Error("Redeem transaction failed");
     }
 
     async request(amountSat: PolkaBTC, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
@@ -194,7 +203,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
         );
         if (!merkleProof || !rawTx) {
-            [merkleProof, rawTx] = await this.btcCoreAPI.getParsedExecutionParameters(btcTxId);
+            [merkleProof, rawTx] = await this.electrsAPI.getParsedExecutionParameters(btcTxId);
         }
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
@@ -215,6 +224,20 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const amountSat = this.api.createType("Balance", btcToSat(amount.toString()));
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
         await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
+    }
+
+    async setRedeemPeriod(blocks: number): Promise<void> {
+        const period = this.api.createType("BlockNumber", blocks);
+        const tx = this.api.tx.sudo
+            .sudo(
+                this.api.tx.redeem.setRedeemPeriod(period)
+            );
+        await this.sendLogged(tx);
+    }
+
+    async getRedeemPeriod(): Promise<number> {
+        const blockNumber = await this.api.query.redeem.redeemPeriod();
+        return blockNumber.toNumber();
     }
 
     async getMaxBurnableTokens(): Promise<Big> {
@@ -254,7 +277,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         try {
             const unsubscribe = await this.api.rpc.chain.subscribeFinalizedHeads(async (header: Header) => {
                 const redeemRequests = await this.mapForUser(account);
-                const redeemPeriod = await this.getRedeemPeriod();
+                const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
                 const currentParachainBlockHeight = header.number.toBn();
                 redeemRequests.forEach((request, id) => {
                     if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
@@ -283,11 +306,6 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemFee = await this.api.query.fee.redeemFee.at(head);
         return new Big(decodeFixedPointType(redeemFee));
-    }
-
-    async getRedeemPeriod(): Promise<BlockNumber> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.redeem.redeemPeriod.at(head);
     }
 
     async getDustValue(): Promise<PolkaBTC> {

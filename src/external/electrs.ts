@@ -11,12 +11,12 @@ import {
 } from "@interlay/esplora-btc-api";
 import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { btcToSat } from "../utils/currency";
 import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
+import Big from "big.js";
 
-const mainnetApiBasePath = "https://blockstream.info/api";
-const testnetApiBasePath = "https://electr-testnet.do.polkabtc.io";
+import { MAINNET_ESPLORA_BASE_PATH, REGTEST_ESPLORA_BASE_PATH, TESTNET_ESPLORA_BASE_PATH } from "../utils/constants";
+import { btcToSat } from "../utils/currency";
 
 export type TxStatus = {
     confirmed: boolean;
@@ -48,7 +48,7 @@ export type TxInput = {
  * Bitcoin Core API
  * @category Bitcoin Core
  */
-export interface BTCCoreAPI {
+export interface ElectrsAPI {
     /**
      * @returns The block hash of the latest Bitcoin block
      */
@@ -86,12 +86,12 @@ export interface BTCCoreAPI {
      *
      * @param opReturn Data string used for matching the OP_CODE of Bitcoin transactions
      * @param recipientAddress Match the receiving address of a transaction that contains said op_return
-     * @param amountAsBTC Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
+     * @param amount Match the amount (in BTC) of a transaction that contains said op_return and recipientAddress.
      * This parameter is only considered if `recipientAddress` is defined.
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string>;
+    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: Big): Promise<string>;
     /**
      * Fetch the last bitcoin transaction ID based on the recipient address and amount.
      * Throw an error if no such transaction is found.
@@ -104,7 +104,7 @@ export interface BTCCoreAPI {
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string>;
+    getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: Big): Promise<string>;
     /**
      * Fetch the Bitcoin transaction that matches the given TxId
      *
@@ -139,9 +139,23 @@ export interface BTCCoreAPI {
      * @returns A tuple of Bytes object, representing [merkleProof, rawTx]
      */
     getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]>;
+    /**
+     * Return a promise that either resolves to the first txid with the given opreturn `data`, 
+     * or rejects if the `timeout` has elapsed.
+     *
+     * @remarks
+     * Every 5 seconds, performs the lookup using an external service, Esplora
+     *
+     * @param data The opReturn of the bitcoin transaction
+     * @param timeoutMs The duration until the Promise times out (in milliseconds)
+     * @param retryIntervalMs The time to wait (in milliseconds) between retries
+     *
+     * @returns The Bitcoin txid
+     */
+    waitForOpreturn(data: string, timeoutMs: number, retryIntervalMs: number): Promise<string>;
 }
 
-export class DefaultBTCCoreAPI implements BTCCoreAPI {
+export class DefaultElectrsAPI implements ElectrsAPI {
     private blockApi: BlockApi;
     private txApi: TxApi;
     private scripthashApi: ScripthashApi;
@@ -151,10 +165,13 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         let basePath = "";
         switch (network) {
         case "mainnet":
-            basePath = mainnetApiBasePath;
+            basePath = MAINNET_ESPLORA_BASE_PATH;
             break;
         case "testnet":
-            basePath = testnetApiBasePath;
+            basePath = TESTNET_ESPLORA_BASE_PATH;
+            break;
+        case "regtest":
+            basePath = REGTEST_ESPLORA_BASE_PATH;
             break;
         default:
             basePath = network;
@@ -199,11 +216,11 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return amount;
     }
 
-    async getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: string): Promise<string> {
+    async getTxIdByRecipientAddress(recipientAddress: string, amount?: Big): Promise<string> {
         try {
             const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
             for (const utxo of utxos.reverse()) {
-                if (this.utxoHasAmount(utxo, amountAsBTC)) {
+                if (this.utxoHasAtLeastAmount(utxo, amount)) {
                     return utxo.txid;
                 }
             }
@@ -220,9 +237,9 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      * @param amountAsBTC (Optional) Amount the recipient must receive
      * @returns Boolean value
      */
-    private utxoHasAmount(utxo: UTXO | VOut, amountAsBTC?: string): boolean {
-        if (amountAsBTC) {
-            const expectedBtcAsSatoshi = Number(btcToSat(amountAsBTC));
+    private utxoHasAtLeastAmount(utxo: UTXO | VOut, amount?: Big): boolean {
+        if (amount) {
+            const expectedBtcAsSatoshi = Number(btcToSat(amount.toString()));
             if (utxo.value === undefined || expectedBtcAsSatoshi > utxo.value) {
                 return false;
             }
@@ -230,7 +247,7 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
         return true;
     }
 
-    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amountAsBTC?: string): Promise<string> {
+    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: Big): Promise<string> {
         const data = Buffer.from(opReturn, "hex");
         if (data.length !== 32) {
             return Promise.reject("Requires a 32 byte hash as OP_RETURN");
@@ -250,12 +267,28 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
                 continue;
             }
             for (const vout of tx.vout) {
-                if (this.txOutputHasRecipientAndAmount(vout, recipientAddress, amountAsBTC)) {
+                if (this.txOutputHasRecipientAndAmount(vout, recipientAddress, amount)) {
                     return tx.txid;
                 }
             }
         }
         return Promise.reject("No transaction id found");
+    }
+
+    async waitForOpreturn(data: string, timeoutMs: number, retryIntervalMs: number): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            this.getTxIdByOpReturn(data)
+                .then(resolve)
+                .catch((_error) => {
+                    setTimeout(() => {
+                        console.log("Did not find opreturn, retrying...");
+                        if(timeoutMs < retryIntervalMs) {
+                            reject("Timeout elapsed");
+                        }
+                        this.waitForOpreturn(data, timeoutMs - retryIntervalMs, retryIntervalMs).then(resolve);
+                    }, retryIntervalMs);
+                });
+        });
     }
 
     /**
@@ -267,12 +300,12 @@ export class DefaultBTCCoreAPI implements BTCCoreAPI {
      * `recipientAddress` is defined too
      * @returns Boolean value
      */
-    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amountAsBTC?: string): boolean {
+    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amount?: Big): boolean {
         if (recipientAddress) {
             if (recipientAddress !== vout.scriptpubkey_address) {
                 return false;
             }
-            return this.utxoHasAmount(vout, amountAsBTC);
+            return this.utxoHasAtLeastAmount(vout, amount);
         }
         return true;
     }
