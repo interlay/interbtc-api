@@ -35,7 +35,7 @@ describe("refund", () => {
     });
 
     it("should not generate a refund request", async () => {
-        const isueResult = await issue(
+        const issueResult = await issue(
             api,
             electrsAPI,
             bitcoinCoreClient,
@@ -45,14 +45,14 @@ describe("refund", () => {
             false,
             false
         );
-        const refund = await refundAPI.getRequestByIssueId(isueResult.request.id);
+        const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
         // The parachain returns an Option<> refund request if none was found,
         // which is deserialized as a refund request with blank/default fields
         assert.equal(refund.amount_btc.toString(), "0");
     }).timeout(1000000);
 
     it("should generate a refund request", async () => {
-        const isueResult = await issue(
+        const issueResult = await issue(
             api,
             electrsAPI,
             bitcoinCoreClient,
@@ -62,7 +62,7 @@ describe("refund", () => {
             true,
             true
         );
-        const refund = await refundAPI.getRequestByIssueId(isueResult.request.id);
+        const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
         assert.notEqual(refund.amount_btc.toString(), "0");
     }).timeout(1000000);
 

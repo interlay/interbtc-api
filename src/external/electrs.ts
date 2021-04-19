@@ -284,8 +284,9 @@ export class DefaultElectrsAPI implements ElectrsAPI {
                         console.log("Did not find opreturn, retrying...");
                         if(timeoutMs < retryIntervalMs) {
                             reject("Timeout elapsed");
+                        } else {
+                            this.waitForOpreturn(data, timeoutMs - retryIntervalMs, retryIntervalMs).then(resolve).catch(reject);
                         }
-                        this.waitForOpreturn(data, timeoutMs - retryIntervalMs, retryIntervalMs).then(resolve);
                     }, retryIntervalMs);
                 });
         });
