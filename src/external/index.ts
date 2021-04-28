@@ -1,1 +1,1 @@
-export { ElectrsAPI } from "./electrs";
+export { ElectrsAPI, DefaultElectrsAPI } from "./electrs";
