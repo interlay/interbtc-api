@@ -83,9 +83,13 @@ export class BitcoinCoreClient {
         };
     }
 
-    async mineBlocks(n: number): Promise<void> {
+    async mineBlocksWithoutDelay(n: number): Promise<void> {
         const newWalletAddress = await this.client.command("getnewaddress");
         await this.client.command("generatetoaddress", n, newWalletAddress);
+    }
+
+    async mineBlocks(n: number): Promise<void> {
+        await this.mineBlocksWithoutDelay(n);
         // A block is relayed every 6000ms by the staked-relayer.
         // Wait an additional 100ms to be sure
         const relayPeriodWithBuffer = 6100;
