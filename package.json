@@ -41,7 +41,7 @@
     "@interlay/esplora-btc-api": "0.4.0",
     "@polkadot/typegen": "3.11.1",
     "@interlay/polkabtc-types": "0.6.2",
-    "@types/big.js": "^4.0.5",
+    "@types/big.js": "4.0.5",
     "big.js": "6.0.3",
     "bitcoinjs-lib": "^5.2.0",
     "bn.js": "^5.2.0",
@@ -49,11 +49,13 @@
     "regtest-client": "^0.2.0",
     "sinon": "^9.0.3",
     "ts-mock-imports": "^1.3.0",
+<<<<<<< HEAD
     "@polkadot/api": "3.11.1",
+=======
+    "@polkadot/api": "4.8.1",
+    "@polkadot/typegen": "4.8.1",
+>>>>>>> 1e82cad8510b1b3e45651838c8d489fe050c86b9
     "bitcoin-core": "^3.0.0"
-  },
-  "peerDependencies": {
-    "@polkadot/api": "3.11.1"
   },
   "devDependencies": {
     "@types/chai": "^4.2.12",

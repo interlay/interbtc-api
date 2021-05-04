@@ -21,7 +21,7 @@ import { Network, networks } from "bitcoinjs-lib";
 export * from "./factory";
 export * from "./parachain/transaction";
 
-function getBitcoinNetwork(network: string = "mainnet"): Network {
+export function getBitcoinNetwork(network: string = "mainnet"): Network {
     switch (network) {
     case "mainnet":
         return networks.bitcoin;
