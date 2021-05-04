@@ -26,10 +26,26 @@ export async function issue(
     amount: Big,
     vaultAddress?: string,
     autoExecute = true,
-    triggerRefund = false
+    triggerRefund = false,
+    network?: string,
 ): Promise<IssueResult> {
     const treasuryAPI = new DefaultTreasuryAPI(api);
-    const issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+    let bitcoinjsNetwork: bitcoinjs.Network;
+    switch(network) {
+    case "testnet": {
+        bitcoinjsNetwork = bitcoinjs.networks.testnet;
+        break;
+    }
+    case "mainnet": {
+        bitcoinjsNetwork = bitcoinjs.networks.bitcoin;
+        break;
+    }
+    default: {
+        bitcoinjsNetwork = bitcoinjs.networks.regtest;
+        break;
+    }
+    }
+    const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, electrsAPI);
     const collateralAPI = new DefaultCollateralAPI(api);
 
     issueAPI.setAccount(issuingAccount);
