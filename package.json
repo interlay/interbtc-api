@@ -47,12 +47,9 @@
     "regtest-client": "^0.2.0",
     "sinon": "^9.0.3",
     "ts-mock-imports": "^1.3.0",
-    "@polkadot/api": "3.11.1",
-    "@polkadot/typegen": "3.11.1",
+    "@polkadot/api": "4.8.1",
+    "@polkadot/typegen": "4.8.1",
     "bitcoin-core": "^3.0.0"
-  },
-  "peerDependencies": {
-    "@polkadot/api": "3.11.1"
   },
   "devDependencies": {
     "@types/chai": "^4.2.12",
