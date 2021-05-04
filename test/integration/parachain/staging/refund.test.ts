@@ -1,32 +1,33 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { DefaultIssueAPI } from "../../../../src/parachain/issue";
-import { DefaultBTCCoreAPI } from "../../../../src/external/btc-core";
-import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
+import * as bitcoinjs from "bitcoinjs-lib";
+import { KeyringPair } from "@polkadot/keyring/types";
+import Big from "big.js";
+
+import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
+import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoin from "bitcoinjs-lib";
-import { DefaultRefundAPI } from "../../../../src/parachain/refund";
-import { KeyringPair } from "@polkadot/keyring/types";
+import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
-import { issue } from "../../../utils/issue";
+import { issue } from "../../../../src/utils/issue";
 
 describe("refund", () => {
     let api: ApiPromise;
-    let btcCoreAPI: DefaultBTCCoreAPI;
-    let refundAPI: DefaultRefundAPI;
+    let electrsAPI: ElectrsAPI;
+    let refundAPI: RefundAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
     let alice: KeyringPair;
+    let eve: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
-        // Alice is also the root account
-        alice = keyring.addFromUri("//Alice");
-        btcCoreAPI = new DefaultBTCCoreAPI("http://0.0.0.0:3002");
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-        refundAPI = new DefaultRefundAPI(api, bitcoin.networks.regtest);
-        refundAPI.setAccount(alice);
+        refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest);
+        alice = keyring.addFromUri("//Alice");
+        eve = keyring.addFromUri("//Eve");
     });
 
     after(async () => {
@@ -34,36 +35,34 @@ describe("refund", () => {
     });
 
     it("should not generate a refund request", async () => {
-        const isueResult = await issue(
+        const issueResult = await issue(
             api,
-            btcCoreAPI,
+            electrsAPI,
             bitcoinCoreClient,
-            keyring,
-            "0.001",
-            "Alice",
-            "Eve",
+            alice,
+            new Big("0.001"),
+            eve.address,
             false,
             false
         );
-        const refund = await refundAPI.getRequestByIssueId(isueResult.request.id);
+        const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
         // The parachain returns an Option<> refund request if none was found,
         // which is deserialized as a refund request with blank/default fields
         assert.equal(refund.amount_btc.toString(), "0");
     }).timeout(1000000);
 
     it("should generate a refund request", async () => {
-        const isueResult = await issue(
+        const issueResult = await issue(
             api,
-            btcCoreAPI,
+            electrsAPI,
             bitcoinCoreClient,
-            keyring,
-            "0.001",
-            "Alice",
-            "Eve",
-            false,
+            alice,
+            new Big("0.001"),
+            eve.address,
+            true,
             true
         );
-        const refund = await refundAPI.getRequestByIssueId(isueResult.request.id);
+        const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
         assert.notEqual(refund.amount_btc.toString(), "0");
     }).timeout(1000000);
 

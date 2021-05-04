@@ -1,53 +1,44 @@
-import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
 import { ApiPromise } from "@polkadot/api";
-import { IGNORED_ERROR_MESSAGES } from "./constants";
 import { AugmentedEvent, ApiTypes } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 
+import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
+
 export interface TransactionAPI {
-    /**
-     * Send a transaction using PolkadotJs API and log the events to console 
-     * @param transaction Transaction object bundled with auto-generated polkadot-js methods. For instance,
-     * `this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck)`
-     * @param signer The account to sign this transaction with
-     * @param successEventType (Optional) The type of the event whose emission confirms successful
-     * transaction execution. If this event is absent, reject the promise.
-     * @returns A result object with information from the attempt to broadcast this transaction
-     */
-     sendLogged<T extends AnyTuple>(
+    setAccount(account: AddressOrPair): void;
+    sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
-        signer: AddressOrPair,
         successEventType?: AugmentedEvent<ApiTypes, T>
     ): Promise<ISubmittableResult>;
 }
 
-export class Transaction implements TransactionAPI {
-    constructor(private api: ApiPromise) {}
+export class DefaultTransactionAPI {
+    constructor(public api: ApiPromise, private account?: AddressOrPair) {}
+
+    public setAccount(account: AddressOrPair): void {
+        this.account = account;
+    }
 
     async sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
-        signer: AddressOrPair,
         successEventType?: AugmentedEvent<ApiTypes, T>
     ): Promise<ISubmittableResult> {
-        // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
         const { unsubscribe, result } = await new Promise((resolve, reject) => {
+            if (this.account === undefined) {
+                return reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+            }
+
             let unsubscribe: () => void;
             // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
-            // signAndSend: Promise<() => void>
-            // signAndSend -> signAndSend resolves (we set unsubscribe) -> callback is called
             transaction
-                .signAndSend(signer, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
+                .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
                 .then((u: () => void) => (unsubscribe = u))
-                .catch((error) => reject(error));
+                .catch((error) => console.log(`Transaction failed: ${error}`));
     
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
-                // could log events here as they are being emitted
-                // using callbackObject.result.events
-                // noting that sometimes several events are
-                // emitted at once
                 const status = callbackObject.result.status;
                 if (status.isFinalized) {
                     resolve(callbackObject);
@@ -57,23 +48,23 @@ export class Transaction implements TransactionAPI {
 
         console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         unsubscribe(result);
-        this.printEvents(result.events);
+        DefaultTransactionAPI.printEvents(this.api, result.events);
 
-        if (successEventType && !this.doesArrayContainEvent(result.events, successEventType)) {
-            Promise.reject("Transaction failed");
+        if (successEventType && !DefaultTransactionAPI.doesArrayContainEvent(result.events, successEventType)) {
+            console.log("Transaction failed: Expected event was not emitted");
         }
         return result;
     }
     
-    printEvents(events: EventRecord[]): void {
+    static printEvents(api: ApiPromise, events: EventRecord[]): void {
         let foundErrorEvent = false;
         let errorMessage = "";
         events
             .map(({ event }) => event.data)
             .forEach((eventData) => {
-                if (this.isDispatchError(eventData)) {
+                if (DefaultTransactionAPI.isDispatchError(eventData)) {
                     try {
-                        const decoded = this.api.registry.findMetaError(eventData.asModule);
+                        const decoded = api.registry.findMetaError(eventData.asModule);
                         const { documentation, name, section } = decoded;
                         if (documentation && documentation.length > 0) {
                             errorMessage = `${section}.${name}: ${documentation.join(" ")}`;
@@ -96,26 +87,40 @@ export class Transaction implements TransactionAPI {
         }
     }
 
-    async waitForEvent<T extends AnyTuple>(event: AugmentedEvent<ApiTypes, T>): Promise<boolean> {
+    static async waitForEvent<T extends AnyTuple>(
+        api: ApiPromise,
+        event: AugmentedEvent<ApiTypes, T>,
+        timeoutMs: number
+    ): Promise<boolean> {
         // Use this function with a timeout.
         // Unless the awaited event occurs, this Promise will never resolve. 
-
-        await new Promise<void>((resolve, _reject) => {
-            this.api.query.system.events((eventsVec) => {
-                const events = eventsVec.toArray();
-                if(this.doesArrayContainEvent(events, event)) {
-                    resolve();
-                }
-            });
+        let timeoutHandle: NodeJS.Timeout;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutHandle = setTimeout(() => reject(), timeoutMs);
         });
+
+        await Promise.race([ 
+            new Promise<void>((resolve, _reject) => {
+                api.query.system.events((eventsVec) => {
+                    const events = eventsVec.toArray();
+                    if(this.doesArrayContainEvent(events, event)) {
+                        resolve();
+                    }
+                });
+            }), 
+            timeoutPromise, 
+        ]).then((_) => {
+            clearTimeout(timeoutHandle);
+        });
+
         return true;
     }
-    
-    isDispatchError(eventData: unknown): eventData is DispatchError {
+
+    static isDispatchError(eventData: unknown): eventData is DispatchError {
         return (eventData as DispatchError).isModule !== undefined;
     }
 
-    doesArrayContainEvent<T extends AnyTuple>(
+    static doesArrayContainEvent<T extends AnyTuple>(
         events: EventRecord[],
         eventType: AugmentedEvent<ApiTypes, T>
     ): boolean {

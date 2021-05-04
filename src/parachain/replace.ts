@@ -1,14 +1,16 @@
 import { ApiPromise } from "@polkadot/api";
-import { PolkaBTC, ReplaceRequest } from "../interfaces/default";
+import { H256 } from "@polkadot/types/interfaces";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Hash } from "@polkadot/types/interfaces";
-import { Network } from "bitcoinjs-lib";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, encodeBtcAddress, storageKeyToFirstInner, Transaction } from "../utils";
-import { H256 } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { DefaultFeeAPI, FeeAPI } from "./fee";
-import Big from "big.js";
+import { AddressOrPair } from "@polkadot/api/types";
 import { EventRecord } from "@polkadot/types/interfaces/system";
+import Big from "big.js";
+import { Network } from "bitcoinjs-lib";
+
+import { PolkaBTC, ReplaceRequest } from "../interfaces/default";
+import { encodeBtcAddress, storageKeyToFirstInner } from "../utils";
+import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
@@ -34,8 +36,10 @@ export function encodeReplaceRequest(req: ReplaceRequest, network: Network): Rep
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
-export interface ReplaceAPI {
+export interface ReplaceAPI extends TransactionAPI {
     /**
      * @returns The minimum amount of btc that is accepted for replace requests; any lower values would
      * risk the bitcoin client to reject the payment
@@ -72,15 +76,14 @@ export interface ReplaceAPI {
     withdraw(requestId: string): Promise<void>;
 }
 
-export class DefaultReplaceAPI implements ReplaceAPI {
+export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceAPI {
     private btcNetwork: Network;
     private feeAPI: FeeAPI;
-    transaction: Transaction;
 
-    constructor(private api: ApiPromise, btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(api: ApiPromise, btcNetwork: Network, account?: AddressOrPair) {
+        super(api, account);
         this.btcNetwork = btcNetwork;
         this.feeAPI = new DefaultFeeAPI(api);
-        this.transaction = new Transaction(api);
     }
 
     /**
@@ -99,13 +102,9 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async request(amountSat: PolkaBTC): Promise<string> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
         const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck.toString());
-        const result = await this.transaction.sendLogged(requestTx, this.account, this.api.events.replace.RequestReplace);
+        const result = await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
         try {
             return this.getRequestIdFromEvents(result.events).toString();
         } catch (e) {
@@ -114,12 +113,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async withdraw(requestId: string): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         const requestTx = this.api.tx.replace.withdrawReplace(requestId);
-        await this.transaction.sendLogged(requestTx, this.account, this.api.events.replace.WithdrawReplace);
+        await this.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
     }
 
     async getBtcDustValue(): Promise<PolkaBTC> {
@@ -161,7 +156,4 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         return redeemRequestMap;
     }
 
-    setAccount(account: AddressOrPair): void {
-        this.account = account;
-    }
 }

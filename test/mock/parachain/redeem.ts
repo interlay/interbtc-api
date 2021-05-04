@@ -1,15 +1,22 @@
-import { PolkaBTC, RedeemRequest, DOT, H256Le } from "../../../src/interfaces/default";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { PolkaBTC, RedeemRequest, DOT } from "../../../src/interfaces/default";
+import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, BlockNumber, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
-import { Bytes, TypeRegistry, u32 } from "@polkadot/types";
+import { TypeRegistry } from "@polkadot/types";
 import BN from "bn.js";
 import Big from "big.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
 import {RequestOptions} from "../../../src/utils/issueRedeem";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockRedeemAPI implements RedeemAPI {
-    burn(amount: Big): Promise<void> {
+export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
+    setRedeemPeriod(_blocks: number): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    getRedeemPeriod(): Promise<number> {
+        throw new Error("Method not implemented.");
+    }
+    burn(_amount: Big): Promise<void> {
         throw new Error("Method not implemented.");
     }
     getMaxBurnableTokens(): Promise<Big> {
@@ -18,7 +25,7 @@ export class MockRedeemAPI implements RedeemAPI {
     getBurnExchangeRate(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    execute(_redeemId: H256, _txId: H256Le, _merkleProof: Bytes, _rawTx: Bytes): Promise<boolean> {
+    execute(_redeemId: string, _txId: string): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
 
@@ -114,8 +121,4 @@ export class MockRedeemAPI implements RedeemAPI {
         return "5";
     }
 
-    async getRedeemPeriod(): Promise<BlockNumber> {
-        const registry = new TypeRegistry();
-        return new u32(registry, 20) as BlockNumber;
-    }
 }

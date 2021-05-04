@@ -6,18 +6,11 @@ import { createPolkadotAPI } from "../../mock/factory";
 import { PolkaBTC } from "../../../src/interfaces/default";
 import { assert } from "../../chai";
 import { AccountId } from "@polkadot/types/interfaces";
-import { TypeRegistry } from "@polkadot/types";
-import { DefaultIssueAPI } from "../../../src/parachain/issue";
 import { networks } from "bitcoinjs-lib";
 
 describe("vaultsAPI", () => {
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
-    let issueAPI: DefaultIssueAPI;
-    const registry = new TypeRegistry();
-
-    // random value
-    const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 
     function numberToPolkaBTC(x: number): PolkaBTC {
         return new BN(x) as PolkaBTC;
@@ -29,7 +22,6 @@ describe("vaultsAPI", () => {
 
     beforeEach(async () => {
         vaultsAPI = new DefaultVaultsAPI(api, networks.regtest);
-        issueAPI = new DefaultIssueAPI(api, networks.regtest);
     });
 
     after(() => {

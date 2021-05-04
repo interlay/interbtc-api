@@ -1,5 +1,5 @@
 import { PolkaBTC } from "../../../src/interfaces/default";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { GenericAccountId } from "@polkadot/types/generic";
 

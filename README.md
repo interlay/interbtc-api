@@ -68,7 +68,10 @@ const polkaBTC = await createPolkabtcAPI(defaultParachainEndpoint, isMainnet);
 ```
 
 To emit transactions, an `account` has to be set.
-The account should be an instance of `AddressOrPair`.
+The account should conform to the `AddressOrPair` interface.
+If the account is not of the `KeyringPair` type, then a signer must also
+be provided (such as an injected extension signer, from the Polkadot wallet).
+See more details here: https://polkadot.js.org/docs/extension/usage/
 
 ```typescript
 import { createTestKeyring } from "@polkadot/keyring/testing";

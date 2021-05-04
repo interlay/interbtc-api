@@ -1,17 +1,17 @@
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { ACCOUNT_NOT_SET_ERROR_MESSAGE, planckToDOT, Transaction } from "../utils";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
+import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
+
+import { dotToPlanck, planckToDOT } from "../utils";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
-export interface CollateralAPI {
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
+export interface CollateralAPI extends TransactionAPI {
     /**
      * @returns Total locked collateral
      */
@@ -27,18 +27,24 @@ export interface CollateralAPI {
      */
     balance(id: AccountId): Promise<Big>;
     /**
+     * Subscribe to free balance updates, denominated in DOT
+     * @param account AccountId string
+     * @param callback Function to be called whenever the balance of an account is updated.
+     * Its parameters are (accountIdString, freeBalance)
+     */
+     subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void>;
+    /**
      * Send a transaction that transfers from the caller's address to another address
      * @param address The recipient of the transfer
      * @param amount The balance to transfer
      */
-    transfer(address: string, amount: string | number): Promise<void>;
+    transfer(address: string, amount: Big): Promise<void>;
 }
 
-export class DefaultCollateralAPI implements CollateralAPI {
-    transaction: Transaction;
+export class DefaultCollateralAPI extends DefaultTransactionAPI implements CollateralAPI {
 
-    constructor(private api: ApiPromise, private account?: AddressOrPair) {
-        this.transaction = new Transaction(api);
+    constructor(api: ApiPromise, account?: AddressOrPair) {
+        super(api, account);
     }
 
     async totalLocked(): Promise<Big> {
@@ -59,15 +65,25 @@ export class DefaultCollateralAPI implements CollateralAPI {
         return new Big(planckToDOT(account.free.toString()));
     }
 
-    async transfer(address: string, amount: string | number): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+    async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
+        try {
+            const accountId = this.api.createType("AccountId", account);
+            const unsubscribe = await this.api.query.dot.account(accountId, (balance) => {
+                callback(account, new Big(planckToDOT(balance.free.toString())));
+            });
+            return unsubscribe;
+        } catch (error) {
+            console.log(`Error during collateral balance subscription callback: ${error}`);
         }
-        const transferTx = this.api.tx.dot.transfer(address, amount);
-        await this.transaction.sendLogged(transferTx, this.account, this.api.events.dot.Transfer);
+        // as a fallback, return an empty void function
+        return () => {
+            return;
+        };
     }
 
-    setAccount(account: AddressOrPair): void {
-        this.account = account;
+    async transfer(address: string, amount: Big): Promise<void> {
+        const amountSmallDenomination = this.api.createType("Balance", dotToPlanck(amount.toString()));
+        const transferTx = this.api.tx.dot.transfer(address, amountSmallDenomination);
+        await this.sendLogged(transferTx, this.api.events.dot.Transfer);
     }
 }

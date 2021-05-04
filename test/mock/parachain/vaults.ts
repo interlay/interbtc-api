@@ -11,8 +11,9 @@ import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { VaultsAPI, VaultExt } from "../../../src/parachain/vaults";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockVaultsAPI implements VaultsAPI {
+export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getLiquidationVaultId(): Promise<string> {
         throw new Error("Method not implemented.");
     }

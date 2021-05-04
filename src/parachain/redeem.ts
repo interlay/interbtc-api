@@ -1,29 +1,29 @@
-import { PolkaBTC, RedeemRequest, H256Le } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
-import { Bytes } from "@polkadot/types/primitive";
 import { EventRecord } from "@polkadot/types/interfaces/system";
+import { Bytes } from "@polkadot/types";
+import { Network } from "bitcoinjs-lib";
+import Big from "big.js";
+
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
     pagedIterator,
     decodeFixedPointType,
-    Transaction,
     encodeParachainRequest,
-    ACCOUNT_NOT_SET_ERROR_MESSAGE,
     btcToSat,
     satToBTC,
-    planckToDOT
+    planckToDOT,
 } from "../utils";
-import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { stripHexPrefix } from "../utils";
-import { Network } from "bitcoinjs-lib";
-import Big from "big.js";
 import { allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions } from "../utils/issueRedeem";
 import BN from "bn.js";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
+import { ElectrsAPI } from "../external";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { PolkaBTC, RedeemRequest } from "../interfaces/default";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -38,8 +38,10 @@ export function encodeRedeemRequest(req: RedeemRequest, network: Network): Redee
 
 /**
  * @category PolkaBTC Bridge
+ * The type Big represents DOT or PolkaBTC denominations,
+ * while the type BN represents Planck or Satoshi denominations.
  */
-export interface RedeemAPI {
+export interface RedeemAPI extends TransactionAPI {
     /**
      * @returns An array containing the redeem requests
      */
@@ -74,13 +76,16 @@ export interface RedeemAPI {
 
     /**
      * Send a redeem execution transaction
+     * @remarks Both `merkleProof` and `rawTx` must be passed for them to be used and not overwritten
+     * by data from the Blockstream API.
+     *
      * @param redeemId The ID returned by the redeem request transaction
      * @param txId The ID of the Bitcoin transaction that sends funds from the vault to the redeemer's address
-     * @param merkleProof The merkle inclusion proof of the Bitcoin transaction
-     * @param rawTx The raw bytes of the Bitcoin transaction
+     * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction.
+     * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
      */
-    execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean>;
+    execute(redeemId: string, txId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean>;
     /**
      * Send a redeem cancellation transaction. After the redeem period has elapsed,
      * the redeemal of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -91,6 +96,22 @@ export interface RedeemAPI {
      *  - `true` = accept reimbursement in polkaBTC
      */
     cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
+    /**
+     * @remarks Testnet utility function
+     * @param blocks The time difference in number of blocks between a redeem request
+     * is created and required completion time by a vault.
+     * The redeem period has an upper limit to ensure the user gets their BTC in time
+     * and to potentially punish a vault for inactivity or stealing BTC.
+     */
+    setRedeemPeriod(blocks: number): Promise<void>;
+     /**
+     *
+     * @returns The time difference in number of blocks between a redeem request
+     * is created and required completion time by a vault.
+     * The redeem period has an upper limit to ensure the user gets their BTC in time
+     * and to potentially punish a vault for inactivity or stealing BTC.
+     */
+    getRedeemPeriod(): Promise<number>;
     /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
@@ -141,11 +162,6 @@ export interface RedeemAPI {
      */
     getPremiumRedeemFee(): Promise<string>;
     /**
-     * @returns The time difference in number of blocks between when a redeem request is created
-     * and required completion time by a user.
-     */
-    getRedeemPeriod(): Promise<BlockNumber>;
-    /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of PolkaBTC to burn, denominated as PolkaBTC
      */
@@ -161,17 +177,16 @@ export interface RedeemAPI {
     getBurnExchangeRate(): Promise<Big>;
 }
 
-export class DefaultRedeemAPI {
+export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
     private vaultsAPI: VaultsAPI;
     private collateralAPI: CollateralAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
-    transaction: Transaction;
 
-    constructor(private api: ApiPromise, private btcNetwork: Network, private account?: AddressOrPair) {
+    constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
+        super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
-        this.transaction = new Transaction(api);
     }
 
     private getRedeemIdsFromEvents(events: EventRecord[]): Hash[] {
@@ -179,10 +194,6 @@ export class DefaultRedeemAPI {
     }
 
     async request(amountSat: BN, btcAddressEnc: string, options?: RequestOptions): Promise<RequestResult[]> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         try {
             const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
             const atomic = !!options?.atomic;
@@ -205,10 +216,6 @@ export class DefaultRedeemAPI {
         btcAddressEnc: string,
         atomic: boolean
     ): Promise<RequestResult[]> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
-
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
@@ -216,7 +223,7 @@ export class DefaultRedeemAPI {
         }
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         try {
-            const result = await this.transaction.sendLogged(batch, this.account, this.api.events.issue.RequestIssue);
+            const result = await this.sendLogged(batch, this.api.events.issue.RequestIssue);
             const ids = this.getRedeemIdsFromEvents(result.events);
             const redeemRequests = await this.getRequestsById(ids);
             return ids.map((id, idx) => ({ id, redeemRequest: redeemRequests[idx] }));
@@ -225,16 +232,17 @@ export class DefaultRedeemAPI {
         }
     }
 
-    async execute(redeemId: H256, txId: H256Le, merkleProof: Bytes, rawTx: Bytes): Promise<boolean> {
-        if (!this.account) {
-            throw new Error("cannot execute without setting account");
-        }
-        const executeRedeemTx = this.api.tx.redeem.executeRedeem(redeemId, txId, merkleProof, rawTx);
-        const result = await this.transaction.sendLogged(
-            executeRedeemTx,
-            this.account,
-            this.api.events.redeem.ExecuteRedeem
+    async execute(requestId: string, btcTxId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
+        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedBtcTxId = this.api.createType(
+            "H256",
+            "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
         );
+        if (!merkleProof || !rawTx) {
+            [merkleProof, rawTx] = await this.electrsAPI.getParsedExecutionParameters(btcTxId);
+        }
+        const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
+        const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const ids = this.getRedeemIdsFromEvents(result.events);
         if (ids.length > 1) {
             throw new Error("Unexpected multiple redeem events from single execute transaction!");
@@ -246,21 +254,29 @@ export class DefaultRedeemAPI {
     }
 
     async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const reimburseValue = reimburse ? reimburse : false;
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
-        await this.transaction.sendLogged(cancelRedeemTx, this.account, this.api.events.redeem.CancelRedeem);
+        await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
     async burn(amount: Big): Promise<void> {
-        if (!this.account) {
-            return Promise.reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
-        }
         const amountSat = this.api.createType("Balance", btcToSat(amount.toString()));
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
-        await this.transaction.sendLogged(burnRedeemTx, this.account, this.api.events.redeem.LiquidationRedeem);
+        await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
+    }
+
+    async setRedeemPeriod(blocks: number): Promise<void> {
+        const period = this.api.createType("BlockNumber", blocks);
+        const tx = this.api.tx.sudo
+            .sudo(
+                this.api.tx.redeem.setRedeemPeriod(period)
+            );
+        await this.sendLogged(tx);
+    }
+
+    async getRedeemPeriod(): Promise<number> {
+        const blockNumber = await this.api.query.redeem.redeemPeriod();
+        return blockNumber.toNumber();
     }
 
     async getMaxBurnableTokens(): Promise<Big> {
@@ -300,7 +316,7 @@ export class DefaultRedeemAPI {
         try {
             const unsubscribe = await this.api.rpc.chain.subscribeFinalizedHeads(async (header: Header) => {
                 const redeemRequests = await this.mapForUser(account);
-                const redeemPeriod = await this.getRedeemPeriod();
+                const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
                 const currentParachainBlockHeight = header.number.toBn();
                 redeemRequests.forEach((request, id) => {
                     if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
@@ -331,11 +347,6 @@ export class DefaultRedeemAPI {
         return new Big(decodeFixedPointType(redeemFee));
     }
 
-    async getRedeemPeriod(): Promise<BlockNumber> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.redeem.redeemPeriod.at(head);
-    }
-
     async getDustValue(): Promise<PolkaBTC> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return await this.api.query.redeem.redeemBtcDustValue.at(head);
@@ -362,9 +373,5 @@ export class DefaultRedeemAPI {
                 encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork)
             )
         );
-    }
-
-    setAccount(account: AddressOrPair): void {
-        this.account = account;
     }
 }

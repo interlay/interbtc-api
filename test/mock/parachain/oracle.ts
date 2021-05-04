@@ -3,8 +3,9 @@ import { OracleAPI } from "../../../src/parachain";
 import { BtcTxFees } from "../../../src/parachain/oracle";
 import Big from "big.js";
 import { PolkaBTC } from "@interlay/polkabtc/interfaces";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockOracleAPI implements OracleAPI {
+export class MockOracleAPI extends MockTransactionAPI implements OracleAPI {
     getOnlineTimeout(): Promise<number> {
         return Promise.resolve(100);
     }

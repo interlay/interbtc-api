@@ -4,7 +4,7 @@ import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoin from "bitcoinjs-lib";
+import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 import { TypeRegistry } from "@polkadot/types";
 
@@ -27,7 +27,7 @@ describe("vaultsAPI", () => {
     });
 
     beforeEach(async () => {
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoin.networks.regtest);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest);
     });
 
     after(() => {

@@ -1,1 +1,1 @@
-export { BTCCoreAPI } from "./btc-core";
+export { ElectrsAPI } from "./electrs";

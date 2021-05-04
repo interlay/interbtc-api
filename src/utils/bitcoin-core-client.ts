@@ -4,7 +4,9 @@ import Big from "big.js";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
-
+interface RecipientsToUTXOAmounts {
+    [key: string]: string;
+}
 export class BitcoinCoreClient {
     private client: typeof Client;
 
@@ -15,22 +17,22 @@ export class BitcoinCoreClient {
      * @param username User for RPC authentication
      * @param password Password for RPC authentication
      * @param port Bitcoin node connection port (e.g. 18443)
-     * @param wallet Name of wallet to use (e.g. Alice)
+     * @param wallet Wallet to use if several are available. See https://github.com/ruimarinho/bitcoin-core#multiwallet
      */
     constructor(network: string, host: string, username: string, password: string, port: string, wallet: string) {
         this.client = new Client({
-            network: network,
-            host: host,
-            username: username,
-            password: password,
-            port: port,
-            wallet: wallet,
+            network,
+            host,
+            username,
+            password,
+            port,
+            wallet,
         });
     }
 
     async sendBtcTxAndMine(
         recipient: string,
-        amount: string,
+        amount: Big,
         blocksToMine: number,
         data?: string
     ): Promise<{
@@ -43,9 +45,9 @@ export class BitcoinCoreClient {
         return tx;
     }
 
-    formatRawTxInput(recipient: string, amount: string, data?: string) {
-        const paidOutput: { [key: string]: string } = {};
-        paidOutput[recipient] = amount;
+    formatRawTxInput(recipient: string, amount: Big, data?: string): RecipientsToUTXOAmounts[] {
+        const paidOutput: RecipientsToUTXOAmounts = {};
+        paidOutput[recipient] = amount.toString();
         if (data !== undefined) {
             return [{ data }, paidOutput];
         }
@@ -54,7 +56,7 @@ export class BitcoinCoreClient {
 
     async broadcastTx(
         recipient: string,
-        amount: string,
+        amount: Big,
         data?: string
     ): Promise<{
         txid: string;
@@ -65,7 +67,7 @@ export class BitcoinCoreClient {
         }
 
         const paidOutput: { [key: string]: string } = {};
-        paidOutput[recipient] = amount;
+        paidOutput[recipient] = amount.toString();
         const raw = await this.client.command(
             "createrawtransaction",
             [],

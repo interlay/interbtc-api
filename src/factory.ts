@@ -1,4 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
+import { AddressOrPair } from "@polkadot/api/types";
 import { HttpProvider, WsProvider } from "@polkadot/rpc-provider";
 import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { TypeRegistry } from "@polkadot/types";
@@ -27,10 +28,11 @@ export function createPolkadotAPI(endpoint: string, autoConnect?: number | false
 export async function createPolkabtcAPI(
     endpoint: string,
     network: string = "mainnet",
+    account?: AddressOrPair,
     autoConnect?: number | false | undefined
 ): Promise<PolkaBTCAPI> {
     const api = await createPolkadotAPI(endpoint, autoConnect);
-    return new DefaultPolkaBTCAPI(api, network);
+    return new DefaultPolkaBTCAPI(api, network, account);
 }
 
 export function getAPITypes(): RegistryTypes {

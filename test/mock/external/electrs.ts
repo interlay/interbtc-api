@@ -1,7 +1,17 @@
 import { Transaction } from "@interlay/esplora-btc-api";
-import { BTCCoreAPI, TxStatus } from "../../../src/external/btc-core";
+import { Bytes } from "@polkadot/types";
+import Big from "big.js";
 
-export class MockBTCCoreAPI implements BTCCoreAPI {
+import { ElectrsAPI, TxStatus } from "../../../src/external/electrs";
+
+export class MockElectrsAPI implements ElectrsAPI {
+    waitForOpreturn(_data: string, _timeoutMs: number): Promise<string> {
+        throw new Error("Method not implemented.");
+    }
+    getParsedExecutionParameters(_txid: string): Promise<[Bytes, Bytes]> {
+        throw new Error("Method not implemented.");
+    }
+
     getLatestBlock(): Promise<string> {
         return Promise.resolve("00000000000000000006d0d6796fc5ed2e7be8d5511912bc3e8bdc1cf8d4c63f");
     }
@@ -73,11 +83,11 @@ export class MockBTCCoreAPI implements BTCCoreAPI {
         );
     }
 
-    getTxIdByRecipientAddress(_recipientAddress: string, _amountAsBTC?: string): Promise<string> {
+    getTxIdByRecipientAddress(_recipientAddress: string, _amountAsBTC?: Big): Promise<string> {
         return Promise.resolve("f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
     }
 
-    getTxIdByOpReturn(_opReturn: string, _recipientAddress?: string, _amountAsBTC?: string): Promise<string> {
+    getTxIdByOpReturn(_opReturn: string, _recipientAddress?: string, _amountAsBTC?: Big): Promise<string> {
         return Promise.resolve("f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
     }
 }
