@@ -50,7 +50,7 @@ describe("redeem", () => {
                 "rpcuser",
                 "rpcpassword",
                 "18443",
-                vaultToLiquidate.address
+                "Bob"
             );
 
             // Steal some bitcoin (spend from the vault's account)

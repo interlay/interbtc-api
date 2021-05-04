@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     polkabtc:
-        image: "registry.gitlab.com/interlay/btc-parachain/standalone:0.6.2"
+        image: "registry.gitlab.com/interlay/btc-parachain/standalone:0.6.1"
         command:
             - btc-parachain
             - --rpc-external
@@ -58,7 +58,7 @@ services:
             - "3002:3002"
     staked-relayer:
         # only start staked relayer after mining to prevent long catch-up
-        image: "registry.gitlab.com/interlay/polkabtc-clients/staked-relayer:0.6.2"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/staked-relayer:0.6.1"
         command:
             - /bin/sh
             - -c
@@ -72,7 +72,7 @@ services:
             BITCOIN_RPC_PASS: rpcpassword
             RUST_LOG: info
     oracle:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/oracle:0.6.2"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/oracle:0.6.1"
         command:
             - /bin/sh
             - -c
@@ -83,7 +83,7 @@ services:
         environment:
             RUST_LOG: info
     faucet:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/faucet:0.6.2"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/faucet:0.6.1"
         command:
             - /bin/sh
             - -c
@@ -96,7 +96,7 @@ services:
         ports:
             - "3036:3036"
     vault_1:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.2"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.1"
         command:
             - /bin/sh
             - -c
@@ -109,7 +109,7 @@ services:
         environment:
             <<: *client-env
     vault_2:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.2"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.1"
         command:
             - /bin/sh
             - -c
@@ -122,7 +122,7 @@ services:
         environment:
             <<: *client-env
     vault_3:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.2"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.1"
         command:
             - /bin/sh
             - -c
@@ -135,7 +135,7 @@ services:
         environment:
             <<: *client-env
     vault_to_liquidate:
-        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.2"
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.6.1"
         command:
             - /bin/sh
             - -c
