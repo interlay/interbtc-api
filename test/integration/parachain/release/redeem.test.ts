@@ -21,12 +21,10 @@ describe("redeem", () => {
     let keyring: Keyring;
     // alice is the root account
     let alice: KeyringPair;
-    let ferdie: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
-        ferdie = keyring.addFromUri("//Ferdie");
         alice = keyring.addFromUri("//Alice");
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
     });
@@ -50,7 +48,7 @@ describe("redeem", () => {
                 "rpcuser",
                 "rpcpassword",
                 "18443",
-                vaultToLiquidate.address
+                "Bob"
             );
 
             // Steal some bitcoin (spend from the vault's account)
@@ -61,7 +59,7 @@ describe("redeem", () => {
             await DefaultTransactionAPI.waitForEvent(api, api.events.stakedRelayers.VaultTheft, 17 * 60000);
 
             // Burn PolkaBTC for a premium, to restore peg
-            redeemAPI.setAccount(ferdie);
+            redeemAPI.setAccount(alice);
             await redeemAPI.burn(amount);
             
             // it takes about 15 mins for the theft to be reported

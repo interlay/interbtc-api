@@ -1,9 +1,8 @@
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 
-import { btcToSat, satToBTC, IssueRequestExt } from "..";
+import { btcToSat, satToBTC, IssueRequestExt, getBitcoinNetwork } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
 import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
@@ -26,10 +25,12 @@ export async function issue(
     amount: Big,
     vaultAddress?: string,
     autoExecute = true,
-    triggerRefund = false
+    triggerRefund = false,
+    network = "regtest",
 ): Promise<IssueResult> {
     const treasuryAPI = new DefaultTreasuryAPI(api);
-    const issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+    const bitcoinjsNetwork = getBitcoinNetwork(network);
+    const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, electrsAPI);
     const collateralAPI = new DefaultCollateralAPI(api);
 
     issueAPI.setAccount(issuingAccount);

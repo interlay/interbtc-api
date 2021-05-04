@@ -66,8 +66,6 @@ export class BitcoinCoreClient {
             throw new Error("Client needs to be initialized before usage");
         }
 
-        const paidOutput: { [key: string]: string } = {};
-        paidOutput[recipient] = amount.toString();
         const raw = await this.client.command(
             "createrawtransaction",
             [],
