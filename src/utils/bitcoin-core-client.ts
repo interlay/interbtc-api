@@ -8,7 +8,7 @@ interface RecipientsToUTXOAmounts {
     [key: string]: string;
 }
 export class BitcoinCoreClient {
-    private client: typeof Client;
+    client: typeof Client;
 
     /**
      * Initialize the Bitcoin-core client, which is a js equivalent to bitcoin-cli
@@ -100,6 +100,10 @@ export class BitcoinCoreClient {
 
     async sendToAddress(address: string, amount: Big): Promise<void> {
         return await this.client.command("sendtoaddress", address, amount.toString());
+    }
+
+    async getMempoolInfo(): Promise<any> {
+        return await this.client.command("getmempoolinfo");
     }
 }
 
