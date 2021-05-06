@@ -4,17 +4,17 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { assert } from "chai";
 import Big from "big.js";
 
-import { 
-    IssueAPI, 
-    ElectrsAPI, 
-    BitcoinCoreClient, 
-    createPolkadotAPI, 
-    OracleAPI, 
-    RedeemAPI, 
-    btcToSat, 
+import {
+    IssueAPI,
+    ElectrsAPI,
+    BitcoinCoreClient,
+    createPolkadotAPI,
+    OracleAPI,
+    RedeemAPI,
+    btcToSat,
     TreasuryAPI
 } from "../../../../src";
-import { issue } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/issue";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { DefaultOracleAPI } from "../../../../src/parachain/oracle";
@@ -84,7 +84,7 @@ describe("Initialize parachain state", () => {
 
     it("should issue 0.1 PolkaBTC", async () => {
         const polkaBtcToIssue = new Big(0.1);
-        await issue(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, dave.address);
+        await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, dave.address);
         const aliceAccountId = api.createType("AccountId", alice.address);
         const alicePolkaBTC = await treasuryAPI.balance(aliceAccountId);
         assert.equal(polkaBtcToIssue.toString(), alicePolkaBTC.toString(), "Issued amount is different from the requested amount");
@@ -93,7 +93,7 @@ describe("Initialize parachain state", () => {
     it("should redeem 0.05 PolkaBTC", async () => {
         const polkaSatToRedeem = api.createType("Balance", btcToSat("0.05"));
         const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        const daveAccountId = api.createType("AccountId", dave.address);
-        await redeemAPI.request(polkaSatToRedeem, redeemAddress, daveAccountId);
+        // const daveAccountId = api.createType("AccountId", dave.address);
+        await redeemAPI.request(polkaSatToRedeem, redeemAddress);
     });
 });

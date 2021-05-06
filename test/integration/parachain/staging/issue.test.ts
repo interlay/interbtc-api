@@ -10,7 +10,7 @@ import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { issue } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/issue";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -124,7 +124,7 @@ describe("issue", () => {
         it("should fail to request a value finer than 1 Satoshi", async () => {
             const amount = new Big("0.00000121");
             await assert.isRejected(
-                issue(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie.address, true, false)
+                issueSingle(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie.address, true, false)
             );
         }).timeout(500000);
 
@@ -132,7 +132,7 @@ describe("issue", () => {
         // This will cause the testing pipeline to time out.
         it("should request and auto-execute issue", async () => {
             const amount = new Big("0.00121");
-            const issueResult = await issue(
+            const issueResult = await issueSingle(
                 api,
                 electrsAPI,
                 bitcoinCoreClient,
@@ -156,7 +156,7 @@ describe("issue", () => {
 
         it("should request and manually execute issue", async () => {
             const amount = new Big("0.001");
-            const issueResult = await issue(
+            const issueResult = await issueSingle(
                 api,
                 electrsAPI,
                 bitcoinCoreClient,

@@ -5,7 +5,7 @@ import Big from "big.js";
 import BN from "bn.js";
 import { Network } from "bitcoinjs-lib";
 
-import { 
+import {
     PolkaBTC,
     Vault,
     IssueRequest,
@@ -14,7 +14,7 @@ import {
     DOT,
     Wallet,
     SystemVault,
-    BalanceWrapper 
+    BalanceWrapper
 } from "../interfaces/default";
 import {
     FIXEDI128_SCALING_FACTOR,
@@ -178,6 +178,10 @@ export interface VaultsAPI extends TransactionAPI {
      * @returns Vaults with issuable tokens, sorted in descending order of this value
      */
     getVaultsWithIssuableTokens(): Promise<Map<AccountId, PolkaBTC>>;
+    /**
+     * @returns Vaults with redeemable tokens, sorted in descending order of this value
+     */
+    getVaultsWithRedeemableTokens(): Promise<Map<AccountId, PolkaBTC>>;
     /**
      * @param vaultId The vault account ID
      * @returns A bollean value
@@ -508,14 +512,17 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async getVaultsWithIssuableTokens(): Promise<Map<AccountId, PolkaBTC>> {
-        try {
-            const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
-            return new Map(
-                vaults.map(([id, redeemableTokens]) => [id, this.unwrapCurrency(redeemableTokens) as PolkaBTC])
-            );
-        } catch (e) {
-            return Promise.reject("Did not find vault with issuable tokens");
-        }
+        const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
+        return new Map(
+            vaults.map(([id, issuableTokens]) => [id, this.unwrapCurrency(issuableTokens) as PolkaBTC])
+        );
+    }
+
+    async getVaultsWithRedeemableTokens(): Promise<Map<AccountId, PolkaBTC>> {
+        const vaults = await this.api.rpc.vaultRegistry.getVaultsWithRedeemableTokens();
+        return new Map(
+            vaults.map(([id, redeemableTokens]) => [id, this.unwrapCurrency(redeemableTokens) as PolkaBTC])
+        );
     }
 
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {

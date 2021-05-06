@@ -195,7 +195,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async request(amountSat: BN, btcAddressEnc: string, options?: RequestOptions): Promise<RequestResult[]> {
         try {
-            const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
+            const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
             const atomic = !!options?.atomic;
             const retries = options?.retries || 0;
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amountSat);
