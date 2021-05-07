@@ -11,7 +11,7 @@ import {
     encodeUnsignedFixedPoint, 
     storageKeyToFirstInner,
 } from "../utils";
-import { ErrorCode, PolkaBTC } from "../interfaces/default";
+import { ErrorCode, Issuing } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 const defaultFeedName = "DOT/BTC";
@@ -74,7 +74,7 @@ export interface OracleAPI extends TransactionAPI {
     /**
      * @returns Convert a Satoshi amount to Planck
      */
-    convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big>;
+    convertSatoshiToPlanck(satoshi: Issuing): Promise<Big>;
     /**
      * @returns The period of time (in milliseconds) after an oracle's last submission
      * during which it is considered online
@@ -88,7 +88,7 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         super(api, account);
     }
 
-    async convertSatoshiToPlanck(satoshi: PolkaBTC): Promise<Big> {
+    async convertSatoshiToPlanck(satoshi: Issuing): Promise<Big> {
         const planckPerSatoshi = await this.getRawExchangeRate();
         const amountSatoshiBig = new Big(satoshi.toString());
         return planckPerSatoshi.mul(amountSatoshiBig);

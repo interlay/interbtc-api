@@ -1,12 +1,12 @@
 import { Balance, BalanceOf, BlockNumber, Moment, RuntimeDbWeight } from "@polkadot/types/interfaces/runtime";
-import { DOT } from "../interfaces/default";
+import { Backing } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { Vec } from "@polkadot/types/codec";
 import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
 /**
  * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * The type Big represents Backing or Issuing token denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface ConstantsAPI {
@@ -18,18 +18,6 @@ export interface ConstantsAPI {
      * @returns The minimum amount of PolkaBTC required to keep an account open.
      */
     getPolkaBtcExistentialDeposit(): Balance;
-    /**
-     * @returns The minimum amount of deposit required to propose an update
-     */
-    getStakedRelayersMinimumDeposit(): DOT;
-    /**
-     * @returns The minimum amount of stake required to participate
-     */
-    getStakedRelayersMinimumStake(): DOT;
-    /**
-     * @returns How often (in blocks) to check for new votes
-     */
-    getStakedRelayersVotingPeriod(): BlockNumber;
     /**
      * @returns Maximum number of block number to block hash mappings to keep (oldest pruned first).
      */
@@ -59,23 +47,11 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     constructor(private api: ApiPromise) {}
 
     getDotExistentialDeposit(): Balance {
-        return this.api.consts.dot.existentialDeposit;
+        return this.api.consts.backing.existentialDeposit;
     }
 
     getPolkaBtcExistentialDeposit(): Balance {
-        return this.api.consts.polkaBtc.existentialDeposit;
-    }
-
-    getStakedRelayersMinimumDeposit(): DOT {
-        return this.api.consts.stakedRelayers.minimumDeposit;
-    }
-
-    getStakedRelayersMinimumStake(): DOT {
-        return this.api.consts.stakedRelayers.minimumStake;
-    }
-
-    getStakedRelayersVotingPeriod(): BlockNumber {
-        return this.api.consts.stakedRelayers.votingPeriod;
+        return this.api.consts.issuing.existentialDeposit;
     }
 
     getSystemBlockHashCount(): BlockNumber {

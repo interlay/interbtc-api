@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { PolkaBTC } from "../../../../src/interfaces/default";
+import { Issuing } from "../../../../src/interfaces/default";
 import { btcToSat, dotToPlanck } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
@@ -67,7 +67,7 @@ describe("issue", () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
-            const amount = api.createType("Balance", 100000) as PolkaBTC;
+            const amount = api.createType("Balance", 100000) as Issuing;
             const requestResult = await issueAPI.request(amount);
             assert.equal(requestResult.id.length, 32);
 
@@ -78,7 +78,7 @@ describe("issue", () => {
         it("should getGriefingCollateral (rounded)", async () => {
             const amountBtc = "0.001";
             const amountAsSatoshiString = btcToSat(amountBtc) as string;
-            const amountAsSat = api.createType("Balance", amountAsSatoshiString) as PolkaBTC;
+            const amountAsSat = api.createType("Balance", amountAsSatoshiString) as Issuing;
             const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
             assert.equal(griefingCollateralPlanck.toString(), "1927616");
         });

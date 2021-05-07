@@ -5,13 +5,14 @@ import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
-import { DOT, IssueRequest, PolkaBTC } from "../interfaces/default";
+import { Backing, IssueRequest, Issuing } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
     decodeFixedPointType,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
+    getTxProof,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
@@ -37,22 +38,21 @@ export interface IssueAPI extends TransactionAPI {
     /**
      * Send an issue request transaction
      * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue
-     * @param vaultId (optional) Request the issue from a specific vault. If this parameter is unspecified,
+     * @param vaultId (Optional) Request the issue from a specific vault. If this parameter is unspecified,
      * a random vault will be selected
      * @returns An object of type {issueId, vault} if the request succeeded. The function throws an error otherwise.
      */
-    request(amountSat: PolkaBTC, vaultId?: AccountId, griefingCollateral?: DOT): Promise<IssueRequestResult>;
+    request(amountSat: Issuing, vaultId?: AccountId, griefingCollateral?: Backing): Promise<IssueRequestResult>;
     /**
      * Send an issue execution transaction
-     * @remarks Both `merkleProof` and `rawTx` must be passed for them to be used and not overwritten
-     * by data from the Blockstream API.
+     * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      * 
      * @param issueId The ID returned by the issue request transaction
-     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
+     * @param txId (Optional) The ID of the Bitcoin transaction that sends funds to the vault address.
      * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction. 
      * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      */
-    execute(issueId: string, txId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
+    execute(issueId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -112,7 +112,7 @@ export interface IssueAPI extends TransactionAPI {
      * @param amountBtc The amount, in Satoshi, for which to compute the griefing collateral
      * @returns The griefing collateral, in Planck
      */
-    getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big>;
+    getGriefingCollateralInPlanck(amountSat: Issuing): Promise<Big>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  {
@@ -140,7 +140,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         throw new Error("Request transaction failed");
     }
 
-    async request(amountSat: PolkaBTC, vaultId?: AccountId): Promise<IssueRequestResult> {
+    async request(amountSat: Issuing, vaultId?: AccountId): Promise<IssueRequestResult> {
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
         }
@@ -157,16 +157,10 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
 
     }
 
-    async execute(requestId: string, btcTxId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
         const parsedRequestId = this.api.createType("H256", "0x" + requestId);
-        const parsedBtcTxId = this.api.createType(
-            "H256",
-            "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
-        );
-        if (!merkleProof || !rawTx) {
-            [merkleProof, rawTx] = await this.electrsAPI.getParsedExecutionParameters(btcTxId);
-        }
-        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
+        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
+        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 
@@ -204,7 +198,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         return mapForUser;
     }
 
-    async getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big> {
+    async getGriefingCollateralInPlanck(amountSat: Issuing): Promise<Big> {
         const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
         return await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
     }
