@@ -40,7 +40,7 @@
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
     "@interlay/polkabtc-types": "link:../polkabtc-types",
-    "@types/big.js": "4.0.5",
+    "@types/big.js": "6.0.2",
     "big.js": "6.0.3",
     "bitcoinjs-lib": "^5.2.0",
     "bn.js": "^5.2.0",
