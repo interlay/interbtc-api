@@ -70,7 +70,7 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
 
     async transfer(destination: string, amount: Big): Promise<void> {
         const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount.toString()));
-        const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSmallDenomination);
-        await this.sendLogged(transferTransaction, this.api.events.polkaBtc.Transfer);
+        const transferTransaction = this.api.tx.issuing.transfer(destination, amountSmallDenomination);
+        await this.sendLogged(transferTransaction, this.api.events.issuing.Transfer);
     }
 }

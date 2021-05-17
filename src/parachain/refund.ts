@@ -2,11 +2,12 @@ import { ApiPromise } from "@polkadot/api";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import { Bytes } from "@polkadot/types";
+import { AddressOrPair } from "@polkadot/api/types";
 
 import { RefundRequest } from "../interfaces";
-import { encodeParachainRequest } from "../utils";
-import { DefaultTransactionAPI, ElectrsAPI, getTxProof } from "..";
-import { AddressOrPair } from "@polkadot/api/types";
+import { encodeParachainRequest, getTxProof } from "../utils";
+import { ElectrsAPI } from "../external";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 export interface RefundRequestExt extends Omit<RefundRequest, "btc_address"> {
     // network encoded btc address
@@ -22,7 +23,7 @@ export function encodeRefundRequest(req: RefundRequest, network: Network): Refun
  * The type Big represents DOT or PolkaBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
-export interface RefundAPI {
+export interface RefundAPI extends TransactionAPI {
     /**
      * Execute a refund request
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
@@ -52,6 +53,11 @@ export interface RefundAPI {
      * @returns A refund request object
      */
     getRequestByIssueId(issueId: H256): Promise<RefundRequestExt>;
+    /**
+     * Set an account to use when sending transactions from this API
+     * @param account Keyring account
+     */
+    setAccount(account: AddressOrPair): void;
 }
 
 export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI {

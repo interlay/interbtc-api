@@ -64,7 +64,7 @@ export interface StakedRelayerAPI extends TransactionAPI {
      * @param stakedRelayerId The ID of a staked relayer
      * @returns Total rewards in PolkaBTC for the given staked relayer
      */
-    getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<Big>;
+    getFeesIssuing(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
      * @returns Total rewards in Backing tokens for the given staked relayer
@@ -222,9 +222,9 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return await this.api.query.security.parachainStatus.at(head);
     }
 
-    async getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<Big> {
+    async getFeesIssuing(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.fee.totalRewardsPolkaBTC.at(head, stakedRelayerId);
+        const fees = await this.api.query.fee.totalRewardsIssuing.at(head, stakedRelayerId);
         return new Big(satToBTC(fees.toString()));
     }
 
@@ -236,7 +236,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
 
     async getAPY(stakedRelayerId: AccountId): Promise<string> {
         const [feesPolkaBTC, feesBacking, lockedBacking] = await Promise.all([
-            await this.getFeesPolkaBTC(stakedRelayerId),
+            await this.getFeesIssuing(stakedRelayerId),
             await this.getFeesBacking(stakedRelayerId),
             await this.collateralAPI.balanceLocked(stakedRelayerId),
         ]);

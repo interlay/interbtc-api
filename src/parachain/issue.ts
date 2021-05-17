@@ -5,7 +5,7 @@ import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
-import { Backing, IssueRequest, Issuing } from "../interfaces/default";
+import { IssueRequest, Issuing } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
@@ -13,6 +13,7 @@ import {
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
     getTxProof,
+    btcToSat,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
@@ -37,12 +38,12 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 export interface IssueAPI extends TransactionAPI {
     /**
      * Send an issue request transaction
-     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue
+     * @param amount PolkaBTC amount (denoted in Satoshi) to issue
      * @param vaultId (Optional) Request the issue from a specific vault. If this parameter is unspecified,
      * a random vault will be selected
      * @returns An object of type {issueId, vault} if the request succeeded. The function throws an error otherwise.
      */
-    request(amountSat: Issuing, vaultId?: AccountId, griefingCollateral?: Backing): Promise<IssueRequestResult>;
+    request(amount: Big, vaultId?: AccountId, griefingCollateral?: Big): Promise<IssueRequestResult>;
     /**
      * Send an issue execution transaction
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
@@ -107,7 +108,7 @@ export interface IssueAPI extends TransactionAPI {
      * @param amountBtc The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
-    getFeesToPay(amountBtc: string): Promise<string>;
+    getFeesToPay(amountBtc: Big): Promise<Big>;
     /**
      * @param amountBtc The amount, in Satoshi, for which to compute the griefing collateral
      * @returns The griefing collateral, in Planck
@@ -140,7 +141,8 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         throw new Error("Request transaction failed");
     }
 
-    async request(amountSat: Issuing, vaultId?: AccountId): Promise<IssueRequestResult> {
+    async request(amount: Big, vaultId?: AccountId): Promise<IssueRequestResult> {
+        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
         }
@@ -203,11 +205,10 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         return await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
     }
 
-    async getFeesToPay(amountBtc: string): Promise<string> {
+    async getFeesToPay(amount: Big): Promise<Big> {
         const feePercentage = await this.getFeeRate();
-        const amountBig = new Big(amountBtc);
-        const feeBtc = amountBig.mul(feePercentage);
-        return roundUpBtcToNearestSatoshi(feeBtc.toString());
+        const feeBtc = amount.mul(feePercentage);
+        return new Big(roundUpBtcToNearestSatoshi(feeBtc.toString()));
     }
 
     /**

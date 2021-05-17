@@ -59,7 +59,7 @@ describe("issue", () => {
     describe("request", () => {
         it("should fail if no account is set", async () => {
             const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
-            const amount = api.createType("Balance", 10);
+            const amount = new Big(0.0000001);
             await assert.isRejected(tmpIssueAPI.request(amount));
         });
 
@@ -67,12 +67,13 @@ describe("issue", () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
-            const amount = api.createType("Balance", 100000) as Issuing;
+            const amount = new Big(0.001);
+            const feesToPay = await issueAPI.getFeesToPay(amount);
             const requestResult = await issueAPI.request(amount);
             assert.equal(requestResult.id.length, 32);
 
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            assert.deepEqual(issueRequest.amount, amount, "Amount different than expected");
+            assert.equal(issueRequest.amount.toString(), btcToSat(amount.sub(feesToPay).toString()), "Amount different than expected");
         });
 
         it("should getGriefingCollateral (rounded)", async () => {
@@ -101,6 +102,7 @@ describe("issue", () => {
         // This will cause the testing pipeline to time out.
         it("should request and auto-execute issue", async () => {
             const amount = new Big("0.00121");
+            const feesToPay = await issueAPI.getFeesToPay(amount);
             const issueResult = await issue(
                 api,
                 electrsAPI,
@@ -113,7 +115,7 @@ describe("issue", () => {
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount.toString(),
+                amount.sub(feesToPay).toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 
@@ -125,6 +127,7 @@ describe("issue", () => {
 
         it("should request and manually execute issue", async () => {
             const amount = new Big("0.001");
+            const feesToPay = await issueAPI.getFeesToPay(amount);
             const issueResult = await issue(
                 api,
                 electrsAPI,
@@ -137,7 +140,7 @@ describe("issue", () => {
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount.toString(),
+                amount.sub(feesToPay).toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 
@@ -150,9 +153,9 @@ describe("issue", () => {
 
     describe("fees", () => {
         it("should getFeesToPay", async () => {
-            const amount = "2";
+            const amount = new Big(2);
             const feesToPay = await issueAPI.getFeesToPay(amount);
-            assert.equal(feesToPay, "0.01");
+            assert.equal(feesToPay.toString(), "0.01");
         });
 
         it("should getFeeRate", async () => {

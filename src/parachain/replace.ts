@@ -24,7 +24,7 @@ export function encodeReplaceRequest(req: ReplaceRequest, network: Network): Rep
     let displayedBtcAddress = "Pending...";
     let displayedNewVaultAddress = "Pending...";
     displayedBtcAddress = encodeBtcAddress(req.btc_address, network);
-        displayedNewVaultAddress = req.new_vault.toHuman();
+    displayedNewVaultAddress = req.new_vault.toHuman();
     return ({
         ...req,
         btc_address: displayedBtcAddress,

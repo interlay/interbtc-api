@@ -105,6 +105,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.replace.setAccount(account);
         this.vaults.setAccount(account);
         this.stakedRelayer.setAccount(account);
+        this.refund.setAccount(account);
     }
 
     get account(): AddressOrPair | undefined {

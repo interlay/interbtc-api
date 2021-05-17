@@ -49,7 +49,7 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
 
     async totalLocked(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const totalLockedBN = await this.api.query.collateral.totalCollateral.at(head);
+        const totalLockedBN = await this.api.query.collateral.totalLocked.at(head);
         return new Big(planckToDOT(totalLockedBN.toString()));
     }
 
@@ -83,7 +83,7 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
 
     async transfer(address: string, amount: Big): Promise<void> {
         const amountSmallDenomination = this.api.createType("Balance", dotToPlanck(amount.toString()));
-        const transferTx = this.api.tx.dot.transfer(address, amountSmallDenomination);
-        await this.sendLogged(transferTx, this.api.events.dot.Transfer);
+        const transferTx = this.api.tx.backing.transfer(address, amountSmallDenomination);
+        await this.sendLogged(transferTx, this.api.events.backing.Transfer);
     }
 }

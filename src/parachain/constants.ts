@@ -1,5 +1,4 @@
 import { Balance, BalanceOf, BlockNumber, Moment, RuntimeDbWeight } from "@polkadot/types/interfaces/runtime";
-import { Backing } from "../interfaces/default";
 import { ApiPromise } from "@polkadot/api";
 import { Vec } from "@polkadot/types/codec";
 import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";

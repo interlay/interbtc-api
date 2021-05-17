@@ -196,11 +196,6 @@ export interface VaultsAPI extends TransactionAPI {
      */
     getPremiumRedeemThreshold(): Promise<Big>;
     /**
-     * @returns The collateral rate of Vaults at which the
-     * BTC backed by the Vault are opened up for auction to other Vaults
-     */
-    getAuctionCollateralThreshold(): Promise<Big>;
-    /**
      * @returns The over-collateralization rate for DOT collateral locked
      * by Vaults, necessary for issuing PolkaBTC
      */
@@ -209,12 +204,12 @@ export interface VaultsAPI extends TransactionAPI {
      * @param vaultId The vault account ID
      * @returns The total PolkaBTC reward collected by the vault
      */
-    getFeesPolkaBTC(vaultId: AccountId): Promise<Big>;
+    getFeesIssuing(vaultId: AccountId): Promise<Big>;
     /**
      * @param vaultId The vault account ID
      * @returns The total DOT reward collected by the vault
      */
-    getFeesDOT(vaultId: AccountId): Promise<Big>;
+    getFeesBacking(vaultId: AccountId): Promise<Big>;
     /**
      * Get the total APY for a vault based on the income in PolkaBTC and DOT
      * divided by the locked DOT.
@@ -532,34 +527,28 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return new Big(decodeFixedPointType(threshold));
     }
 
-    async getAuctionCollateralThreshold(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const threshold = await this.api.query.vaultRegistry.auctionCollateralThreshold.at(head);
-        return new Big(decodeFixedPointType(threshold));
-    }
-
     async getSecureCollateralThreshold(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold.at(head);
         return new Big(decodeFixedPointType(threshold));
     }
 
-    async getFeesPolkaBTC(vaultId: AccountId): Promise<Big> {
+    async getFeesIssuing(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const feesSatoshi = (await this.api.query.fee.totalRewardsPolkaBTC.at(head, vaultId)).toString();
+        const feesSatoshi = (await this.api.query.fee.totalRewardsIssuing.at(head, vaultId)).toString();
         return new Big(satToBTC(feesSatoshi));
     }
 
-    async getFeesDOT(vaultId: AccountId): Promise<Big> {
+    async getFeesBacking(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const feesPlanck = (await this.api.query.fee.totalRewardsDOT.at(head, vaultId)).toString();
+        const feesPlanck = (await this.api.query.fee.totalRewardsBacking.at(head, vaultId)).toString();
         return new Big(planckToDOT(feesPlanck));
     }
 
     async getAPY(vaultId: AccountId): Promise<string> {
         const [feesPolkaBTC, feesDOT, lockedDOT] = await Promise.all([
-            await this.getFeesPolkaBTC(vaultId),
-            await this.getFeesDOT(vaultId),
+            await this.getFeesIssuing(vaultId),
+            await this.getFeesBacking(vaultId),
             await this.collateralAPI.balanceLocked(vaultId),
         ]);
         return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT);

@@ -133,7 +133,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @param amountBtc The amount, in BTC, for which to compute the redeem fees
      * @returns The fees, in BTC
      */
-    getFeesToPay(amount: string): Promise<string>;
+    getFeesToPay(amount: Big): Promise<Big>;
     /**
      * @returns If users execute a redeem with a Vault flagged for premium redeem,
      * they can earn a DOT premium, slashed from the Vault's collateral.
@@ -246,9 +246,10 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             return Promise.reject("There are no burnable tokens. The burn exchange rate is undefined");
         }
         const wrappedBtc = new Big(satToBTC(wrappedSatoshi.toString()));
-        // TODO: Get liquidation vault id and replace this magic constant
-        // const collateralPlanck = await this.collateralAPI.balanceLocked(liquidationVault.id);
-        const collateralPlanck = this.api.createType("Backing", 10000000);
+        const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
+        const collateralPlanck = await this.collateralAPI.balanceLocked(
+            this.api.createType("AccountId", liquidationVaultId)
+        );
         const collateralDot = new Big(planckToDOT(collateralPlanck.toString()));
         return collateralDot.div(wrappedBtc);
     }
@@ -292,10 +293,9 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         };
     }
 
-    async getFeesToPay(amount: string): Promise<string> {
+    async getFeesToPay(amount: Big): Promise<Big> {
         const feePercentage = await this.getFeeRate();
-        const amountBig = new Big(amount);
-        return amountBig.mul(feePercentage).toString();
+        return amount.mul(feePercentage);
     }
 
     async getFeeRate(): Promise<Big> {

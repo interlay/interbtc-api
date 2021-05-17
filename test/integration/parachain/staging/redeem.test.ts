@@ -66,7 +66,7 @@ describe("redeem", () => {
 
         async function requestAndCallRedeem(
             blocksToMine: number,
-            amountAsBtcString = "0.1",
+            issueAmountAsBtcString = "0.1",
             redeemAmountAsBtcString = "0.09"
         ) {
             const bitcoinCoreClient = new BitcoinCoreClient(
@@ -83,9 +83,7 @@ describe("redeem", () => {
 
             // request issue
             issueAPI.setAccount(alice);
-            const amountAsSatoshiString = btcToSat(amountAsBtcString);
-            const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-            const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
+            const requestResult = await issueAPI.request(new Big(issueAmountAsBtcString), api.createType("AccountId", charlie.address));
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
             const txAmountRequired = new Big(satToBTC(issueRequest.amount.add(issueRequest.fee).toString()));
 
@@ -125,11 +123,12 @@ describe("redeem", () => {
             const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
             const issueAmount = new Big("0.1");
+            const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
             const redeemAmount = new Big("0.09");
             await requestAndCallRedeem(blocksToMine, issueAmount.toString(), redeemAmount.toString());
 
             // check redeeming worked
-            const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(redeemAmount);
+            const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
             const finalBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem).toString(), finalBalance.toString());
         }).timeout(1000000);
@@ -137,9 +136,9 @@ describe("redeem", () => {
 
     describe("fees", () => {
         it("should getFeesToPay", async () => {
-            const amount = "2";
+            const amount = new Big("2");
             const feesToPay = await redeemAPI.getFeesToPay(amount);
-            assert.equal(feesToPay, "0.01");
+            assert.equal(feesToPay.toString(), "0.01");
         });
 
         it("should getFeeRate", async () => {

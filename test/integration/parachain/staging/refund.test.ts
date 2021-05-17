@@ -25,7 +25,7 @@ describe("refund", () => {
         keyring = new Keyring({ type: "sr25519" });
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-        refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest);
+        refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         alice = keyring.addFromUri("//Alice");
         eve = keyring.addFromUri("//Eve");
     });

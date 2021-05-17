@@ -16,7 +16,7 @@ describe.skip("PolkaBTCAPIMock", () => {
     it("should retrieve mock data from unparameterized methods", async () => {
         const issueRequests = await polkaBTC.issue.list();
         assert.equal(issueRequests.length, 2);
-        const totalStakedDOTAmount = await polkaBTC.stakedRelayer.getTotalStakedDOTAmount();
+        const totalStakedDOTAmount = await polkaBTC.stakedRelayer.getTotalStakedBackingAmount();
         // toNumber() trims BigNumber to an integer
         assert.equal(totalStakedDOTAmount.toNumber(), 16);
     });

@@ -102,6 +102,7 @@ export class BitcoinCoreClient {
         return await this.client.command("sendtoaddress", address, amount.toString());
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async getMempoolInfo(): Promise<any> {
         return await this.client.command("getmempoolinfo");
     }
