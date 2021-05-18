@@ -39,7 +39,7 @@ describe("Initialize parachain state", () => {
 
     let alice: KeyringPair;
     let bob: KeyringPair;
-    let dave: KeyringPair;
+    let charlie_stash: KeyringPair;
 
     function sleep(ms: number): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, ms));
@@ -51,7 +51,7 @@ describe("Initialize parachain state", () => {
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
         bob = keyring.addFromUri("//Bob");
-        dave = keyring.addFromUri("//Dave");
+        charlie_stash = keyring.addFromUri("//Charlie//stash");
 
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
@@ -107,7 +107,7 @@ describe("Initialize parachain state", () => {
         const feesToPay = await issueAPI.getFeesToPay(polkaBtcToIssue);
         const aliceAccountId = api.createType("AccountId", alice.address);
         const alicePolkaBTCBefore = await treasuryAPI.balance(aliceAccountId);
-        await issue(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, dave.address);
+        await issue(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, charlie_stash.address);
         const alicePolkaBTCAfter = await treasuryAPI.balance(aliceAccountId);
         assert.equal(
             alicePolkaBTCBefore.add(polkaBtcToIssue).sub(feesToPay).toString(),
@@ -119,7 +119,7 @@ describe("Initialize parachain state", () => {
     it("should redeem 0.05 PolkaBTC", async () => {
         const polkaSatToRedeem = api.createType("Balance", btcToSat("0.05"));
         const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        const daveAccountId = api.createType("AccountId", dave.address);
+        const daveAccountId = api.createType("AccountId", charlie_stash.address);
         await redeemAPI.request(polkaSatToRedeem, redeemAddress, daveAccountId);
     });
 });

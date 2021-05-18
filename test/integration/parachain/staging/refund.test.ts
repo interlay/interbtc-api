@@ -18,7 +18,7 @@ describe("refund", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
     let alice: KeyringPair;
-    let eve: KeyringPair;
+    let eve_stash: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
@@ -27,7 +27,7 @@ describe("refund", () => {
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
         refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         alice = keyring.addFromUri("//Alice");
-        eve = keyring.addFromUri("//Eve");
+        eve_stash = keyring.addFromUri("//Eve//stash");
     });
 
     after(async () => {
@@ -41,7 +41,7 @@ describe("refund", () => {
             bitcoinCoreClient,
             alice,
             new Big("0.001"),
-            eve.address,
+            eve_stash.address,
             false,
             false
         );
@@ -58,7 +58,7 @@ describe("refund", () => {
             bitcoinCoreClient,
             alice,
             new Big("0.001"),
-            eve.address,
+            eve_stash.address,
             true,
             true
         );

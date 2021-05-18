@@ -21,16 +21,16 @@ describe("issue", () => {
 
     // alice is the root account
     let alice: KeyringPair;
-    let charlie: KeyringPair;
-    let dave: KeyringPair;
+    let charlie_stash: KeyringPair;
+    let dave_stash: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
-        charlie = keyring.addFromUri("//Charlie");
-        dave = keyring.addFromUri("//Dave");
+        charlie_stash = keyring.addFromUri("//Charlie//stash");
+        dave_stash = keyring.addFromUri("//Dave//stash");
 
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
@@ -94,7 +94,7 @@ describe("issue", () => {
         it("should fail to request a value finer than 1 Satoshi", async () => {
             const amount = new Big("0.00000121");
             await assert.isRejected(
-                issue(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie.address, true, false)
+                issue(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie_stash.address, true, false)
             );
         }).timeout(500000);
 
@@ -109,7 +109,7 @@ describe("issue", () => {
                 bitcoinCoreClient,
                 alice,
                 amount,
-                charlie.address,
+                charlie_stash.address,
                 true,
                 false
             );
@@ -134,7 +134,7 @@ describe("issue", () => {
                 bitcoinCoreClient,
                 alice,
                 amount,
-                dave.address,
+                dave_stash.address,
                 false,
                 false
             );
