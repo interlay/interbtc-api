@@ -1,5 +1,4 @@
 import { decodeFixedPointType } from "..";
-import { PolkaBTC } from "../interfaces";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
@@ -11,14 +10,14 @@ import { ApiPromise } from "@polkadot/api";
  */
 export interface FeeAPI {
     /**
-     * @param amountSat Amount, in Satoshi, for which to compute the required
-     * griefing collateral, in Planck
+     * @param amount Amount, in BTC, for which to compute the required
+     * griefing collateral
      * @param griefingCollateralRate
      * @param oracleAPI
-     * @returns The griefing collateral, in Planck
+     * @returns The griefing collateral, in BTC
      */
-    getGriefingCollateralInPlanck(
-        amountSat: PolkaBTC,
+    getGriefingCollateral(
+        amount: Big,
         griefingCollateralRate: Big
     ): Promise<Big>;
     /**
@@ -46,18 +45,12 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api);
     }
 
-    async getGriefingCollateralInPlanck(
-        amountSat: PolkaBTC,
+    async getGriefingCollateral(
+        amount: Big,
         griefingCollateralRate: Big
     ): Promise<Big> {
-        const amountInPlanck = await this.oracleAPI.convertSatoshiToPlanck(amountSat);
-        const griefingCollateralPlanck = amountInPlanck.mul(griefingCollateralRate).toString();
-
-        // Compute the ceiling of the griefing collateral, because the parachain
-        // ignores the decimal place (123.456 -> 123456), because there is nothing
-        // smaller than 1 Planck
-        const griefingCollateralPlanckRoundedUp = new Big(griefingCollateralPlanck).round(0, 3);
-        return griefingCollateralPlanckRoundedUp;
+        const dotAmount = await this.oracleAPI.convertBitcoinToDot(amount);
+        return dotAmount.mul(griefingCollateralRate).round(10, 3);
     }
 
     async getIssueGriefingCollateralRate(): Promise<Big> {

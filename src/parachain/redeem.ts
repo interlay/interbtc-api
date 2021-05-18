@@ -24,7 +24,7 @@ import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { Issuing, RedeemRequest } from "../interfaces/default";
+import { RedeemRequest } from "../interfaces/default";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -49,11 +49,11 @@ export interface RedeemAPI extends TransactionAPI {
     list(): Promise<RedeemRequestExt[]>;
     /**
      * Send a redeem request transaction
-     * @param amountSat PolkaBTC amount (denoted in Satoshi) to redeem
+     * @param amount PolkaBTC amount (denoted in Bitcoin) to redeem
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
      * @returns An object of type {redeemId, vault} if the request succeeded. The function throws an error otherwise.
      */
-    request(amount: Issuing, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult>;
+    request(amount: Big, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult>;
     /**
      * Send a redeem execution transaction
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
@@ -124,7 +124,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns The minimum amount of btc that is accepted for redeem requests; any lower values would
      * risk the bitcoin client to reject the payment
      */
-    getDustValue(): Promise<Issuing>;
+    getDustValue(): Promise<Big>;
     /**
      * @returns The fee charged for redeeming. For instance, "0.005" stands for 0.5%
      */
@@ -184,10 +184,11 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         throw new Error("Redeem transaction failed");
     }
 
-    async request(amountSat: Issuing, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
+    async request(amount: Big, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!vaultId) {
-            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
+            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
         }
+        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
         const result = await this.sendLogged(requestRedeemTx, this.api.events.redeem.RequestRedeem);
@@ -304,9 +305,10 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return new Big(decodeFixedPointType(redeemFee));
     }
 
-    async getDustValue(): Promise<Issuing> {
+    async getDustValue(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.redeem.redeemBtcDustValue.at(head);
+        const dustValueSat = await this.api.query.redeem.redeemBtcDustValue.at(head);
+        return new Big(satToBTC(dustValueSat.toString()));
     }
 
     async getPremiumRedeemFee(): Promise<string> {

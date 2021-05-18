@@ -5,7 +5,7 @@ import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
-import { IssueRequest, Issuing } from "../interfaces/default";
+import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
@@ -14,6 +14,7 @@ import {
     encodeParachainRequest,
     getTxProof,
     btcToSat,
+    dotToPlanck,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
@@ -110,10 +111,10 @@ export interface IssueAPI extends TransactionAPI {
      */
     getFeesToPay(amountBtc: Big): Promise<Big>;
     /**
-     * @param amountBtc The amount, in Satoshi, for which to compute the griefing collateral
-     * @returns The griefing collateral, in Planck
+     * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
+     * @returns The griefing collateral, in BTC
      */
-    getGriefingCollateralInPlanck(amountSat: Issuing): Promise<Big>;
+    getGriefingCollateral(amount: Big): Promise<Big>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  {
@@ -142,12 +143,12 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
     }
 
     async request(amount: Big, vaultId?: AccountId): Promise<IssueRequestResult> {
-        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
         if (!vaultId) {
-            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amountSat);
+            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
         }
-        const griefingCollateralPlanck = await this.getGriefingCollateralInPlanck(amountSat);
-        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, griefingCollateralPlanck.toString());
+        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
+        const griefingCollateral = await this.getGriefingCollateral(amount);
+        const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, dotToPlanck(griefingCollateral.toString()) as string);
         const result = await this.sendLogged(requestIssueTx, this.api.events.issue.RequestIssue);
         try {
             const id = this.getRequestIdFromEvents(result.events);
@@ -156,7 +157,6 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         } catch (e) {
             return Promise.reject(e.message);
         }
-
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
@@ -200,9 +200,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         return mapForUser;
     }
 
-    async getGriefingCollateralInPlanck(amountSat: Issuing): Promise<Big> {
+    async getGriefingCollateral(amount: Big): Promise<Big> {
         const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
-        return await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
+        return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate);
     }
 
     async getFeesToPay(amount: Big): Promise<Big> {

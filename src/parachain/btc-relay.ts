@@ -11,14 +11,14 @@ export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 export interface BTCRelayAPI {
     /**
      * @returns A global security parameter: the required block confirmations
-     * for a transaction to be considered stable
+     * for a transaction to be considered stable on Bitcoin
      */
     getStableBitcoinConfirmations(): Promise<number>;
     /**
      * @returns A global security parameter: the required block confirmations
-     * for a transaction to be considered stable
+     * for a transaction to be considered stable on the parachain
      */
-     getStableParachainConfirmations(): Promise<number>;
+    getStableParachainConfirmations(): Promise<number>;
     /**
      * @returns The raw transaction data, represented as a Buffer object
      */

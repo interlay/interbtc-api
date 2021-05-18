@@ -1,7 +1,6 @@
-import { PolkaBTC, RedeemRequest } from "../../../src/interfaces/default";
+import { RedeemRequest } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
-import BN from "bn.js";
 import Big from "big.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
 import { MockTransactionAPI } from "../transaction";
@@ -36,7 +35,7 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
         throw new Error("Method not implemented.");
     }
 
-    async request(_amount: PolkaBTC, _btcAddressEnc: string, _vaultId?: AccountId): Promise<RequestResult> {
+    async request(_amount: Big, _btcAddressEnc: string, _vaultId?: AccountId): Promise<RequestResult> {
         return Promise.resolve({ id: <Hash>{}, redeemRequest: (await this.list())[0] });
     }
 
@@ -48,8 +47,8 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
         return {} as AsyncGenerator<RedeemRequest[]>;
     }
 
-    async getDustValue(): Promise<PolkaBTC> {
-        return Promise.resolve(new BN(1) as PolkaBTC);
+    async getDustValue(): Promise<Big> {
+        return Promise.resolve(new Big(0.000001));
     }
 
     setAccount(_account?: AddressOrPair): void {

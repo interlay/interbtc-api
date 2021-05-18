@@ -49,25 +49,25 @@ describe("vaultsAPI", () => {
     });
 
     it("should select random vault for issue", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 0);
-        const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
+        const polkaBTC = new Big(0);
+        const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTC);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for issuing is found", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 90000000000);
-        assert.isRejected(vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral));
+        const polkaBTC = new Big(9000000);
+        assert.isRejected(vaultsAPI.selectRandomVaultIssue(polkaBTC));
     });
 
     it("should select random vault for redeem", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 0);
-        const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
+        const polkaBTC = new Big(0);
+        const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTC);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for redeeming is found", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 90000000000);
-        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral));
+        const polkaBTC = new Big(9000000);
+        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(polkaBTC));
     });
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {

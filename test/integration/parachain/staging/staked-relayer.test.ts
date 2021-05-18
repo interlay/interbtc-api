@@ -44,24 +44,24 @@ describe("stakedRelayerAPI", () => {
         it("should getStakedDOTAmount", async () => {
             sinon.stub(stakedRelayerAPI, "get").returns(Promise.resolve(<StakedRelayer>{ stake: new BN(100) as DOT }));
             const activeStakedRelayerId = <AccountId>{};
-            const stakedDOTAmount: DOT = await stakedRelayerAPI.getStakedBackingAmount(activeStakedRelayerId);
-            assert.equal(stakedDOTAmount.toNumber(), 100);
+            const stakedDOTAmount = await stakedRelayerAPI.getStakedInsuranceAmount(activeStakedRelayerId);
+            assert.equal(stakedDOTAmount.toString(), "0.00000001");
         });
 
         it("should compute totalStakedDOTAmount with nonzero sum", async () => {
             const mockStakedDOTAmounts: DOT[] = [1, 2, 3].map((x) => numberToDOT(x));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedBackingAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount: BN = await stakedRelayerAPI.getTotalStakedBackingAmount();
-            assert.equal(totalStakedDOTAmount.toNumber(), 6);
+            sinon.stub(stakedRelayerAPI, <any>"getStakedInsuranceAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedInsuranceAmount();
+            assert.equal(totalStakedDOTAmount.toString(), "6");
         });
 
         it("should compute totalStakedDOTAmount with zero sum", async () => {
             const mockStakedDOTAmounts: DOT[] = [];
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedBackingAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedBackingAmount();
-            assert.equal(totalStakedDOTAmount.toNumber(), 0);
+            sinon.stub(stakedRelayerAPI, <any>"getStakedInsuranceAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedInsuranceAmount();
+            assert.equal(totalStakedDOTAmount.toString(), "0");
         });
 
         it("should listIncludingIds", async () => {
@@ -111,8 +111,8 @@ describe("stakedRelayerAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await stakedRelayerAPI.getFeesIssuing(registry.createType("AccountId", eve.address));
-            const feesDOT = await stakedRelayerAPI.getFeesBacking(registry.createType("AccountId", eve.address));
+            const feesPolkaBTC = await stakedRelayerAPI.getWrappingFees(registry.createType("AccountId", eve.address));
+            const feesDOT = await stakedRelayerAPI.getInsuranceFees(registry.createType("AccountId", eve.address));
             const feeBenchmark = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
             assert.isTrue(new Big(feesDOT).gte(feeBenchmark));

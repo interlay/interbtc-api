@@ -12,6 +12,9 @@ import { MockTransactionAPI } from "../transaction";
 import { DOT, IssueRequest, PolkaBTC } from "../../../src/interfaces/default";
 
 export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
+    getGriefingCollateral(amount: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     setIssuePeriod(_blocks: number): Promise<void> {
         throw new Error("Method not implemented.");
     }
@@ -32,10 +35,6 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
 
     setAccount(_account?: AddressOrPair): void {
         return;
-    }
-
-    getGriefingCollateralInPlanck(_amountSat: PolkaBTC): Promise<Big> {
-        return Promise.resolve(new Big("100"));
     }
 
     list(): Promise<IssueRequestExt[]> {

@@ -77,11 +77,9 @@ describe("issue", () => {
         });
 
         it("should getGriefingCollateral (rounded)", async () => {
-            const amountBtc = "0.001";
-            const amountAsSatoshiString = btcToSat(amountBtc) as string;
-            const amountAsSat = api.createType("Balance", amountAsSatoshiString) as Issuing;
-            const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck.toString(), "1927616");
+            const amountBtc = new Big("0.001");
+            const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc);
+            assert.equal(griefingCollateral.toString(), "0.0001927616");
         });
     });
 

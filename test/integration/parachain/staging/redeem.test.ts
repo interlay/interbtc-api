@@ -60,7 +60,7 @@ describe("redeem", () => {
 
     describe("request", () => {
         it("should fail if no account is set", () => {
-            const amount = api.createType("Balance", 10);
+            const amount = new Big(10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
 
@@ -102,11 +102,9 @@ describe("redeem", () => {
 
             // redeem
             redeemAPI.setAccount(alice);
-            const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
-            const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
             const vaultId = api.createType("AccountId", charlie_stash.address);
-            const { id, redeemRequest } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
+            const { id, redeemRequest } = await redeemAPI.request(new Big(redeemAmountAsBtcString), btcAddress, vaultId);
             assert.equal(
                 redeemRequest.vault.toString(),
                 vaultId.toString(),

@@ -3,15 +3,16 @@ import { OracleAPI } from "../../../src/parachain";
 import { BtcTxFees } from "../../../src/parachain/oracle";
 import Big from "big.js";
 import { MockTransactionAPI } from "../transaction";
-import { Issuing } from "../../../src/interfaces";
 
 export class MockOracleAPI extends MockTransactionAPI implements OracleAPI {
+    convertSatoshiToPlanck(amount: import("bn.js")): Promise<import("bn.js")> {
+        throw new Error("Method not implemented.");
+    }
+    convertBitcoinToDot(amount: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     getOnlineTimeout(): Promise<number> {
         return Promise.resolve(100);
-    }
-    
-    convertSatoshiToPlanck(_satoshi: Issuing): Promise<Big> {
-        throw new Error("Method not implemented.");
     }
 
     getExchangeRate(): Promise<Big> {

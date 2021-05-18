@@ -1,5 +1,5 @@
 import { Backing, DOT, ErrorCode, StakedRelayer, StatusCode } from "../../../src/interfaces/default";
-import { u32, u64, u128, u256, Bytes } from "@polkadot/types/primitive";
+import { u32, u64, u128, Bytes } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
@@ -10,12 +10,25 @@ import { AddressOrPair } from "@polkadot/api/types";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRelayerAPI {
-    list(): Promise<[AccountId, Backing][]> {
+    list(): Promise<[AccountId, Big][]> {
         throw new Error("Method not implemented.");
     }
-    map(): Promise<Map<AccountId, Backing>> {
+    map(): Promise<Map<AccountId, Big>> {
         throw new Error("Method not implemented.");
     }
+    getStakedInsuranceAmount(stakedRelayerId: AccountId): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getTotalStakedInsuranceAmount(): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getWrappingFees(stakedRelayerId: AccountId): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getInsuranceFees(stakedRelayerId: AccountId): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+
     getStakedBackingAmount(stakedRelayerId: AccountId): Promise<Backing> {
         throw new Error("Method not implemented.");
     }

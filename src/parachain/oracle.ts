@@ -3,6 +3,7 @@ import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces/runtime";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
+import BN from "bn.js";
 
 import { 
     BTC_IN_SAT, 
@@ -11,7 +12,7 @@ import {
     encodeUnsignedFixedPoint, 
     storageKeyToFirstInner,
 } from "../utils";
-import { ErrorCode, Issuing } from "../interfaces/default";
+import { ErrorCode } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 const defaultFeedName = "DOT/BTC";
@@ -74,7 +75,11 @@ export interface OracleAPI extends TransactionAPI {
     /**
      * @returns Convert a Satoshi amount to Planck
      */
-    convertSatoshiToPlanck(satoshi: Issuing): Promise<Big>;
+    convertSatoshiToPlanck(amount: BN): Promise<BN>;
+    /**
+     * @returns Convert a Satoshi amount to Planck
+     */
+    convertBitcoinToDot(amount: Big): Promise<Big>;
     /**
      * @returns The period of time (in milliseconds) after an oracle's last submission
      * during which it is considered online
@@ -88,15 +93,20 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         super(api, account);
     }
 
-    async convertSatoshiToPlanck(satoshi: Issuing): Promise<Big> {
+    async convertSatoshiToPlanck(amount: BN): Promise<BN> {
         const planckPerSatoshi = await this.getRawExchangeRate();
-        const amountSatoshiBig = new Big(satoshi.toString());
-        return planckPerSatoshi.mul(amountSatoshiBig);
+        const amountSatoshiBig = new Big(amount.toString());
+        return new BN(planckPerSatoshi.mul(amountSatoshiBig).toString());
+    }
+
+    async convertBitcoinToDot(amount: Big): Promise<Big> {
+        const dotPerBtc = await this.getExchangeRate();
+        return dotPerBtc.mul(amount);
     }
 
     async getExchangeRate(): Promise<Big> {
         const rawRate = await this.getRawExchangeRate();
-        return new Big(this.convertFromRawExchangeRate(rawRate.toString()));
+        return new Big(this.convertFromRawExchangeRate(rawRate));
     }
 
     async getOnlineTimeout(): Promise<number> {
@@ -178,9 +188,8 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
 
     // Converts the raw exchange rate (Planck to Satoshi) into
     // DOT to BTC
-    private convertFromRawExchangeRate(rate: string): string {
-        const rateBig = new Big(rate);
+    private convertFromRawExchangeRate(rate: Big): Big {
         const divisor = new Big(DOT_IN_PLANCK / BTC_IN_SAT);
-        return rateBig.div(divisor).toString();
+        return rate.div(divisor);
     }
 }
