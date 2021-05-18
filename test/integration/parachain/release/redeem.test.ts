@@ -48,7 +48,7 @@ describe("redeem", () => {
                 "rpcuser",
                 "rpcpassword",
                 "18443",
-                "Bob"
+                "ferdie_stash"
             );
 
             // Steal some bitcoin (spend from the vault's account)
