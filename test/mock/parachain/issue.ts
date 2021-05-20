@@ -1,16 +1,20 @@
-import { DOT, IssueRequest, PolkaBTC } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
-import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
-import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../../src/parachain/issue";
 import { EventRecord } from "@polkadot/types/interfaces/system";
+import BN from "bn.js";
 import Big from "big.js";
+
+import { IssueAPI, IssueRequestResult, IssueRequestExt } from "../../../src/parachain/issue";
 import { MockTransactionAPI } from "../transaction";
+import { DOT, IssueRequest, PolkaBTC } from "../../../src/interfaces/default";
 
 export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
+    getGriefingCollateral(amount: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     setIssuePeriod(_blocks: number): Promise<void> {
         throw new Error("Method not implemented.");
     }
@@ -23,7 +27,7 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         throw new Error("Method not implemented.");
     }
 
-    async request(_amount: PolkaBTC, _vaultId?: AccountId, _griefingCollateral?: DOT): Promise<IssueRequestResult> {
+    async request(_amount: Big, _vaultId?: AccountId, _griefingCollateral?: Big): Promise<IssueRequestResult> {
         const registry = new TypeRegistry();
         const id = new U8aFixed(registry, "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c") as Hash;
         return Promise.resolve({ id, issueRequest: (await this.list())[0] });
@@ -31,10 +35,6 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
 
     setAccount(_account?: AddressOrPair): void {
         return;
-    }
-
-    getGriefingCollateralInPlanck(_amountSat: PolkaBTC): Promise<Big> {
-        return Promise.resolve(new Big("100"));
     }
 
     list(): Promise<IssueRequestExt[]> {
@@ -96,8 +96,8 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         return false;
     }
 
-    async getFeesToPay(_amountBtc: string): Promise<string> {
-        return "0.01";
+    async getFeesToPay(_amountBtc: Big): Promise<Big> {
+        return Big("0.01");
     }
 
     async getFeeRate(): Promise<Big> {

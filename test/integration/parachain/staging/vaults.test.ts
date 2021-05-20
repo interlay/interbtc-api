@@ -9,10 +9,10 @@ import Big from "big.js";
 import { TypeRegistry } from "@polkadot/types";
 
 describe("vaultsAPI", () => {
-    let bob: KeyringPair;
-    let charlie: KeyringPair;
-    let dave: KeyringPair;
-    let eve: KeyringPair;
+    let ferdie_stash: KeyringPair;
+    let charlie_stash: KeyringPair;
+    let dave_stash: KeyringPair;
+    let eve_stash: KeyringPair;
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
     const registry = new TypeRegistry();
@@ -20,10 +20,10 @@ describe("vaultsAPI", () => {
     before(async () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         const keyring = new Keyring({ type: "sr25519" });
-        bob = keyring.addFromUri("//Bob");
-        charlie = keyring.addFromUri("//Charlie");
-        dave = keyring.addFromUri("//Dave");
-        eve = keyring.addFromUri("//Eve");
+        charlie_stash = keyring.addFromUri("//Charlie//stash");
+        dave_stash = keyring.addFromUri("//Dave//stash");
+        eve_stash = keyring.addFromUri("//Eve//stash");
+        ferdie_stash = keyring.addFromUri("//Ferdie//stash");
     });
 
     beforeEach(async () => {
@@ -34,7 +34,14 @@ describe("vaultsAPI", () => {
         return api.disconnect();
     });
 
-    it("should getIssuablePolkaBTC", async () => {
+    function vaultIsATestVault(vaultAddress: string): boolean {
+        return vaultAddress === dave_stash.address ||
+                vaultAddress === charlie_stash.address ||
+                vaultAddress === eve_stash.address ||
+                vaultAddress === ferdie_stash.address;
+    }
+
+    it("should get issuable", async () => {
         const issuablePolkaBTC = await vaultsAPI.getIssuablePolkaBTC();
         const issuablePolkaBTCBig = new Big(issuablePolkaBTC);
         const minIssuablePolkaBTC = new Big(1);
@@ -42,39 +49,29 @@ describe("vaultsAPI", () => {
     });
 
     it("should select random vault for issue", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 0);
-        const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral);
-        assert.isTrue(
-            randomVault.toHuman() === dave.address ||
-                randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address ||
-                randomVault.toHuman() === bob.address
-        );
+        const polkaBTC = new Big(0);
+        const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTC);
+        assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for issuing is found", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 90000000000);
-        assert.isRejected(vaultsAPI.selectRandomVaultIssue(polkaBTCCollateral));
+        const polkaBTC = new Big(9000000);
+        assert.isRejected(vaultsAPI.selectRandomVaultIssue(polkaBTC));
     });
 
     it("should select random vault for redeem", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 0);
-        const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral);
-        assert.isTrue(
-            randomVault.toHuman() === dave.address ||
-                randomVault.toHuman() === charlie.address ||
-                randomVault.toHuman() === eve.address ||
-                randomVault.toHuman() === bob.address
-        );
+        const polkaBTC = new Big(0);
+        const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTC);
+        assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for redeeming is found", async () => {
-        const polkaBTCCollateral = api.createType("Balance", 90000000000);
-        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(polkaBTCCollateral));
+        const polkaBTC = new Big(9000000);
+        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(polkaBTC));
     });
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {
-        const charlieId = api.createType("AccountId", charlie.address);
+        const charlieId = api.createType("AccountId", charlie_stash.address);
         assert.isRejected(vaultsAPI.getVaultCollateralization(charlieId));
     });
 
@@ -83,7 +80,7 @@ describe("vaultsAPI", () => {
     });
 
     it("should get vault theft flag", async () => {
-        const bobId = api.createType("AccountId", bob.address);
+        const bobId = api.createType("AccountId", ferdie_stash.address);
         const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(bobId);
         assert.isTrue(flaggedForTheft);
     });
@@ -99,7 +96,7 @@ describe("vaultsAPI", () => {
     });
 
     it("should list issue request by a vault", async () => {
-        const bobId = api.createType("AccountId", bob.address);
+        const bobId = api.createType("AccountId", ferdie_stash.address);
         const issueRequests = await vaultsAPI.mapIssueRequests(bobId);
         issueRequests.forEach((request) => {
             assert.deepEqual(request.vault, bobId);
@@ -107,7 +104,7 @@ describe("vaultsAPI", () => {
     });
 
     it("should list redeem request by a vault", async () => {
-        const bobId = api.createType("AccountId", bob.address);
+        const bobId = api.createType("AccountId", ferdie_stash.address);
         const redeemRequests = await vaultsAPI.mapRedeemRequests(bobId);
         redeemRequests.forEach((request) => {
             assert.deepEqual(request.vault, bobId);
@@ -115,7 +112,7 @@ describe("vaultsAPI", () => {
     });
 
     it("should list replace request by a vault", async () => {
-        const bobId = api.createType("AccountId", bob.address);
+        const bobId = api.createType("AccountId", ferdie_stash.address);
         const replaceRequests = await vaultsAPI.mapReplaceRequests(bobId);
         replaceRequests.forEach((request) => {
             assert.deepEqual(request.old_vault, bobId);
@@ -136,22 +133,22 @@ describe("vaultsAPI", () => {
         });
 
         it("should get SLA", async () => {
-            const sla = await vaultsAPI.getSLA(registry.createType("AccountId", charlie.address));
+            const sla = await vaultsAPI.getSLA(registry.createType("AccountId", charlie_stash.address));
             assert.isString(sla);
         });
     });
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await vaultsAPI.getFeesPolkaBTC(registry.createType("AccountId", charlie.address));
-            const feesDOT = await vaultsAPI.getFeesDOT(registry.createType("AccountId", charlie.address));
+            const feesPolkaBTC = await vaultsAPI.getFeesIssuing(registry.createType("AccountId", charlie_stash.address));
+            const feesDOT = await vaultsAPI.getFeesBacking(registry.createType("AccountId", charlie_stash.address));
             const benchmarkFees = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(benchmarkFees));
             assert.isTrue(new Big(feesDOT).gte(benchmarkFees));
         });
 
         it("should getAPY", async () => {
-            const apy = await vaultsAPI.getAPY(registry.createType("AccountId", charlie.address));
+            const apy = await vaultsAPI.getAPY(registry.createType("AccountId", charlie_stash.address));
             const apyBig = new Big(apy);
             const apyBenchmark = new Big("0");
             assert.isTrue(apyBig.gte(apyBenchmark));

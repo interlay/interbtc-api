@@ -5,6 +5,9 @@ import { U8aFixed, UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
 
 export class MockBTCRelayAPI implements BTCRelayAPI {
+    getStableParachainConfirmations(): Promise<number> {
+        throw new Error("Method not implemented.");
+    }
     async getStableBitcoinConfirmations(): Promise<number> {
         return DEFAULT_STABLE_CONFIRMATIONS;
     }

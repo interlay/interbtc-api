@@ -31,9 +31,9 @@ describe("Faucet", function () {
         it("should get funds from faucet", async () => {
             const helenAccountId = api.createType("AccountId", helen.address);
             const expectedAllowance = 10000000000;
-            const balanceBeforeFunding = (await api.query.dot.account(helenAccountId)) as AccountData;
+            const balanceBeforeFunding = (await api.query.backing.account(helenAccountId)) as AccountData;
             await faucet.fundAccount(helenAccountId);
-            const balanceAfterFunding = (await api.query.dot.account(helenAccountId)) as AccountData;
+            const balanceAfterFunding = (await api.query.backing.account(helenAccountId)) as AccountData;
             const balanceBeforeFundingBig = new Big(balanceBeforeFunding.free.toString());
             const balanceAfterFundingBig = new Big(balanceAfterFunding.free.toString());
             assert.isTrue(balanceBeforeFundingBig.add(new Big(expectedAllowance)).eq(balanceAfterFundingBig));

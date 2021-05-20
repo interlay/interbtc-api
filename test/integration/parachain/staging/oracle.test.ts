@@ -1,5 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
+
 import { DefaultOracleAPI, OracleAPI } from "../../../../src/parachain/oracle";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
@@ -55,7 +56,9 @@ describe("OracleAPI", () => {
 
         it("should get names by id", async () => {
             const expectedSources = new Map<string, string>();
+            expectedSources.set("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", "Alice");
             expectedSources.set("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", "Bob");
+            expectedSources.set("5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y", "Charlie");
             const sources = await oracle.getSourcesById();
             for (const entry of sources.entries()) {
                 assert.equal(entry[1], expectedSources.get(entry[0]));

@@ -35,29 +35,6 @@ describe("Constants", function () {
         });
     });
 
-    describe("getStakedRelayersMinimumDeposit", () => {
-        it("should sucessfully return", async () => {
-            this.timeout(500);
-            const returnValue = await constantAPI.getStakedRelayersMinimumDeposit();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getStakedRelayersMinimumStake", () => {
-        it("should sucessfully return", async () => {
-            this.timeout(500);
-            const returnValue = await constantAPI.getStakedRelayersMinimumStake();
-            assert.isDefined(returnValue);
-        });
-    });
-
-    describe("getStakedRelayersVotingPeriod", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getStakedRelayersVotingPeriod();
-            assert.isDefined(returnValue);
-        });
-    });
-
     describe("getSystemBlockHashCount", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);

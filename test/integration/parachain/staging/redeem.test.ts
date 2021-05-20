@@ -25,7 +25,7 @@ describe("redeem", () => {
     let keyring: Keyring;
     // alice is the root account
     let alice: KeyringPair;
-    let charlie: KeyringPair;
+    let charlie_stash: KeyringPair;
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
     let electrsAPI: ElectrsAPI;
 
@@ -60,13 +60,13 @@ describe("redeem", () => {
 
     describe("request", () => {
         it("should fail if no account is set", () => {
-            const amount = api.createType("Balance", 10);
+            const amount = new Big(10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
 
         async function requestAndCallRedeem(
             blocksToMine: number,
-            amountAsBtcString = "0.1",
+            issueAmountAsBtcString = "0.1",
             redeemAmountAsBtcString = "0.09"
         ) {
             const bitcoinCoreClient = new BitcoinCoreClient(
@@ -79,13 +79,11 @@ describe("redeem", () => {
             );
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
-            charlie = keyring.addFromUri("//Charlie");
+            charlie_stash = keyring.addFromUri("//Charlie//stash");
 
             // request issue
             issueAPI.setAccount(alice);
-            const amountAsSatoshiString = btcToSat(amountAsBtcString);
-            const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-            const requestResult = await issueAPI.request(amountAsSatoshi, api.createType("AccountId", charlie.address));
+            const requestResult = await issueAPI.request(new Big(issueAmountAsBtcString), api.createType("AccountId", charlie_stash.address));
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
             const txAmountRequired = new Big(satToBTC(issueRequest.amount.add(issueRequest.fee).toString()));
 
@@ -104,11 +102,9 @@ describe("redeem", () => {
 
             // redeem
             redeemAPI.setAccount(alice);
-            const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
-            const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-            const vaultId = api.createType("AccountId", charlie.address);
-            const { id, redeemRequest } = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, vaultId);
+            const vaultId = api.createType("AccountId", charlie_stash.address);
+            const { id, redeemRequest } = await redeemAPI.request(new Big(redeemAmountAsBtcString), btcAddress, vaultId);
             assert.equal(
                 redeemRequest.vault.toString(),
                 vaultId.toString(),
@@ -125,11 +121,12 @@ describe("redeem", () => {
             const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
             const issueAmount = new Big("0.1");
+            const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
             const redeemAmount = new Big("0.09");
             await requestAndCallRedeem(blocksToMine, issueAmount.toString(), redeemAmount.toString());
 
             // check redeeming worked
-            const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(redeemAmount);
+            const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
             const finalBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem).toString(), finalBalance.toString());
         }).timeout(1000000);
@@ -137,9 +134,9 @@ describe("redeem", () => {
 
     describe("fees", () => {
         it("should getFeesToPay", async () => {
-            const amount = "2";
+            const amount = new Big("2");
             const feesToPay = await redeemAPI.getFeesToPay(amount);
-            assert.equal(feesToPay, "0.01");
+            assert.equal(feesToPay.toString(), "0.01");
         });
 
         it("should getFeeRate", async () => {

@@ -11,9 +11,14 @@ export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 export interface BTCRelayAPI {
     /**
      * @returns A global security parameter: the required block confirmations
-     * for a transaction to be considered stable
+     * for a transaction to be considered stable on Bitcoin
      */
     getStableBitcoinConfirmations(): Promise<number>;
+    /**
+     * @returns A global security parameter: the required block confirmations
+     * for a transaction to be considered stable on the parachain
+     */
+    getStableParachainConfirmations(): Promise<number>;
     /**
      * @returns The raw transaction data, represented as a Buffer object
      */
@@ -38,6 +43,11 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
     async getStableBitcoinConfirmations(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return this.api.query.btcRelay.stableBitcoinConfirmations.at(head).then((param) => param.toNumber());
+    }
+
+    async getStableParachainConfirmations(): Promise<number> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return this.api.query.btcRelay.stableParachainConfirmations.at(head).then((param) => param.toNumber());
     }
 
     async getLatestBlock(): Promise<H256Le> {

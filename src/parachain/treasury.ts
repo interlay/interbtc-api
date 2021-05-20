@@ -43,19 +43,19 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
 
     async total(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const totalBN =  this.api.query.polkaBtc.totalIssuance.at(head);
+        const totalBN =  this.api.query.issuing.totalIssuance.at(head);
         return new Big(satToBTC(totalBN.toString()));
     }
 
     async balance(id: AccountId): Promise<Big> {
-        const account = await this.api.query.polkaBtc.account(id);
+        const account = await this.api.query.issuing.account(id);
         return new Big(satToBTC(account.free.toString()));
     }
 
     async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
         try {
             const accountId = this.api.createType("AccountId", account);
-            const unsubscribe = await this.api.query.polkaBtc.account(accountId, (balance) => {
+            const unsubscribe = await this.api.query.issuing.account(accountId, (balance) => {
                 callback(account, new Big(satToBTC(balance.free.toString())));
             });
             return unsubscribe;
@@ -70,7 +70,7 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
 
     async transfer(destination: string, amount: Big): Promise<void> {
         const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount.toString()));
-        const transferTransaction = this.api.tx.polkaBtc.transfer(destination, amountSmallDenomination);
-        await this.sendLogged(transferTransaction, this.api.events.polkaBtc.Transfer);
+        const transferTransaction = this.api.tx.issuing.transfer(destination, amountSmallDenomination);
+        await this.sendLogged(transferTransaction, this.api.events.issuing.Transfer);
     }
 }

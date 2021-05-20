@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 
-import { btcToSat, satToBTC, IssueRequestExt, getBitcoinNetwork } from "..";
+import { satToBTC, IssueRequestExt, getBitcoinNetwork } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
 import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
@@ -41,8 +41,7 @@ export async function issue(
     const vaultAccountId = vaultAddress ? api.createType("AccountId", vaultAddress) : undefined;
 
     // request issue
-    const amountAsSatoshi = api.createType("Balance", btcToSat(amount.toString()));
-    const requestResult = await issueAPI.request(amountAsSatoshi, vaultAccountId);
+    const requestResult = await issueAPI.request(amount, vaultAccountId);
     let issueRequest;
     try {
         issueRequest = await issueAPI.getRequestById(requestResult.id);

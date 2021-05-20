@@ -5,7 +5,7 @@ import { ApiPromise } from "@polkadot/api";
 import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
-import { H256 } from "@polkadot/types/interfaces";
+import { Codec } from "@polkadot/types/types";
 
 /**
  * Converts endianness of a Uint8Array
@@ -71,7 +71,7 @@ export function encodeUnsignedFixedPoint(api: ApiPromise, x: string): UnsignedFi
     return api.createType("FixedU128", xScaled.toFixed());
 }
 
-export function storageKeyToFirstInner(s: StorageKey<[H256]>): H256 {
+export function storageKeyToFirstInner<T extends Codec>(s: StorageKey<[T]>): T {
     return s.args[0];
 }
 

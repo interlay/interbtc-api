@@ -39,7 +39,7 @@ describe("redeem", () => {
 
     describe("liquidation redeem", () => {
         it("should liquidate a vault that committed theft", async () => {
-            const vaultToLiquidate = keyring.addFromUri("//Bob");
+            const vaultToLiquidate = keyring.addFromUri("//Ferdie//stash");
             const aliceBitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
             await issue(api, electrsAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
@@ -48,7 +48,7 @@ describe("redeem", () => {
                 "rpcuser",
                 "rpcpassword",
                 "18443",
-                "Bob"
+                "ferdie_stash"
             );
 
             // Steal some bitcoin (spend from the vault's account)

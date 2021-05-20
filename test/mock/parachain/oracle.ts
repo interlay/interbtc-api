@@ -2,16 +2,17 @@ import { AddressOrPair } from "@polkadot/api/types";
 import { OracleAPI } from "../../../src/parachain";
 import { BtcTxFees } from "../../../src/parachain/oracle";
 import Big from "big.js";
-import { PolkaBTC } from "@interlay/polkabtc/interfaces";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockOracleAPI extends MockTransactionAPI implements OracleAPI {
+    convertSatoshiToPlanck(amount: import("bn.js")): Promise<import("bn.js")> {
+        throw new Error("Method not implemented.");
+    }
+    convertBitcoinToDot(amount: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     getOnlineTimeout(): Promise<number> {
         return Promise.resolve(100);
-    }
-    
-    convertSatoshiToPlanck(_satoshi: PolkaBTC): Promise<Big> {
-        throw new Error("Method not implemented.");
     }
 
     getExchangeRate(): Promise<Big> {

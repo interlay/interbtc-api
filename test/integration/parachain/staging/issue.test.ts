@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { PolkaBTC } from "../../../../src/interfaces/default";
+import { Issuing } from "../../../../src/interfaces/default";
 import { btcToSat, dotToPlanck } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
@@ -21,16 +21,16 @@ describe("issue", () => {
 
     // alice is the root account
     let alice: KeyringPair;
-    let charlie: KeyringPair;
-    let dave: KeyringPair;
+    let charlie_stash: KeyringPair;
+    let dave_stash: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
-        charlie = keyring.addFromUri("//Charlie");
-        dave = keyring.addFromUri("//Dave");
+        charlie_stash = keyring.addFromUri("//Charlie//stash");
+        dave_stash = keyring.addFromUri("//Dave//stash");
 
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
@@ -59,7 +59,7 @@ describe("issue", () => {
     describe("request", () => {
         it("should fail if no account is set", async () => {
             const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
-            const amount = api.createType("Balance", 10);
+            const amount = new Big(0.0000001);
             await assert.isRejected(tmpIssueAPI.request(amount));
         });
 
@@ -67,20 +67,19 @@ describe("issue", () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
-            const amount = api.createType("Balance", 100000) as PolkaBTC;
+            const amount = new Big(0.001);
+            const feesToPay = await issueAPI.getFeesToPay(amount);
             const requestResult = await issueAPI.request(amount);
             assert.equal(requestResult.id.length, 32);
 
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            assert.deepEqual(issueRequest.amount, amount, "Amount different than expected");
+            assert.equal(issueRequest.amount.toString(), btcToSat(amount.sub(feesToPay).toString()), "Amount different than expected");
         });
 
         it("should getGriefingCollateral (rounded)", async () => {
-            const amountBtc = "0.001";
-            const amountAsSatoshiString = btcToSat(amountBtc) as string;
-            const amountAsSat = api.createType("Balance", amountAsSatoshiString) as PolkaBTC;
-            const griefingCollateralPlanck = await issueAPI.getGriefingCollateralInPlanck(amountAsSat);
-            assert.equal(griefingCollateralPlanck.toString(), "1927616");
+            const amountBtc = new Big("0.001");
+            const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc);
+            assert.equal(griefingCollateral.toString(), "0.0001927616");
         });
     });
 
@@ -93,7 +92,7 @@ describe("issue", () => {
         it("should fail to request a value finer than 1 Satoshi", async () => {
             const amount = new Big("0.00000121");
             await assert.isRejected(
-                issue(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie.address, true, false)
+                issue(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie_stash.address, true, false)
             );
         }).timeout(500000);
 
@@ -101,19 +100,20 @@ describe("issue", () => {
         // This will cause the testing pipeline to time out.
         it("should request and auto-execute issue", async () => {
             const amount = new Big("0.00121");
+            const feesToPay = await issueAPI.getFeesToPay(amount);
             const issueResult = await issue(
                 api,
                 electrsAPI,
                 bitcoinCoreClient,
                 alice,
                 amount,
-                charlie.address,
+                charlie_stash.address,
                 true,
                 false
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount.toString(),
+                amount.sub(feesToPay).toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 
@@ -125,19 +125,20 @@ describe("issue", () => {
 
         it("should request and manually execute issue", async () => {
             const amount = new Big("0.001");
+            const feesToPay = await issueAPI.getFeesToPay(amount);
             const issueResult = await issue(
                 api,
                 electrsAPI,
                 bitcoinCoreClient,
                 alice,
                 amount,
-                dave.address,
+                dave_stash.address,
                 false,
                 false
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount.toString(),
+                amount.sub(feesToPay).toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 
@@ -150,9 +151,9 @@ describe("issue", () => {
 
     describe("fees", () => {
         it("should getFeesToPay", async () => {
-            const amount = "2";
+            const amount = new Big(2);
             const feesToPay = await issueAPI.getFeesToPay(amount);
-            assert.equal(feesToPay, "0.01");
+            assert.equal(feesToPay.toString(), "0.01");
         });
 
         it("should getFeeRate", async () => {
