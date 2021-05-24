@@ -1,12 +1,12 @@
 import { AccountId, Hash } from "@polkadot/types/interfaces";
-import BN from "bn.js";
+import Big from "big.js";
 import { EventRecord } from "@polkadot/types/interfaces/system";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import { ApiPromise } from "@polkadot/api";
 
 export type RequestOptions = {
-    availableVaults?: Map<AccountId, BN>;
+    availableVaults?: Map<AccountId, Big>;
     atomic?: boolean;
     retries?: number;
 };
@@ -44,17 +44,17 @@ export function getRequestIdsFromEvents(
  * one vault can fulfil a request alone, a random one among them is selected.
  **/
 export function allocateAmountsToVaults(
-    vaultsWithAvailableAmounts: Map<AccountId, BN>,
-    amountToAllocate: BN
-): Map<AccountId, BN> {
-    const maxReservationPercent = 90; // don't reserve more than 90% of a vault's collateral
-    amountToAllocate = amountToAllocate.clone(); //will mutate
-    const allocations = new Map<AccountId, BN>();
+    vaultsWithAvailableAmounts: Map<AccountId, Big>,
+    amountToAllocate: Big
+): Map<AccountId, Big> {
+    const maxReservationPercent = 80; // don't reserve more than 95% of a vault's collateral
+    amountToAllocate = new Big(amountToAllocate); //will mutate
+    const allocations = new Map<AccountId, Big>();
     // iterable array in ascending order of issuing capacity:
     const vaultsArray = [...vaultsWithAvailableAmounts.entries()]
         .reverse()
-        .map((entry) => [entry[0], entry[1].divn(100).muln(maxReservationPercent)] as [AccountId, BN]);
-    while (amountToAllocate.gtn(0)) {
+        .map((entry) => [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [AccountId, Big]);
+    while (amountToAllocate.gt(0)) {
         // find first vault that can fulfil request (or undefined if none)
         const firstSuitable = vaultsArray.findIndex(([_, available]) => available.gte(amountToAllocate));
         let vault, amount;
@@ -72,8 +72,8 @@ export function allocateAmountsToVaults(
             const largestVault = vaultsArray.pop()!; // length >= 1, so never undefined
             [vault, amount] = largestVault;
         }
-        allocations.set(vault, amount.clone());
-        amountToAllocate.isub(amount);
+        allocations.set(vault, new Big(amount));
+        amountToAllocate = amountToAllocate.minus(amount);
     }
 
     return allocations;

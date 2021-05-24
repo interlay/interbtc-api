@@ -1,11 +1,12 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
+import * as bitcoinjs from "bitcoinjs-lib";
+import Big from "big.js";
+
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { btcToSat } from "../../../../src/utils";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { ElectrsAPI } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -41,10 +42,8 @@ describe("issue", () => {
 
         // request issue
         issueAPI.setAccount(alice);
-        const amountAsBtcString = "0.0000121";
-        const amountAsSatoshiString = btcToSat(amountAsBtcString);
-        const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-        const requestResults = await issueAPI.request(amountAsSatoshi);
+        const amount = new Big("0.0000121");
+        const requestResults = await issueAPI.request(amount);
         assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
         const requestResult = requestResults[0];
 

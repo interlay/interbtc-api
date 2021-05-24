@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 
-import { btcToSat, satToBTC, IssueRequestExt, getBitcoinNetwork, DefaultFeeAPI } from "..";
+import { satToBTC, IssueRequestExt, getBitcoinNetwork } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
 import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
@@ -41,19 +41,15 @@ export async function issueSingle(
     const blocksToMine = 3;
 
     // request issue
-    const amountAsSatoshi = api.createType("Balance", btcToSat(amount.toString()));
     let rawRequestResult;
     if (vaultAddress) {
-        const feeAPI = new DefaultFeeAPI(api);
-        const griefingCollateralRate = await feeAPI.getIssueGriefingCollateralRate();
         const vaultAccountId = api.createType("AccountId", vaultAddress);
         rawRequestResult = await issueAPI.requestAdvanced(
-            new Map([[vaultAccountId, amountAsSatoshi]]),
-            griefingCollateralRate,
+            new Map([[vaultAccountId, amount]]),
             atomic
         );
     } else {
-        rawRequestResult = await issueAPI.request(amountAsSatoshi, { atomic });
+        rawRequestResult = await issueAPI.request(amount, { atomic });
     }
     if (rawRequestResult.length !== 1) {
         throw new Error("More than one issue request created");

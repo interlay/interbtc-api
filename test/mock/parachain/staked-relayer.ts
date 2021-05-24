@@ -1,23 +1,43 @@
-import { DOT, ErrorCode, StakedRelayer, StatusCode, StatusUpdate } from "../../../src/interfaces/default";
-import { u32, u64, u128, u256 } from "@polkadot/types/primitive";
+import { Backing, DOT, ErrorCode, StakedRelayer, StatusCode } from "../../../src/interfaces/default";
+import { u32, u64, u128, Bytes } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
 import { UInt } from "@polkadot/types/codec";
 import { TypeRegistry } from "@polkadot/types";
-import { GenericAccountId } from "@polkadot/types/generic";
 import { PendingStatusUpdate, StakedRelayerAPI } from "../../../src/parachain/staked-relayer";
 import Big from "big.js";
 import { AddressOrPair } from "@polkadot/api/types";
 import { MockTransactionAPI } from "../transaction";
 
-function createStatusUpdate(): { id: u256; statusUpdate: StatusUpdate } {
-    const registry = new TypeRegistry();
-    const statusCode = new (registry.createClass("StatusCode"))(registry, { error: true });
-    const statusUpdate = new (registry.createClass("StatusUpdate"))(registry, { statusCode });
-    return { id: new UInt(registry, 0), statusUpdate: statusUpdate };
-}
-
 export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRelayerAPI {
+    list(): Promise<[AccountId, Big][]> {
+        throw new Error("Method not implemented.");
+    }
+    map(): Promise<Map<AccountId, Big>> {
+        throw new Error("Method not implemented.");
+    }
+    getStakedInsuranceAmount(stakedRelayerId: AccountId): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getTotalStakedInsuranceAmount(): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getWrappingFees(stakedRelayerId: AccountId): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getInsuranceFees(stakedRelayerId: AccountId): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+
+    getStakedBackingAmount(stakedRelayerId: AccountId): Promise<Backing> {
+        throw new Error("Method not implemented.");
+    }
+    getTotalStakedBackingAmount(): Promise<Backing> {
+        throw new Error("Method not implemented.");
+    }
+    reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
     registry = new TypeRegistry();
 
     register(_planckStake: BN): Promise<void> {
@@ -42,25 +62,6 @@ export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRe
 
     setAccount(_account: AddressOrPair): void {
         return;
-    }
-
-    async list(): Promise<StakedRelayer[]> {
-        return [
-            <StakedRelayer>{
-                stake: new BN(10.2) as DOT,
-            },
-            <StakedRelayer>{
-                stake: new BN(11.9) as DOT,
-            },
-        ];
-    }
-
-    async map(): Promise<Map<AccountId, StakedRelayer>> {
-        const decodedAccountId = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
-        return new Map([
-            [new GenericAccountId(this.registry, decodedAccountId), <StakedRelayer>{ stake: new BN(10.2) as DOT }],
-            [new GenericAccountId(this.registry, decodedAccountId), <StakedRelayer>{ stake: new BN(11.9) as DOT }],
-        ]);
     }
 
     getPagedIterator(_perPage: number): AsyncGenerator<StakedRelayer[]> {
@@ -137,23 +138,11 @@ export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRe
         ];
     }
 
-    async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        return [createStatusUpdate()];
-    }
-
-    async getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        return [createStatusUpdate()];
-    }
-
-    async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        return [createStatusUpdate()];
-    }
-
-    async getFeesPolkaBTC(_stakedRelayerId: AccountId): Promise<Big> {
+    async getFeesIssuing(_stakedRelayerId: AccountId): Promise<Big> {
         return new Big("10.22");
     }
 
-    async getFeesDOT(_stakedRelayerId: AccountId): Promise<Big> {
+    async getFeesBacking(_stakedRelayerId: AccountId): Promise<Big> {
         return new Big("10.22");
     }
 

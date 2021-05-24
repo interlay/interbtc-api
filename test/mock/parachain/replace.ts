@@ -1,23 +1,28 @@
 import { ReplaceAPI } from "../../../src/parachain";
 import { BlockNumber } from "@polkadot/types/interfaces";
-import { PolkaBTC, DOT } from "../../../src/interfaces/default";
+import { PolkaBTC, DOT, Backing, Issuing } from "../../../src/interfaces/default";
 import BN from "bn.js";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/types";
 import { MockTransactionAPI } from "../transaction";
+import { Bytes } from "@polkadot/types";
+import Big from "big.js";
 
 export class MockReplaceAPI extends MockTransactionAPI implements ReplaceAPI {
-    withdraw(_requestId: string): Promise<void> {
-        return Promise.resolve();
+    getBtcDustValue(): Promise<Big> {
+        throw new Error("Method not implemented.");
     }
-    
-    setAccount(_account: AddressOrPair): void {
-        return;
+    request(amount: Big): Promise<string> {
+        throw new Error("Method not implemented.");
     }
-    
-    async getBtcDustValue(): Promise<PolkaBTC> {
-        return Promise.resolve(new BN(1) as PolkaBTC);
+    withdraw(amount: Big): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    accept(oldVault: AccountId, amountSat: Big, collateral: Big, btcAddress: string): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    execute(replaceId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+        throw new Error("Method not implemented.");
     }
 
     async getGriefingCollateralRate(): Promise<DOT> {
@@ -36,7 +41,4 @@ export class MockReplaceAPI extends MockTransactionAPI implements ReplaceAPI {
         return Promise.resolve(new Map<AccountId, ReplaceRequestExt>());
     }
 
-    async request(_amount: PolkaBTC): Promise<string> {
-        return "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c";
-    }
 }

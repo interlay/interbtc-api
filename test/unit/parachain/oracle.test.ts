@@ -2,7 +2,9 @@ import { ApiPromise } from "@polkadot/api";
 import { TypeRegistry } from "@polkadot/types";
 import { BTreeSet, Raw, UInt } from "@polkadot/types/codec";
 import BN from "bn.js";
+import Big from "big.js";
 import sinon from "sinon";
+
 import { DefaultOracleAPI, OracleAPI } from "../../../src/parachain/oracle";
 import { createAPIRegistry } from "../../../src/factory";
 import { ErrorCode, UnsignedFixedPoint } from "../../../src/interfaces/default";
@@ -108,7 +110,7 @@ describe("oracle", () => {
     describe("convert exchange rate", () => {
         it("should return the correct rate", () => {
             const oracleProto = Object.getPrototypeOf(oracle);
-            const planck_to_sat = 38552318700;
+            const planck_to_sat = new Big(38552318700);
             const dot_to_btc = oracleProto.convertFromRawExchangeRate(planck_to_sat);
             return assert.equal(dot_to_btc.toString(), "385523187");
         });

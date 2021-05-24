@@ -7,7 +7,7 @@ import { Vault } from "../../../../src/interfaces/default";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
-import { btcToSat, stripHexPrefix, satToBTC } from "../../../../src/utils";
+import { stripHexPrefix, satToBTC } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
@@ -25,7 +25,7 @@ describe("redeem", () => {
     let keyring: Keyring;
     // alice is the root account
     let alice: KeyringPair;
-    let charlie: KeyringPair;
+    let charlie_stash: KeyringPair;
     const randomDecodedAccountId = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
     let electrsAPI: ElectrsAPI;
 
@@ -60,13 +60,13 @@ describe("redeem", () => {
 
     describe("request", () => {
         it("should fail if no account is set", () => {
-            const amount = api.createType("Balance", 10);
+            const amount = new Big(10);
             assert.isRejected(redeemAPI.request(amount, randomDecodedAccountId));
         });
 
         async function requestAndCallRedeem(
             blocksToMine: number,
-            amountAsBtcString = "0.1",
+            issueAmountAsBtcString = "0.1",
             redeemAmountAsBtcString = "0.09"
         ) {
             const bitcoinCoreClient = new BitcoinCoreClient(
@@ -79,12 +79,11 @@ describe("redeem", () => {
             );
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
+            // charlie_stash = keyring.addFromUri("//Charlie//stash");
 
             // request issue
             issueAPI.setAccount(alice);
-            const amountAsSatoshiString = btcToSat(amountAsBtcString);
-            const amountAsSatoshi = api.createType("Balance", amountAsSatoshiString);
-            const requestResult = (await issueAPI.request(amountAsSatoshi))[0];
+            const requestResult = (await issueAPI.request(new Big(issueAmountAsBtcString)))[0];
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
             const txAmountRequired = new Big(satToBTC(issueRequest.amount.add(issueRequest.fee).toString()));
 
@@ -103,12 +102,12 @@ describe("redeem", () => {
 
             // redeem
             redeemAPI.setAccount(alice);
-            const redeemAmountAsSatoshiString = btcToSat(redeemAmountAsBtcString);
-            const redeemAmountAsSatoshi = api.createType("Balance", redeemAmountAsSatoshiString);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
             const vaultId = issueRequest.vault;
-            const [{ id, redeemRequest }] = await redeemAPI.request(redeemAmountAsSatoshi, btcAddress, {
-                availableVaults: new Map([[vaultId, redeemAmountAsSatoshi.muln(2)]]),
+            // const vaultId = api.createType("AccountId", charlie_stash.address);
+            const redeemAmountBig = new Big(redeemAmountAsBtcString);
+            const [{ id, redeemRequest }] = await redeemAPI.request(redeemAmountBig, btcAddress, {
+                availableVaults: new Map([[vaultId, redeemAmountBig.mul(2)]]),
             });
             assert.equal(
                 redeemRequest.vault.toString(),
@@ -126,11 +125,12 @@ describe("redeem", () => {
             const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
             const issueAmount = new Big("0.1");
+            const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
             const redeemAmount = new Big("0.09");
             await requestAndCallRedeem(blocksToMine, issueAmount.toString(), redeemAmount.toString());
 
             // check redeeming worked
-            const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(redeemAmount);
+            const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
             const finalBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem).toString(), finalBalance.toString());
         }).timeout(1000000);
@@ -138,9 +138,9 @@ describe("redeem", () => {
 
     describe("fees", () => {
         it("should getFeesToPay", async () => {
-            const amount = "2";
+            const amount = new Big("2");
             const feesToPay = await redeemAPI.getFeesToPay(amount);
-            assert.equal(feesToPay, "0.01");
+            assert.equal(feesToPay.toString(), "0.01");
         });
 
         it("should getFeeRate", async () => {
@@ -153,5 +153,4 @@ describe("redeem", () => {
             assert.equal(premiumRedeemFee, "0.05");
         });
     });
-
 });

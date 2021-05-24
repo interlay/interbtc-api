@@ -1,13 +1,11 @@
-import { PolkaBTC } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
-import { GenericAccountId } from "@polkadot/types/generic";
+import { Bytes } from "@polkadot/types";
 
-import { TypeRegistry, bool, U8aFixed } from "@polkadot/types";
-import BN from "bn.js";
 import { RefundAPI, RefundRequestExt } from "../../../src/parachain";
+import { MockTransactionAPI } from "../transaction";
 
-export class MockRefundAPI implements RefundAPI {
+export class MockRefundAPI extends MockTransactionAPI implements RefundAPI {
     list(): Promise<RefundRequestExt[]> {
         return Promise.resolve([]);
     }
@@ -21,34 +19,14 @@ export class MockRefundAPI implements RefundAPI {
     }
 
     async getRequestById(_refundId: string | Uint8Array | H256): Promise<RefundRequestExt> {
-        const registry = new TypeRegistry();
-        const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
-
-        return <RefundRequestExt>{
-            vault: new GenericAccountId(registry, decodedAccountId1),
-            amount_btc: new BN(4510) as PolkaBTC,
-            amount_polka_btc: new BN(4510) as PolkaBTC,
-            fee: new BN(4510) as PolkaBTC,
-            issuer: new GenericAccountId(registry, decodedAccountId1),
-            btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-            completed: new bool(registry, true),
-            issue_id: new U8aFixed(registry, "0") as H256,
-        };
+        throw new Error("Method not implemented.");
     }
 
     async getRequestByIssueId(_issueId: H256): Promise<RefundRequestExt> {
-        const registry = new TypeRegistry();
-        const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";
+        throw new Error("Method not implemented.");
+    }
 
-        return <RefundRequestExt>{
-            vault: new GenericAccountId(registry, decodedAccountId1),
-            amount_btc: new BN(4510) as PolkaBTC,
-            amount_polka_btc: new BN(4510) as PolkaBTC,
-            fee: new BN(4510) as PolkaBTC,
-            issuer: new GenericAccountId(registry, decodedAccountId1),
-            btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-            completed: new bool(registry, true),
-            issue_id: new U8aFixed(registry, "0") as H256,
-        };
+    execute(replaceId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+        throw new Error("Method not implemented.");
     }
 }

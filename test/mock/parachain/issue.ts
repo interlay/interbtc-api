@@ -1,16 +1,20 @@
-import { DOT, IssueRequest, PolkaBTC } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, H256, BlockNumber, Hash } from "@polkadot/types/interfaces";
-import BN from "bn.js";
 import { GenericAccountId } from "@polkadot/types/generic";
 import { TypeRegistry } from "@polkadot/types";
 import { U8aFixed } from "@polkadot/types/codec";
-import { IssueAPI, IssueRequestResult, IssueRequestExt, IssueLimits } from "../../../src/parachain/issue";
 import { EventRecord } from "@polkadot/types/interfaces/system";
+import BN from "bn.js";
 import Big from "big.js";
+
+import { IssueAPI, IssueRequestResult, IssueRequestExt, IssueLimits } from "../../../src/parachain/issue";
 import { MockTransactionAPI } from "../transaction";
+import { DOT, IssueRequest, PolkaBTC } from "../../../src/interfaces/default";
 
 export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
+    getGriefingCollateral(amount: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     setIssuePeriod(_blocks: number): Promise<void> {
         throw new Error("Method not implemented.");
     }
@@ -23,17 +27,17 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         throw new Error("Method not implemented.");
     }
 
-    getRequestLimits(_vaults?: Map<AccountId, BN>): Promise<IssueLimits> {
+    getRequestLimits(_vaults?: Map<AccountId, Big>): Promise<IssueLimits> {
         return Promise.resolve({
-            singleVaultMaxIssuable: new BN(10000000),
-            totalMaxIssuable: new BN(15000000),
+            singleVaultMaxIssuable: new Big(10000000),
+            totalMaxIssuable: new Big(15000000),
         });
     }
 
     async request(
-        _amountSat: BN,
+        _amountSat: Big,
         _options?: {
-            availableVaults?: Map<AccountId, BN>;
+            availableVaults?: Map<AccountId, Big>;
             atomic?: boolean;
             retries?: number;
         }
@@ -44,19 +48,14 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
     }
 
     async requestAdvanced(
-        _amountsPerVault: Map<AccountId, BN>,
-        _griefingCollateralRate: Big,
+        _amountsPerVault: Map<AccountId, Big>,
         _atomic: boolean
     ): Promise<IssueRequestResult[]> {
-        return this.request(new BN(0));
+        return this.request(new Big(0));
     }
 
     setAccount(_account?: AddressOrPair): void {
         return;
-    }
-
-    getGriefingCollateralInPlanck(_amountSat: PolkaBTC): Promise<Big> {
-        return Promise.resolve(new Big("100"));
     }
 
     list(): Promise<IssueRequestExt[]> {
@@ -126,8 +125,8 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         return false;
     }
 
-    async getFeesToPay(_amountBtc: string): Promise<string> {
-        return "0.01";
+    async getFeesToPay(_amountBtc: Big): Promise<Big> {
+        return Big("0.01");
     }
 
     async getFeeRate(): Promise<Big> {

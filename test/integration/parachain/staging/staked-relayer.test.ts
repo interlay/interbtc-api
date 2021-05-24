@@ -11,6 +11,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 import { TypeRegistry } from "@polkadot/types";
+import { DefaultElectrsAPI, ElectrsAPI } from "../../../../src";
 
 describe("stakedRelayerAPI", () => {
     function numberToDOT(x: number): DOT {
@@ -21,6 +22,7 @@ describe("stakedRelayerAPI", () => {
     let stakedRelayerAPI: StakedRelayerAPI;
     let keyring: Keyring;
     let eve: KeyringPair;
+    let electrsAPI: ElectrsAPI;
     const registry = new TypeRegistry();
 
     before(async () => {
@@ -30,7 +32,8 @@ describe("stakedRelayerAPI", () => {
     });
 
     beforeEach(() => {
-        stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoinjs.networks.regtest);
+        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
+        stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });
 
     after(async () => {
@@ -41,24 +44,24 @@ describe("stakedRelayerAPI", () => {
         it("should getStakedDOTAmount", async () => {
             sinon.stub(stakedRelayerAPI, "get").returns(Promise.resolve(<StakedRelayer>{ stake: new BN(100) as DOT }));
             const activeStakedRelayerId = <AccountId>{};
-            const stakedDOTAmount: DOT = await stakedRelayerAPI.getStakedDOTAmount(activeStakedRelayerId);
-            assert.equal(stakedDOTAmount.toNumber(), 100);
+            const stakedDOTAmount = await stakedRelayerAPI.getStakedInsuranceAmount(activeStakedRelayerId);
+            assert.equal(stakedDOTAmount.toString(), "0.00000001");
         });
 
         it("should compute totalStakedDOTAmount with nonzero sum", async () => {
             const mockStakedDOTAmounts: DOT[] = [1, 2, 3].map((x) => numberToDOT(x));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedDOTAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount: BN = await stakedRelayerAPI.getTotalStakedDOTAmount();
-            assert.equal(totalStakedDOTAmount.toNumber(), 6);
+            sinon.stub(stakedRelayerAPI, <any>"getStakedInsuranceAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedInsuranceAmount();
+            assert.equal(totalStakedDOTAmount.toString(), "6");
         });
 
         it("should compute totalStakedDOTAmount with zero sum", async () => {
             const mockStakedDOTAmounts: DOT[] = [];
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedDOTAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedDOTAmount();
-            assert.equal(totalStakedDOTAmount.toNumber(), 0);
+            sinon.stub(stakedRelayerAPI, <any>"getStakedInsuranceAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedInsuranceAmount();
+            assert.equal(totalStakedDOTAmount.toString(), "0");
         });
 
         it("should listIncludingIds", async () => {
@@ -81,16 +84,6 @@ describe("stakedRelayerAPI", () => {
             assert.isDefined(currentStateOfBTCParachain);
         });
 
-        it("should getOngoingStatusUpdateVotes", async () => {
-            const ongoingStatusUpdateVotes = await stakedRelayerAPI.getOngoingStatusUpdateVotes();
-            assert.isDefined(ongoingStatusUpdateVotes);
-        });
-
-        it("should getAllStatusUpdates", async () => {
-            const allStatusUpdates = await stakedRelayerAPI.getAllStatusUpdates();
-            assert.isDefined(allStatusUpdates);
-        });
-
         it("should page listed requests", async () => {
             const listingsPerPage = 2;
             const requestsIterator = stakedRelayerAPI.getPagedIterator(listingsPerPage);
@@ -99,11 +92,6 @@ describe("stakedRelayerAPI", () => {
                 assert.isTrue(curr.value.length <= listingsPerPage);
                 curr = await requestsIterator.next();
             }
-        });
-
-        it("should sucessfully return", async () => {
-            const returnValue = await stakedRelayerAPI.getStakedRelayersMaturityPeriod();
-            assert.isDefined(returnValue);
         });
     });
 
@@ -123,8 +111,8 @@ describe("stakedRelayerAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await stakedRelayerAPI.getFeesPolkaBTC(registry.createType("AccountId", eve.address));
-            const feesDOT = await stakedRelayerAPI.getFeesDOT(registry.createType("AccountId", eve.address));
+            const feesPolkaBTC = await stakedRelayerAPI.getWrappingFees(registry.createType("AccountId", eve.address));
+            const feesDOT = await stakedRelayerAPI.getInsuranceFees(registry.createType("AccountId", eve.address));
             const feeBenchmark = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
             assert.isTrue(new Big(feesDOT).gte(feeBenchmark));

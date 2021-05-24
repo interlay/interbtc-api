@@ -1,61 +1,53 @@
-import { DOT, StakedRelayer, StatusCode, StatusUpdate } from "../interfaces/default";
-import { u64, u128, u256 } from "@polkadot/types/primitive";
+import { StakedRelayer, StatusCode } from "../interfaces/default";
+import { u64, u128 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
+import { Bytes } from "@polkadot/types";
 import BN from "bn.js";
-import { pagedIterator, decodeFixedPointType, satToBTC, planckToDOT } from "../utils";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
+import { Network } from "bitcoinjs-lib";
+import { AddressOrPair } from "@polkadot/api/types";
+
+import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
+import { pagedIterator, decodeFixedPointType, satToBTC, planckToDOT, storageKeyToFirstInner } from "../utils";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { AddressOrPair } from "@polkadot/api/types";
-import { ErrorCode } from "../interfaces/default";
+import { ElectrsAPI, getTxProof } from "..";
 
 /**
  * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * The type Big represents Backing or Issuing large denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface StakedRelayerAPI extends TransactionAPI {
     /**
-     * @returns An array containing the active staked relayers
+     * @returns An array containing tuples of type [stakedRelayerId, backingCollateral]
      */
-    list(): Promise<StakedRelayer[]>;
+    list(): Promise<[AccountId, Big][]>;
     /**
-     * @returns A mapping from the active staked relayer AccountId to the StakedRelayer object
+     * @returns A mapping from the staked relayer AccountId to the backing collateral
      */
-    map(): Promise<Map<AccountId, StakedRelayer>>;
+    map(): Promise<Map<AccountId, Big>>;
     /**
      * @param perPage Number of staked relayers to iterate through at a time
      * @returns An AsyncGenerator to be used as an iterator
      */
     getPagedIterator(perPage: number): AsyncGenerator<StakedRelayer[]>;
     /**
-     * @param activeStakedRelayerId The ID of the staked relayer to fetch
+     * @param stakedRelayerId The ID of the staked relayer to fetch
      * @returns An StakedRelayer object
      */
-    get(activeStakedRelayerId: AccountId): Promise<StakedRelayer>;
+    get(stakedRelayerId: AccountId): Promise<StakedRelayer>;
     /**
-     * @param stakedRelayerId The ID of the relayer for which to check the status
-     * @returns A boolean value
+     * @param stakedRelayerId The ID of the relayer for which to fetch the staked Backing token amount
+     * @returns The staked Backing token amount, denoted in Planck
      */
-    isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean>;
+    getStakedInsuranceAmount(stakedRelayerId: AccountId): Promise<Big>;
     /**
-     * @param stakedRelayerId The ID of the relayer for which to check the status
-     * @returns A boolean value
+     * @returns The total staked Backing token amount, denoted in Planck
      */
-    isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean>;
-    /**
-     * @param stakedRelayerId The ID of the relayer for which to fetch the staked DOT amount
-     * @returns The staked DOT amount, denoted in Planck
-     */
-    getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT>;
-    /**
-     * @returns The total staked DOT amount, denoted in Planck
-     */
-    getTotalStakedDOTAmount(): Promise<DOT>;
+    getTotalStakedInsuranceAmount(): Promise<Big>;
     /**
      * @returns A mapping from vault IDs to their collateralization
      */
@@ -69,34 +61,18 @@ export interface StakedRelayerAPI extends TransactionAPI {
      */
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     /**
-     * @returns A tuple denoting [statusUpdateStorageKey, statusUpdateEnd, statusUpdateAyes, statusUpdateNays]
-     */
-    getOngoingStatusUpdateVotes(): Promise<Array<PendingStatusUpdate>>;
-    /**
-     * @returns An array of { id, statusUpdate } objects
-     */
-    getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
-    /**
-     * @returns An array of { id, statusUpdate } objects
-     */
-    getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
-    /**
-     * @returns An array of { id, statusUpdate } objects
-     */
-    getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>>;
-    /**
      * @param stakedRelayerId The ID of a staked relayer
      * @returns Total rewards in PolkaBTC for the given staked relayer
      */
-    getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<Big>;
+    getWrappingFees(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
-     * @returns Total rewards in DOT for the given staked relayer
+     * @returns Total rewards in Backing tokens for the given staked relayer
      */
-    getFeesDOT(stakedRelayerId: AccountId): Promise<Big>;
+    getInsuranceFees(stakedRelayerId: AccountId): Promise<Big>;
     /**
-     * Get the total APY for a staked relayer based on the income in PolkaBTC and DOT
-     * divided by the locked DOT.
+     * Get the total APY for a staked relayer based on the income in Issuing and Backing tokens
+     * divided by the locked Backing tokens.
      *
      * @note this does not account for interest compounding
      *
@@ -114,44 +90,24 @@ export interface StakedRelayerAPI extends TransactionAPI {
      */
     getMaxSLA(): Promise<number>;
     /**
-     * @returns The number of blocks to wait until eligible to vote
-     */
-    getStakedRelayersMaturityPeriod(): Promise<BlockNumber>;
-    /**
      * @param planckStake Stake amount (denoted in Planck) to register with
      */
     register(planckStake: BN): Promise<void>;
     /**
-     * @param depositPlanck Deposit required to suggest the status update
-     * @param statusCode Suggested BTC Parachain status
-     * @param message Message detailing reason for status update
-     * @param addError If the suggested status is Error, this set of ErrorCode indicates which error is to be added to the Errors mapping.
-     * @param removeError ErrorCode to be removed from the Errors list.
-     * @param blockHash When reporting an error related to BTC-Relay, this field indicates the affected Bitcoin block (header).
-     */
-     suggestStatusUpdate(
-        depositPlanck: BN,
-        statusCode: StatusCode,
-        message: string,
-        addError?: ErrorCode,
-        removeError?: string,
-        blockHash?: string,
-    ): Promise<void>;
-    /**
-     * @param depositPlanck Deposit required to suggest the status update
-     * @param blockHash When reporting an error related to BTC-Relay, this field indicates the affected Bitcoin block (header).
-     * @param message Message detailing reason for status update
-    */
-    suggestInvalidBlock(deposit: BN, blockHash: string, message: string): Promise<void>
-    /**
-     * @param statusUpdateId Identifier of the `StatusUpdate` voted upon in `ActiveStatusUpdates`.
-     * @param approve `true` or `false`, depending on whether the Staked Relayer agrees or disagrees with the suggested `StatusUpdate`.
-     */
-    voteOnStatusUpdate(statusUpdateId: BN, approve: boolean): Promise<void>;
-    /**
      * Deregister the Staked Relayer
      */
     deregister(): Promise<void>;
+    /**
+     * A Staked Relayer reports misbehavior by a Vault, providing a fraud proof
+    * (malicious Bitcoin transaction and the corresponding transaction inclusion proof).
+     * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
+    * 
+    * @param vault_id The account of the vault to check.
+    * @param tx_id The hash of the transaction
+    * @param merkle_proof The proof of tx inclusion.
+    * @param raw_tx The raw Bitcoin transaction.
+     */
+    reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
 }
 
 export interface PendingStatusUpdate {
@@ -166,7 +122,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
     private collateralAPI: CollateralAPI;
     private feeAPI: FeeAPI;
 
-    constructor(api: ApiPromise, btcNetwork: Network, account?: AddressOrPair) {
+    constructor(api: ApiPromise, btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.collateralAPI = new DefaultCollateralAPI(api);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
@@ -183,105 +139,56 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         await this.sendLogged(tx, this.api.events.stakedRelayers.DeregisterStakedRelayer);    
     }
 
-    async suggestStatusUpdate(
-        depositPlanck: BN,
-        statusCode: StatusCode,
-        message: string,
-        addError?: ErrorCode,
-        removeError?: string,
-        blockHash?: string,
-    ): Promise<void> {
-        const parsedAddError = addError ? addError : null;
-        const parsedRemoveError = removeError ? this.api.createType("H256", removeError) : null;
-        const parsedBlockHash = blockHash ? blockHash : null;
-        const tx = this.api.tx.stakedRelayers.suggestStatusUpdate(
-            depositPlanck,
-            statusCode,
-            parsedAddError,
-            parsedRemoveError,
-            parsedBlockHash,
-            message
-        );
-        await this.sendLogged(tx, this.api.events.stakedRelayers.StatusUpdateSuggested);
+    async reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+        const parsedVaultId = this.api.createType("AccountId", vaultId);
+        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
+        const tx = this.api.tx.stakedRelayers.reportVaultTheft(parsedVaultId, merkleProof, rawTx);
+        await this.sendLogged(tx, this.api.events.stakedRelayers.VaultTheft);    
     }
 
-    async suggestInvalidBlock(deposit: BN, blockHash: string, message: string): Promise<void> {
-        const statusCode = this.api.registry.createType("StatusCode", { error: true });
-        const addError = this.api.registry.createType("ErrorCode", { invalidbtcrelay: true });
-        return this.suggestStatusUpdate(deposit, statusCode, message, addError, undefined, blockHash);
-    }
-
-    async voteOnStatusUpdate(statusUpdateId: BN, approve: boolean): Promise<void> {
-        const tx = this.api.tx.stakedRelayers.voteOnStatusUpdate(
-            statusUpdateId,
-            approve,
-        );
-        await this.sendLogged(tx, this.api.events.stakedRelayers.VoteOnStatusUpdate);
-    }
-
-    async list(): Promise<StakedRelayer[]> {
+    async list(): Promise<[AccountId, Big][]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const activeStakedRelayersMap = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(head);
-        return activeStakedRelayersMap.map((v) => v[1]);
+        const stakedRelayersMap = await this.api.query.stakedRelayers.stakes.entriesAt(head);
+        return stakedRelayersMap.map(
+            (v) => [storageKeyToFirstInner(v[0]), new Big(planckToDOT(v[1].toString()))]
+        );
     }
 
-    async map(): Promise<Map<AccountId, StakedRelayer>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const activeStakedRelayers = await this.api.query.stakedRelayers.activeStakedRelayers.entriesAt(head);
-        const activeStakedRelayerPairs: [AccountId, StakedRelayer][] = activeStakedRelayers.map(
-            (activeStakedRelayer) => {
-                return [
-                    this.api.createType("AccountId", activeStakedRelayer[0].args[0].toU8a()),
-                    activeStakedRelayer[1],
-                ];
-            }
+    async map(): Promise<Map<AccountId, Big>> {
+        const list = await this.list();
+        const stakedRelayersMap = new Map<AccountId, Big>();
+        list.forEach((stakedRelayer) =>
+            stakedRelayersMap.set(stakedRelayer[0], new Big(planckToDOT(stakedRelayer[1].toString())))
         );
-        const activeStakedRelayersMap = new Map<AccountId, StakedRelayer>();
-        activeStakedRelayerPairs.forEach((activeStakedRelayerPair) =>
-            activeStakedRelayersMap.set(activeStakedRelayerPair[0], activeStakedRelayerPair[1])
-        );
-        return activeStakedRelayersMap;
+        return stakedRelayersMap;
     }
 
     getPagedIterator(perPage: number): AsyncGenerator<StakedRelayer[]> {
         return pagedIterator<StakedRelayer>(this.api.query.issue.issueRequests, perPage);
     }
 
-    async get(activeStakedRelayerId: AccountId): Promise<StakedRelayer> {
+    async get(stakedRelayerId: AccountId): Promise<StakedRelayer> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.stakedRelayers.activeStakedRelayers.at(head, activeStakedRelayerId);
+        return this.api.query.stakedRelayers.stakes.at(head, stakedRelayerId);
     }
 
-    async isStakedRelayerActive(stakedRelayerId: AccountId): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const active = await this.api.query.stakedRelayers.activeStakedRelayers.at(head, stakedRelayerId);
-        return active.stake.gt(new BN(0));
+    async getStakedInsuranceAmount(stakedRelayerId: AccountId): Promise<Big> {
+        const stakedRelayer = await this.get(stakedRelayerId);
+        return new Big(planckToDOT(stakedRelayer.stake.toString()));
     }
 
-    async isStakedRelayerInactive(stakedRelayerId: AccountId): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const inactive = await this.api.query.stakedRelayers.inactiveStakedRelayers.at(head, stakedRelayerId);
-        return inactive.stake.gt(new BN(0));
+    private async getStakedInsuranceAmounts(): Promise<Big[]> {
+        const list = await this.list();
+        return list.map(([_, stake]) => stake);
     }
 
-    async getStakedDOTAmount(activeStakedRelayerId: AccountId): Promise<DOT> {
-        const stakedRelayer = await this.get(activeStakedRelayerId);
-        return stakedRelayer.stake;
-    }
-
-    private async getStakedDOTAmounts(): Promise<DOT[]> {
-        const activeStakedRelayersMappings = await this.list();
-        const activeStakedRelayersStakes: DOT[] = activeStakedRelayersMappings.map((v) => v.stake);
-        return activeStakedRelayersStakes;
-    }
-
-    async getTotalStakedDOTAmount(): Promise<DOT> {
-        const stakedDOTAmounts: DOT[] = await this.getStakedDOTAmounts();
-        if (stakedDOTAmounts.length) {
-            const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
-            return stakedDOTAmounts.reduce(sumReducer);
+    async getTotalStakedInsuranceAmount(): Promise<Big> {
+        const stakedBackingAmounts: Big[] = await this.getStakedInsuranceAmounts();
+        if (stakedBackingAmounts.length) {
+            const sumReducer = (accumulator: Big, currentValue: Big) => accumulator.add(currentValue);
+            return stakedBackingAmounts.reduce(sumReducer);
         }
-        return new BN(0) as DOT;
+        return new Big(0);
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {
@@ -317,60 +224,25 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return await this.api.query.security.parachainStatus.at(head);
     }
 
-    async getOngoingStatusUpdateVotes(): Promise<Array<PendingStatusUpdate>> {
+    async getWrappingFees(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const statusUpdatesMappings = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(head);
-        const statusUpdates = statusUpdatesMappings.map<[u64, StatusUpdate]>((v) => [v[0].args[0], v[1]]);
-        const pendingUpdates = statusUpdates.filter((statusUpdate) => statusUpdate[1].proposal_status.isPending);
-        return pendingUpdates.map((pendingUpdate) => ({
-            statusUpdateStorageKey: pendingUpdate[0],
-            statusUpdateEnd: pendingUpdate[1].end,
-            statusUpdateAyes: pendingUpdate[1].tally.aye.size,
-            statusUpdateNays: pendingUpdate[1].tally.nay.size,
-        }));
-    }
-
-    async getAllActiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const result = await this.api.query.stakedRelayers.activeStatusUpdates.entriesAt(head);
-        return result.map(([key, value]) => {
-            return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
-        });
-    }
-
-    async getAllInactiveStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const result = await this.api.query.stakedRelayers.inactiveStatusUpdates.entriesAt(head);
-        return result.map(([key, value]) => {
-            return { id: new u256(this.api.registry, key.args[0].toU8a()), statusUpdate: value };
-        });
-    }
-
-    async getAllStatusUpdates(): Promise<Array<{ id: u256; statusUpdate: StatusUpdate }>> {
-        const activeStatusUpdates = await this.getAllActiveStatusUpdates();
-        const inactiveStatusUpdates = await this.getAllInactiveStatusUpdates();
-        return [...activeStatusUpdates, ...inactiveStatusUpdates];
-    }
-
-    async getFeesPolkaBTC(stakedRelayerId: AccountId): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.fee.totalRewardsPolkaBTC.at(head, stakedRelayerId);
+        const fees = await this.api.query.fee.totalRewardsIssuing.at(head, stakedRelayerId);
         return new Big(satToBTC(fees.toString()));
     }
 
-    async getFeesDOT(stakedRelayerId: AccountId): Promise<Big> {
+    async getInsuranceFees(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.fee.totalRewardsDOT.at(head, stakedRelayerId);
+        const fees = await this.api.query.fee.totalRewardsBacking.at(head, stakedRelayerId);
         return new Big(planckToDOT(fees.toString()));
     }
 
     async getAPY(stakedRelayerId: AccountId): Promise<string> {
-        const [feesPolkaBTC, feesDOT, lockedDOT] = await Promise.all([
-            await this.getFeesPolkaBTC(stakedRelayerId),
-            await this.getFeesDOT(stakedRelayerId),
+        const [feesPolkaBTC, feesBacking, lockedBacking] = await Promise.all([
+            await this.getWrappingFees(stakedRelayerId),
+            await this.getInsuranceFees(stakedRelayerId),
             await this.collateralAPI.balanceLocked(stakedRelayerId),
         ]);
-        return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT);
+        return this.feeAPI.calculateAPY(feesPolkaBTC, feesBacking, lockedBacking);
     }
 
     async getSLA(stakedRelayerId: AccountId): Promise<number> {
@@ -385,8 +257,4 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return Number(decodeFixedPointType(maxSLA));
     }
 
-    async getStakedRelayersMaturityPeriod(): Promise<BlockNumber> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.stakedRelayers.maturityPeriod.at(head);
-    }
 }

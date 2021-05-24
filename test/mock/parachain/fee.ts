@@ -5,6 +5,9 @@ import { AccountId } from "@polkadot/types/interfaces";
 import Big from "big.js";
 
 export class MockFeeAPI implements FeeAPI {
+    getGriefingCollateral(amountSat: Big, griefingCollateralRate: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     getReplaceGriefingCollateralRate(): Promise<Big> {
         throw new Error("Method not implemented.");
     }

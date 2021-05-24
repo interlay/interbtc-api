@@ -1,26 +1,28 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
-import { IssueRequest, PolkaBTC } from "../interfaces/default";
 import { Bytes } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 
+import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     pagedIterator,
     decodeFixedPointType,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
+    getTxProof,
+    btcToSat,
+    dotToPlanck,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import BN from "bn.js";
 import {allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions} from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
-export type IssueLimits = { singleVaultMaxIssuable: BN; totalMaxIssuable: BN };
+export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big };
 
 export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
     // network encoded btc address
@@ -44,7 +46,7 @@ export interface IssueAPI extends TransactionAPI {
      * parachain (incurring an extra request).
      * @returns An object of type {singleVault, maxTotal, vaultsCache}
      */
-    getRequestLimits(vaults?: Map<AccountId, BN>): Promise<IssueLimits>;
+    getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits>;
 
     /**
      * Request issuing of PolkaBTC.
@@ -57,7 +59,7 @@ export interface IssueAPI extends TransactionAPI {
      * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
-        amountSat: BN,
+        amountSat: Big,
         options?: RequestOptions
     ): Promise<IssueRequestResult[]>;
 
@@ -72,22 +74,20 @@ export interface IssueAPI extends TransactionAPI {
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
     requestAdvanced(
-        amountsPerVault: Map<AccountId, BN>,
-        griefingCollateralRate: Big,
+        amountsPerVault: Map<AccountId, Big>,
         atomic: boolean
     ): Promise<IssueRequestResult[]>;
 
     /**
      * Send an issue execution transaction
-     * @remarks Both `merkleProof` and `rawTx` must be passed for them to be used and not overwritten
-     * by data from the Blockstream API.
+     * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
      * @param issueId The ID returned by the issue request transaction
-     * @param txId The ID of the Bitcoin transaction that sends funds to the vault address
+     * @param txId (Optional) The ID of the Bitcoin transaction that sends funds to the vault address.
      * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction.
      * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      */
-    execute(issueId: string, txId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
+    execute(issueId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -147,12 +147,12 @@ export interface IssueAPI extends TransactionAPI {
      * @param amountBtc The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
-    getFeesToPay(amountBtc: string): Promise<string>;
+    getFeesToPay(amountBtc: Big): Promise<Big>;
     /**
-     * @param amountBtc The amount, in Satoshi, for which to compute the griefing collateral
-     * @returns The griefing collateral, in Planck
+     * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
+     * @returns The griefing collateral, in BTC
      */
-    getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big>;
+    getGriefingCollateral(amount: Big): Promise<Big>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  {
@@ -165,15 +165,15 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         this.feeAPI = new DefaultFeeAPI(api);
     }
 
-    async getRequestLimits(vaults?: Map<AccountId, BN>): Promise<IssueLimits> {
+    async getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
         const [singleVaultMaxIssuable, totalMaxIssuable] = [...vaults.entries()].reduce(
             ([singleVault, maxTotal], [_, vaultAvailable]) => {
-                maxTotal.iadd(vaultAvailable);
-                singleVault = BN.max(singleVault, vaultAvailable);
+                maxTotal = maxTotal.plus(vaultAvailable);
+                singleVault = singleVault.gt(vaultAvailable)? singleVault : vaultAvailable;
                 return [singleVault, maxTotal];
             },
-            [new BN(0), new BN(0)]
+            [new Big(0), new Big(0)]
         );
         return { singleVaultMaxIssuable, totalMaxIssuable };
     }
@@ -188,9 +188,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
     }
 
     async request(
-        amountSat: BN,
+        amount: Big,
         options?: {
-            availableVaults?: Map<AccountId, BN>,
+            availableVaults?: Map<AccountId, Big>,
             atomic?: boolean,
             retries?: number,
         }
@@ -199,12 +199,19 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
             const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
             const atomic = !!options?.atomic;
             const retries = options?.retries || 0;
-            const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
-            const amountsPerVault = allocateAmountsToVaults(availableVaults, amountSat);
-            const result = await this.requestAdvanced(amountsPerVault, griefingCollateralRate, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.add(req.issueRequest.amount), new BN(0));
-            const remainder = amountSat.sub(successfulSum);
-            if (remainder.eqn(0) || retries === 0) return result;
+            console.log("Available vaults on ISSUE:");
+            [...availableVaults.entries()].map(([vaultId, amount]) => {
+                console.log(`${amount.toString()} available with ${vaultId.toString()}`);
+            });
+            const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
+            console.log("Allocated vaults on ISSUE:");
+            [...amountsPerVault.entries()].map(([vaultId, amount]) => {
+                console.log(`${amount.toString()} allocated to ${vaultId.toString()}`);
+            });
+            const result = await this.requestAdvanced(amountsPerVault, atomic);
+            const successfulSum = result.reduce((sum, req) => sum.plus(req.issueRequest.amount.toString()), new Big(0));
+            const remainder = amount.sub(successfulSum);
+            if (remainder.eq(0) || retries === 0) return result;
             else {
                 return (await this.request(remainder, {availableVaults, atomic, retries: retries - 1})).concat(result);
             }
@@ -214,16 +221,24 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
     }
 
     async requestAdvanced(
-        amountsPerVault: Map<AccountId, BN>,
-        griefingCollateralRate: Big,
+        amountsPerVault: Map<AccountId, Big>,
         atomic: boolean
     ): Promise<IssueRequestResult[]> {
         const txes = new Array<SubmittableExtrinsic<"promise">>();
+        console.log("USING VAULTS on ISSUE:");
+        [...amountsPerVault.entries()].map(([vaultId, amount]) => {
+            console.log(`Issuing ${amount.toString()} with vault ${vaultId.toString()}`);
+        });
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = await this.feeAPI.getGriefingCollateralInPlanck(amount as PolkaBTC, griefingCollateralRate);
-            txes.push(this.api.tx.issue.requestIssue(amount, vault, griefingCollateral.toString()));
+            const griefingCollateral = await this.getGriefingCollateral(amount);
+            const amountSat = new Big(btcToSat(amount.toString()));
+            const amountIssuing = this.api.createType("Issuing", amountSat.toString());
+            console.log(`AAAAAAAAAAAAAAAAAAAAAAAAAA amountSat: ${amountSat.toString()}, to vaultId: ${vault.toString()}`);
+            txes.push(this.api.tx.issue.requestIssue(amountIssuing, vault, dotToPlanck(griefingCollateral.toString()) as string));
         }
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
+        console.log(`Total of ${txes.length} batched requests`);
+        console.log(`Atomic: ${atomic}`);
         try {
             const result = await this.sendLogged(batch, this.api.events.issue.RequestIssue);
             const ids = this.getIssueIdsFromEvents(result.events);
@@ -234,16 +249,10 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         }
     }
 
-    async execute(requestId: string, btcTxId: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
         const parsedRequestId = this.api.createType("H256", "0x" + requestId);
-        const parsedBtcTxId = this.api.createType(
-            "H256",
-            "0x" + Buffer.from(btcTxId, "hex").reverse().toString("hex")
-        );
-        if (!merkleProof || !rawTx) {
-            [merkleProof, rawTx] = await this.electrsAPI.getParsedExecutionParameters(btcTxId);
-        }
-        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, parsedBtcTxId, merkleProof, rawTx);
+        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
+        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 
@@ -281,16 +290,15 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         return mapForUser;
     }
 
-    async getGriefingCollateralInPlanck(amountSat: PolkaBTC): Promise<Big> {
+    async getGriefingCollateral(amount: Big): Promise<Big> {
         const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
-        return await this.feeAPI.getGriefingCollateralInPlanck(amountSat, griefingCollateralRate);
+        return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate);
     }
 
-    async getFeesToPay(amountBtc: string): Promise<string> {
+    async getFeesToPay(amount: Big): Promise<Big> {
         const feePercentage = await this.getFeeRate();
-        const amountBig = new Big(amountBtc);
-        const feeBtc = amountBig.mul(feePercentage);
-        return roundUpBtcToNearestSatoshi(feeBtc.toString());
+        const feeBtc = amount.mul(feePercentage);
+        return new Big(roundUpBtcToNearestSatoshi(feeBtc.toString()));
     }
 
     /**
