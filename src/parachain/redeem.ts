@@ -248,10 +248,9 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         }
         const wrappedBtc = new Big(satToBTC(wrappedSatoshi.toString()));
         const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
-        const collateralPlanck = await this.collateralAPI.balanceLocked(
+        const collateralDot = await this.collateralAPI.balanceLocked(
             this.api.createType("AccountId", liquidationVaultId)
         );
-        const collateralDot = new Big(planckToDOT(collateralPlanck.toString()));
         return collateralDot.div(wrappedBtc);
     }
 
