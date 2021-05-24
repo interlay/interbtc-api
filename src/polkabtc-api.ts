@@ -83,7 +83,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, _account);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
         this.collateral = new DefaultCollateralAPI(api, _account);
-        this.treasury = new DefaultTreasuryAPI(api);
+        this.treasury = new DefaultTreasuryAPI(api, _account);
         this.system = new DefaultSystemAPI(api);
         this.replace = new DefaultReplaceAPI(api, btcNetwork, this.electrsAPI, _account);
         this.fee = new DefaultFeeAPI(api);
@@ -99,13 +99,14 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
             this.api.setSigner(signer);
         }
         this._account = account;
-        this.issue.setAccount(account);
-        this.redeem.setAccount(account);
-        this.collateral.setAccount(account);
-        this.replace.setAccount(account);
         this.vaults.setAccount(account);
         this.stakedRelayer.setAccount(account);
         this.refund.setAccount(account);
+        this.collateral.setAccount(account);
+        this.treasury.setAccount(account);
+        this.replace.setAccount(account);
+        this.issue.setAccount(account);
+        this.redeem.setAccount(account);
     }
 
     get account(): AddressOrPair | undefined {
