@@ -41,26 +41,19 @@ describe("stakedRelayerAPI", () => {
     });
 
     describe("request", () => {
-        it("should getStakedDOTAmount", async () => {
-            sinon.stub(stakedRelayerAPI, "get").returns(Promise.resolve(<StakedRelayer>{ stake: new BN(100) as DOT }));
-            const activeStakedRelayerId = <AccountId>{};
-            const stakedDOTAmount = await stakedRelayerAPI.getStakedInsuranceAmount(activeStakedRelayerId);
-            assert.equal(stakedDOTAmount.toString(), "0.00000001");
-        });
-
         it("should compute totalStakedDOTAmount with nonzero sum", async () => {
             const mockStakedDOTAmounts: DOT[] = [1, 2, 3].map((x) => numberToDOT(x));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedInsuranceAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedInsuranceAmount();
+            sinon.stub(stakedRelayerAPI, <any>"getStakedCollateralAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedCollateral();
             assert.equal(totalStakedDOTAmount.toString(), "6");
         });
 
         it("should compute totalStakedDOTAmount with zero sum", async () => {
             const mockStakedDOTAmounts: DOT[] = [];
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedInsuranceAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedInsuranceAmount();
+            sinon.stub(stakedRelayerAPI, <any>"getStakedCollateralAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
+            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedCollateral();
             assert.equal(totalStakedDOTAmount.toString(), "0");
         });
 
@@ -112,7 +105,7 @@ describe("stakedRelayerAPI", () => {
     describe("fees", () => {
         it("should getFees", async () => {
             const feesPolkaBTC = await stakedRelayerAPI.getWrappingFees(registry.createType("AccountId", eve.address));
-            const feesDOT = await stakedRelayerAPI.getInsuranceFees(registry.createType("AccountId", eve.address));
+            const feesDOT = await stakedRelayerAPI.getCollateralFees(registry.createType("AccountId", eve.address));
             const feeBenchmark = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
             assert.isTrue(new Big(feesDOT).gte(feeBenchmark));

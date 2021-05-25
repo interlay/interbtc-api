@@ -17,7 +17,7 @@ import { ElectrsAPI, getTxProof } from "..";
 
 /**
  * @category PolkaBTC Bridge
- * The type Big represents Backing or Issuing large denominations,
+ * The type Big represents Wrapped or Collateral large denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface StakedRelayerAPI extends TransactionAPI {
@@ -35,19 +35,14 @@ export interface StakedRelayerAPI extends TransactionAPI {
      */
     getPagedIterator(perPage: number): AsyncGenerator<StakedRelayer[]>;
     /**
-     * @param stakedRelayerId The ID of the staked relayer to fetch
-     * @returns An StakedRelayer object
-     */
-    get(stakedRelayerId: AccountId): Promise<StakedRelayer>;
-    /**
      * @param stakedRelayerId The ID of the relayer for which to fetch the staked Backing token amount
      * @returns The staked Backing token amount, denoted in Planck
      */
-    getStakedInsuranceAmount(stakedRelayerId: AccountId): Promise<Big>;
+    getStakedCollateral(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * @returns The total staked Backing token amount, denoted in Planck
      */
-    getTotalStakedInsuranceAmount(): Promise<Big>;
+    getTotalStakedCollateral(): Promise<Big>;
     /**
      * @returns A mapping from vault IDs to their collateralization
      */
@@ -69,7 +64,7 @@ export interface StakedRelayerAPI extends TransactionAPI {
      * @param stakedRelayerId The ID of a staked relayer
      * @returns Total rewards in Backing tokens for the given staked relayer
      */
-    getInsuranceFees(stakedRelayerId: AccountId): Promise<Big>;
+    getCollateralFees(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * Get the total APY for a staked relayer based on the income in Issuing and Backing tokens
      * divided by the locked Backing tokens.
@@ -167,26 +162,22 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return pagedIterator<StakedRelayer>(this.api.query.issue.issueRequests, perPage);
     }
 
-    async get(stakedRelayerId: AccountId): Promise<StakedRelayer> {
+    async getStakedCollateral(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.stakedRelayers.stakes.at(head, stakedRelayerId);
+        const stake = await this.api.query.stakedRelayers.stakes.at(head, stakedRelayerId);
+        return new Big(planckToDOT(stake.toString()));
     }
 
-    async getStakedInsuranceAmount(stakedRelayerId: AccountId): Promise<Big> {
-        const stakedRelayer = await this.get(stakedRelayerId);
-        return new Big(planckToDOT(stakedRelayer.stake.toString()));
-    }
-
-    private async getStakedInsuranceAmounts(): Promise<Big[]> {
+    private async getStakedCollateralAmounts(): Promise<Big[]> {
         const list = await this.list();
         return list.map(([_, stake]) => stake);
     }
 
-    async getTotalStakedInsuranceAmount(): Promise<Big> {
-        const stakedBackingAmounts: Big[] = await this.getStakedInsuranceAmounts();
-        if (stakedBackingAmounts.length) {
+    async getTotalStakedCollateral(): Promise<Big> {
+        const stakedCollateralAmounts: Big[] = await this.getStakedCollateralAmounts();
+        if (stakedCollateralAmounts.length) {
             const sumReducer = (accumulator: Big, currentValue: Big) => accumulator.add(currentValue);
-            return stakedBackingAmounts.reduce(sumReducer);
+            return stakedCollateralAmounts.reduce(sumReducer);
         }
         return new Big(0);
     }
@@ -230,19 +221,19 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return new Big(satToBTC(fees.toString()));
     }
 
-    async getInsuranceFees(stakedRelayerId: AccountId): Promise<Big> {
+    async getCollateralFees(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const fees = await this.api.query.fee.totalRewardsBacking.at(head, stakedRelayerId);
         return new Big(planckToDOT(fees.toString()));
     }
 
     async getAPY(stakedRelayerId: AccountId): Promise<string> {
-        const [feesPolkaBTC, feesBacking, lockedBacking] = await Promise.all([
+        const [feesWrapped, feesCollateral, lockedCollateral] = await Promise.all([
             await this.getWrappingFees(stakedRelayerId),
-            await this.getInsuranceFees(stakedRelayerId),
+            await this.getCollateralFees(stakedRelayerId),
             await this.collateralAPI.balanceLocked(stakedRelayerId),
         ]);
-        return this.feeAPI.calculateAPY(feesPolkaBTC, feesBacking, lockedBacking);
+        return this.feeAPI.calculateAPY(feesWrapped, feesCollateral, lockedCollateral);
     }
 
     async getSLA(stakedRelayerId: AccountId): Promise<number> {

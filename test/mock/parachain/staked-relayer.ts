@@ -16,23 +16,16 @@ export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRe
     map(): Promise<Map<AccountId, Big>> {
         throw new Error("Method not implemented.");
     }
-    getStakedInsuranceAmount(stakedRelayerId: AccountId): Promise<Big> {
+    getStakedCollateral(stakedRelayerId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getTotalStakedInsuranceAmount(): Promise<Big> {
+    getTotalStakedCollateral(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     getWrappingFees(stakedRelayerId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getInsuranceFees(stakedRelayerId: AccountId): Promise<Big> {
-        throw new Error("Method not implemented.");
-    }
-
-    getStakedBackingAmount(stakedRelayerId: AccountId): Promise<Backing> {
-        throw new Error("Method not implemented.");
-    }
-    getTotalStakedBackingAmount(): Promise<Backing> {
+    getCollateralFees(stakedRelayerId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
@@ -138,11 +131,11 @@ export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRe
         ];
     }
 
-    async getFeesIssuing(_stakedRelayerId: AccountId): Promise<Big> {
+    async getFeesWrapped(_stakedRelayerId: AccountId): Promise<Big> {
         return new Big("10.22");
     }
 
-    async getFeesBacking(_stakedRelayerId: AccountId): Promise<Big> {
+    async getFeesCollateral(_stakedRelayerId: AccountId): Promise<Big> {
         return new Big("10.22");
     }
 

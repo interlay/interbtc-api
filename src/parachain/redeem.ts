@@ -16,7 +16,6 @@ import {
     encodeParachainRequest,
     btcToSat,
     satToBTC,
-    planckToDOT,
     getTxProof,
 } from "../utils";
 import { stripHexPrefix } from "../utils";
