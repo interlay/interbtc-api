@@ -140,8 +140,8 @@ describe("vaultsAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await vaultsAPI.getFeesIssuing(registry.createType("AccountId", charlie_stash.address));
-            const feesDOT = await vaultsAPI.getFeesBacking(registry.createType("AccountId", charlie_stash.address));
+            const feesPolkaBTC = await vaultsAPI.getFeesWrapped(registry.createType("AccountId", charlie_stash.address));
+            const feesDOT = await vaultsAPI.getFeesCollateral(registry.createType("AccountId", charlie_stash.address));
             const benchmarkFees = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(benchmarkFees));
             assert.isTrue(new Big(feesDOT).gte(benchmarkFees));

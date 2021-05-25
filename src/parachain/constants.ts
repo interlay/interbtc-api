@@ -5,7 +5,7 @@ import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
 /**
  * @category PolkaBTC Bridge
- * The type Big represents Backing or Issuing token denominations,
+ * The type Big represents Wrapped or Collateral token denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface ConstantsAPI {

@@ -12,11 +12,10 @@ import {
     createPolkadotAPI, 
     OracleAPI, 
     RedeemAPI, 
-    btcToSat, 
     TreasuryAPI,
     BTCRelayAPI,
     DefaultBTCRelayAPI,
-    setNumericStorage
+    setNumericStorage,
 } from "../../../../src";
 import { issue } from "../../../../src/utils/issue";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";

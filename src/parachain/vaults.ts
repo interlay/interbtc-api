@@ -204,12 +204,12 @@ export interface VaultsAPI extends TransactionAPI {
      * @param vaultId The vault account ID
      * @returns The total PolkaBTC reward collected by the vault
      */
-    getFeesIssuing(vaultId: AccountId): Promise<Big>;
+    getFeesWrapped(vaultId: AccountId): Promise<Big>;
     /**
      * @param vaultId The vault account ID
      * @returns The total DOT reward collected by the vault
      */
-    getFeesBacking(vaultId: AccountId): Promise<Big>;
+    getFeesCollateral(vaultId: AccountId): Promise<Big>;
     /**
      * Get the total APY for a vault based on the income in PolkaBTC and DOT
      * divided by the locked DOT.
@@ -540,13 +540,13 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return new Big(decodeFixedPointType(threshold));
     }
 
-    async getFeesIssuing(vaultId: AccountId): Promise<Big> {
+    async getFeesWrapped(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const feesSatoshi = (await this.api.query.fee.totalRewardsIssuing.at(head, vaultId)).toString();
         return new Big(satToBTC(feesSatoshi));
     }
 
-    async getFeesBacking(vaultId: AccountId): Promise<Big> {
+    async getFeesCollateral(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const feesPlanck = (await this.api.query.fee.totalRewardsBacking.at(head, vaultId)).toString();
         return new Big(planckToDOT(feesPlanck));
@@ -554,8 +554,8 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getAPY(vaultId: AccountId): Promise<string> {
         const [feesPolkaBTC, feesDOT, lockedDOT] = await Promise.all([
-            await this.getFeesIssuing(vaultId),
-            await this.getFeesBacking(vaultId),
+            await this.getFeesWrapped(vaultId),
+            await this.getFeesCollateral(vaultId),
             await this.collateralAPI.balanceLocked(vaultId),
         ]);
         return this.feeAPI.calculateAPY(feesPolkaBTC, feesDOT, lockedDOT);

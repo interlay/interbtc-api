@@ -71,10 +71,10 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getSecureCollateralThreshold(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getFeesIssuing(vaultId: AccountId): Promise<Big> {
+    getFeesWrapped(vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getFeesBacking(vaultId: AccountId): Promise<Big> {
+    getFeesCollateral(vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     getAPY(vaultId: AccountId): Promise<string> {
