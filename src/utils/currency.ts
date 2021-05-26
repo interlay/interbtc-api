@@ -65,3 +65,7 @@ export function dotToPlanck(dot: string): string | undefined {
     // reject any values that are less than 1 planck
     return undefined;
 }
+
+export function computeReward(stake: Big, rewardPerToken: Big, rewardTally: Big): Big {
+    return stake.mul(rewardPerToken).sub(rewardTally);
+}

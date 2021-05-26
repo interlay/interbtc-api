@@ -1,10 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { AccountId } from "@polkadot/types/interfaces/runtime";
-import BN from "bn.js";
-import sinon from "sinon";
 import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "../../../../src/parachain/staked-relayer";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { StakedRelayer, DOT } from "../../../../src/interfaces/default";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
@@ -14,10 +10,6 @@ import { TypeRegistry } from "@polkadot/types";
 import { DefaultElectrsAPI, ElectrsAPI } from "../../../../src";
 
 describe("stakedRelayerAPI", () => {
-    function numberToDOT(x: number): DOT {
-        return new BN(x) as DOT;
-    }
-
     let api: ApiPromise;
     let stakedRelayerAPI: StakedRelayerAPI;
     let keyring: Keyring;

@@ -13,7 +13,7 @@ import { decodeFixedPointType, satToBTC, planckToDOT, storageKeyToFirstInner } f
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { ElectrsAPI, getTxProof } from "..";
+import { computeReward, ElectrsAPI, getTxProof } from "..";
 
 /**
  * @category PolkaBTC Bridge
@@ -137,7 +137,6 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {
         const vaults = await this.vaultsAPI.list();
-
         const collateralizationRates = await Promise.all(
             vaults.filter(vault => vault.status.isActive).map<Promise<[AccountId, Big | undefined]>>(async (vault) => [
                 vault.id,
@@ -170,13 +169,19 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
 
     async getWrappingFees(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.wrappedRelayerRewards.totalRewards.at(head, stakedRelayerId);
+        const stake = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.stake.at(head, stakedRelayerId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardTally.at(head, stakedRelayerId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
         return new Big(satToBTC(fees.toString()));
     }
 
     async getCollateralFees(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.collateralRelayerRewards.totalRewards.at(head, stakedRelayerId);
+        const stake = decodeFixedPointType(await this.api.query.collateralRelayerRewards.stake.at(head, stakedRelayerId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardTally.at(head, stakedRelayerId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
         return new Big(planckToDOT(fees.toString()));
     }
 

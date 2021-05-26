@@ -23,6 +23,7 @@ import {
     satToBTC,
     dotToPlanck,
     btcToSat,
+    computeReward,
 } from "../utils";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -74,7 +75,7 @@ export function encodeVault(vault: Vault, network: Network): VaultExt {
  */
 export interface VaultsAPI extends TransactionAPI {
     /**
-     * @returns An array containing the vaults
+     * @returns An array containing the vaults with non-zero backing collateral
      */
     list(): Promise<VaultExt[]>;
     /**
@@ -311,7 +312,9 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async list(): Promise<VaultExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(head);
-        return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
+        return vaultsMap
+            .map((v) => encodeVault(v[1], this.btcNetwork))
+            .filter(v => new Big(v.backing_collateral.toString()) > new Big(0));
     }
 
     // TODO: Finish or remove this function
@@ -575,14 +578,20 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getFeesWrapped(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const feesSatoshi = (await this.api.query.wrappedVaultRewards.totalRewards.at(head, vaultId)).toString();
-        return new Big(satToBTC(feesSatoshi));
+        const stake = decodeFixedPointType(await this.api.query.wrappedVaultRewards.stake.at(head, vaultId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.wrappedVaultRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.wrappedVaultRewards.rewardTally.at(head, vaultId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
+        return new Big(satToBTC(fees.toString()));
     }
 
     async getFeesCollateral(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const feesPlanck = (await this.api.query.collateralVaultRewards.totalRewards.at(head, vaultId)).toString();
-        return new Big(planckToDOT(feesPlanck));
+        const stake = decodeFixedPointType(await this.api.query.collateralVaultRewards.stake.at(head, vaultId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.collateralVaultRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.collateralVaultRewards.rewardTally.at(head, vaultId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
+        return new Big(planckToDOT(fees.toString()));
     }
 
     async getAPY(vaultId: AccountId): Promise<string> {
