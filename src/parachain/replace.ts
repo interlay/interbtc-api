@@ -119,7 +119,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     }
 
     async request(amount: Big): Promise<string> {
-        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
         const griefingCollateral = await this.getGriefingCollateral(amount);
         const requestTx = this.api.tx.replace.requestReplace(amountSat, btcToSat(griefingCollateral.toString()));
         const result = await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
@@ -131,15 +131,15 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     }
 
     async withdraw(amount: Big): Promise<void> {
-        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
         const requestTx = this.api.tx.replace.withdrawReplace(amountSat);
         await this.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
     }
 
     async accept(oldVault: AccountId, amount: Big, collateral: Big, btcAddress: string): Promise<void> {
         const parsedBtcAddress = this.api.createType("BtcAddress", btcAddress);
-        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
-        const collateralPlanck = this.api.createType("Backing", dotToPlanck(collateral.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
+        const collateralPlanck = this.api.createType("Collateral", dotToPlanck(collateral.toString()));
         const requestTx = this.api.tx.replace.acceptReplace(oldVault, amountSat, collateralPlanck, parsedBtcAddress);
         await this.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
     }

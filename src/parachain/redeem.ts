@@ -195,7 +195,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
         }
-        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
         const result = await this.sendLogged(requestRedeemTx, this.api.events.redeem.RequestRedeem);

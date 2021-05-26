@@ -23,6 +23,7 @@ import {
     satToBTC,
     dotToPlanck,
     btcToSat,
+    computeReward,
 } from "../utils";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -74,7 +75,7 @@ export function encodeVault(vault: Vault, network: Network): VaultExt {
  */
 export interface VaultsAPI extends TransactionAPI {
     /**
-     * @returns An array containing the vaults
+     * @returns An array containing the vaults with non-zero backing collateral
      */
     list(): Promise<VaultExt[]>;
     /**
@@ -146,6 +147,14 @@ export interface VaultsAPI extends TransactionAPI {
      * above the threshold limit
      */
     getRequiredCollateralForVault(vaultId: AccountId): Promise<Big>;
+    /**
+     * Get the minimum amount of collateral required for the given amount of btc
+     * with the current threshold and exchange rate
+     *
+     * @param amount Amount to issue, denominated in BTC
+     * @returns The required collateral for issuing, denominated in DOT
+     */
+     getRequiredCollateralForWrapped(amount: Big): Promise<Big>;
     /**
      * @param vaultId The vault account ID
      * @returns The amount of PolkaBTC issued by the given vault
@@ -289,13 +298,13 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async withdrawCollateral(amount: Big): Promise<void> {
-        const amountAsPlanck = this.api.createType("Backing", dotToPlanck(amount.toString()) as string);
+        const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount.toString()) as string);
         const tx = this.api.tx.vaultRegistry.withdrawCollateral(amountAsPlanck);
         await this.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
     }
 
     async lockAdditionalCollateral(amount: Big): Promise<void> {
-        const amountAsPlanck = this.api.createType("Backing", dotToPlanck(amount.toString()) as string);
+        const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount.toString()) as string);
         const tx = this.api.tx.vaultRegistry.lockAdditionalCollateral(amountAsPlanck);
         await this.sendLogged(tx, this.api.events.vaultRegistry.LockAdditionalCollateral);
     }
@@ -303,7 +312,9 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async list(): Promise<VaultExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(head);
-        return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
+        return vaultsMap
+            .map((v) => encodeVault(v[1], this.btcNetwork))
+            .filter(v => new Big(v.backing_collateral.toString()) > new Big(0));
     }
 
     // TODO: Finish or remove this function
@@ -391,7 +402,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         let collateralization = undefined;
         try {
             if (newCollateral) {
-                const newCollateralPlanck = this.api.createType("Backing", dotToPlanck(newCollateral.toString()) as string);
+                const newCollateralPlanck = this.api.createType("Collateral", dotToPlanck(newCollateral.toString()) as string);
                 collateralization = await this.api.rpc.vaultRegistry.getCollateralizationFromVaultAndCollateral(
                     vaultId,
                     this.wrapCurrency(newCollateralPlanck),
@@ -427,6 +438,16 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async getRequiredCollateralForVault(vaultId: AccountId): Promise<Big> {
         try {
             const dotWrapper: BalanceWrapper = await this.api.rpc.vaultRegistry.getRequiredCollateralForVault(vaultId);
+            return new Big(planckToDOT(this.unwrapCurrency(dotWrapper).toString()));
+        } catch (e) {
+            return Promise.reject((e as Error).message);
+        }
+    }
+
+    async getRequiredCollateralForWrapped(amount: Big): Promise<Big> {
+        try {
+            const amountSat = this.api.createType("BalanceWrapper", btcToSat(amount.toString()));
+            const dotWrapper: BalanceWrapper = await this.api.rpc.vaultRegistry.getRequiredCollateralForWrapped(amountSat);
             return new Big(planckToDOT(this.unwrapCurrency(dotWrapper).toString()));
         } catch (e) {
             return Promise.reject((e as Error).message);
@@ -474,7 +495,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async selectRandomVaultIssue(amount: Big): Promise<AccountId> {
         try {
-            const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
+            const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
             // eslint-disable-next-line max-len
             const firstVaultWithSufficientCollateral = await this.api.rpc.vaultRegistry.getFirstVaultWithSufficientCollateral(
                 this.wrapCurrency(amountSat)
@@ -486,7 +507,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async selectRandomVaultRedeem(amount: Big): Promise<AccountId> {
-        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
         try {
             const firstVaultWithSufficientTokens = await this.api.rpc.vaultRegistry.getFirstVaultWithSufficientTokens(
                 this.wrapCurrency(amountSat)
@@ -557,14 +578,20 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getFeesWrapped(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const feesSatoshi = (await this.api.query.fee.totalRewardsIssuing.at(head, vaultId)).toString();
-        return new Big(satToBTC(feesSatoshi));
+        const stake = decodeFixedPointType(await this.api.query.wrappedVaultRewards.stake.at(head, vaultId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.wrappedVaultRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.wrappedVaultRewards.rewardTally.at(head, vaultId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
+        return new Big(satToBTC(fees.toString()));
     }
 
     async getFeesCollateral(vaultId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const feesPlanck = (await this.api.query.fee.totalRewardsBacking.at(head, vaultId)).toString();
-        return new Big(planckToDOT(feesPlanck));
+        const stake = decodeFixedPointType(await this.api.query.collateralVaultRewards.stake.at(head, vaultId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.collateralVaultRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.collateralVaultRewards.rewardTally.at(head, vaultId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
+        return new Big(planckToDOT(fees.toString()));
     }
 
     async getAPY(vaultId: AccountId): Promise<string> {

@@ -1,4 +1,4 @@
-import { StakedRelayer, StatusCode } from "../interfaces/default";
+import { StatusCode } from "../interfaces/default";
 import { u64, u128 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
@@ -9,11 +9,11 @@ import { Network } from "bitcoinjs-lib";
 import { AddressOrPair } from "@polkadot/api/types";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-import { pagedIterator, decodeFixedPointType, satToBTC, planckToDOT, storageKeyToFirstInner } from "../utils";
+import { decodeFixedPointType, satToBTC, planckToDOT, storageKeyToFirstInner } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { ElectrsAPI, getTxProof } from "..";
+import { computeReward, ElectrsAPI, getTxProof } from "..";
 
 /**
  * @category PolkaBTC Bridge
@@ -24,25 +24,7 @@ export interface StakedRelayerAPI extends TransactionAPI {
     /**
      * @returns An array containing tuples of type [stakedRelayerId, backingCollateral]
      */
-    list(): Promise<[AccountId, Big][]>;
-    /**
-     * @returns A mapping from the staked relayer AccountId to the backing collateral
-     */
-    map(): Promise<Map<AccountId, Big>>;
-    /**
-     * @param perPage Number of staked relayers to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
-    getPagedIterator(perPage: number): AsyncGenerator<StakedRelayer[]>;
-    /**
-     * @param stakedRelayerId The ID of the relayer for which to fetch the staked Backing token amount
-     * @returns The staked Backing token amount, denoted in Planck
-     */
-    getStakedCollateral(stakedRelayerId: AccountId): Promise<Big>;
-    /**
-     * @returns The total staked Backing token amount, denoted in Planck
-     */
-    getTotalStakedCollateral(): Promise<Big>;
+    list(): Promise<AccountId[]>;
     /**
      * @returns A mapping from vault IDs to their collateralization
      */
@@ -62,12 +44,12 @@ export interface StakedRelayerAPI extends TransactionAPI {
     getWrappingFees(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
-     * @returns Total rewards in Backing tokens for the given staked relayer
+     * @returns Total rewards in Collateral tokens for the given staked relayer
      */
     getCollateralFees(stakedRelayerId: AccountId): Promise<Big>;
     /**
-     * Get the total APY for a staked relayer based on the income in Issuing and Backing tokens
-     * divided by the locked Backing tokens.
+     * Get the total APY for a staked relayer based on the income in Wrapped and Collateral tokens
+     * divided by the locked Collateral tokens.
      *
      * @note this does not account for interest compounding
      *
@@ -141,50 +123,20 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         await this.sendLogged(tx, this.api.events.stakedRelayers.VaultTheft);    
     }
 
-    async list(): Promise<[AccountId, Big][]> {
+    async list(): Promise<AccountId[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const stakedRelayersMap = await this.api.query.stakedRelayers.stakes.entriesAt(head);
-        return stakedRelayersMap.map(
-            (v) => [storageKeyToFirstInner(v[0]), new Big(planckToDOT(v[1].toString()))]
-        );
-    }
-
-    async map(): Promise<Map<AccountId, Big>> {
-        const list = await this.list();
-        const stakedRelayersMap = new Map<AccountId, Big>();
-        list.forEach((stakedRelayer) =>
-            stakedRelayersMap.set(stakedRelayer[0], new Big(planckToDOT(stakedRelayer[1].toString())))
-        );
-        return stakedRelayersMap;
-    }
-
-    getPagedIterator(perPage: number): AsyncGenerator<StakedRelayer[]> {
-        return pagedIterator<StakedRelayer>(this.api.query.issue.issueRequests, perPage);
-    }
-
-    async getStakedCollateral(stakedRelayerId: AccountId): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const stake = await this.api.query.stakedRelayers.stakes.at(head, stakedRelayerId);
-        return new Big(planckToDOT(stake.toString()));
-    }
-
-    private async getStakedCollateralAmounts(): Promise<Big[]> {
-        const list = await this.list();
-        return list.map(([_, stake]) => stake);
-    }
-
-    async getTotalStakedCollateral(): Promise<Big> {
-        const stakedCollateralAmounts: Big[] = await this.getStakedCollateralAmounts();
-        if (stakedCollateralAmounts.length) {
-            const sumReducer = (accumulator: Big, currentValue: Big) => accumulator.add(currentValue);
-            return stakedCollateralAmounts.reduce(sumReducer);
-        }
-        return new Big(0);
+        const stakedRelayersMap = await this.api.query.wrappedRelayerRewards.stake.entriesAt(head);
+        return stakedRelayersMap
+            .filter(
+                (v) => (new Big(v[1].toString()) > new Big(0))
+            )
+            .map(
+                (v) => storageKeyToFirstInner(v[0])
+            );
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {
         const vaults = await this.vaultsAPI.list();
-
         const collateralizationRates = await Promise.all(
             vaults.filter(vault => vault.status.isActive).map<Promise<[AccountId, Big | undefined]>>(async (vault) => [
                 vault.id,
@@ -217,13 +169,19 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
 
     async getWrappingFees(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.fee.totalRewardsIssuing.at(head, stakedRelayerId);
+        const stake = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.stake.at(head, stakedRelayerId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardTally.at(head, stakedRelayerId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
         return new Big(satToBTC(fees.toString()));
     }
 
     async getCollateralFees(stakedRelayerId: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.fee.totalRewardsBacking.at(head, stakedRelayerId);
+        const stake = decodeFixedPointType(await this.api.query.collateralRelayerRewards.stake.at(head, stakedRelayerId));
+        const rewardPerToken = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardPerToken.at(head));
+        const rewardTally = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardTally.at(head, stakedRelayerId));
+        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
         return new Big(planckToDOT(fees.toString()));
     }
 

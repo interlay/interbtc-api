@@ -146,7 +146,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         if (!vaultId) {
             vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
         }
-        const amountSat = this.api.createType("Issuing", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
         const griefingCollateral = await this.getGriefingCollateral(amount);
         const requestIssueTx = this.api.tx.issue.requestIssue(amountSat, vaultId, dotToPlanck(griefingCollateral.toString()) as string);
         const result = await this.sendLogged(requestIssueTx, this.api.events.issue.RequestIssue);

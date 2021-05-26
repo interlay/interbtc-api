@@ -1,4 +1,4 @@
-import { Backing, DOT, ErrorCode, StakedRelayer, StatusCode } from "../../../src/interfaces/default";
+import { Collateral, DOT, ErrorCode, StakedRelayer, StatusCode } from "../../../src/interfaces/default";
 import { u32, u64, u128, Bytes } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -10,16 +10,7 @@ import { AddressOrPair } from "@polkadot/api/types";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRelayerAPI {
-    list(): Promise<[AccountId, Big][]> {
-        throw new Error("Method not implemented.");
-    }
-    map(): Promise<Map<AccountId, Big>> {
-        throw new Error("Method not implemented.");
-    }
-    getStakedCollateral(stakedRelayerId: AccountId): Promise<Big> {
-        throw new Error("Method not implemented.");
-    }
-    getTotalStakedCollateral(): Promise<Big> {
+    list(): Promise<AccountId[]> {
         throw new Error("Method not implemented.");
     }
     getWrappingFees(stakedRelayerId: AccountId): Promise<Big> {
