@@ -43,7 +43,7 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
 
     async total(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const totalBN =  this.api.query.wrapped.totalIssuance.at(head);
+        const totalBN = await this.api.query.wrapped.totalIssuance.at(head);
         return new Big(satToBTC(totalBN.toString()));
     }
 
