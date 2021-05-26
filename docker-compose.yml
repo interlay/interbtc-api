@@ -66,7 +66,7 @@ services:
                 echo '{"alice_stash": "0x3c881bc4d45926680c64a7f9315eeda3dd287f8d598f3653d7c107799c5422b3"}' > keyfile.json
                 echo "Sleeping..."
                 sleep 10
-                staked-relayer --keyfile="keyfile.json" --keyname=alice_stash --polka-btc-url 'ws://polkabtc:9944' --auto-register-with-stake 100
+                staked-relayer --keyfile="keyfile.json" --keyname=alice_stash --btc-parachain-url 'ws://polkabtc:9944' --auto-fund-with-faucet-url '[::0]:3036'
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443
             BITCOIN_RPC_USER: rpcuser
@@ -80,7 +80,7 @@ services:
             - |
                 echo "Sleeping..."
                 sleep 5
-                oracle --keyring=charlie --polka-btc-url 'ws://polkabtc:9944'
+                oracle --keyring=charlie --btc-parachain-url 'ws://polkabtc:9944'
         environment:
             RUST_LOG: info
     faucet:
@@ -92,7 +92,7 @@ services:
                 echo '{"bob_stash": "0x1a7d114100653850c65edecda8a9b2b4dd65d900edef8e70b1a6ecdcda967056"}' > keyfile.json
                 echo "Sleeping..."
                 sleep 5
-                faucet --keyfile="keyfile.json" --keyname=bob_stash --polka-btc-url 'ws://polkabtc:9944' --user-allowance 1 --vault-allowance 500 --http-addr '[::0]:3036'
+                faucet --keyfile="keyfile.json" --keyname=bob_stash --btc-parachain-url 'ws://polkabtc:9944' --user-allowance 1 --vault-allowance 500 --http-addr '[::0]:3036'
         environment:
             RUST_LOG: info
         ports:
@@ -108,7 +108,7 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Charlie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=charlie_stash --auto-register-with-collateral 1000000000000000000 --polka-btc-url 'ws://polkabtc:9944'
+                vault --keyfile="keyfile.json" --keyname=charlie_stash --auto-register-with-collateral 1000000000000000000 --btc-parachain-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
     vault_2:
@@ -122,7 +122,7 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Dave wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=dave_stash --auto-register-with-collateral 1000000000000000000 --no-issue-execution --polka-btc-url 'ws://polkabtc:9944'
+                vault --keyfile="keyfile.json" --keyname=dave_stash --auto-register-with-collateral 1000000000000000000 --no-issue-execution --btc-parachain-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
     vault_3:
@@ -136,7 +136,7 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Eve wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=eve_stash --auto-register-with-collateral 1000000000000 --no-issue-execution --polka-btc-url 'ws://polkabtc:9944'
+                vault --keyfile="keyfile.json" --keyname=eve_stash --auto-register-with-collateral 1000000000000 --no-issue-execution --btc-parachain-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
     vault_to_liquidate:
@@ -150,6 +150,6 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Ferdie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=ferdie_stash --auto-register-with-collateral 1000000000000 --polka-btc-url 'ws://polkabtc:9944'
+                vault --keyfile="keyfile.json" --keyname=ferdie_stash --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
