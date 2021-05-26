@@ -41,27 +41,6 @@ describe("stakedRelayerAPI", () => {
     });
 
     describe("request", () => {
-        it("should compute totalStakedDOTAmount with nonzero sum", async () => {
-            const mockStakedDOTAmounts: DOT[] = [1, 2, 3].map((x) => numberToDOT(x));
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedCollateralAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedCollateral();
-            assert.equal(totalStakedDOTAmount.toString(), "6");
-        });
-
-        it("should compute totalStakedDOTAmount with zero sum", async () => {
-            const mockStakedDOTAmounts: DOT[] = [];
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            sinon.stub(stakedRelayerAPI, <any>"getStakedCollateralAmounts").returns(Promise.resolve(mockStakedDOTAmounts));
-            const totalStakedDOTAmount = await stakedRelayerAPI.getTotalStakedCollateral();
-            assert.equal(totalStakedDOTAmount.toString(), "0");
-        });
-
-        it("should listIncludingIds", async () => {
-            const relayersMap = await stakedRelayerAPI.map();
-            assert.isDefined(relayersMap);
-        });
-
         it("should getMonitoredVaultsCollateralizationRate", async () => {
             const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
             assert.isDefined(monitoredVaultsCollateralizationRate);
@@ -75,16 +54,6 @@ describe("stakedRelayerAPI", () => {
         it("should getCurrentStateOfBTCParachain", async () => {
             const currentStateOfBTCParachain = await stakedRelayerAPI.getCurrentStateOfBTCParachain();
             assert.isDefined(currentStateOfBTCParachain);
-        });
-
-        it("should page listed requests", async () => {
-            const listingsPerPage = 2;
-            const requestsIterator = stakedRelayerAPI.getPagedIterator(listingsPerPage);
-            let curr = await requestsIterator.next();
-            while (!curr.done) {
-                assert.isTrue(curr.value.length <= listingsPerPage);
-                curr = await requestsIterator.next();
-            }
         });
     });
 

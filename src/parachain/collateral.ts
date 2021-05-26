@@ -55,20 +55,20 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
 
     async balanceLocked(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const account = await this.api.query.backing.account.at(head, id);
+        const account = await this.api.query.collateral.account.at(head, id);
         return new Big(planckToDOT(account.reserved.toString()));
     }
 
     async balance(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const account = await this.api.query.backing.account.at(head, id);
+        const account = await this.api.query.collateral.account.at(head, id);
         return new Big(planckToDOT(account.free.toString()));
     }
 
     async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
         try {
             const accountId = this.api.createType("AccountId", account);
-            const unsubscribe = await this.api.query.backing.account(accountId, (balance) => {
+            const unsubscribe = await this.api.query.collateral.account(accountId, (balance) => {
                 callback(account, new Big(planckToDOT(balance.free.toString())));
             });
             return unsubscribe;
@@ -83,7 +83,7 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
 
     async transfer(address: string, amount: Big): Promise<void> {
         const amountSmallDenomination = this.api.createType("Balance", dotToPlanck(amount.toString()));
-        const transferTx = this.api.tx.backing.transfer(address, amountSmallDenomination);
-        await this.sendLogged(transferTx, this.api.events.backing.Transfer);
+        const transferTx = this.api.tx.collateral.transfer(address, amountSmallDenomination);
+        await this.sendLogged(transferTx, this.api.events.collateral.Transfer);
     }
 }

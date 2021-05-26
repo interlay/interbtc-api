@@ -46,11 +46,11 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     constructor(private api: ApiPromise) {}
 
     getDotExistentialDeposit(): Balance {
-        return this.api.consts.backing.existentialDeposit;
+        return this.api.consts.collateral.existentialDeposit;
     }
 
     getPolkaBtcExistentialDeposit(): Balance {
-        return this.api.consts.issuing.existentialDeposit;
+        return this.api.consts.wrapped.existentialDeposit;
     }
 
     getSystemBlockHashCount(): BlockNumber {

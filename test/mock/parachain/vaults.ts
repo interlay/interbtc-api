@@ -8,6 +8,9 @@ import Big from "big.js";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
+    getRequiredCollateralForWrapped(amount: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     list(): Promise<VaultExt[]> {
         throw new Error("Method not implemented.");
     }
