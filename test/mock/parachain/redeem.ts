@@ -72,4 +72,7 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
         return "5";
     }
 
+    async getCurrentInclusionFee(): Promise<Big> {
+        return new Big("0.0000005");
+    }
 }
