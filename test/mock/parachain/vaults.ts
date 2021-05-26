@@ -59,6 +59,9 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getVaultsWithIssuableTokens(): Promise<Map<AccountId, Big>> {
         throw new Error("Method not implemented.");
     }
+    getVaultsWithRedeemableTokens(): Promise<Map<AccountId, Big>> {
+        throw new Error("Method not implemented.");
+    }
     isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
         throw new Error("Method not implemented.");
     }

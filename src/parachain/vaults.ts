@@ -179,6 +179,10 @@ export interface VaultsAPI extends TransactionAPI {
      */
     getVaultsWithIssuableTokens(): Promise<Map<AccountId, Big>>;
     /**
+     * @returns Vaults with redeemable tokens, sorted in descending order of this value
+     */
+    getVaultsWithRedeemableTokens(): Promise<Map<AccountId, Big>>;
+    /**
      * @param vaultId The vault account ID
      * @returns A bollean value
      */
@@ -509,10 +513,21 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         try {
             const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
             return new Map(
-                vaults.map(([id, redeemableTokens]) => [id, new Big(satToBTC(this.unwrapCurrency(redeemableTokens).toString()))])
+                vaults.map(([id, issuableTokens]) => [id, new Big(satToBTC(this.unwrapCurrency(issuableTokens).toString()))])
             );
         } catch (e) {
             return Promise.reject("Did not find vault with issuable tokens");
+        }
+    }
+
+    async getVaultsWithRedeemableTokens(): Promise<Map<AccountId, Big>> {
+        try {
+            const vaults = await this.api.rpc.vaultRegistry.getVaultsWithRedeemableTokens();
+            return new Map(
+                vaults.map(([id, redeemableTokens]) => [id, new Big(satToBTC(this.unwrapCurrency(redeemableTokens).toString()))])
+            );
+        } catch (e) {
+            return Promise.reject("Did not find vault with redeemable tokens");
         }
     }
 
