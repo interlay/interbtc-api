@@ -24,6 +24,7 @@ import { DefaultCollateralAPI } from "./collateral";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RedeemRequest } from "../interfaces/default";
+import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -152,11 +153,17 @@ export interface RedeemAPI extends TransactionAPI {
      * used when burning tokens
      */
     getBurnExchangeRate(): Promise<Big>;
+    /**
+     * @returns The current inclusion fee based on the expected number of bytes 
+     * in the transaction, and the inclusion fee rate reported by the oracle
+     */
+    getCurrentInclusionFee(): Promise<Big>;
 }
 
 export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
     private vaultsAPI: VaultsAPI;
     private collateralAPI: CollateralAPI;
+    private oracleAPI: OracleAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
@@ -164,6 +171,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
+        this.oracleAPI = new DefaultOracleAPI(api, account);
     }
 
     /**
@@ -251,6 +259,14 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             this.api.createType("AccountId", liquidationVaultId)
         );
         return collateralDot.div(wrappedBtc);
+    }
+
+    async getCurrentInclusionFee(): Promise<Big> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const size = await this.api.query.redeem.redeemTransactionSize.at(head);
+        const satoshiFees = await this.oracleAPI.getBtcTxFeesPerByte();
+        const btcFees = new Big(satToBTC(satoshiFees.fast.toString()));
+        return btcFees.mul(new Big(size.toString()));
     }
 
     async list(): Promise<RedeemRequestExt[]> {
