@@ -11,7 +11,6 @@ import Big from "big.js";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
-    pagedIterator,
     decodeFixedPointType,
     encodeParachainRequest,
     btcToSat,
@@ -96,11 +95,6 @@ export interface RedeemAPI extends TransactionAPI {
      * @param account Keyring account
      */
     setAccount(account: AddressOrPair): void;
-    /**
-     * @param perPage Number of redeem requests to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
-    getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
     /**
      * @param account The ID of the account whose redeem requests are to be retrieved
      * @returns A mapping from the redeem request ID to the redeem request object, corresponding to the requests of
@@ -193,7 +187,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async request(amount: Big, btcAddressEnc: string, vaultId?: AccountId): Promise<RequestResult> {
         if (!vaultId) {
-            vaultId = await this.vaultsAPI.selectRandomVaultIssue(amount);
+            vaultId = await this.vaultsAPI.selectRandomVaultRedeem(amount);
         }
         const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
@@ -331,10 +325,6 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
         return decodeFixedPointType(premiumRedeemFee);
-    }
-
-    getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]> {
-        return pagedIterator<RedeemRequest>(this.api.query.redeem.redeemRequests, perPage);
     }
 
     async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {

@@ -43,10 +43,6 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
         return Promise.resolve(new Map<H256, RedeemRequestExt>());
     }
 
-    getPagedIterator(_perPage: number): AsyncGenerator<RedeemRequest[]> {
-        return {} as AsyncGenerator<RedeemRequest[]>;
-    }
-
     async getDustValue(): Promise<Big> {
         return Promise.resolve(new Big(0.000001));
     }

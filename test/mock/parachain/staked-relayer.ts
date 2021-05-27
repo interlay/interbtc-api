@@ -1,4 +1,4 @@
-import { Collateral, DOT, ErrorCode, StakedRelayer, StatusCode } from "../../../src/interfaces/default";
+import { DOT, ErrorCode, StatusCode } from "../../../src/interfaces/default";
 import { u32, u64, u128, Bytes } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -46,14 +46,6 @@ export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRe
 
     setAccount(_account: AddressOrPair): void {
         return;
-    }
-
-    getPagedIterator(_perPage: number): AsyncGenerator<StakedRelayer[]> {
-        return {} as AsyncGenerator<StakedRelayer[]>;
-    }
-
-    get(_activeStakedRelayerId: AccountId): Promise<StakedRelayer> {
-        return Promise.resolve(<StakedRelayer>{});
     }
 
     deregister(): Promise<void> {

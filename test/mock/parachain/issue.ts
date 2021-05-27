@@ -70,10 +70,6 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         return Promise.resolve(new Map<H256, IssueRequestExt>());
     }
 
-    getPagedIterator(_perPage: number): AsyncGenerator<IssueRequest[]> {
-        return {} as AsyncGenerator<IssueRequest[]>;
-    }
-
     async getRequestById(_issueId: string | Uint8Array | H256): Promise<IssueRequestExt> {
         const registry = new TypeRegistry();
         const decodedAccountId1 = "0xD5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5D5";

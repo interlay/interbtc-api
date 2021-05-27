@@ -16,7 +16,6 @@ import {
 } from "../interfaces/default";
 import {
     FIXEDI128_SCALING_FACTOR,
-    pagedIterator,
     planckToDOT,
     decodeFixedPointType,
     encodeBtcAddress,
@@ -79,13 +78,6 @@ export interface VaultsAPI extends TransactionAPI {
      */
     list(): Promise<VaultExt[]>;
     /**
-     * This function is not finalized
-     *
-     * @returns An array containing the vaults, paged. This function is meant to be used as an
-     * iterator
-     */
-    listPaged(): Promise<VaultExt[]>;
-    /**
      * Fetch the issue requests associated with a vault
      *
      * @param vaultId - The AccountId of the vault used to filter issue requests
@@ -107,11 +99,6 @@ export interface VaultsAPI extends TransactionAPI {
      * @returns A map with replace ids to replace requests involving said vault as new vault and old vault
      */
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>>;
-    /**
-     * @param perPage Number of vaults to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
-    getPagedIterator(perPage: number): AsyncGenerator<Vault[]>;
     /**
      * @param vaultId The ID of the vault to fetch
      * @returns A vault object
@@ -154,7 +141,7 @@ export interface VaultsAPI extends TransactionAPI {
      * @param amount Amount to issue, denominated in BTC
      * @returns The required collateral for issuing, denominated in DOT
      */
-     getRequiredCollateralForWrapped(amount: Big): Promise<Big>;
+    getRequiredCollateralForWrapped(amount: Big): Promise<Big>;
     /**
      * @param vaultId The vault account ID
      * @returns The amount of PolkaBTC issued by the given vault
@@ -313,14 +300,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(head);
         return vaultsMap
-            .map((v) => encodeVault(v[1], this.btcNetwork))
-            .filter(v => new Big(v.backing_collateral.toString()) > new Big(0));
-    }
-
-    // TODO: Finish or remove this function
-    async listPaged(): Promise<VaultExt[]> {
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesPaged({ pageSize: 1 });
-        return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
+            .map((v) => encodeVault(v[1], this.btcNetwork));
     }
 
     async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>> {
@@ -363,10 +343,6 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         } catch (err) {
             return Promise.reject(`Error during replace request retrieval: ${err}`);
         }
-    }
-
-    getPagedIterator(perPage: number): AsyncGenerator<Vault[]> {
-        return pagedIterator<Vault>(this.api.query.vaultRegistry.vaults, perPage);
     }
 
     async get(vaultId: AccountId): Promise<VaultExt> {
