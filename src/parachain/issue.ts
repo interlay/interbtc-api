@@ -8,7 +8,6 @@ import Big from "big.js";
 import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
-    pagedIterator,
     decodeFixedPointType,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
@@ -85,11 +84,6 @@ export interface IssueAPI extends TransactionAPI {
      * @returns An array containing the issue requests
      */
     list(): Promise<IssueRequestExt[]>;
-    /**
-     * @param perPage Number of issue requests to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
-    getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
     /**
      * @param account The ID of the account whose issue requests are to be retrieved
      * @returns A mapping from the issue request ID to the issue request object, corresponding to the requests of
@@ -219,10 +213,6 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         const issueFee = await this.api.query.fee.issueFee.at(head);
         // TODO: return Big from decodeFixedPointType
         return new Big(decodeFixedPointType(issueFee));
-    }
-
-    getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
-        return pagedIterator<IssueRequest>(this.api.query.issue.issueRequests, perPage);
     }
 
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {

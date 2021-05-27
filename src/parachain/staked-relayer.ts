@@ -126,13 +126,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
     async list(): Promise<AccountId[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const stakedRelayersMap = await this.api.query.wrappedRelayerRewards.stake.entriesAt(head);
-        return stakedRelayersMap
-            .filter(
-                (v) => (new Big(v[1].toString()) > new Big(0))
-            )
-            .map(
-                (v) => storageKeyToFirstInner(v[0])
-            );
+        return stakedRelayersMap.map((v) => storageKeyToFirstInner(v[0]));
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {

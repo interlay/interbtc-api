@@ -26,9 +26,6 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
         throw new Error("Method not implemented.");
     }
-    getPagedIterator(perPage: number): AsyncGenerator<Vault[], any, unknown> {
-        throw new Error("Method not implemented.");
-    }
     get(vaultId: AccountId): Promise<VaultExt> {
         throw new Error("Method not implemented.");
     }

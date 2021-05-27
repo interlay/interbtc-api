@@ -85,16 +85,6 @@ describe("vaultsAPI", () => {
         assert.isTrue(flaggedForTheft);
     });
 
-    it("should page listed requests", async () => {
-        const listingsPerPage = 2;
-        const requestsIterator = vaultsAPI.getPagedIterator(listingsPerPage);
-        let curr = await requestsIterator.next();
-        while (!curr.done) {
-            assert.isTrue(curr.value.length <= listingsPerPage);
-            curr = await requestsIterator.next();
-        }
-    });
-
     it("should list issue request by a vault", async () => {
         const bobId = api.createType("AccountId", ferdie_stash.address);
         const issueRequests = await vaultsAPI.mapIssueRequests(bobId);
