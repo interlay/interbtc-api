@@ -77,7 +77,7 @@ export interface OracleAPI extends TransactionAPI {
      */
     convertSatoshiToPlanck(amount: BN): Promise<BN>;
     /**
-     * @returns Convert a Satoshi amount to Planck
+     * @returns Convert a Bitcoin amount to Dot
      */
     convertBitcoinToDot(amount: Big): Promise<Big>;
     /**
