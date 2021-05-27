@@ -29,10 +29,10 @@ describe("vaultsAPI", () => {
     });
 
     it("should getIssuedPolkaBTCAmount", async () => {
-        sinon.stub(vaultsAPI, "get").returns(Promise.resolve(<VaultExt>{ issued_tokens: new BN(100) as PolkaBTC }));
+        sinon.stub(vaultsAPI, "get").returns(Promise.resolve(<VaultExt>{ issued_tokens: new BN(100000000) as PolkaBTC }));
         const vaultId = <AccountId>{};
         const issuedPolkaBTCAmount = await vaultsAPI.getIssuedAmount(vaultId);
-        assert.equal(issuedPolkaBTCAmount.toString(), "100");
+        assert.equal(issuedPolkaBTCAmount.toString(), "1");
     });
 
     it("should compute totalIssuedPolkaBTCAmount with nonzero sum", async () => {
