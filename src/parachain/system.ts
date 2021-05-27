@@ -11,7 +11,7 @@ export interface SystemAPI {
     /**
      * @returns The current active block number being processed.
      */
-    getCurrentBlockNumber(): Promise<number>;
+    getCurrentActiveBlockNumber(): Promise<number>;
 }
 
 export class DefaultSystemAPI implements SystemAPI {
