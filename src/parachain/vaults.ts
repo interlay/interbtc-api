@@ -5,14 +5,14 @@ import Big from "big.js";
 import BN from "bn.js";
 import { Network } from "bitcoinjs-lib";
 
-import { 
+import {
     Vault,
     IssueRequest,
     RedeemRequest,
     ReplaceRequest,
     Wallet,
     SystemVault,
-    BalanceWrapper 
+    BalanceWrapper
 } from "../interfaces/default";
 import {
     FIXEDI128_SCALING_FACTOR,
@@ -258,9 +258,9 @@ export interface VaultsAPI extends TransactionAPI {
      * @returns The account id of the liquidation vault
      */
     getLiquidationVaultId(): Promise<string>;
-     /**
-     * @returns A vault object representing the liquidation vault
-     */
+    /**
+    * @returns A vault object representing the liquidation vault
+    */
     getLiquidationVault(): Promise<SystemVault>;
 }
 
@@ -432,7 +432,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getIssuedAmount(vaultId: AccountId): Promise<Big> {
         const vault: VaultExt = await this.get(vaultId);
-        return new Big(vault.issued_tokens.toString());
+        return new Big(satToBTC(vault.issued_tokens.toString()));
     }
 
     private async getIssuedPolkaBTCAmounts(): Promise<Big[]> {
