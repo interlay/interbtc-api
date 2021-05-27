@@ -37,7 +37,7 @@ export class DefaultTransactionAPI {
                 .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
                 .then((u: () => void) => (unsubscribe = u))
                 .catch((error) => console.log(`Transaction failed: ${error}`));
-    
+
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
                 if (status.isFinalized) {
@@ -51,11 +51,11 @@ export class DefaultTransactionAPI {
         DefaultTransactionAPI.printEvents(this.api, result.events);
 
         if (successEventType && !DefaultTransactionAPI.doesArrayContainEvent(result.events, successEventType)) {
-            console.log("Transaction failed: Expected event was not emitted");
+            return Promise.reject("Transaction failed: Expected event was not emitted");
         }
         return result;
     }
-    
+
     static printEvents(api: ApiPromise, events: EventRecord[]): void {
         let foundErrorEvent = false;
         let errorMessage = "";
@@ -77,7 +77,7 @@ export class DefaultTransactionAPI {
                     }
                 }
             });
-    
+
         if (!foundErrorEvent) {
             events.forEach(({ phase, event: { data, method, section } }) => {
                 console.log(`\t' ${phase}: ${section}.${method}:: ${data}`);
@@ -93,13 +93,13 @@ export class DefaultTransactionAPI {
         timeoutMs: number
     ): Promise<boolean> {
         // Use this function with a timeout.
-        // Unless the awaited event occurs, this Promise will never resolve. 
+        // Unless the awaited event occurs, this Promise will never resolve.
         let timeoutHandle: NodeJS.Timeout;
         const timeoutPromise = new Promise((_, reject) => {
             timeoutHandle = setTimeout(() => reject(), timeoutMs);
         });
 
-        await Promise.race([ 
+        await Promise.race([
             new Promise<void>((resolve, _reject) => {
                 api.query.system.events((eventsVec) => {
                     const events = eventsVec.toArray();
@@ -107,8 +107,8 @@ export class DefaultTransactionAPI {
                         resolve();
                     }
                 });
-            }), 
-            timeoutPromise, 
+            }),
+            timeoutPromise,
         ]).then((_) => {
             clearTimeout(timeoutHandle);
         });
