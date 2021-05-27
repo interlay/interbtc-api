@@ -1,5 +1,4 @@
 import { ApiPromise } from "@polkadot/api";
-import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 
 /**
  * @category PolkaBTC Bridge
@@ -20,11 +19,11 @@ export class DefaultSystemAPI implements SystemAPI {
 
     async getCurrentBlockNumber(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return await (await this.api.query.system.number.at(head)).toNumber();
+        return (await this.api.query.system.number.at(head)).toNumber();
     }
 
     async getCurrentActiveBlockNumber(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return await (await this.api.query.security.activeBlockCount.at(head)).toNumber();
+        return (await this.api.query.security.activeBlockCount.at(head)).toNumber();
     }
 }
