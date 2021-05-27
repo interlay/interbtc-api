@@ -120,8 +120,9 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
 
     async request(amount: Big): Promise<string> {
         const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
-        const griefingCollateral = await this.getGriefingCollateral(amount);
-        const requestTx = this.api.tx.replace.requestReplace(amountSat, btcToSat(griefingCollateral.toString()));
+        const griefingCollateralDot = await this.getGriefingCollateral(amount);
+        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDot.toString()) as string;
+        const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck);
         const result = await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
         try {
             return this.getRequestIdFromEvents(result.events).toString();

@@ -14,7 +14,7 @@ export interface FeeAPI {
      * griefing collateral
      * @param griefingCollateralRate
      * @param oracleAPI
-     * @returns The griefing collateral, in BTC
+     * @returns The griefing collateral, in DOT
      */
     getGriefingCollateral(
         amount: Big,
@@ -50,7 +50,7 @@ export class DefaultFeeAPI implements FeeAPI {
         griefingCollateralRate: Big
     ): Promise<Big> {
         const dotAmount = await this.oracleAPI.convertBitcoinToDot(amount);
-        return dotAmount.mul(griefingCollateralRate).round(10, 3);
+        return dotAmount.mul(griefingCollateralRate);
     }
 
     async getIssueGriefingCollateralRate(): Promise<Big> {

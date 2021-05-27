@@ -3,7 +3,6 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { Wrapped } from "../../../../src/interfaces/default";
 import { btcToSat, dotToPlanck } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
@@ -76,10 +75,10 @@ describe("issue", () => {
             assert.equal(issueRequest.amount.toString(), btcToSat(amount.sub(feesToPay).toString()), "Amount different than expected");
         });
 
-        it("should getGriefingCollateral (rounded)", async () => {
+        it("should getGriefingCollateral", async () => {
             const amountBtc = new Big("0.001");
             const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc);
-            assert.equal(griefingCollateral.toString(), "0.0001927616");
+            assert.equal(griefingCollateral.toString(), "0.0001927615935");
         });
     });
 
