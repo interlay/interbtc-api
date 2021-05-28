@@ -203,7 +203,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
-        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedRequestId = this.api.createType("H256", requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);

@@ -154,7 +154,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedRequestId = this.api.createType("H256", requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
