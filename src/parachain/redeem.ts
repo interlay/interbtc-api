@@ -193,9 +193,13 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
         const result = await this.sendLogged(requestRedeemTx, this.api.events.redeem.RequestRedeem);
-        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
-        const redeemRequest = await this.getRequestById(id);
-        return { id, redeemRequest };
+        try {
+            const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
+            const redeemRequest = await this.getRequestById(id);
+            return { id, redeemRequest };
+        } catch (e) {
+            return Promise.reject(e.message);
+        }
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
