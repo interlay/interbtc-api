@@ -7,7 +7,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 
-describe("ElectrsAPI testnet", function () {
+describe.skip("ElectrsAPI testnet", function () {
     this.timeout(10000); // API can be slightly slow
 
     const txid = "0af83672b9f80f2ad53218a8f67899ea07d7da4f07a16ba2c954030895a91d9a";

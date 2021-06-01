@@ -9,12 +9,10 @@ import Big from "big.js";
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
-    pagedIterator,
     decodeFixedPointType,
     encodeParachainRequest,
     btcToSat,
     satToBTC,
-    planckToDOT,
     getTxProof,
 } from "../utils";
 import { stripHexPrefix } from "../utils";
@@ -24,6 +22,7 @@ import { DefaultCollateralAPI } from "./collateral";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RedeemRequest } from "../interfaces/default";
+import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
 export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
 
@@ -118,11 +117,6 @@ export interface RedeemAPI extends TransactionAPI {
      */
     setAccount(account: AddressOrPair): void;
     /**
-     * @param perPage Number of redeem requests to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
-    getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]>;
-    /**
      * @param account The ID of the account whose redeem requests are to be retrieved
      * @returns A mapping from the redeem request ID to the redeem request object, corresponding to the requests of
      * the given account
@@ -175,11 +169,17 @@ export interface RedeemAPI extends TransactionAPI {
      * used when burning tokens
      */
     getBurnExchangeRate(): Promise<Big>;
+    /**
+     * @returns The current inclusion fee based on the expected number of bytes
+     * in the transaction, and the inclusion fee rate reported by the oracle
+     */
+    getCurrentInclusionFee(): Promise<Big>;
 }
 
 export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
     private vaultsAPI: VaultsAPI;
     private collateralAPI: CollateralAPI;
+    private oracleAPI: OracleAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
@@ -187,6 +187,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
+        this.oracleAPI = new DefaultOracleAPI(api, account);
     }
 
     private getRedeemIdsFromEvents(events: EventRecord[]): Hash[] {
@@ -232,22 +233,22 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         });
         for (const [vault, amount] of amountsPerVault) {
             console.log(`BBBBBBBBBBBBBBBBBBBBBBBBBB amountSat: ${btcToSat(amount.toString())}, to vaultId: ${vault.toString()}`);
-            const amountIssuing = this.api.createType("Issuing", btcToSat(amount.toString()));
-            txes.push(this.api.tx.redeem.requestRedeem(amountIssuing, btcAddress, vault));
+            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount.toString()));
+            txes.push(this.api.tx.redeem.requestRedeem(amountWrapped, btcAddress, vault));
         }
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         try {
-            const result = await this.sendLogged(batch, this.api.events.issue.RequestIssue);
+            const result = await this.sendLogged(batch, this.api.events.issue.RequestRedeem);
             const ids = this.getRedeemIdsFromEvents(result.events);
             const redeemRequests = await this.getRequestsById(ids);
             return ids.map((id, idx) => ({ id, redeemRequest: redeemRequests[idx] }));
         } catch (e) {
-            return Promise.reject(e.message);
+            return Promise.reject(e);
         }
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
-        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedRequestId = this.api.createType("H256", requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
@@ -304,6 +305,16 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             this.api.createType("AccountId", liquidationVaultId)
         );
         return collateralDot.div(wrappedBtc);
+    }
+
+    async getCurrentInclusionFee(): Promise<Big> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const [size, satoshiFees] = await Promise.all([
+            this.api.query.redeem.redeemTransactionSize.at(head),
+            this.oracleAPI.getBtcTxFeesPerByte()
+        ]);
+        const btcFees = new Big(satToBTC(satoshiFees.fast.toString()));
+        return btcFees.mul(new Big(size.toString()));
     }
 
     async list(): Promise<RedeemRequestExt[]> {
@@ -366,10 +377,6 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
         return decodeFixedPointType(premiumRedeemFee);
-    }
-
-    getPagedIterator(perPage: number): AsyncGenerator<RedeemRequest[]> {
-        return pagedIterator<RedeemRequest>(this.api.query.redeem.redeemRequests, perPage);
     }
 
     async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {

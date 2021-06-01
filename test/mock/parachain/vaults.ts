@@ -8,6 +8,9 @@ import Big from "big.js";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
+    getRequiredCollateralForWrapped(amount: Big): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     list(): Promise<VaultExt[]> {
         throw new Error("Method not implemented.");
     }
@@ -21,9 +24,6 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
         throw new Error("Method not implemented.");
     }
     mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
-        throw new Error("Method not implemented.");
-    }
-    getPagedIterator(perPage: number): AsyncGenerator<Vault[], any, unknown> {
         throw new Error("Method not implemented.");
     }
     get(vaultId: AccountId): Promise<VaultExt> {
@@ -74,10 +74,10 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getSecureCollateralThreshold(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getFeesIssuing(vaultId: AccountId): Promise<Big> {
+    getFeesWrapped(vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getFeesBacking(vaultId: AccountId): Promise<Big> {
+    getFeesCollateral(vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     getAPY(vaultId: AccountId): Promise<string> {

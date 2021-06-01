@@ -15,7 +15,7 @@ import {
     TreasuryAPI,
     BTCRelayAPI,
     DefaultBTCRelayAPI,
-    setNumericStorage
+    setNumericStorage,
 } from "../../../../src";
 import { issueSingle } from "../../../../src/utils/issue";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";

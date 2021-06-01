@@ -8,7 +8,6 @@ import Big from "big.js";
 import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
-    pagedIterator,
     decodeFixedPointType,
     roundUpBtcToNearestSatoshi,
     encodeParachainRequest,
@@ -119,11 +118,6 @@ export interface IssueAPI extends TransactionAPI {
      */
     list(): Promise<IssueRequestExt[]>;
     /**
-     * @param perPage Number of issue requests to iterate through at a time
-     * @returns An AsyncGenerator to be used as an iterator
-     */
-    getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]>;
-    /**
      * @param account The ID of the account whose issue requests are to be retrieved
      * @returns A mapping from the issue request ID to the issue request object, corresponding to the requests of
      * the given account
@@ -231,10 +225,12 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         });
         for (const [vault, amount] of amountsPerVault) {
             const griefingCollateral = await this.getGriefingCollateral(amount);
-            const amountSat = new Big(btcToSat(amount.toString()));
-            const amountIssuing = this.api.createType("Issuing", amountSat.toString());
-            console.log(`AAAAAAAAAAAAAAAAAAAAAAAAAA amountSat: ${amountSat.toString()}, to vaultId: ${vault.toString()}`);
-            txes.push(this.api.tx.issue.requestIssue(amountIssuing, vault, dotToPlanck(griefingCollateral.toString()) as string));
+            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount.toString()));
+            console.log(`AAAAAAAAAAAAAAAAAAAAAAAAAA
+                amountSat: ${amountWrapped.toString()}
+                , to vaultId: ${vault.toString()}
+                , with griefing collateral: ${griefingCollateral.toString()}`);
+            txes.push(this.api.tx.issue.requestIssue(amountWrapped, vault, dotToPlanck(griefingCollateral.toString()) as string));
         }
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         console.log(`Total of ${txes.length} batched requests`);
@@ -245,12 +241,12 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
             const issueRequests = await this.getRequestsByIds(ids);
             return ids.map((issueId, idx) => ({ id: issueId, issueRequest: issueRequests[idx] }));
         } catch (e) {
-            return Promise.reject(e.message);
+            return Promise.reject(e);
         }
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedRequestId = this.api.createType("H256", requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
@@ -309,10 +305,6 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         const issueFee = await this.api.query.fee.issueFee.at(head);
         // TODO: return Big from decodeFixedPointType
         return new Big(decodeFixedPointType(issueFee));
-    }
-
-    getPagedIterator(perPage: number): AsyncGenerator<IssueRequest[]> {
-        return pagedIterator<IssueRequest>(this.api.query.issue.issueRequests, perPage);
     }
 
     async getRequestById(issueId: H256): Promise<IssueRequestExt> {

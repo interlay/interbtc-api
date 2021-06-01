@@ -5,7 +5,7 @@ import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
 /**
  * @category PolkaBTC Bridge
- * The type Big represents Backing or Issuing token denominations,
+ * The type Big represents Wrapped or Collateral token denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface ConstantsAPI {
@@ -46,11 +46,11 @@ export class DefaultConstantsAPI implements ConstantsAPI {
     constructor(private api: ApiPromise) {}
 
     getDotExistentialDeposit(): Balance {
-        return this.api.consts.backing.existentialDeposit;
+        return this.api.consts.collateral.existentialDeposit;
     }
 
     getPolkaBtcExistentialDeposit(): Balance {
-        return this.api.consts.issuing.existentialDeposit;
+        return this.api.consts.wrapped.existentialDeposit;
     }
 
     getSystemBlockHashCount(): BlockNumber {

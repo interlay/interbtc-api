@@ -220,10 +220,10 @@ describe("issue", () => {
             );
         });
 
-        it("should getGriefingCollateral (rounded)", async () => {
+        it("should getGriefingCollateral", async () => {
             const amountBtc = new Big("0.001");
             const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc);
-            assert.equal(griefingCollateral.toString(), "0.0001927616");
+            assert.equal(griefingCollateral.toString(), "0.0001927615935");
         });
     });
 

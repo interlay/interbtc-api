@@ -85,16 +85,6 @@ describe("vaultsAPI", () => {
         assert.isTrue(flaggedForTheft);
     });
 
-    it("should page listed requests", async () => {
-        const listingsPerPage = 2;
-        const requestsIterator = vaultsAPI.getPagedIterator(listingsPerPage);
-        let curr = await requestsIterator.next();
-        while (!curr.done) {
-            assert.isTrue(curr.value.length <= listingsPerPage);
-            curr = await requestsIterator.next();
-        }
-    });
-
     it("should list issue request by a vault", async () => {
         const bobId = api.createType("AccountId", ferdie_stash.address);
         const issueRequests = await vaultsAPI.mapIssueRequests(bobId);
@@ -140,8 +130,8 @@ describe("vaultsAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await vaultsAPI.getFeesIssuing(registry.createType("AccountId", charlie_stash.address));
-            const feesDOT = await vaultsAPI.getFeesBacking(registry.createType("AccountId", charlie_stash.address));
+            const feesPolkaBTC = await vaultsAPI.getFeesWrapped(registry.createType("AccountId", charlie_stash.address));
+            const feesDOT = await vaultsAPI.getFeesCollateral(registry.createType("AccountId", charlie_stash.address));
             const benchmarkFees = new Big("0");
             assert.isTrue(new Big(feesPolkaBTC).gte(benchmarkFees));
             assert.isTrue(new Big(feesDOT).gte(benchmarkFees));
