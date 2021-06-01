@@ -294,7 +294,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
                 redeemRequests.forEach((request, id) => {
                     if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
                         expired.add(id);
-                        callback(this.api.createType("H256", stripHexPrefix(id.toString())));
+                        callback(id);
                     }
                 });
             });
