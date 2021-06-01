@@ -7,6 +7,7 @@ import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
+import BN from "bn.js";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
@@ -284,26 +285,54 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
-        const expired = new Set();
+        const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
+        const unsubscribe = this.onRedeem(
+            account, 
+            (seen: Set<H256>, request: RedeemRequestExt, id: H256, currentBlockNumber: BN) => {
+                if (
+                    request.opentime.add(redeemPeriod).lte(currentBlockNumber) 
+                    && !seen.has(id) 
+                    && request.status.isPending
+                ) {
+                    seen.add(id);
+                    callback(id);
+                }
+            }
+        );
+        return unsubscribe;
+    }
+
+    async subscribeToRedeemCompletion(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
+        const unsubscribe = this.onRedeem(
+            account,
+            (seen: Set<H256>, request: RedeemRequestExt, id: H256, _currentBlockNumber: BN) => {
+                if (
+                    request.status.isCompleted
+                    && !seen.has(id) 
+                ) {
+                    seen.add(id);
+                    callback(id);
+                }
+            }
+        );
+        return unsubscribe;
+    }
+
+    async onRedeem(
+        account: AccountId,
+        fn: (set: Set<H256>, request: RedeemRequestExt, id: H256, blockNumber: BN) => void
+    ): Promise<() => void> {
+        const seen = new Set<H256>();
         try {
             const unsubscribe = await this.api.rpc.chain.subscribeFinalizedHeads(async (header: Header) => {
                 const redeemRequests = await this.mapForUser(account);
-                const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
-                const currentParachainBlockHeight = header.number.toBn();
                 redeemRequests.forEach((request, id) => {
-                    if (
-                        request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) 
-                        && !expired.has(id) 
-                        && request.status.isPending
-                    ) {
-                        expired.add(id);
-                        callback(id);
-                    }
+                    fn(seen, request, id, header.number.toBn());
                 });
             });
             return unsubscribe;
         } catch (error) {
-            console.log(`Error during expired redeem callback: ${error}`);
+            console.log(`Error onRedeem: ${error}`);
         }
         // as a fallback, return an empty void function
         return () => {
