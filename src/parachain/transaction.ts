@@ -36,7 +36,7 @@ export class DefaultTransactionAPI {
             transaction
                 .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
                 .then((u: () => void) => (unsubscribe = u))
-                .catch((error) => console.log(`Transaction failed: ${error}`));
+                .catch((error) => Promise.reject(error));
 
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;

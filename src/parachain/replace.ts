@@ -127,7 +127,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         try {
             return this.getRequestIdFromEvents(result.events).toString();
         } catch (e) {
-            return Promise.reject(e.message);
+            return Promise.reject(e);
         }
     }
 

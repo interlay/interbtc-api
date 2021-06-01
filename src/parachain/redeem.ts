@@ -193,13 +193,17 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const requestRedeemTx = this.api.tx.redeem.requestRedeem(amountSat, btcAddress, vaultId);
         const result = await this.sendLogged(requestRedeemTx, this.api.events.redeem.RequestRedeem);
-        const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
-        const redeemRequest = await this.getRequestById(id);
-        return { id, redeemRequest };
+        try {
+            const id = this.getRedeemIdFromEvents(result.events, this.api.events.redeem.RequestRedeem);
+            const redeemRequest = await this.getRequestById(id);
+            return { id, redeemRequest };
+        } catch (e) {
+            return Promise.reject(e);
+        }
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
-        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
+        const parsedRequestId = this.api.createType("H256", requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);

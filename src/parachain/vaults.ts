@@ -464,9 +464,8 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const totalLockedDot = await this.collateralAPI.totalLocked();
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
-        const exchangeRateU128 = new Big(exchangeRate);
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
-        return totalLockedDot.div(exchangeRateU128).div(secureCollateralThreshold).toString();
+        return totalLockedDot.div(exchangeRate).div(secureCollateralThreshold).toString();
     }
 
     async selectRandomVaultIssue(amount: Big): Promise<AccountId> {
