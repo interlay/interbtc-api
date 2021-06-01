@@ -17,7 +17,6 @@ import {
     satToBTC,
     getTxProof,
 } from "../utils";
-import { stripHexPrefix } from "../utils";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
 import { ElectrsAPI } from "../external";
@@ -292,7 +291,11 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
                 const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
                 const currentParachainBlockHeight = header.number.toBn();
                 redeemRequests.forEach((request, id) => {
-                    if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
+                    if (
+                        request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) 
+                        && !expired.has(id) 
+                        && request.status.isPending
+                    ) {
                         expired.add(id);
                         callback(id);
                     }
