@@ -149,7 +149,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
             const issueRequest = await this.getRequestById(id);
             return { id, issueRequest };
         } catch (e) {
-            return Promise.reject(e.message);
+            return Promise.reject(e);
         }
     }
 

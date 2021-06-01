@@ -198,7 +198,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const redeemRequest = await this.getRequestById(id);
             return { id, redeemRequest };
         } catch (e) {
-            return Promise.reject(e.message);
+            return Promise.reject(e);
         }
     }
 
