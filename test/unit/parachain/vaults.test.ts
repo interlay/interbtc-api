@@ -35,19 +35,19 @@ describe("vaultsAPI", () => {
         assert.equal(issuedPolkaBTCAmount.toString(), "1");
     });
 
-    it("should compute totalIssuedPolkaBTCAmount with nonzero sum", async () => {
+    it("should compute totalIssuedAmount with nonzero sum", async () => {
         const mockIssuedPolkaBTCAmount: PolkaBTC[] = [1, 2, 3].map((x) => numberToPolkaBTC(x));
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sinon.stub(vaultsAPI, <any>"getIssuedPolkaBTCAmounts").returns(Promise.resolve(mockIssuedPolkaBTCAmount));
-        const totalIssuedPolkaBTCAmount = await vaultsAPI.getTotalIssuedPolkaBTCAmount();
-        assert.equal(totalIssuedPolkaBTCAmount.toString(), "6");
+        sinon.stub(vaultsAPI, <any>"getIssuedAmounts").returns(Promise.resolve(mockIssuedPolkaBTCAmount));
+        const totalIssuedAmount = await vaultsAPI.getTotalIssuedAmount();
+        assert.equal(totalIssuedAmount.toString(), "6");
     });
 
-    it("should compute totalIssuedPolkaBTCAmount with zero sum", async () => {
+    it("should compute totalIssuedAmount with zero sum", async () => {
         const mockIssuedPolkaBTCAmount: PolkaBTC[] = [];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sinon.stub(vaultsAPI, <any>"getIssuedPolkaBTCAmounts").returns(Promise.resolve(mockIssuedPolkaBTCAmount));
-        const totalIssuedPolkaBTCAmount = await vaultsAPI.getTotalIssuedPolkaBTCAmount();
-        assert.equal(totalIssuedPolkaBTCAmount.toString(), "0");
+        sinon.stub(vaultsAPI, <any>"getIssuedAmounts").returns(Promise.resolve(mockIssuedPolkaBTCAmount));
+        const totalIssuedAmount = await vaultsAPI.getTotalIssuedAmount();
+        assert.equal(totalIssuedAmount.toString(), "0");
     });
 });

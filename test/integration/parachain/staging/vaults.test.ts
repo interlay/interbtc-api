@@ -36,13 +36,13 @@ describe("vaultsAPI", () => {
 
     function vaultIsATestVault(vaultAddress: string): boolean {
         return vaultAddress === dave_stash.address ||
-                vaultAddress === charlie_stash.address ||
-                vaultAddress === eve_stash.address ||
-                vaultAddress === ferdie_stash.address;
+            vaultAddress === charlie_stash.address ||
+            vaultAddress === eve_stash.address ||
+            vaultAddress === ferdie_stash.address;
     }
 
     it("should get issuable", async () => {
-        const issuablePolkaBTC = await vaultsAPI.getIssuablePolkaBTC();
+        const issuablePolkaBTC = await vaultsAPI.getTotalIssuableAmount();
         const issuablePolkaBTCBig = new Big(issuablePolkaBTC);
         const minIssuablePolkaBTC = new Big(1);
         assert.isTrue(issuablePolkaBTCBig.gte(minIssuablePolkaBTC));
@@ -109,8 +109,14 @@ describe("vaultsAPI", () => {
         });
     });
 
+    it("should get the issuable PolkaBTC for a vault", async () => {
+        const bobId = api.createType("AccountId", ferdie_stash.address);
+        const issuablePolkaBtc = await vaultsAPI.getIssuableAmount(bobId);
+        assert.isTrue(issuablePolkaBtc.gt(0));
+    });
+
     it("should get the issuable PolkaBTC", async () => {
-        const issuablePolkaBtc = await vaultsAPI.getIssuablePolkaBTC();
+        const issuablePolkaBtc = await vaultsAPI.getTotalIssuableAmount();
         const issuablePolkaBtcU128 = api.createType("u128", issuablePolkaBtc);
         const zeroU128 = api.createType("u128", 0);
         assert.isTrue(issuablePolkaBtcU128.gt(zeroU128));

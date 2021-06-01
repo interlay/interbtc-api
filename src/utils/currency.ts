@@ -33,7 +33,7 @@ export function roundUpBtcToNearestSatoshi(amountBtc: string): string {
     return satToBTC(amountSatRounded);
 }
 
-export function satToBTC(sat: string): string {
+export function satToBTC(sat: string | Big): string {
     const satAmount = roundUpBigToNearestInteger(new Big(sat));
     return satAmount.div(BTC_IN_SAT).toString();
 }
@@ -51,7 +51,7 @@ export function btcToSat(btc: string): string {
     return roundUpBigToNearestInteger(satAmount).toString();
 }
 
-export function planckToDOT(planck: string): string {
+export function planckToDOT(planck: string | Big): string {
     const planckAmount = new Big(planck);
     return planckAmount.div(DOT_IN_PLANCK).toString();
 }

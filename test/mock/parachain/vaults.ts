@@ -41,10 +41,13 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getIssuedAmount(vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getTotalIssuedPolkaBTCAmount(): Promise<Big> {
+    getIssuableAmount(vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getIssuablePolkaBTC(): Promise<string> {
+    getTotalIssuedAmount(): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
+    getTotalIssuableAmount(): Promise<string> {
         throw new Error("Method not implemented.");
     }
     selectRandomVaultIssue(btc: Big): Promise<AccountId> {
@@ -90,9 +93,6 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
         throw new Error("Method not implemented.");
     }
     getPunishmentFee(): Promise<string> {
-        throw new Error("Method not implemented.");
-    }
-    getPolkaBTCCapacity(): Promise<string> {
         throw new Error("Method not implemented.");
     }
     withdrawCollateral(amount: Big): Promise<void> {
