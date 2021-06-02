@@ -133,13 +133,12 @@ export default class Mock implements ProviderInterface {
         };
     }
 
-    // eslint-disable-next-line @typescript-eslint/require-await
-    public async send(method: string, params: any[]): Promise<unknown> {
+    public async send<T>(method: string, params: any[]): Promise<T> {
         if (!this.requests[method]) {
             throw new Error(`provider.send: Invalid method '${method}'`);
         }
 
-        return this.requests[method](this.db, params);
+        return this.requests[method](this.db, params) as T;
     }
 
     // eslint-disable-next-line @typescript-eslint/require-await

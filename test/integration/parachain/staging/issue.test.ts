@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { btcToSat, dotToPlanck } from "../../../../src/utils";
+import { btcToSat, dotToPlanck, satToBTC } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
@@ -125,6 +125,7 @@ describe("issue", () => {
         it("should request and manually execute issue", async () => {
             const amount = new Big("0.001");
             const feesToPay = await issueAPI.getFeesToPay(amount);
+            const oneSatoshi = new Big(satToBTC("1"));
             const issueResult = await issue(
                 api,
                 electrsAPI,
@@ -137,7 +138,7 @@ describe("issue", () => {
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount.sub(feesToPay).toString(),
+                amount.sub(feesToPay).sub(oneSatoshi).toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 
