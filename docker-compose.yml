@@ -65,7 +65,7 @@ services:
             - |
                 echo '{"alice_stash": "0x3c881bc4d45926680c64a7f9315eeda3dd287f8d598f3653d7c107799c5422b3"}' > keyfile.json
                 echo "Sleeping..."
-                sleep 10
+                sleep 20
                 staked-relayer --keyfile="keyfile.json" --keyname=alice_stash --btc-parachain-url 'ws://polkabtc:9944' --auto-fund-with-faucet-url '[::0]:3036'
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443

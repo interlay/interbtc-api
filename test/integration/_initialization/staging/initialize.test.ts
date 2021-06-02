@@ -60,8 +60,8 @@ describe("Initialize parachain state", () => {
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
-        // Sleep for 30 sec to wait for vaults to register
-        await sleep(30 * 1000);
+        // Sleep for 2 min to wait for vaults to register
+        await sleep(2 * 60 * 1000);
     });
 
     after(async () => {

@@ -224,12 +224,12 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
             console.log(`Issuing ${amount.toString()} with vault ${vaultId.toString()}`);
         });
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = await this.getGriefingCollateral(amount);
+            const griefingCollateral = (await this.getGriefingCollateral(amount)).mul(1.05);
             const amountWrapped = this.api.createType("Wrapped", btcToSat(amount.toString()));
-            console.log(`AAAAAAAAAAAAAAAAAAAAAAAAAA
-                amountSat: ${amountWrapped.toString()}
-                , to vaultId: ${vault.toString()}
-                , with griefing collateral: ${griefingCollateral.toString()}`);
+            console.log(`Issuing:
+                - amountSat: ${amountWrapped.toString()}
+                - to vaultId: ${vault.toString()}
+                - with griefing collateral: ${griefingCollateral.toString()}`);
             txes.push(this.api.tx.issue.requestIssue(amountWrapped, vault, dotToPlanck(griefingCollateral.toString()) as string));
         }
         // batchAll fails atomically, batch allows partial successes
