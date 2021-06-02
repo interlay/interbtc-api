@@ -270,7 +270,12 @@ describe("issue", () => {
         it("should request and manually execute issue", async () => {
             const amount = new Big("0.001");
             const feesToPay = await issueAPI.getFeesToPay(amount);
+<<<<<<< HEAD
             const issueResult = await issueSingle(
+=======
+            const oneSatoshi = new Big(satToBTC("1"));
+            const issueResult = await issue(
+>>>>>>> 575114bf6d5945e78e92890c1da80ab899faaa37
                 api,
                 electrsAPI,
                 bitcoinCoreClient,
@@ -282,7 +287,7 @@ describe("issue", () => {
             );
             assert.equal(
                 issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
-                amount.sub(feesToPay).toString(),
+                amount.sub(feesToPay).sub(oneSatoshi).toString(),
                 "Final balance was not increased by the exact amount specified"
             );
 

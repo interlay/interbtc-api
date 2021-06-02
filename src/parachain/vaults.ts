@@ -148,14 +148,19 @@ export interface VaultsAPI extends TransactionAPI {
      */
     getIssuedAmount(vaultId: AccountId): Promise<Big>;
     /**
+     * @param vaultId The vault account ID
+     * @returns The amount of PolkaBTC issuable by this vault
+     */
+    getIssuableAmount(vaultId: AccountId): Promise<Big>;
+    /**
      * @returns The total amount of PolkaBTC issued by the vaults
      */
-    getTotalIssuedPolkaBTCAmount(): Promise<Big>;
+    getTotalIssuedAmount(): Promise<Big>;
     /**
      * @returns The total amount of PolkaBTC that can be issued, considering the DOT
      * locked by the vaults
      */
-    getIssuablePolkaBTC(): Promise<string>;
+    getTotalIssuableAmount(): Promise<string>;
     /**
      * @param amount PolkaBTC amount to issue
      * @returns A vault that has sufficient DOT collateral to issue the given PolkaBTC amount
@@ -236,12 +241,6 @@ export interface VaultsAPI extends TransactionAPI {
      */
     getPunishmentFee(): Promise<string>;
     /**
-     * @returns Total PolkaBTC that the total collateral in the system can back.
-     * If every vault is properly collateralized, this value is equivalent to the sum of
-     * issued PolkaBTC and issuable PolkaBTC
-     */
-    getPolkaBTCCapacity(): Promise<string>;
-    /**
      * Set an account to use when sending transactions from this API
      * @param account Keyring account
      */
@@ -292,8 +291,8 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async lockAdditionalCollateral(amount: Big): Promise<void> {
         const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount.toString()) as string);
-        const tx = this.api.tx.vaultRegistry.lockAdditionalCollateral(amountAsPlanck);
-        await this.sendLogged(tx, this.api.events.vaultRegistry.LockAdditionalCollateral);
+        const tx = this.api.tx.vaultRegistry.depositCollateral(amountAsPlanck);
+        await this.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
     }
 
     async list(): Promise<VaultExt[]> {
@@ -435,14 +434,27 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return new Big(satToBTC(vault.issued_tokens.toString()));
     }
 
-    private async getIssuedPolkaBTCAmounts(): Promise<Big[]> {
+    async getIssuableAmount(vaultId: AccountId): Promise<Big> {
+        const vault: VaultExt = await this.get(vaultId);
+        const lockedDot = new Big(planckToDOT(vault.backing_collateral.toString()));
+        const polkaBtcCapacity = await this.calculateCapacity(lockedDot);
+
+        const issuedTokens = new Big(vault.issued_tokens.toString());
+        const toBeIssuedTokens = new Big(vault.to_be_issued_tokens.toString());
+        const backedTokens = issuedTokens.add(toBeIssuedTokens);
+        const issuedAmountBtc = satToBTC(backedTokens);
+
+        return polkaBtcCapacity.sub(issuedAmountBtc);
+    }
+
+    private async getIssuedAmounts(): Promise<Big[]> {
         const vaults: VaultExt[] = await this.list();
         const issuedTokens: Big[] = vaults.map((v) => new Big(satToBTC(v.issued_tokens.toString())));
         return issuedTokens;
     }
 
-    async getTotalIssuedPolkaBTCAmount(): Promise<Big> {
-        const issuedTokens: Big[] = await this.getIssuedPolkaBTCAmounts();
+    async getTotalIssuedAmount(): Promise<Big> {
+        const issuedTokens: Big[] = await this.getIssuedAmounts();
         if (issuedTokens.length) {
             const sumReducer = (accumulator: Big, currentValue: Big) =>
                 accumulator.add(currentValue);
@@ -451,21 +463,19 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return new Big(0);
     }
 
-    async getIssuablePolkaBTC(): Promise<string> {
-        const polkaBTCCapacityString = await this.getPolkaBTCCapacity();
-        const polkaBTCCapacityBig = new Big(polkaBTCCapacityString);
-        const issuedPolkaBTCSatoshiString = (await this.getTotalIssuedPolkaBTCAmount()).toString();
-        const issuedPolkaBTCString = satToBTC(issuedPolkaBTCSatoshiString);
-        const issuedPolkaBTCBig = new Big(issuedPolkaBTCString);
-        return polkaBTCCapacityBig.sub(issuedPolkaBTCBig).toString();
+    async getTotalIssuableAmount(): Promise<string> {
+        const totalLockedDot = await this.collateralAPI.totalLocked();
+        const polkaBtcCapacity = await this.calculateCapacity(totalLockedDot);
+        const issuedAmountSatoshi = await this.getTotalIssuedAmount();
+        const issuedAmountBtc = satToBTC(issuedAmountSatoshi);
+        return polkaBtcCapacity.sub(issuedAmountBtc).toString();
     }
 
-    async getPolkaBTCCapacity(): Promise<string> {
-        const totalLockedDot = await this.collateralAPI.totalLocked();
+    private async calculateCapacity(collateral: Big): Promise<Big> {
         const oracle = new DefaultOracleAPI(this.api);
         const exchangeRate = await oracle.getExchangeRate();
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
-        return totalLockedDot.div(exchangeRate).div(secureCollateralThreshold).toString();
+        return collateral.div(exchangeRate).div(secureCollateralThreshold);
     }
 
     async selectRandomVaultIssue(amount: Big): Promise<AccountId> {

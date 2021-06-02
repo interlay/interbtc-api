@@ -65,6 +65,11 @@ export async function issueSingle(
         if (triggerRefund) {
             // Send 1 more Btc than needed
             amountAsBtc = amountAsBtc.add(1);
+        } else if (autoExecute === false) {
+            // Send 1 less Satoshi than requested
+            // to trigger the user failsafe and disable auto-execution.
+            const oneSatoshi = new Big(satToBTC("1"));
+            amountAsBtc = amountAsBtc.sub(oneSatoshi);
         }
 
         // send btc tx

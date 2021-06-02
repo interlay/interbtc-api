@@ -5,6 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces/system";
 import { Bytes } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
+import BN from "bn.js";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
@@ -15,7 +16,6 @@ import {
     satToBTC,
     getTxProof,
 } from "../utils";
-import { stripHexPrefix } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions } from "../utils/issueRedeem";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
@@ -48,7 +48,6 @@ export interface RedeemAPI extends TransactionAPI {
     /**
      * Send a redeem request transaction
      * @param amount PolkaBTC amount (denoted in Bitcoin) to redeem
->>>>>>> 54d4ba92bf8213f6bda540fd4851b5ea46e6fd84
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
      * @param options (optional): an object specifying
      * - atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
@@ -236,6 +235,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const amountWrapped = this.api.createType("Wrapped", btcToSat(amount.toString()));
             txes.push(this.api.tx.redeem.requestRedeem(amountWrapped, btcAddress, vault));
         }
+        // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         try {
             const result = await this.sendLogged(batch, this.api.events.issue.RequestRedeem);
@@ -333,22 +333,54 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
-        const expired = new Set();
+        const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
+        const unsubscribe = this.onRedeem(
+            account,
+            (seen: Set<H256>, request: RedeemRequestExt, id: H256, currentBlockNumber: BN) => {
+                if (
+                    request.opentime.add(redeemPeriod).lte(currentBlockNumber)
+                    && !seen.has(id)
+                    && request.status.isPending
+                ) {
+                    seen.add(id);
+                    callback(id);
+                }
+            }
+        );
+        return unsubscribe;
+    }
+
+    async subscribeToRedeemCompletion(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
+        const unsubscribe = this.onRedeem(
+            account,
+            (seen: Set<H256>, request: RedeemRequestExt, id: H256, _currentBlockNumber: BN) => {
+                if (
+                    request.status.isCompleted
+                    && !seen.has(id)
+                ) {
+                    seen.add(id);
+                    callback(id);
+                }
+            }
+        );
+        return unsubscribe;
+    }
+
+    async onRedeem(
+        account: AccountId,
+        fn: (set: Set<H256>, request: RedeemRequestExt, id: H256, blockNumber: BN) => void
+    ): Promise<() => void> {
+        const seen = new Set<H256>();
         try {
             const unsubscribe = await this.api.rpc.chain.subscribeFinalizedHeads(async (header: Header) => {
                 const redeemRequests = await this.mapForUser(account);
-                const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
-                const currentParachainBlockHeight = header.number.toBn();
                 redeemRequests.forEach((request, id) => {
-                    if (request.opentime.add(redeemPeriod).lte(currentParachainBlockHeight) && !expired.has(id)) {
-                        expired.add(id);
-                        callback(this.api.createType("H256", stripHexPrefix(id.toString())));
-                    }
+                    fn(seen, request, id, header.number.toBn());
                 });
             });
             return unsubscribe;
         } catch (error) {
-            console.log(`Error during expired redeem callback: ${error}`);
+            console.log(`Error onRedeem: ${error}`);
         }
         // as a fallback, return an empty void function
         return () => {

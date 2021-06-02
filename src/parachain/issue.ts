@@ -232,6 +232,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
                 , with griefing collateral: ${griefingCollateral.toString()}`);
             txes.push(this.api.tx.issue.requestIssue(amountWrapped, vault, dotToPlanck(griefingCollateral.toString()) as string));
         }
+        // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         console.log(`Total of ${txes.length} batched requests`);
         console.log(`Atomic: ${atomic}`);
