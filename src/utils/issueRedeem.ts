@@ -47,7 +47,7 @@ export function allocateAmountsToVaults(
     vaultsWithAvailableAmounts: Map<AccountId, Big>,
     amountToAllocate: Big
 ): Map<AccountId, Big> {
-    const maxReservationPercent = 40; // don't reserve more than 95% of a vault's collateral
+    const maxReservationPercent = 95; // don't reserve more than 95% of a vault's collateral
     amountToAllocate = new Big(amountToAllocate); //will mutate
     const allocations = new Map<AccountId, Big>();
     // iterable array in ascending order of issuing capacity:

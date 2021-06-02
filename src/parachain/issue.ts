@@ -224,7 +224,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
             console.log(`Issuing ${amount.toString()} with vault ${vaultId.toString()}`);
         });
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = (await this.getGriefingCollateral(amount)).mul(1.05);
+            const griefingCollateral = await this.getGriefingCollateral(amount);
             const amountWrapped = this.api.createType("Wrapped", btcToSat(amount.toString()));
             console.log(`Issuing:
                 - amountSat: ${amountWrapped.toString()}
