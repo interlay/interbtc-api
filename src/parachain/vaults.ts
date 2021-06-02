@@ -291,8 +291,8 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async lockAdditionalCollateral(amount: Big): Promise<void> {
         const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount.toString()) as string);
-        const tx = this.api.tx.vaultRegistry.lockAdditionalCollateral(amountAsPlanck);
-        await this.sendLogged(tx, this.api.events.vaultRegistry.LockAdditionalCollateral);
+        const tx = this.api.tx.vaultRegistry.depositCollateral(amountAsPlanck);
+        await this.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
     }
 
     async list(): Promise<VaultExt[]> {
