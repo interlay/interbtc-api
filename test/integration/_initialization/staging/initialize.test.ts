@@ -4,18 +4,20 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { assert } from "chai";
 import Big from "big.js";
 import BN from "bn.js";
+import { AccountId } from "@polkadot/types/interfaces";
 
-import { 
-    IssueAPI, 
-    ElectrsAPI, 
-    BitcoinCoreClient, 
-    createPolkadotAPI, 
-    OracleAPI, 
-    RedeemAPI, 
+import {
+    IssueAPI,
+    ElectrsAPI,
+    BitcoinCoreClient,
+    createPolkadotAPI,
+    OracleAPI,
+    RedeemAPI,
     TreasuryAPI,
     BTCRelayAPI,
     DefaultBTCRelayAPI,
     setNumericStorage,
+    DefaultVaultsAPI,
 } from "../../../../src";
 import { issue } from "../../../../src/utils/issue";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -44,6 +46,20 @@ describe("Initialize parachain state", () => {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
+        return api.createType("AccountId", keyPair.address);
+    }
+
+    async function waitForRegister(api: DefaultVaultsAPI, accountId: AccountId) {
+        while (true) {
+            try {
+                await api.get(accountId);
+                return;
+            } catch (_) { }
+            await sleep(1000);
+        }
+    }
+
     before(async function () {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         keyring = new Keyring({ type: "sr25519" });
@@ -60,8 +76,10 @@ describe("Initialize parachain state", () => {
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
-        // Sleep for 30 sec to wait for vaults to register
-        await sleep(30 * 1000);
+        const vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest);
+
+        // wait for all vaults to register
+        await Promise.all([alice, bob, charlie_stash].map(accountIdFromKeyring).map((accountId) => waitForRegister(vaultsAPI, accountId)));
     });
 
     after(async () => {
@@ -78,7 +96,7 @@ describe("Initialize parachain state", () => {
         assert.equal(stableBitcoinConfirmationsToSet, stableBitcoinConfirmations, "Setting the Bitcoin confirmations failed");
         const stableParachainConfirmations = await btcRelayAPI.getStableParachainConfirmations();
         assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
-        
+
         await bitcoinCoreClient.mineBlocksWithoutDelay(10);
     });
 

@@ -9,6 +9,8 @@ import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTreasuryAPI } from "../parachain/treasury";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 
+const RETRY_TIMEOUT_MS = 1000;
+
 export interface IssueResult {
     request: IssueRequestResult;
     initialDotBalance: Big;
@@ -42,10 +44,10 @@ export async function issue(
         const vaultAccountId = vaultAddress ? api.createType("AccountId", vaultAddress) : undefined;
 
         // request issue
-    
+
         const requestResult = await issueAPI.request(amount, vaultAccountId);
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
-    
+
 
         let amountAsBtc = new Big(satToBTC(
             (issueRequest as IssueRequestExt).amount.add((issueRequest as IssueRequestExt).fee).toString()
@@ -75,7 +77,7 @@ export async function issue(
         } else {
             // wait for vault to execute issue
             while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {
-                await sleep(1000);
+                await sleep(RETRY_TIMEOUT_MS);
             }
         }
 

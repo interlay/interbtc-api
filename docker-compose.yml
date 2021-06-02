@@ -51,21 +51,16 @@ services:
             - /bin/sh
             - -c
             - |
-                echo "Sleeping..."
-                sleep 5
                 electrs -vvvv --network regtest --jsonrpc-import --cors "*" --cookie "rpcuser:rpcpassword" --daemon-rpc-addr bitcoind:18443 --http-addr "[::0]:3002" --index-unspendables
         ports:
             - "3002:3002"
     staked-relayer:
-        # only start staked relayer after mining to prevent long catch-up
         image: "registry.gitlab.com/interlay/polkabtc-clients/staked-relayer:0.7.9"
         command:
             - /bin/sh
             - -c
             - |
                 echo '{"alice_stash": "0x3c881bc4d45926680c64a7f9315eeda3dd287f8d598f3653d7c107799c5422b3"}' > keyfile.json
-                echo "Sleeping..."
-                sleep 10
                 staked-relayer --keyfile="keyfile.json" --keyname=alice_stash --btc-parachain-url 'ws://polkabtc:9944' --auto-fund-with-faucet-url '[::0]:3036'
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443
@@ -78,8 +73,6 @@ services:
             - /bin/sh
             - -c
             - |
-                echo "Sleeping..."
-                sleep 5
                 oracle --keyring=charlie --btc-parachain-url 'ws://polkabtc:9944'
         environment:
             RUST_LOG: info
@@ -90,8 +83,6 @@ services:
             - -c
             - |
                 echo '{"bob_stash": "0x1a7d114100653850c65edecda8a9b2b4dd65d900edef8e70b1a6ecdcda967056"}' > keyfile.json
-                echo "Sleeping..."
-                sleep 5
                 faucet --keyfile="keyfile.json" --keyname=bob_stash --btc-parachain-url 'ws://polkabtc:9944' --user-allowance 1 --vault-allowance 500 --http-addr '[::0]:3036'
         environment:
             RUST_LOG: info
@@ -105,8 +96,7 @@ services:
             - |
                 echo '{"charlie_stash": "0x66256c4e2f90e273bf387923a9a7860f2e9f47a1848d6263de512f7fb110fc08"}' > keyfile.json
                 echo "Sleeping..."
-                # sleep for 30s to wait for bitcoin to create the Charlie wallet
-                # and also to ensure that the issue period and redeem period are set
+                # sleep for 30s to ensure that the issue period and redeem period are set
                 sleep 30
                 vault --keyfile="keyfile.json" --keyname=charlie_stash --auto-register-with-collateral 1000000000000000000 --btc-parachain-url 'ws://polkabtc:9944'
         environment:
@@ -119,8 +109,7 @@ services:
             - |
                 echo '{"dave_stash": "0x8766312742c2ebdc78713dab36f8eb328d30d053d702da8167e4672d615f421e"}' > keyfile.json
                 echo "Sleeping..."
-                # sleep for 30s to wait for bitcoin to create the Dave wallet
-                # and also to ensure that the issue period and redeem period are set
+                # sleep for 30s to ensure that the issue period and redeem period are set
                 sleep 30
                 vault --keyfile="keyfile.json" --keyname=dave_stash --auto-register-with-collateral 1000000000000000000 --no-issue-execution --btc-parachain-url 'ws://polkabtc:9944'
         environment:
@@ -133,8 +122,7 @@ services:
             - |
                 echo '{"eve_stash": "0x26eda5da160bf8e1810336f97a31d3271fe8b386c4e5b7b4367e55ea33f297d0"}' > keyfile.json
                 echo "Sleeping..."
-                # sleep for 30s to wait for bitcoin to create the Eve wallet
-                # and also to ensure that the issue period and redeem period are set
+                # sleep for 30s to ensure that the issue period and redeem period are set
                 sleep 30
                 vault --keyfile="keyfile.json" --keyname=eve_stash --auto-register-with-collateral 1000000000000 --no-issue-execution --btc-parachain-url 'ws://polkabtc:9944'
         environment:
@@ -147,8 +135,7 @@ services:
             - |
                 echo '{"ferdie_stash": "0x32a1ce8b76ea5820c59663458a0f5dd90b70d9c69beff048ddcdb6daa451afd9"}' > keyfile.json
                 echo "Sleeping..."
-                # sleep for 30s to wait for bitcoin to create the Ferdie wallet
-                # and also to ensure that the issue period and redeem period are set
+                # sleep for 30s to ensure that the issue period and redeem period are set
                 sleep 30
                 vault --keyfile="keyfile.json" --keyname=ferdie_stash --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://polkabtc:9944'
         environment:
