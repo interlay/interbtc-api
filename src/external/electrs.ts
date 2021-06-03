@@ -74,9 +74,9 @@ export interface ElectrsAPI {
     getTransactionBlockHeight(txid: string): Promise<number | undefined>;
     /**
      * @param txid The ID of a Bitcoin transaction
-     * @returns The raw transaction data, represented as a Buffer object
+     * @returns The raw transaction data, represented as a hex string
      */
-    getRawTransaction(txid: string): Promise<Buffer>;
+    getRawTransaction(txid: string): Promise<string>;
     /**
      * Fetch the first bitcoin transaction ID based on the OP_RETURN field, recipient and amount.
      * Throw an error unless there is exactly one transaction with the given opcode.
@@ -140,7 +140,7 @@ export interface ElectrsAPI {
      */
     getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]>;
     /**
-     * Return a promise that either resolves to the first txid with the given opreturn `data`, 
+     * Return a promise that either resolves to the first txid with the given opreturn `data`,
      * or rejects if the `timeout` has elapsed.
      *
      * @remarks
@@ -353,16 +353,16 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         ]);
         // To avoid taking an ApiPromise object as a constructor parameter,
         // use the default TypeRegistry (without custom type metadata),
-        // because the Bytes type instantiated is provided by default. 
+        // because the Bytes type instantiated is provided by default.
         const registry = new TypeRegistry();
-        
+
         const merkleProof = registry.createType("Bytes", "0x" + unparsedMerkleProof);
-        const rawTx = registry.createType("Bytes", "0x" + unparsedRawTx.toString("hex"));
+        const rawTx = registry.createType("Bytes", "0x" + unparsedRawTx);
         return [merkleProof, rawTx];
     }
 
-    getRawTransaction(txid: string): Promise<Buffer> {
-        return this.getData(this.txApi.getTxRaw(txid, { responseType: "arraybuffer" }));
+    getRawTransaction(txid: string): Promise<string> {
+        return this.getData(this.txApi.getTxHex(txid));
     }
 
     /**

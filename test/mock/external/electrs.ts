@@ -61,25 +61,23 @@ export class MockElectrsAPI implements ElectrsAPI {
             version: 1,
         });
     }
-    
+
     getUtxoAmount(_txid: string, _recipient: string): Promise<number> {
         return Promise.resolve(1);
     }
 
-    getRawTransaction(): Promise<Buffer> {
+    getRawTransaction(): Promise<string> {
         return Promise.resolve(
-            Buffer.from(
-                "020000000001012a489eaa754d9aaf5198627d79e9234" +
-                    "dba945436503aa445c1b82d6bc194c3270100000000ff" +
-                    "ffffff0280380100000000001600145601eeffa54c8b7" +
-                    "e306c0b3a50c48121c42d09be8d4e0300000000001600" +
-                    "14a528e6f91766262e3d1b22e52af342f55b2d551c024" +
-                    "7304402206fdaa5186ff79740b0fc2848f3ee40b48aa0" +
-                    "cbdf9000304fbe6d35d7b1ee0c3602202cf90c73b0b83" +
-                    "4c8cc78c0b9e988bc2c5781fa617551c8cb5aa7b555ef" +
-                    "e7ab0a012102170f80797baa55d091f85e38a7b463c56" +
-                    "905c09ef6024e83039037be5cd7550900000000"
-            )
+            "020000000001012a489eaa754d9aaf5198627d79e9234" +
+                "dba945436503aa445c1b82d6bc194c3270100000000ff" +
+                "ffffff0280380100000000001600145601eeffa54c8b7" +
+                "e306c0b3a50c48121c42d09be8d4e0300000000001600" +
+                "14a528e6f91766262e3d1b22e52af342f55b2d551c024" +
+                "7304402206fdaa5186ff79740b0fc2848f3ee40b48aa0" +
+                "cbdf9000304fbe6d35d7b1ee0c3602202cf90c73b0b83" +
+                "4c8cc78c0b9e988bc2c5781fa617551c8cb5aa7b555ef" +
+                "e7ab0a012102170f80797baa55d091f85e38a7b463c56" +
+                "905c09ef6024e83039037be5cd7550900000000"
         );
     }
 
