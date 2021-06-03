@@ -52,18 +52,16 @@ describe("ElectrsAPI testnet", function () {
 
     it("should return correct raw tx", async () => {
         // eslint-disable-next-line max-len
-        const raw = Buffer.from(
+        const raw =
             "020000000001012a489eaa754d9aaf5198627d79e9234dba945436" +
-                    "503aa445c1b82d6bc194c3270100000000ffffffff028038010000" +
-                    "0000001600145601eeffa54c8b7e306c0b3a50c48121c42d09be8d" +
-                    "4e030000000000160014a528e6f91766262e3d1b22e52af342f55b" +
-                    "2d551c0247304402206fdaa5186ff79740b0fc2848f3ee40b48aa0" +
-                    "cbdf9000304fbe6d35d7b1ee0c3602202cf90c73b0b834c8cc78c0" +
-                    "b9e988bc2c5781fa617551c8cb5aa7b555efe7ab0a012102170f80" +
-                    "797baa55d091f85e38a7b463c56905c09ef6024e83039037be5cd7" +
-                    "550900000000",
-            "hex"
-        );
+            "503aa445c1b82d6bc194c3270100000000ffffffff028038010000" +
+            "0000001600145601eeffa54c8b7e306c0b3a50c48121c42d09be8d" +
+            "4e030000000000160014a528e6f91766262e3d1b22e52af342f55b" +
+            "2d551c0247304402206fdaa5186ff79740b0fc2848f3ee40b48aa0" +
+            "cbdf9000304fbe6d35d7b1ee0c3602202cf90c73b0b834c8cc78c0" +
+            "b9e988bc2c5781fa617551c8cb5aa7b555efe7ab0a012102170f80" +
+            "797baa55d091f85e38a7b463c56905c09ef6024e83039037be5cd7" +
+            "550900000000";
         const raw_tx = await electrsAPI.getRawTransaction(txid);
         assert.deepEqual(raw_tx, raw);
     });
@@ -126,12 +124,7 @@ describe("ElectrsAPI regtest", function () {
         const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
         const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
         const amount = new Big("0.00029");
-        const txData = await bitcoinCoreClient.sendBtcTxAndMine(
-            recipientAddress,
-            amount,
-            6,
-            opReturnValue
-        );
+        const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amount, 6, opReturnValue);
         const txid = await electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount);
         assert.strictEqual(txid, txData.txid);
     });
