@@ -198,15 +198,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
             const atomic = !!options?.atomic;
             const retries = options?.retries || 0;
-            console.log("Available vaults on REDEEM:");
-            [...availableVaults.entries()].map(([vaultId, amount]) => {
-                console.log(`${amount.toString()} available with ${vaultId.toString()}`);
-            });
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
-            console.log("Allocated vaults on REDEEM:");
-            [...amountsPerVault.entries()].map(([vaultId, amount]) => {
-                console.log(`${amount.toString()} allocated to ${vaultId.toString()}`);
-            });
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             const successfulSum = result.reduce((sum, req) => sum.plus(req.redeemRequest.amount_btc.toString()), new Big(0));
             const remainder = amount.sub(successfulSum);
@@ -226,13 +218,8 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     ): Promise<RequestResult[]> {
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
-        console.log("USING VAULTS on REDEEM:");
-        [...amountsPerVault.entries()].map(([vaultId, amount]) => {
-            console.log(`Redeeming ${amount.toString()} with vault ${vaultId.toString()}`);
-        });
         for (const [vault, amount] of amountsPerVault) {
-            console.log(`BBBBBBBBBBBBBBBBBBBBBBBBBB amountSat: ${btcToSat(amount.toString())}, to vaultId: ${vault.toString()}`);
-            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount.toString()));
+            const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount.toString()));
             txes.push(this.api.tx.redeem.requestRedeem(amountWrapped, btcAddress, vault));
         }
         // batchAll fails atomically, batch allows partial successes

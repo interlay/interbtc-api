@@ -193,15 +193,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
             const atomic = !!options?.atomic;
             const retries = options?.retries || 0;
-            console.log("Available vaults on ISSUE:");
-            [...availableVaults.entries()].map(([vaultId, amount]) => {
-                console.log(`${amount.toString()} available with ${vaultId.toString()}`);
-            });
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
-            console.log("Allocated vaults on ISSUE:");
-            [...amountsPerVault.entries()].map(([vaultId, amount]) => {
-                console.log(`${amount.toString()} allocated to ${vaultId.toString()}`);
-            });
             const result = await this.requestAdvanced(amountsPerVault, atomic);
             const successfulSum = result.reduce((sum, req) => sum.plus(req.issueRequest.amount.toString()), new Big(0));
             const remainder = amount.sub(successfulSum);
@@ -220,8 +212,10 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     ): Promise<IssueRequestResult[]> {
         const txs = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = (await this.getGriefingCollateral(amount)).add(1);
-            const griefingCollateralCompact = this.api.createType("Compact<Collateral>", dotToPlanck(griefingCollateral.toString()));
+            const griefingCollateral = await this.getGriefingCollateral(amount);
+            // mul() here is a hacky workaround for rounding errors
+            const griefingCollateralPlanck = new Big(dotToPlanck(griefingCollateral.toString()) || "0").mul(1.01);
+            const griefingCollateralCompact = this.api.createType("Compact<Collateral>", griefingCollateralPlanck.toString());
             const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount.toString()));
             txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralCompact));
         }

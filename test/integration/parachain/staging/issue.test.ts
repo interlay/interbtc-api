@@ -86,15 +86,15 @@ describe("issue", () => {
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
 
-            const amount = new Big(19000); // approx. 1.5 vault capacity
+            const amount = new Big(19000); // approx. 1.2x vault capacity
             const requestResults = await issueAPI.request(amount, { atomic: true });
             assert.equal(
                 requestResults.length,
                 2,
                 "Created wrong amount of requests, ensure vault collateral settings in docker are correct"
             );
-            const firstExpected = new Big(1642789213955);
-            const secondExpected = new Big(691700721581);
+            const firstExpected = new Big(1634575267885);
+            const secondExpected = new Big(255924732116);
             assert.deepEqual(
                 requestResults[0].issueRequest.amount.toString(),
                 firstExpected.toString(),
