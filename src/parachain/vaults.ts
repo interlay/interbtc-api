@@ -516,25 +516,17 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async getVaultsWithIssuableTokens(): Promise<Map<AccountId, Big>> {
-        try {
-            const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
-            return new Map(
-                vaults.map(([id, issuableTokens]) => [id, new Big(satToBTC(this.unwrapCurrency(issuableTokens).toString()))])
-            );
-        } catch (e) {
-            return Promise.reject("Did not find vault with issuable tokens");
-        }
+        const vaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
+        return new Map(
+            vaults.map(([id, issuableTokens]) => [id, new Big(satToBTC(this.unwrapCurrency(issuableTokens).toString()))])
+        );
     }
 
     async getVaultsWithRedeemableTokens(): Promise<Map<AccountId, Big>> {
-        try {
-            const vaults = await this.api.rpc.vaultRegistry.getVaultsWithRedeemableTokens();
-            return new Map(
-                vaults.map(([id, redeemableTokens]) => [id, new Big(satToBTC(this.unwrapCurrency(redeemableTokens).toString()))])
-            );
-        } catch (e) {
-            return Promise.reject("Did not find vault with redeemable tokens");
-        }
+        const vaults = await this.api.rpc.vaultRegistry.getVaultsWithRedeemableTokens();
+        return new Map(
+            vaults.map(([id, redeemableTokens]) => [id, new Big(satToBTC(this.unwrapCurrency(redeemableTokens).toString()))])
+        );
     }
 
     async isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {

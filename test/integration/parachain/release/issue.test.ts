@@ -43,7 +43,9 @@ describe("issue", () => {
         // request issue
         issueAPI.setAccount(alice);
         const amount = new Big("0.0000121");
-        const requestResult = await issueAPI.request(amount);
+        const requestResults = await issueAPI.request(amount);
+        assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
+        const requestResult = requestResults[0];
 
         // The cancellation period set by docker-compose is 50 blocks, each being relayed every 6s
         await bitcoinCoreClient.mineBlocks(50);

@@ -1,4 +1,4 @@
-import Big from "big.js";
+import Big, { RoundingMode } from "big.js";
 
 // set maximum exponents
 Big.PE = 21;
@@ -60,7 +60,7 @@ export function dotToPlanck(dot: string): string | undefined {
     const dotAmount = new Big(dot);
     const planckAmount = dotAmount.mul(DOT_IN_PLANCK);
     if (planckAmount.gte(1)) {
-        return planckAmount.toString();
+        return planckAmount.round(0, RoundingMode.RoundUp).toString();
     }
     // reject any values that are less than 1 planck
     return undefined;

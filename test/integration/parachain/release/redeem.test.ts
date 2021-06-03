@@ -9,7 +9,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { issue } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/issue";
 import { DefaultTransactionAPI } from "../../../../src";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -41,7 +41,7 @@ describe("redeem", () => {
         it("should liquidate a vault that committed theft", async () => {
             const vaultToLiquidate = keyring.addFromUri("//Ferdie//stash");
             const aliceBitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
-            await issue(api, electrsAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
+            await issueSingle(api, electrsAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
                 "regtest",
                 "0.0.0.0",
@@ -61,7 +61,7 @@ describe("redeem", () => {
             // Burn PolkaBTC for a premium, to restore peg
             redeemAPI.setAccount(alice);
             await redeemAPI.burn(amount);
-            
+
             // it takes about 15 mins for the theft to be reported
         }).timeout(18 * 60000);
     });

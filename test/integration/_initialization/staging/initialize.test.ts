@@ -5,19 +5,19 @@ import { assert } from "chai";
 import Big from "big.js";
 import BN from "bn.js";
 
-import { 
-    IssueAPI, 
-    ElectrsAPI, 
-    BitcoinCoreClient, 
-    createPolkadotAPI, 
-    OracleAPI, 
-    RedeemAPI, 
+import {
+    IssueAPI,
+    ElectrsAPI,
+    BitcoinCoreClient,
+    createPolkadotAPI,
+    OracleAPI,
+    RedeemAPI,
     TreasuryAPI,
     BTCRelayAPI,
     DefaultBTCRelayAPI,
     setNumericStorage,
 } from "../../../../src";
-import { issue } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/issue";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { DefaultOracleAPI } from "../../../../src/parachain/oracle";
@@ -60,8 +60,8 @@ describe("Initialize parachain state", () => {
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
-        // Sleep for 30 sec to wait for vaults to register
-        await sleep(30 * 1000);
+        // Sleep for 2 min to wait for vaults to register
+        await sleep(2 * 60 * 1000);
     });
 
     after(async () => {
@@ -78,7 +78,7 @@ describe("Initialize parachain state", () => {
         assert.equal(stableBitcoinConfirmationsToSet, stableBitcoinConfirmations, "Setting the Bitcoin confirmations failed");
         const stableParachainConfirmations = await btcRelayAPI.getStableParachainConfirmations();
         assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
-        
+
         await bitcoinCoreClient.mineBlocksWithoutDelay(10);
     });
 
@@ -106,7 +106,7 @@ describe("Initialize parachain state", () => {
         const feesToPay = await issueAPI.getFeesToPay(polkaBtcToIssue);
         const aliceAccountId = api.createType("AccountId", alice.address);
         const alicePolkaBTCBefore = await treasuryAPI.balance(aliceAccountId);
-        await issue(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, charlie_stash.address);
+        await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, charlie_stash.address);
         const alicePolkaBTCAfter = await treasuryAPI.balance(aliceAccountId);
         assert.equal(
             alicePolkaBTCBefore.add(polkaBtcToIssue).sub(feesToPay).toString(),
@@ -118,7 +118,8 @@ describe("Initialize parachain state", () => {
     it("should redeem 0.05 PolkaBTC", async () => {
         const polkaBtcToRedeem = new Big("0.05");
         const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        const daveAccountId = api.createType("AccountId", charlie_stash.address);
-        await redeemAPI.request(polkaBtcToRedeem, redeemAddress, daveAccountId);
+        // const charlie_stashAccountId = api.createType("AccountId", charlie_stash.address);
+        // await redeemAPI.request(polkaBtcToRedeem, redeemAddress, charlie_stashAccountId);
+        await redeemAPI.request(polkaBtcToRedeem, redeemAddress);
     });
 });

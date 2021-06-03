@@ -9,7 +9,7 @@ import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { issue } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/issue";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -62,17 +62,49 @@ describe("issue", () => {
             await assert.isRejected(tmpIssueAPI.request(amount));
         });
 
-        it("should request issue", async () => {
+        it("should request one issue", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
             const amount = new Big(0.001);
             const feesToPay = await issueAPI.getFeesToPay(amount);
-            const requestResult = await issueAPI.request(amount);
+            const requestResults = await issueAPI.request(amount);
+            assert.equal(
+                requestResults.length,
+                1,
+                "Created multiple requests instead of one (ensure vault in docker has sufficient collateral)"
+            );
+            const requestResult = requestResults[0];
             assert.equal(requestResult.id.length, 32);
 
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
             assert.equal(issueRequest.amount.toString(), btcToSat(amount.sub(feesToPay).toString()), "Amount different than expected");
+        });
+
+        it("should batch request across several vaults", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            issueAPI.setAccount(alice);
+
+            const amount = new Big(19000); // approx. 1.2x vault capacity
+            const requestResults = await issueAPI.request(amount);
+            assert.equal(
+                requestResults.length,
+                2,
+                "Created wrong amount of requests, ensure vault collateral settings in docker are correct"
+            );
+            const firstExpected = new Big(1634575267885);
+            const secondExpected = new Big(255924732116);
+            assert.deepEqual(
+                requestResults[0].issueRequest.amount.toString(),
+                firstExpected.toString(),
+                "First vault issue amount different than expected"
+            );
+            assert.deepEqual(
+                requestResults[1].issueRequest.amount.toString(),
+                secondExpected.toString(),
+                "Second vault issue amount different than expected"
+            );
         });
 
         it("should getGriefingCollateral", async () => {
@@ -91,7 +123,7 @@ describe("issue", () => {
         it("should fail to request a value finer than 1 Satoshi", async () => {
             const amount = new Big("0.00000121");
             await assert.isRejected(
-                issue(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie_stash.address, true, false)
+                issueSingle(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie_stash.address, true, false)
             );
         }).timeout(500000);
 
@@ -100,7 +132,7 @@ describe("issue", () => {
         it("should request and auto-execute issue", async () => {
             const amount = new Big("0.00121");
             const feesToPay = await issueAPI.getFeesToPay(amount);
-            const issueResult = await issue(
+            const issueResult = await issueSingle(
                 api,
                 electrsAPI,
                 bitcoinCoreClient,
@@ -126,7 +158,7 @@ describe("issue", () => {
             const amount = new Big("0.001");
             const feesToPay = await issueAPI.getFeesToPay(amount);
             const oneSatoshi = new Big(satToBTC("1"));
-            const issueResult = await issue(
+            const issueResult = await issueSingle(
                 api,
                 electrsAPI,
                 bitcoinCoreClient,

@@ -1,4 +1,3 @@
-import { RedeemRequest } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import Big from "big.js";
@@ -9,7 +8,10 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
     list(): Promise<RedeemRequestExt[]> {
         throw new Error("Method not implemented.");
     }
-    getRequestById(redeemId: H256): Promise<RedeemRequestExt> {
+    getRequestById(_redeemId: H256): Promise<RedeemRequestExt> {
+        throw new Error("Method not implemented.");
+    }
+    getRequestsById(_redeemIds: H256[]): Promise<RedeemRequestExt[]> {
         throw new Error("Method not implemented.");
     }
     setRedeemPeriod(_blocks: number): Promise<void> {
@@ -35,8 +37,22 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
         throw new Error("Method not implemented.");
     }
 
-    async request(_amount: Big, _btcAddressEnc: string, _vaultId?: AccountId): Promise<RequestResult> {
-        return Promise.resolve({ id: <Hash>{}, redeemRequest: (await this.list())[0] });
+    async request(
+        _amount: Big,
+        _btcAddressEnc: string,
+        _atomic?: boolean,
+        _retries?: number,
+        _availableVaults?: Map<AccountId, Big>
+    ): Promise<RequestResult[]> {
+        return Promise.resolve([{ id: <Hash>{}, redeemRequest: (await this.list())[0] }]);
+    }
+
+    async requestAdvanced(
+        _amountsPerVault: Map<AccountId, Big>,
+        _btcAddressEnc: string,
+        _atomic: boolean
+    ): Promise<RequestResult[]> {
+        return this.request(new Big(0), "");
     }
 
     async mapForUser(_account: AccountId): Promise<Map<H256, RedeemRequestExt>> {

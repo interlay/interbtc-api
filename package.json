@@ -47,6 +47,7 @@
     "big.js": "6.0.3",
     "bitcoin-core": "^3.0.0",
     "bitcoinjs-lib": "^5.2.0",
+    "bn.js": "^5.2.0",
     "cross-fetch": "^3.0.6",
     "regtest-client": "^0.2.0",
     "sinon": "^9.0.3",

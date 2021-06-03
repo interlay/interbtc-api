@@ -9,7 +9,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { defaultParachainEndpoint } from "../../../config";
 import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
-import { issue } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/issue";
 
 describe("refund", () => {
     let api: ApiPromise;
@@ -35,7 +35,7 @@ describe("refund", () => {
     });
 
     it("should not generate a refund request", async () => {
-        const issueResult = await issue(
+        const issueResult = await issueSingle(
             api,
             electrsAPI,
             bitcoinCoreClient,
@@ -52,7 +52,7 @@ describe("refund", () => {
     }).timeout(1000000);
 
     it("should generate a refund request", async () => {
-        const issueResult = await issue(
+        const issueResult = await issueSingle(
             api,
             electrsAPI,
             bitcoinCoreClient,

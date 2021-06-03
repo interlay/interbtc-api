@@ -17,7 +17,7 @@ export interface IssueResult {
     finalPolkaBtcBalance: Big;
 }
 
-export async function issue(
+export async function issueSingle(
     api: ApiPromise,
     electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
@@ -27,6 +27,7 @@ export async function issue(
     autoExecute = true,
     triggerRefund = false,
     network = "regtest",
+    atomic = true
 ): Promise<IssueResult> {
     try {
         const treasuryAPI = new DefaultTreasuryAPI(api);
@@ -39,13 +40,23 @@ export async function issue(
         const initialBalanceDOT = await collateralAPI.balance(requesterAccountId);
         const initialBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
         const blocksToMine = 3;
-        const vaultAccountId = vaultAddress ? api.createType("AccountId", vaultAddress) : undefined;
 
         // request issue
-    
-        const requestResult = await issueAPI.request(amount, vaultAccountId);
+        let rawRequestResult;
+        if (vaultAddress) {
+            const vaultAccountId = api.createType("AccountId", vaultAddress);
+            rawRequestResult = await issueAPI.requestAdvanced(
+                new Map([[vaultAccountId, amount]]),
+                atomic
+            );
+        } else {
+            rawRequestResult = await issueAPI.request(amount, atomic);
+        }
+        if (rawRequestResult.length !== 1) {
+            throw new Error("More than one issue request created");
+        }
+        const requestResult = rawRequestResult[0];
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
-    
 
         let amountAsBtc = new Big(satToBTC(
             (issueRequest as IssueRequestExt).amount.add((issueRequest as IssueRequestExt).fee).toString()
@@ -100,3 +111,4 @@ export async function issue(
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
+

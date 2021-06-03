@@ -5,11 +5,11 @@ import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
 
-import { 
-    BTC_IN_SAT, 
-    DOT_IN_PLANCK, 
-    decodeFixedPointType, 
-    encodeUnsignedFixedPoint, 
+import {
+    BTC_IN_SAT,
+    DOT_IN_PLANCK,
+    decodeFixedPointType,
+    encodeUnsignedFixedPoint,
     storageKeyToFirstInner,
 } from "../utils";
 import { ErrorCode } from "../interfaces/default";
