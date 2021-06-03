@@ -1,9 +1,7 @@
-import { RedeemRequest } from "../../../src/interfaces/default";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
 import Big from "big.js";
 import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
-import {RequestOptions} from "../../../src/utils/issueRedeem";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
@@ -39,7 +37,13 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
         throw new Error("Method not implemented.");
     }
 
-    async request(_amount: Big, _btcAddressEnc: string, _options?: RequestOptions): Promise<RequestResult[]> {
+    async request(
+        _amount: Big,
+        _btcAddressEnc: string,
+        _atomic?: boolean,
+        _retries?: number,
+        _availableVaults?: Map<AccountId, Big>
+    ): Promise<RequestResult[]> {
         return Promise.resolve([{ id: <Hash>{}, redeemRequest: (await this.list())[0] }]);
     }
 

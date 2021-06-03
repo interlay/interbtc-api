@@ -9,10 +9,10 @@ import Big from "big.js";
 
 import { IssueAPI, IssueRequestResult, IssueRequestExt, IssueLimits } from "../../../src/parachain/issue";
 import { MockTransactionAPI } from "../transaction";
-import { DOT, IssueRequest, PolkaBTC } from "../../../src/interfaces/default";
+import { DOT, PolkaBTC } from "../../../src/interfaces/default";
 
 export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
-    getGriefingCollateral(amount: Big): Promise<Big> {
+    getGriefingCollateral(_amount: Big): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     setIssuePeriod(_blocks: number): Promise<void> {
@@ -36,11 +36,9 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
 
     async request(
         _amountSat: Big,
-        _options?: {
-            availableVaults?: Map<AccountId, Big>;
-            atomic?: boolean;
-            retries?: number;
-        }
+        _atomic?: boolean,
+        _retries?: number,
+        _availableVaults?: Map<AccountId, Big>
     ): Promise<IssueRequestResult[]> {
         const registry = new TypeRegistry();
         const id = new U8aFixed(registry, "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c") as Hash;

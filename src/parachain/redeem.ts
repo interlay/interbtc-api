@@ -16,7 +16,7 @@ import {
     satToBTC,
     getTxProof,
 } from "../utils";
-import { allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions } from "../utils/issueRedeem";
+import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { CollateralAPI } from ".";
 import { DefaultCollateralAPI } from "./collateral";
 import { ElectrsAPI } from "../external";
@@ -49,14 +49,19 @@ export interface RedeemAPI extends TransactionAPI {
      * Send a redeem request transaction
      * @param amount PolkaBTC amount (denoted in Bitcoin) to redeem
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
-     * @param options (optional): an object specifying
-     * - atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
+     * @param atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
-     * - availableVaults (optional) A list of all vaults usable for redeem. If not provided, will fetch from the parachain.
-     * - retries (optional) Number of times to re-try redeeming, if some of the requests fail. Defaults to 0.
+     * @param retries (optional) Number of times to re-try redeeming, if some of the requests fail. Defaults to 0.
+     * @param availableVaults (optional) A list of all vaults usable for redeem. If not provided, will fetch from the parachain.
      * @returns An array of type {redeemId, redeemRequest} if the requests succeeded. The function throws an error otherwise.
      */
-    request(amount: Big, btcAddressEnc: string, options?: RequestOptions): Promise<RequestResult[]>;
+    request(
+        amount: Big,
+        btcAddressEnc: string,
+        atomic?: boolean,
+        retries?: number,
+        availableVaults?: Map<AccountId, Big>
+    ): Promise<RequestResult[]>;
 
     /**
      * Send a batch of aggregated redeem transactions (to one or more vaults)
@@ -193,18 +198,22 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return getRequestIdsFromEvents(events, this.api.events.redeem.RequestRedeem, this.api);
     }
 
-    async request(amount: Big, btcAddressEnc: string, options?: RequestOptions): Promise<RequestResult[]> {
+    async request(
+        amount: Big,
+        btcAddressEnc: string,
+        atomic: boolean = true,
+        retries: number = 0,
+        cachedVaults?: Map<AccountId, Big>,
+    ): Promise<RequestResult[]> {
         try {
-            const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
-            const atomic = !!options?.atomic;
-            const retries = options?.retries || 0;
+            const availableVaults = cachedVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             const successfulSum = result.reduce((sum, req) => sum.plus(req.redeemRequest.amount_btc.toString()), new Big(0));
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
-                return (await this.request(remainder, btcAddressEnc, {availableVaults, atomic, retries: retries - 1})).concat(result);
+                return (await this.request(remainder, btcAddressEnc, atomic, retries - 1, availableVaults)).concat(result);
             }
         } catch (e) {
             return Promise.reject(e.message);

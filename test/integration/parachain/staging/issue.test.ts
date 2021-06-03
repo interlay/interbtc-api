@@ -87,7 +87,7 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
 
             const amount = new Big(19000); // approx. 1.2x vault capacity
-            const requestResults = await issueAPI.request(amount, { atomic: true });
+            const requestResults = await issueAPI.request(amount);
             assert.equal(
                 requestResults.length,
                 2,

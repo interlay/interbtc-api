@@ -50,7 +50,7 @@ export async function issueSingle(
                 atomic
             );
         } else {
-            rawRequestResult = await issueAPI.request(amount, { atomic });
+            rawRequestResult = await issueAPI.request(amount, atomic);
         }
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");

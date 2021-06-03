@@ -106,9 +106,13 @@ describe("redeem", () => {
             const vaultId = issueRequest.vault;
             // const vaultId = api.createType("AccountId", charlie_stash.address);
             const redeemAmountBig = new Big(redeemAmountAsBtcString);
-            const [{ id, redeemRequest }] = await redeemAPI.request(redeemAmountBig, btcAddress, {
-                availableVaults: new Map([[vaultId, redeemAmountBig.mul(2)]]),
-            });
+            const [{id, redeemRequest}] = await redeemAPI.request(
+                redeemAmountBig,
+                btcAddress,
+                true, // atomic
+                0, // retries
+                new Map([[vaultId, redeemAmountBig.mul(2)]])
+            );
             assert.equal(
                 redeemRequest.vault.toString(),
                 vaultId.toString(),

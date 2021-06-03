@@ -5,12 +5,6 @@ import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import { ApiPromise } from "@polkadot/api";
 
-export type RequestOptions = {
-    availableVaults?: Map<AccountId, Big>;
-    atomic?: boolean;
-    retries?: number;
-};
-
 /**
  * @param events The EventRecord array returned after sending a transaction
  * @param methodToCheck The name of the event method whose existence to check

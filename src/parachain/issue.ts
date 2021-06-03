@@ -16,7 +16,7 @@ import {
     dotToPlanck,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions } from "../utils/issueRedeem";
+import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
@@ -50,16 +50,17 @@ export interface IssueAPI extends TransactionAPI {
     /**
      * Request issuing of PolkaBTC.
      * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue.
-     * @param options (optional): an object specifying
-     * - atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
+     * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
-     * - availableVaults (optional) A list of all vaults usable for issue. If not provided, will fetch from the parachain.
-     * - retries (optional) Number of times to re-try issuing, if some of the requests fail. Defaults to 0.
+     * @param retries (optional) Number of times to re-try issuing, if some of the requests fail. Defaults to 0.
+     * @param availableVaults (optional) A list of all vaults usable for issue. If not provided, will fetch from the parachain.
      * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
         amountSat: Big,
-        options?: RequestOptions
+        atomic?: boolean,
+        retries?: number,
+        availableVaults?: Map<AccountId, Big>
     ): Promise<IssueRequestResult[]>;
 
     /**
@@ -161,13 +162,16 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
 
     async getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
-        const [singleVaultMaxIssuable, totalMaxIssuable] = [...vaults.entries()].reduce(
-            ([singleVault, maxTotal], [_, vaultAvailable]) => {
-                maxTotal = maxTotal.plus(vaultAvailable);
-                singleVault = singleVault.gt(vaultAvailable) ? singleVault : vaultAvailable;
-                return [singleVault, maxTotal];
+        const vaultsArr = [...vaults.entries()];
+        if (vaultsArr.length === 0) {
+            return { singleVaultMaxIssuable: Big(0), totalMaxIssuable: Big(0) };
+        }
+        const singleVaultMaxIssuable = vaultsArr[0][1];
+        const totalMaxIssuable = vaultsArr.reduce(
+            (total, [_, vaultAvailable]) => {
+                return total.plus(vaultAvailable);
             },
-            [new Big(0), new Big(0)]
+            new Big(0)
         );
         return { singleVaultMaxIssuable, totalMaxIssuable };
     }
@@ -183,23 +187,19 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
 
     async request(
         amount: Big,
-        options?: {
-            availableVaults?: Map<AccountId, Big>,
-            atomic?: boolean,
-            retries?: number,
-        }
+        atomic: boolean = true,
+        retries: number = 0,
+        cachedVaults?: Map<AccountId, Big>,
     ): Promise<IssueRequestResult[]> {
         try {
-            const availableVaults = options?.availableVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
-            const atomic = !!options?.atomic;
-            const retries = options?.retries || 0;
+            const availableVaults = cachedVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
             const successfulSum = result.reduce((sum, req) => sum.plus(req.issueRequest.amount.toString()), new Big(0));
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
-                return (await this.request(remainder, { availableVaults, atomic, retries: retries - 1 })).concat(result);
+                return (await this.request(remainder, atomic, retries - 1, availableVaults)).concat(result);
             }
         } catch (e) {
             return Promise.reject(e.message);
@@ -214,7 +214,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         for (const [vault, amount] of amountsPerVault) {
             const griefingCollateral = await this.getGriefingCollateral(amount);
             // mul() here is a hacky workaround for rounding errors
-            const griefingCollateralPlanck = new Big(dotToPlanck(griefingCollateral.toString()) || "0").mul(1.01);
+            const griefingCollateralPlanck = new Big(dotToPlanck(griefingCollateral.toString()) || "0").add(100);
             const griefingCollateralCompact = this.api.createType("Compact<Collateral>", griefingCollateralPlanck.toString());
             const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount.toString()));
             txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralCompact));
