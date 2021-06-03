@@ -85,8 +85,9 @@ describe("issue", () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
-            const amount = new Big(satToBTC("2334489935535")); // approx. 1.5 vault capacity
-            const requestResults = await issueAPI.request(amount);
+
+            const amount = new Big(19000); // approx. 1.5 vault capacity
+            const requestResults = await issueAPI.request(amount, { atomic: true });
             assert.equal(
                 requestResults.length,
                 2,

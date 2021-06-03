@@ -16,7 +16,7 @@ import {
     dotToPlanck,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import {allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions} from "../utils/issueRedeem";
+import { allocateAmountsToVaults, getRequestIdsFromEvents, RequestOptions } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
@@ -149,7 +149,7 @@ export interface IssueAPI extends TransactionAPI {
     getGriefingCollateral(amount: Big): Promise<Big>;
 }
 
-export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  {
+export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     private vaultsAPI: VaultsAPI;
     private feeAPI: FeeAPI;
 
@@ -164,7 +164,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         const [singleVaultMaxIssuable, totalMaxIssuable] = [...vaults.entries()].reduce(
             ([singleVault, maxTotal], [_, vaultAvailable]) => {
                 maxTotal = maxTotal.plus(vaultAvailable);
-                singleVault = singleVault.gt(vaultAvailable)? singleVault : vaultAvailable;
+                singleVault = singleVault.gt(vaultAvailable) ? singleVault : vaultAvailable;
                 return [singleVault, maxTotal];
             },
             [new Big(0), new Big(0)]
@@ -207,7 +207,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
-                return (await this.request(remainder, {availableVaults, atomic, retries: retries - 1})).concat(result);
+                return (await this.request(remainder, { availableVaults, atomic, retries: retries - 1 })).concat(result);
             }
         } catch (e) {
             return Promise.reject(e.message);
@@ -218,24 +218,15 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI  
         amountsPerVault: Map<AccountId, Big>,
         atomic: boolean
     ): Promise<IssueRequestResult[]> {
-        const txes = new Array<SubmittableExtrinsic<"promise">>();
-        console.log("USING VAULTS on ISSUE:");
-        [...amountsPerVault.entries()].map(([vaultId, amount]) => {
-            console.log(`Issuing ${amount.toString()} with vault ${vaultId.toString()}`);
-        });
+        const txs = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = await this.getGriefingCollateral(amount);
-            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount.toString()));
-            console.log(`Issuing:
-                - amountSat: ${amountWrapped.toString()}
-                - to vaultId: ${vault.toString()}
-                - with griefing collateral: ${griefingCollateral.toString()}`);
-            txes.push(this.api.tx.issue.requestIssue(amountWrapped, vault, dotToPlanck(griefingCollateral.toString()) as string));
+            const griefingCollateral = (await this.getGriefingCollateral(amount)).add(1);
+            const griefingCollateralCompact = this.api.createType("Compact<Collateral>", dotToPlanck(griefingCollateral.toString()));
+            const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount.toString()));
+            txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralCompact));
         }
         // batchAll fails atomically, batch allows partial successes
-        const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
-        console.log(`Total of ${txes.length} batched requests`);
-        console.log(`Atomic: ${atomic}`);
+        const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
         try {
             const result = await this.sendLogged(batch, this.api.events.issue.RequestIssue);
             const ids = this.getIssueIdsFromEvents(result.events);
