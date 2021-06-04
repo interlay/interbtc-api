@@ -216,7 +216,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
                 return (await this.request(remainder, btcAddressEnc, atomic, retries - 1, availableVaults)).concat(result);
             }
         } catch (e) {
-            return Promise.reject(e.message);
+            return Promise.reject(e);
         }
     }
 
