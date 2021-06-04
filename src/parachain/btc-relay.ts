@@ -1,6 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
-import { ElectrsAPI } from "../external/electrs";
 import { u32 } from "@polkadot/types/primitive";
+
+import { ElectrsAPI } from "../external/electrs";
 import { H256Le } from "../interfaces/default";
 
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;

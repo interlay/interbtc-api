@@ -6,7 +6,7 @@ import Big from "big.js";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issue";
@@ -21,10 +21,17 @@ describe("refund", () => {
     let eve_stash: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
-        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
         refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         alice = keyring.addFromUri("//Alice");
         eve_stash = keyring.addFromUri("//Eve//stash");

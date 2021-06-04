@@ -1,15 +1,16 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
+import Big from "big.js";
+import * as bitcoinjs from "bitcoinjs-lib";
+
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
-import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoinjs from "bitcoinjs-lib";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import Big from "big.js";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { issueSingle } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils";
 import { DefaultTransactionAPI } from "../../../../src";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -23,7 +24,7 @@ describe("redeem", () => {
     let alice: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
@@ -40,14 +41,21 @@ describe("redeem", () => {
     describe("liquidation redeem", () => {
         it("should liquidate a vault that committed theft", async () => {
             const vaultToLiquidate = keyring.addFromUri("//Ferdie//stash");
-            const aliceBitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+            const aliceBitcoinCoreClient = new BitcoinCoreClient(
+                DEFAULT_BITCOIN_CORE_NETWORK,
+                DEFAULT_BITCOIN_CORE_HOST,
+                DEFAULT_BITCOIN_CORE_USERNAME,
+                DEFAULT_BITCOIN_CORE_PASSWORD,
+                DEFAULT_BITCOIN_CORE_PORT,
+                DEFAULT_BITCOIN_CORE_WALLET
+            );
             await issueSingle(api, electrsAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
-                "regtest",
-                "0.0.0.0",
-                "rpcuser",
-                "rpcpassword",
-                "18443",
+                DEFAULT_BITCOIN_CORE_NETWORK,
+                DEFAULT_BITCOIN_CORE_HOST,
+                DEFAULT_BITCOIN_CORE_USERNAME,
+                DEFAULT_BITCOIN_CORE_PASSWORD,
+                DEFAULT_BITCOIN_CORE_PORT,
                 "ferdie_stash"
             );
 

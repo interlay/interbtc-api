@@ -14,9 +14,10 @@ import {
     getTxProof,
     btcToSat,
     dotToPlanck,
+    allocateAmountsToVaults, 
+    getRequestIdsFromEvents
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import BN from "bn.js";

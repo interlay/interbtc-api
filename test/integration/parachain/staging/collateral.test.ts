@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultCollateralAPI, CollateralAPI } from "../../../../src/parachain/collateral";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import Big from "big.js";
 
 describe("CollateralAPI", () => {
@@ -13,7 +13,7 @@ describe("CollateralAPI", () => {
     let bob: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
         bob = keyring.addFromUri("//Bob");

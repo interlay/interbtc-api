@@ -4,15 +4,16 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultOracleAPI, OracleAPI } from "../../../../src/parachain/oracle";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import BN from "bn.js";
 
-describe("OracleAPI", () => {
+describe.only("OracleAPI", () => {
     let api: ApiPromise;
     let oracle: OracleAPI;
     let bob: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
     });
@@ -26,7 +27,7 @@ describe("OracleAPI", () => {
         return api.disconnect();
     });
 
-    describe("Oracle", () => {
+    describe.only("Oracle", () => {
         it("[docker-compose initial setup] should set a rate of 3855.23187", async () => {
             const exchangeRate = await oracle.getExchangeRate();
             assert.equal(exchangeRate.toString(), "3855.23187");
@@ -42,6 +43,11 @@ describe("OracleAPI", () => {
             // Revert the exchange rate to its initial value,
             // so that this test is idempotent
             await oracle.setExchangeRate(previousExchangeRate.toString());
+        });
+
+        it.only("should convert satoshi to planck", async () => {
+            const planck = await oracle.convertSatoshiToPlanck(new BN(100));
+            assert.equal(planck.toString(), "3855231787");
         });
 
         it("should set BTC tx fees", async () => {

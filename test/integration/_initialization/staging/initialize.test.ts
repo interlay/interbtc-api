@@ -19,12 +19,12 @@ import {
     NominationAPI,
     DefaultNominationAPI,
 } from "../../../../src";
-import { issueSingle } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { DefaultOracleAPI } from "../../../../src/parachain/oracle";
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultTreasuryAPI } from "../../../../src/parachain/treasury";
 
 describe("Initialize parachain state", () => {
@@ -48,7 +48,7 @@ describe("Initialize parachain state", () => {
     }
 
     before(async function () {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
@@ -56,7 +56,14 @@ describe("Initialize parachain state", () => {
         charlie_stash = keyring.addFromUri("//Charlie//stash");
 
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
-        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         oracleAPI = new DefaultOracleAPI(api, bob);

@@ -87,9 +87,8 @@ export interface RedeemAPI extends TransactionAPI {
      * @param txId (Optional) The ID of the Bitcoin transaction that sends funds from the vault to the redeemer's address
      * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction.
      * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
-     * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
      */
-    execute(redeemId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean>;
+    execute(redeemId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send a redeem cancellation transaction. After the redeem period has elapsed,
      * the redeemal of PolkaBTC can be cancelled. As a result, the griefing collateral
@@ -239,19 +238,15 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         }
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
+    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
         const parsedRequestId = this.api.createType("H256", requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const ids = this.getRedeemIdsFromEvents(result.events);
         if (ids.length > 1) {
-            throw new Error("Unexpected multiple redeem events from single execute transaction!");
+            Promise.reject("Unexpected multiple redeem events from single execute transaction!");
         }
-        else if (ids.length === 1) {
-            return true;
-        }
-        return false;
     }
 
     async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {

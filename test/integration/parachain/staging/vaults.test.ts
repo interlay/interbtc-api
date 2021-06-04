@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 import { TypeRegistry } from "@polkadot/types";
@@ -18,7 +18,7 @@ describe("vaultsAPI", () => {
     const registry = new TypeRegistry();
 
     before(async () => {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         charlie_stash = keyring.addFromUri("//Charlie//stash");
         dave_stash = keyring.addFromUri("//Dave//stash");

@@ -62,9 +62,9 @@ and then to instantiate a `PolkaBTCAPI` instance.
 ```typescript
 import { createPolkabtcAPI } from "@interlay/polkabtc";
 
-const defaultParachainEndpoint = "ws://127.0.0.1:9944";
+const DEFAULT_PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
 const isMainnet = false;
-const polkaBTC = await createPolkabtcAPI(defaultParachainEndpoint, isMainnet);
+const polkaBTC = await createPolkabtcAPI(DEFAULT_PARACHAIN_ENDPOINT, isMainnet);
 ```
 
 To emit transactions, an `account` has to be set.

@@ -6,12 +6,12 @@ import Big from "big.js";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { ElectrsAPI } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
-describe("issue", () => {
+describe.skip("issue", () => {
     let api: ApiPromise;
     let issueAPI: DefaultIssueAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
@@ -22,12 +22,19 @@ describe("issue", () => {
     let alice: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
 
-        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });

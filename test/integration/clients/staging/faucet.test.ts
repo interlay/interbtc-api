@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { FaucetClient } from "../../../../src/clients";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { defaultParachainEndpoint, defaultFaucetEndpoint } from "../../../config";
+import { DEFAULT_PARACHAIN_ENDPOINT, defaultFaucetEndpoint } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountData } from "@polkadot/types/interfaces/balances";
 import { assert } from "../../../chai";
@@ -17,7 +17,7 @@ describe("Faucet", function () {
     let helen: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         faucet = new FaucetClient(defaultFaucetEndpoint);
         keyring = new Keyring({ type: "sr25519" });
         helen = keyring.addFromUri("//Helen");

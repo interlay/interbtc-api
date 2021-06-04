@@ -1,16 +1,17 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
+import * as bitcoinjs from "bitcoinjs-lib";
+import Big from "big.js";
+import BN from "bn.js";
+
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { btcToSat, roundLastNDigits, satToBTC } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
-import { defaultParachainEndpoint } from "../../../config";
-import * as bitcoinjs from "bitcoinjs-lib";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import Big from "big.js";
 import { issueSingle } from "../../../../src/utils/issue";
-import BN from "bn.js";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -25,7 +26,7 @@ describe("issue", () => {
     let dave_stash: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
@@ -33,7 +34,14 @@ describe("issue", () => {
         dave_stash = keyring.addFromUri("//Dave//stash");
 
         electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
-        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });
 
@@ -42,7 +50,7 @@ describe("issue", () => {
     });
 
     describe("load requests", () => {
-        it("should load existing requests", async () => {
+        it("should list existing requests", async () => {
             keyring = new Keyring({ type: "sr25519" });
             alice = keyring.addFromUri("//Alice");
             issueAPI.setAccount(alice);
@@ -54,6 +62,20 @@ describe("issue", () => {
                 "Error in docker-compose setup. Should have at least 1 issue request"
             );
         });
+
+        it("should map existing requests", async () => {
+            keyring = new Keyring({ type: "sr25519" });
+            alice = keyring.addFromUri("//Alice");
+            issueAPI.setAccount(alice);
+            const aliceAccountId = api.createType("AccountId", alice.address);
+            const issueRequests = await issueAPI.mapForUser(aliceAccountId);
+            assert.isAtLeast(
+                issueRequests.size,
+                1,
+                "Error in docker-compose setup. Should have at least 1 issue request"
+            );
+        });
+        
     });
 
     describe("request", () => {
@@ -120,6 +142,15 @@ describe("issue", () => {
             const amountBtc = new Big("0.001");
             const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc);
             assert.equal(griefingCollateral.toString(), "0.0001927615935");
+        });
+
+        it("should getRequestLimits", async () => {
+            const requestLimits = await issueAPI.getRequestLimits();
+            assert.equal(
+                requestLimits.singleVaultMaxIssuable.toString(), 
+                "17292.50659164"
+            );
+            assert.equal(requestLimits.totalMaxIssuable.toString(), "34585.0057583");
         });
     });
 
