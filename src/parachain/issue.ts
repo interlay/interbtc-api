@@ -202,7 +202,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
                 return (await this.request(remainder, atomic, retries - 1, availableVaults)).concat(result);
             }
         } catch (e) {
-            return Promise.reject(e.message);
+            return Promise.reject(e);
         }
     }
 
