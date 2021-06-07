@@ -19,6 +19,7 @@ import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import BN from "bn.js";
 
 export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big };
@@ -109,15 +110,6 @@ export interface IssueAPI extends TransactionAPI {
      * to prevent griefing of vault collateral.
      */
     getIssuePeriod(): Promise<number>;
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
-    /**
-     * @returns The signer or injector address to sign transactions with, if one is set.
-     */
-     getAccount(): AddressOrPair | undefined;
     /**
      * @returns An array containing the issue requests
      */
@@ -218,9 +210,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         for (const [vault, amount] of amountsPerVault) {
             const griefingCollateral = await this.getGriefingCollateral(amount);
             // mul() here is a hacky workaround for rounding errors
-            const griefingCollateralPlanck = new Big(dotToPlanck(griefingCollateral.toString()) || "0").add(100);
-            const griefingCollateralCompact = this.api.createType("Compact<Collateral>", griefingCollateralPlanck.toString());
-            const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount));
+            const griefingCollateralPlanck = dotToPlanck(griefingCollateral).add(new BN(100));
+            const griefingCollateralCompact = this.api.createType("Collateral", griefingCollateralPlanck);
+            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount));
             txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralCompact));
         }
         // batchAll fails atomically, batch allows partial successes
@@ -284,7 +276,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     async getFeesToPay(amount: Big): Promise<Big> {
         const feePercentage = await this.getFeeRate();
         const feeBtc = amount.mul(feePercentage);
-        return new Big(roundUpBtcToNearestSatoshi(feeBtc.toString()));
+        return new Big(roundUpBtcToNearestSatoshi(feeBtc));
     }
 
     /**

@@ -1,8 +1,9 @@
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
+import BN from "bn.js";
 
-import { satToBTC, IssueRequestExt, getBitcoinNetwork } from "..";
+import { satToBTC, getBitcoinNetwork } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
 import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
@@ -58,9 +59,7 @@ export async function issueSingle(
         const requestResult = rawRequestResult[0];
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
 
-        let amountAsBtc = new Big(satToBTC(
-            (issueRequest as IssueRequestExt).amount.add((issueRequest as IssueRequestExt).fee).toString()
-        ));
+        let amountAsBtc = satToBTC(issueRequest.amount.add(issueRequest.fee));
 
         if (triggerRefund) {
             // Send 1 more Btc than needed
@@ -68,7 +67,7 @@ export async function issueSingle(
         } else if (autoExecute === false) {
             // Send 1 less Satoshi than requested
             // to trigger the user failsafe and disable auto-execution.
-            const oneSatoshi = new Big(satToBTC("1"));
+            const oneSatoshi = satToBTC(new BN(1));
             amountAsBtc = amountAsBtc.sub(oneSatoshi);
         }
 

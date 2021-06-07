@@ -85,7 +85,7 @@ describe("redeem", () => {
             issueAPI.setAccount(alice);
             const requestResult = (await issueAPI.request(new Big(issueAmountAsBtcString)))[0];
             const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            const txAmountRequired = new Big(satToBTC(issueRequest.amount.add(issueRequest.fee)));
+            const txAmountRequired = satToBTC(issueRequest.amount.add(issueRequest.fee));
 
             // send btc tx
             const vaultBtcAddress = requestResult.issueRequest.btc_address;

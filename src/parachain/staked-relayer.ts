@@ -13,7 +13,7 @@ import { decodeFixedPointType, satToBTC, planckToDOT, storageKeyToFirstInner } f
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { computeReward, ElectrsAPI, getTxProof, newAccountId } from "..";
+import { computeStake, ElectrsAPI, getTxProof, newAccountId } from "..";
 
 /**
  * @category PolkaBTC Bridge
@@ -166,8 +166,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         const stake = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.stake.at(head, stakedRelayerId));
         const rewardPerToken = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardPerToken.at(head));
         const rewardTally = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardTally.at(head, stakedRelayerId));
-        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
-        return new Big(satToBTC(fees));
+        return satToBTC(computeStake(new Big(stake), new Big(rewardPerToken), new Big(rewardTally)));
     }
 
     async getCollateralFees(stakedRelayerId: AccountId): Promise<Big> {
@@ -175,8 +174,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         const stake = decodeFixedPointType(await this.api.query.collateralRelayerRewards.stake.at(head, stakedRelayerId));
         const rewardPerToken = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardPerToken.at(head));
         const rewardTally = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardTally.at(head, stakedRelayerId));
-        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
-        return new Big(planckToDOT(fees));
+        return planckToDOT(computeStake(new Big(stake), new Big(rewardPerToken), new Big(rewardTally)));
     }
 
     async getAPY(stakedRelayerId: AccountId): Promise<string> {

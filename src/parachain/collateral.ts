@@ -50,26 +50,26 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
     async totalLocked(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const totalLockedBN = await this.api.query.collateralCurrency.totalLocked.at(head);
-        return new Big(planckToDOT(totalLockedBN));
+        return planckToDOT(totalLockedBN);
     }
 
     async balanceLocked(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.collateral.account.at(head, id);
-        return new Big(planckToDOT(account.reserved));
+        return planckToDOT(account.reserved);
     }
 
     async balance(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.collateral.account.at(head, id);
-        return new Big(planckToDOT(account.free));
+        return planckToDOT(account.free);
     }
 
     async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
         try {
             const accountId = newAccountId(this.api, account);
             const unsubscribe = await this.api.query.collateral.account(accountId, (balance) => {
-                callback(account, new Big(planckToDOT(balance.free)));
+                callback(account, planckToDOT(balance.free));
             });
             return unsubscribe;
         } catch (error) {

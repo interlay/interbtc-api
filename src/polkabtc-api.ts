@@ -92,7 +92,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.fee = new DefaultFeeAPI(api);
         this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, _account);
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.nomination = new DefaultNominationAPI(api, _account);
+        this.nomination = new DefaultNominationAPI(api, btcNetwork, _account);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

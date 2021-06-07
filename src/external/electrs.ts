@@ -14,6 +14,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
 import Big from "big.js";
+import BN from "bn.js";
 
 import { MAINNET_ESPLORA_BASE_PATH, REGTEST_ESPLORA_BASE_PATH, TESTNET_ESPLORA_BASE_PATH } from "../utils/constants";
 import { btcToSat } from "../utils/currency";
@@ -239,8 +240,8 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      */
     private utxoHasAtLeastAmount(utxo: UTXO | VOut, amount?: Big): boolean {
         if (amount) {
-            const expectedBtcAsSatoshi = Number(btcToSat(amount));
-            if (utxo.value === undefined || expectedBtcAsSatoshi > utxo.value) {
+            const expectedBtcAsSatoshi = btcToSat(amount);
+            if (utxo.value === undefined || expectedBtcAsSatoshi > new BN(utxo.value)) {
                 return false;
             }
         }

@@ -1,4 +1,4 @@
-import Big, { RoundingMode } from "big.js";
+import Big from "big.js";
 import BN from "bn.js";
 
 // set maximum exponents
@@ -28,15 +28,21 @@ export function roundUpBigToNearestInteger(x: Big): Big {
     return x.round(0, 3);
 }
 
-export function roundUpBtcToNearestSatoshi(amountBtc: string): string {
-    const amountSat = new Big(btcToSat(amountBtc));
-    const amountSatRounded = roundUpBigToNearestInteger(amountSat).toString();
-    return satToBTC(amountSatRounded);
+export function roundUpBtcToNearestSatoshi(amountBtc: Big): Big {
+    return satToBTC(btcToSat(amountBtc));
 }
 
-export function satToBTC(sat: string | BN | number | Big): string {
-    const satAmount = roundUpBigToNearestInteger(new Big(sat.toString()));
-    return satAmount.div(BTC_IN_SAT).toString();
+export function bnToBig(x: BN): Big {
+    return new Big(x.toString());
+}
+
+export function bigToBn(x: Big): BN {
+    return new BN(roundUpBigToNearestInteger(x).toString());
+}
+
+export function satToBTC(sat: BN): Big {
+    const satAmount = bnToBig(sat);
+    return satAmount.div(BTC_IN_SAT);
 }
 
 export function satToMBTC(sat: string): string {
@@ -44,31 +50,24 @@ export function satToMBTC(sat: string): string {
     return satAmount.div(MBTC_IN_SAT).toString();
 }
 
-export function btcToSat(btc: string | Big): string {
-    const btcAmount: Big = new Big(btc);
-    const satAmount: Big = btcAmount.mul(BTC_IN_SAT);
+export function btcToSat(btc: Big): BN {
+    const satAmount = btc.mul(BTC_IN_SAT);
 
     // Round up to the nearest Satoshi
-    return roundUpBigToNearestInteger(satAmount).toString();
+    return bigToBn(satAmount);
 }
 
-export function planckToDOT(planck: string | BN | Big): string {
-    const planckAmount = new Big(planck.toString());
-    return planckAmount.div(DOT_IN_PLANCK).toString();
+export function planckToDOT(planck: BN): Big {
+    const planckAmount = bnToBig(planck);
+    return planckAmount.div(DOT_IN_PLANCK);
 }
 
-export function dotToPlanck(dot: string | Big): string | undefined {
-    const dotAmount = new Big(dot.toString());
-    const planckAmount = dotAmount.mul(DOT_IN_PLANCK);
-    if (planckAmount.gte(1)) {
-        return planckAmount.round(0, RoundingMode.RoundUp).toString();
-    }
-    // reject any values that are less than 1 planck
-    return undefined;
+export function dotToPlanck(dot: Big): BN {
+    return bigToBn(dot.mul(DOT_IN_PLANCK));
 }
 
-export function computeReward(stake: Big, rewardPerToken: Big, rewardTally: Big): Big {
-    return stake.mul(rewardPerToken).sub(rewardTally);
+export function computeStake(stake: Big, perToken: Big, tally: Big): BN {
+    return bigToBn(stake.mul(perToken).sub(tally));
 }
 
 export function roundLastNDigits(n: number, x: BN | Big | string): string {

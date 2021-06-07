@@ -61,7 +61,7 @@ describe("Initialize parachain state", () => {
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         oracleAPI = new DefaultOracleAPI(api, bob);
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
-        nominationAPI = new DefaultNominationAPI(api, alice);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
         // Sleep for 2 min to wait for vaults to register

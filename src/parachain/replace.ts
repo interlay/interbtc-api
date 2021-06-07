@@ -63,15 +63,6 @@ export interface ReplaceAPI extends TransactionAPI {
      */
     request(amount: Big): Promise<string>;
     /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
-    /**
-     * @returns The signer or injector address to sign transactions with, if one is set.
-     */
-     getAccount(): AddressOrPair | undefined;
-    /**
      * Wihdraw a replace request
      * @param amount The amount of wrapped tokens to withdraw from the amount
      * requested to have replaced.
@@ -125,7 +116,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     async request(amount: Big): Promise<string> {
         const amountSat = this.api.createType("Wrapped", btcToSat(amount));
         const griefingCollateralDot = await this.getGriefingCollateral(amount);
-        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDot) as string;
+        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDot);
         const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck);
         const result = await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
         try {
@@ -159,7 +150,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     async getBtcDustValue(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const dustSatoshi = await this.api.query.replace.replaceBtcDustValue.at(head);
-        return new Big(satToBTC(dustSatoshi));
+        return satToBTC(dustSatoshi);
     }
 
     async getGriefingCollateral(amount: Big): Promise<Big> {

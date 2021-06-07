@@ -3,10 +3,18 @@ import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 
 import { NominationAPI } from "../../../src";
-import { Nominator } from "../../../src/interfaces";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockNominationAPI extends MockTransactionAPI implements NominationAPI {
+    listNominators(): Promise<[AccountId, AccountId][]> {
+        throw new Error("Method not implemented.");
+    }
+    getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], Big][]> {
+        throw new Error("Method not implemented.");
+    }
+    getTotalNomination(nominatorId?: string, vaultId?: string): Promise<Big> {
+        throw new Error("Method not implemented.");
+    }
     depositCollateral(vaultId: string, amount: Big): Promise<void> {
         throw new Error("Method not implemented.");
     }
@@ -23,9 +31,6 @@ export class MockNominationAPI extends MockTransactionAPI implements NominationA
         throw new Error("Method not implemented.");
     }
     isNominationEnabled(): Promise<boolean> {
-        throw new Error("Method not implemented.");
-    }
-    listNominators(): Promise<[[AccountId, AccountId], Nominator][]> {
         throw new Error("Method not implemented.");
     }
     listVaults(): Promise<AccountId[]> {

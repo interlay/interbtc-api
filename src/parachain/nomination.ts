@@ -1,13 +1,13 @@
-import { dotToPlanck, newAccountId, storageKeyToFirstInner } from "../utils";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-
+import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
-import { Nominator } from "../interfaces";
 import { AccountId } from "@polkadot/types/interfaces";
 
-
+import { Nominator } from "../interfaces";
+import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
+import { bnToBig, computeStake, decodeFixedPointType, dotToPlanck, newAccountId, planckToDOT, storageKeyToFirstInner } from "../utils";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 /**
  * @category PolkaBTC Bridge
  * The type Big represents DOT or PolkaBTC denominations,
@@ -16,12 +16,12 @@ import { AccountId } from "@polkadot/types/interfaces";
 export interface NominationAPI extends TransactionAPI {
     /**
      * @param vaultId Vault to nominate collateral to
-     * @param amount Amount, in BTC, to deposit
+     * @param amount Amount, in collateral token (e.g. DOT), to deposit
      */
     depositCollateral(vaultId: string, amount: Big): Promise<void>;
     /**
      * @param vaultId Vault that collateral was nominated to
-     * @param amount Amount, in BTC, to withdraw
+     * @param amount Amount, in collateral token (e.g. DOT), to withdraw
      */
     withdrawCollateral(vaultId: string, amount: Big): Promise<void>;
     /**
@@ -45,29 +45,45 @@ export interface NominationAPI extends TransactionAPI {
      * There is a separate entry for each (nominatorId, vaultId) pair.
      * The return format is `[[nominatorId, vaultId], Nominator][]`
      */
-    listNominators(): Promise<[[AccountId, AccountId], Nominator][]>;
+    listNominators(): Promise<[AccountId, AccountId][]>;
     /**
      * @returns A list of all vaults that opted in to the nomination feature.
      */
     listVaults(): Promise<AccountId[]>;
+    /**
+     * @remarks At least one of the parameters must be specified
+     * @param nominatorId Id of user who nominated to a vault
+     * @param vaultId Id of vault who is opted in to nomination
+     * @returns A list of `[nominatorId, vaultId], nominatedAmount` pairs
+     */
+    getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], Big][]>;
+    /**
+     * @remarks At least one of the parameters must be specified
+     * @param nominatorId Id of user who nominated to a vault
+     * @param vaultId Id of vault who is opted in to nomination
+     * @returns The total nominated amount, filtered using the given parameters 
+     */
+    getTotalNomination(nominatorId?: string, vaultId?: string): Promise<Big>;
 }
 
 export class DefaultNominationAPI extends DefaultTransactionAPI implements NominationAPI {
+    vaultsAPI: VaultsAPI;
 
-    constructor(api: ApiPromise, account?: AddressOrPair) {
+    constructor(api: ApiPromise, btcNetwork: Network, account?: AddressOrPair) {
         super(api, account);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
     }
 
     async depositCollateral(vaultId: string, amount: Big): Promise<void> {
         const parsedVaultId = newAccountId(this.api, vaultId);
-        const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount) as string);
+        const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount));
         const tx = this.api.tx.nomination.depositCollateral(parsedVaultId, amountAsPlanck);
         await this.sendLogged(tx, this.api.events.nomination.IncreaseNominatedCollateral);
     }
 
     async withdrawCollateral(vaultId: string, amount: Big): Promise<void> {
         const parsedVaultId = newAccountId(this.api, vaultId);
-        const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount) as string);
+        const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount));
         const tx = this.api.tx.nomination.withdrawCollateral(parsedVaultId, amountAsPlanck);
         await this.sendLogged(tx, this.api.events.nomination.WithdrawNominatedCollateral);
     }
@@ -96,13 +112,57 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         return isNominationEnabled.isTrue;
     }
 
-    async listNominators(): Promise<[[AccountId, AccountId], Nominator][]> {
+    async listNominatorsRaw(): Promise<[[AccountId, AccountId], Nominator][]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const nominatorMap = await this.api.query.nomination.nominators.entriesAt(head);
         return nominatorMap.map((v) => {
             const [nominatorId, vaultId] = storageKeyToFirstInner(v[0]);
             return ([[nominatorId, vaultId], v[1]]);
         });
+    }
+
+    async listNominators(): Promise<[AccountId, AccountId][]> {
+        const rawList = await this.listNominatorsRaw();
+        return rawList.map((v) => v[0]);
+    }
+
+    async getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], Big][]> {
+        if(!nominatorId && !vaultId) {
+            Promise.reject("At least one parameter should be specified");
+        }
+        const parsedNominatorId = nominatorId ? newAccountId(this.api, nominatorId) : undefined;
+        const parsedVaultId = vaultId ? newAccountId(this.api, vaultId) : undefined;
+
+        const rawList = await this.listNominatorsRaw();
+
+        // rawList is of type `[[nominatorId, vaultId], Nominator][]`. 
+        // Filter by nominatorId and vaultId if each is defined respectively.
+        const nominationEntries = rawList.filter((v) => {
+            return (!parsedNominatorId || v[0][0].eq(parsedNominatorId)) 
+                && (!parsedVaultId || v[0][1].eq(parsedVaultId));
+        });
+        return await Promise.all(nominationEntries.map(async (v): Promise<[[AccountId, AccountId], Big]> => {
+            const vaultId = v[0][1];
+            const vault = await this.vaultsAPI.get(vaultId);
+            const nominator = v[1];
+            return [
+                [nominator.id, vaultId], 
+                planckToDOT(
+                    computeStake(
+                        bnToBig(nominator.collateral),
+                        new Big(decodeFixedPointType(vault.slash_per_token)),
+                        bnToBig(nominator.slash_tally)
+                    )
+                )
+            ];
+        }));
+    }
+
+    async getTotalNomination(nominatorId?: string, vaultId?: string): Promise<Big> {
+        const filteredNominations = await this.getFilteredNominations(nominatorId, vaultId);
+        return filteredNominations
+            .map(v => v[1])
+            .reduce((previousValue, currentValue) => previousValue.add(currentValue), new Big(0));
     }
 
     async listVaults(): Promise<AccountId[]> {

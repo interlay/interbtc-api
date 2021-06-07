@@ -19,7 +19,7 @@ describe("NominationAPI", () => {
         api = await createPolkadotAPI(defaultParachainEndpoint);
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
-        nominationAPI = new DefaultNominationAPI(api, bob);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, bob);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest);
         // The account of a vault from docker-compose
         charlie_stash = keyring.addFromUri("//Charlie//stash");
@@ -30,23 +30,25 @@ describe("NominationAPI", () => {
     });
 
     it("Should opt a vault in and out of nomination", async () => {
-        await optInIdempotently(charlie_stash);
+        await optInAndPreserveAPIAccount(charlie_stash);
         const nominationVaults = await nominationAPI.listVaults();
         assert.equal(1, nominationVaults.length);
         assert.equal(charlie_stash.address, nominationVaults.map(v => v.toString())[0]);
-        await optOutIdempotently(charlie_stash);
+        await optOutAndPreserveAPIAccount(charlie_stash);
         assert.equal(0, (await nominationAPI.listVaults()).length);
     });
 
     it("Should nominate to and withdraw from a vault", async () => {
-        await optInIdempotently(charlie_stash);
+        await optInAndPreserveAPIAccount(charlie_stash);
 
         // Deposit
         await nominationAPI.depositCollateral(charlie_stash.address, new Big(1));
         const nominators = await nominationAPI.listNominators();
         assert.equal(1, nominators.length);
-        const nominatorId = nominators[0][0][0].toString();
-        const vaultId = nominators[0][0][1].toString();
+        const nominator = nominators[0];
+        // `nominator` is of type `[nominatorId, vaultId]`.
+        const nominatorId = nominator[0].toString();
+        const vaultId = nominator[1].toString();
         assert.equal(bob.address, nominatorId);
         assert.equal(charlie_stash.address, vaultId);
         
@@ -54,12 +56,13 @@ describe("NominationAPI", () => {
         await nominationAPI.withdrawCollateral(charlie_stash.address, new Big(1));
         const nominatorsAfterWithdrawal = await nominationAPI.listNominators();
         assert.equal(1, nominatorsAfterWithdrawal.length);
-        assert.equal("0", nominatorsAfterWithdrawal[0][1].collateral.toString());
+        const nominatorCollateral = await nominationAPI.getTotalNomination(bob.address);
+        assert.equal("0", nominatorCollateral.toString());
 
-        await optOutIdempotently(charlie_stash);
+        await optOutAndPreserveAPIAccount(charlie_stash);
     });
 
-    async function optInIdempotently(vaultAccount: KeyringPair) {
+    async function optInAndPreserveAPIAccount(vaultAccount: KeyringPair) {
         const initialNominationAPIAccount = nominationAPI.getAccount();
         nominationAPI.setAccount(vaultAccount);
         await nominationAPI.optIn();
@@ -68,7 +71,7 @@ describe("NominationAPI", () => {
         }
     }
 
-    async function optOutIdempotently(vaultAccount: KeyringPair) {
+    async function optOutAndPreserveAPIAccount(vaultAccount: KeyringPair) {
         const initialNominationAPIAccount = nominationAPI.getAccount();
         nominationAPI.setAccount(vaultAccount);
         await nominationAPI.optOut();
