@@ -220,7 +220,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             // mul() here is a hacky workaround for rounding errors
             const griefingCollateralPlanck = new Big(dotToPlanck(griefingCollateral.toString()) || "0").add(100);
             const griefingCollateralCompact = this.api.createType("Compact<Collateral>", griefingCollateralPlanck.toString());
-            const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount.toString()));
+            const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount));
             txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralCompact));
         }
         // batchAll fails atomically, batch allows partial successes

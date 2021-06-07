@@ -123,9 +123,9 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     }
 
     async request(amount: Big): Promise<string> {
-        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount));
         const griefingCollateralDot = await this.getGriefingCollateral(amount);
-        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDot.toString()) as string;
+        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDot) as string;
         const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck);
         const result = await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
         try {
@@ -136,15 +136,15 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     }
 
     async withdraw(amount: Big): Promise<void> {
-        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount));
         const requestTx = this.api.tx.replace.withdrawReplace(amountSat);
         await this.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
     }
 
     async accept(oldVault: AccountId, amount: Big, collateral: Big, btcAddress: string): Promise<void> {
         const parsedBtcAddress = this.api.createType("BtcAddress", btcAddress);
-        const amountSat = this.api.createType("Wrapped", btcToSat(amount.toString()));
-        const collateralPlanck = this.api.createType("Collateral", dotToPlanck(collateral.toString()));
+        const amountSat = this.api.createType("Wrapped", btcToSat(amount));
+        const collateralPlanck = this.api.createType("Collateral", dotToPlanck(collateral));
         const requestTx = this.api.tx.replace.acceptReplace(oldVault, amountSat, collateralPlanck, parsedBtcAddress);
         await this.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
     }
@@ -159,7 +159,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     async getBtcDustValue(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const dustSatoshi = await this.api.query.replace.replaceBtcDustValue.at(head);
-        return new Big(satToBTC(dustSatoshi.toString()));
+        return new Big(satToBTC(dustSatoshi));
     }
 
     async getGriefingCollateral(amount: Big): Promise<Big> {

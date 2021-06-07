@@ -167,7 +167,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         const rewardPerToken = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardPerToken.at(head));
         const rewardTally = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardTally.at(head, stakedRelayerId));
         const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
-        return new Big(satToBTC(fees.toString()));
+        return new Big(satToBTC(fees));
     }
 
     async getCollateralFees(stakedRelayerId: AccountId): Promise<Big> {
@@ -176,7 +176,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         const rewardPerToken = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardPerToken.at(head));
         const rewardTally = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardTally.at(head, stakedRelayerId));
         const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
-        return new Big(planckToDOT(fees.toString()));
+        return new Big(planckToDOT(fees));
     }
 
     async getAPY(stakedRelayerId: AccountId): Promise<string> {

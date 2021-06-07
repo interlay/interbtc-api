@@ -1,4 +1,5 @@
 import Big, { RoundingMode } from "big.js";
+import BN from "bn.js";
 
 // set maximum exponents
 Big.PE = 21;
@@ -33,8 +34,8 @@ export function roundUpBtcToNearestSatoshi(amountBtc: string): string {
     return satToBTC(amountSatRounded);
 }
 
-export function satToBTC(sat: string | Big): string {
-    const satAmount = roundUpBigToNearestInteger(new Big(sat));
+export function satToBTC(sat: string | BN | number | Big): string {
+    const satAmount = roundUpBigToNearestInteger(new Big(sat.toString()));
     return satAmount.div(BTC_IN_SAT).toString();
 }
 
@@ -43,7 +44,7 @@ export function satToMBTC(sat: string): string {
     return satAmount.div(MBTC_IN_SAT).toString();
 }
 
-export function btcToSat(btc: string): string {
+export function btcToSat(btc: string | Big): string {
     const btcAmount: Big = new Big(btc);
     const satAmount: Big = btcAmount.mul(BTC_IN_SAT);
 
@@ -51,13 +52,13 @@ export function btcToSat(btc: string): string {
     return roundUpBigToNearestInteger(satAmount).toString();
 }
 
-export function planckToDOT(planck: string | Big): string {
-    const planckAmount = new Big(planck);
+export function planckToDOT(planck: string | BN | Big): string {
+    const planckAmount = new Big(planck.toString());
     return planckAmount.div(DOT_IN_PLANCK).toString();
 }
 
-export function dotToPlanck(dot: string): string | undefined {
-    const dotAmount = new Big(dot);
+export function dotToPlanck(dot: string | Big): string | undefined {
+    const dotAmount = new Big(dot.toString());
     const planckAmount = dotAmount.mul(DOT_IN_PLANCK);
     if (planckAmount.gte(1)) {
         return planckAmount.round(0, RoundingMode.RoundUp).toString();
@@ -68,4 +69,11 @@ export function dotToPlanck(dot: string): string | undefined {
 
 export function computeReward(stake: Big, rewardPerToken: Big, rewardTally: Big): Big {
     return stake.mul(rewardPerToken).sub(rewardTally);
+}
+
+export function roundLastNDigits(n: number, x: BN | Big | string): string {
+    const power = 10 ** n;
+    // Use BN such that we perform integer division
+    const bigNumber = new BN(x.toString());
+    return bigNumber.div(new BN(power)).mul(new BN(power)).toString();
 }

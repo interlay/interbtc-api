@@ -239,7 +239,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      */
     private utxoHasAtLeastAmount(utxo: UTXO | VOut, amount?: Big): boolean {
         if (amount) {
-            const expectedBtcAsSatoshi = Number(btcToSat(amount.toString()));
+            const expectedBtcAsSatoshi = Number(btcToSat(amount));
             if (utxo.value === undefined || expectedBtcAsSatoshi > utxo.value) {
                 return false;
             }
