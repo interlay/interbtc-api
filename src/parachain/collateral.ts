@@ -3,7 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 
-import { dotToPlanck, planckToDOT } from "../utils";
+import { dotToPlanck, newAccountId, planckToDOT } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
@@ -67,7 +67,7 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
 
     async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
         try {
-            const accountId = this.api.createType("AccountId", account);
+            const accountId = newAccountId(this.api, account);
             const unsubscribe = await this.api.query.collateral.account(accountId, (balance) => {
                 callback(account, new Big(planckToDOT(balance.free.toString())));
             });

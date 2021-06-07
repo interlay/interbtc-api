@@ -115,6 +115,10 @@ export interface IssueAPI extends TransactionAPI {
      */
     setAccount(account: AddressOrPair): void;
     /**
+     * @returns The signer or injector address to sign transactions with, if one is set.
+     */
+     getAccount(): AddressOrPair | undefined;
+    /**
      * @returns An array containing the issue requests
      */
     list(): Promise<IssueRequestExt[]>;

@@ -58,6 +58,10 @@ export interface RefundAPI extends TransactionAPI {
      * @param account Keyring account
      */
     setAccount(account: AddressOrPair): void;
+    /**
+     * @returns The signer or injector address to sign transactions with, if one is set.
+     */
+     getAccount(): AddressOrPair | undefined;
 }
 
 export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI {

@@ -246,6 +246,10 @@ export interface VaultsAPI extends TransactionAPI {
      */
     setAccount(account: AddressOrPair): void;
     /**
+     * @returns The signer or injector address to sign transactions with, if one is set.
+     */
+    getAccount(): AddressOrPair | undefined;
+    /**
      * @param amount Value to withdraw from staking
      */
     withdrawCollateral(amount: Big): Promise<void>;

@@ -15,6 +15,7 @@ import {
     ReplaceAPI,
     RefundAPI,
     FeeAPI,
+    NominationAPI,
 } from "../../src/parachain";
 import { ElectrsAPI } from "../../src/external";
 import { MockIssueAPI } from "./parachain/issue";
@@ -32,6 +33,7 @@ import { MockSystemAPI } from "./parachain/system";
 import { MockReplaceAPI } from "./parachain/replace";
 import { MockRefundAPI } from "./parachain/refund";
 import { MockFeeAPI } from "./parachain/fee";
+import { MockNominationAPI } from "./parachain/nomination";
 
 export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly vaults: VaultsAPI;
@@ -48,6 +50,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
     public readonly replace: ReplaceAPI;
     public readonly refund: RefundAPI;
     public readonly fee: FeeAPI;
+    public readonly nomination: NominationAPI;
 
     constructor(readonly api: ApiPromise, private _account?: AddressOrPair) {
         this.vaults = new MockVaultsAPI();
@@ -64,6 +67,7 @@ export default class MockPolkaBTCAPI implements PolkaBTCAPI {
         this.replace = new MockReplaceAPI();
         this.refund = new MockRefundAPI();
         this.fee = new MockFeeAPI();
+        this.nomination = new MockNominationAPI();
     }
 
     setAccount(account: AddressOrPair, _signer?: Signer): void {

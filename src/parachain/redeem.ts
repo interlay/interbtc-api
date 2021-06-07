@@ -15,6 +15,7 @@ import {
     btcToSat,
     satToBTC,
     getTxProof,
+    newAccountId,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { CollateralAPI } from ".";
@@ -120,6 +121,10 @@ export interface RedeemAPI extends TransactionAPI {
      * @param account Keyring account
      */
     setAccount(account: AddressOrPair): void;
+    /**
+     * @returns The signer or injector address to sign transactions with, if one is set.
+     */
+     getAccount(): AddressOrPair | undefined;
     /**
      * @param account The ID of the account whose redeem requests are to be retrieved
      * @returns A mapping from the redeem request ID to the redeem request object, corresponding to the requests of
@@ -298,7 +303,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const wrappedBtc = new Big(satToBTC(wrappedSatoshi.toString()));
         const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
         const collateralDot = await this.collateralAPI.balanceLocked(
-            this.api.createType("AccountId", liquidationVaultId)
+            newAccountId(this.api, liquidationVaultId)
         );
         return collateralDot.div(wrappedBtc);
     }

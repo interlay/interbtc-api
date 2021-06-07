@@ -9,6 +9,7 @@ import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/
 
 export interface TransactionAPI {
     setAccount(account: AddressOrPair): void;
+    getAccount(): AddressOrPair | undefined;
     sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
         successEventType?: AugmentedEvent<ApiTypes, T>
@@ -20,6 +21,10 @@ export class DefaultTransactionAPI {
 
     public setAccount(account: AddressOrPair): void {
         this.account = account;
+    }
+
+    public getAccount(): AddressOrPair | undefined {
+        return this.account;
     }
 
     async sendLogged<T extends AnyTuple>(

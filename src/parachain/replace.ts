@@ -68,6 +68,10 @@ export interface ReplaceAPI extends TransactionAPI {
      */
     setAccount(account: AddressOrPair): void;
     /**
+     * @returns The signer or injector address to sign transactions with, if one is set.
+     */
+     getAccount(): AddressOrPair | undefined;
+    /**
      * Wihdraw a replace request
      * @param amount The amount of wrapped tokens to withdraw from the amount
      * requested to have replaced.

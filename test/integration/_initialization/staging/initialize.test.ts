@@ -16,6 +16,8 @@ import {
     BTCRelayAPI,
     DefaultBTCRelayAPI,
     setNumericStorage,
+    NominationAPI,
+    DefaultNominationAPI,
 } from "../../../../src";
 import { issueSingle } from "../../../../src/utils/issue";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -32,6 +34,7 @@ describe("Initialize parachain state", () => {
     let oracleAPI: OracleAPI;
     let electrsAPI: ElectrsAPI;
     let treasuryAPI: TreasuryAPI;
+    let nominationAPI: NominationAPI;
     let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -58,6 +61,7 @@ describe("Initialize parachain state", () => {
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         oracleAPI = new DefaultOracleAPI(api, bob);
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
+        nominationAPI = new DefaultNominationAPI(api, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
         // Sleep for 2 min to wait for vaults to register
@@ -101,6 +105,12 @@ describe("Initialize parachain state", () => {
         assert.equal(exchangeRateToSet, exchangeRate.toString());
     });
 
+    it("should enable vault nomination", async () => {
+        await nominationAPI.setNominationEnabled(true);
+        const isNominationEnabled = await nominationAPI.isNominationEnabled();
+        assert.isTrue(isNominationEnabled);
+    });
+
     it("should issue 0.1 PolkaBTC", async () => {
         const polkaBtcToIssue = new Big(0.1);
         const feesToPay = await issueAPI.getFeesToPay(polkaBtcToIssue);
@@ -118,8 +128,6 @@ describe("Initialize parachain state", () => {
     it("should redeem 0.05 PolkaBTC", async () => {
         const polkaBtcToRedeem = new Big("0.05");
         const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        // const charlie_stashAccountId = api.createType("AccountId", charlie_stash.address);
-        // await redeemAPI.request(polkaBtcToRedeem, redeemAddress, charlie_stashAccountId);
         await redeemAPI.request(polkaBtcToRedeem, redeemAddress);
     });
 });

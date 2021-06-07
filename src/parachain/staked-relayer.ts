@@ -13,7 +13,7 @@ import { decodeFixedPointType, satToBTC, planckToDOT, storageKeyToFirstInner } f
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { computeReward, ElectrsAPI, getTxProof } from "..";
+import { computeReward, ElectrsAPI, getTxProof, newAccountId } from "..";
 
 /**
  * @category PolkaBTC Bridge
@@ -117,7 +117,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
     }
 
     async reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedVaultId = this.api.createType("AccountId", vaultId);
+        const parsedVaultId = newAccountId(this.api, vaultId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const tx = this.api.tx.stakedRelayers.reportVaultTheft(parsedVaultId, merkleProof, rawTx);
         await this.sendLogged(tx, this.api.events.stakedRelayers.VaultTheft);    
