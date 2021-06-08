@@ -2,15 +2,16 @@ import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 
-import { satToBTC, IssueRequestExt, getBitcoinNetwork } from "..";
+import { satToBTC, getBitcoinNetwork } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
-import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
+import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTreasuryAPI } from "../parachain/treasury";
+import { Issue, IssueStatus } from "../types";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 
 export interface IssueResult {
-    request: IssueRequestResult;
+    request: Issue;
     initialDotBalance: Big;
     finalDotBalance: Big;
     initialPolkaBtcBalance: Big;
@@ -45,22 +46,16 @@ export async function issueSingle(
         let rawRequestResult;
         if (vaultAddress) {
             const vaultAccountId = api.createType("AccountId", vaultAddress);
-            rawRequestResult = await issueAPI.requestAdvanced(
-                new Map([[vaultAccountId, amount]]),
-                atomic
-            );
+            rawRequestResult = await issueAPI.requestAdvanced(new Map([[vaultAccountId, amount]]), atomic);
         } else {
             rawRequestResult = await issueAPI.request(amount, atomic);
         }
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
-        const requestResult = rawRequestResult[0];
-        const issueRequest = await issueAPI.getRequestById(requestResult.id);
+        const issueRequest = rawRequestResult[0];
 
-        let amountAsBtc = new Big(satToBTC(
-            (issueRequest as IssueRequestExt).amount.add((issueRequest as IssueRequestExt).fee).toString()
-        ));
+        let amountAsBtc = new Big(issueRequest.amountBTC);
 
         if (triggerRefund) {
             // Send 1 more Btc than needed
@@ -73,7 +68,7 @@ export async function issueSingle(
         }
 
         // send btc tx
-        const vaultBtcAddress = requestResult.issueRequest.btc_address;
+        const vaultBtcAddress = issueRequest.vaultBTCAddress;
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
         }
@@ -82,20 +77,21 @@ export async function issueSingle(
 
         if (autoExecute === false) {
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            await issueAPI.execute(requestResult.id.toString(), txData.txid);
+            await issueAPI.execute(issueRequest.id, txData.txid);
         } else {
             // wait for vault to execute issue
-            while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {
+            const hashId = api.createType("H256", issueRequest.id); //TODO: double-check this is correct
+            while ((await issueAPI.getRequestById(hashId)).status !== IssueStatus.Completed) {
                 await sleep(1000);
             }
         }
 
         const [finalBalancePolkaBTC, finalBalanceDOT] = await Promise.all([
             treasuryAPI.balance(requesterAccountId),
-            collateralAPI.balance(requesterAccountId)
+            collateralAPI.balance(requesterAccountId),
         ]);
         return {
-            request: requestResult,
+            request: issueRequest,
             initialDotBalance: initialBalanceDOT,
             finalDotBalance: finalBalanceDOT,
             initialPolkaBtcBalance: initialBalancePolkaBTC,
@@ -111,4 +107,3 @@ export async function issueSingle(
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
