@@ -12,7 +12,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { ElectrsAPI } from "../../../../src";
+import { ElectrsAPI, IssueStatus } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -83,12 +83,11 @@ describe("redeem", () => {
 
             // request issue
             issueAPI.setAccount(alice);
-            const requestResult = (await issueAPI.request(new Big(issueAmountAsBtcString)))[0];
-            const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            const txAmountRequired = new Big(satToBTC(issueRequest.amount.add(issueRequest.fee).toString()));
+            const issueRequest = (await issueAPI.request(new Big(issueAmountAsBtcString)))[0];
+            const txAmountRequired = new Big(satToBTC(new Big(issueRequest.amountBTC).add(issueRequest.fee).toString()));
 
             // send btc tx
-            const vaultBtcAddress = requestResult.issueRequest.btc_address;
+            const vaultBtcAddress = issueRequest.vaultBTCAddress;
             if (vaultBtcAddress === undefined) {
                 throw new Error("Undefined vault address returned from RequestIssue");
             }
@@ -96,29 +95,34 @@ describe("redeem", () => {
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, txAmountRequired, blocksToMine);
             assert.equal(Buffer.from(txData.txid, "hex").length, 32, "Transaction length not 32 bytes");
 
-            while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {
+            const idHash = api.createType("H256", issueRequest.id);
+            while (!((await issueAPI.getRequestById(idHash)).status === IssueStatus.Completed)) {
                 await sleep(1000);
             }
 
             // redeem
             redeemAPI.setAccount(alice);
             const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-            const vaultId = issueRequest.vault;
+            const vaultId = api.createType("AccountId", issueRequest.vaultDOTAddress);
             // const vaultId = api.createType("AccountId", charlie_stash.address);
             const redeemAmountBig = new Big(redeemAmountAsBtcString);
-            const [{id, redeemRequest}] = await redeemAPI.request(
+            const redeemResult = await redeemAPI.request(
                 redeemAmountBig,
                 btcAddress,
                 true, // atomic
                 0, // retries
                 new Map([[vaultId, redeemAmountBig.mul(2)]])
             );
+            assert.equal(redeemResult.length,
+                1,
+                "More than one redeem request batch-created - test setup is unexpected or non-deterministic");
+            const redeemRequest = redeemResult[0];
             assert.equal(
-                redeemRequest.vault.toString(),
+                redeemRequest.vaultDOTAddress,
                 vaultId.toString(),
                 "Requested for redeem with the wrong vault"
             );
-            assert.equal(Buffer.from(stripHexPrefix(id.toString()), "hex").length, 32, "Redeem ID length not 32 bytes");
+            assert.equal(Buffer.from(stripHexPrefix(redeemRequest.id), "hex").length, 32, "Redeem ID length not 32 bytes");
         }
 
         function sleep(ms: number): Promise<void> {

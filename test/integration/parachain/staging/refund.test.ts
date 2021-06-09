@@ -45,7 +45,8 @@ describe("refund", () => {
             false,
             false
         );
-        const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
+        const id = api.createType("H256", issueResult.request.id);
+        const refund = await refundAPI.getRequestByIssueId(id);
         // The parachain returns an Option<> refund request if none was found,
         // which is deserialized as a refund request with blank/default fields
         assert.equal(refund.amount_btc.toString(), "0");
@@ -62,7 +63,8 @@ describe("refund", () => {
             true,
             true
         );
-        const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
+        const id = api.createType("H256", issueResult.request.id);
+        const refund = await refundAPI.getRequestByIssueId(id);
         assert.notEqual(refund.amount_btc.toString(), "0");
     }).timeout(1000000);
 

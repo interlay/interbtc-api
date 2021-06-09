@@ -86,18 +86,20 @@ describe("vaultsAPI", () => {
     });
 
     it("should list issue request by a vault", async () => {
-        const bobId = api.createType("AccountId", ferdie_stash.address);
+        const bobAddress = ferdie_stash.address;
+        const bobId = api.createType("AccountId", bobAddress);
         const issueRequests = await vaultsAPI.mapIssueRequests(bobId);
         issueRequests.forEach((request) => {
-            assert.deepEqual(request.vault, bobId);
+            assert.deepEqual(request.vaultDOTAddress, bobAddress);
         });
     });
 
     it("should list redeem request by a vault", async () => {
-        const bobId = api.createType("AccountId", ferdie_stash.address);
+        const bobAddress = ferdie_stash.address;
+        const bobId = api.createType("AccountId", bobAddress);
         const redeemRequests = await vaultsAPI.mapRedeemRequests(bobId);
         redeemRequests.forEach((request) => {
-            assert.deepEqual(request.vault, bobId);
+            assert.deepEqual(request.vaultDOTAddress, bobAddress);
         });
     });
 
