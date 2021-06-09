@@ -6,7 +6,7 @@ export interface Issue {
     griefingCollateral: string;
     vaultWalletPubkey: string;
     creationBlock: number;
-    creationTimestamp: number;
+    creationTimestamp?: number;
     vaultBTCAddress: string;
     vaultDOTAddress: string;
     btcTxId: string;

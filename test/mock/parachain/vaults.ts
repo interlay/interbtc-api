@@ -1,14 +1,13 @@
-import { Vault, SystemVault } from "../../../src/interfaces/default";
+import { SystemVault } from "../../../src/interfaces/default";
 import { AccountId, H256 } from "@polkadot/types/interfaces";
-import { IssueRequestExt } from "../../../src/parachain/issue";
-import { RedeemRequestExt } from "../../../src/parachain/redeem";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { VaultsAPI, VaultExt } from "../../../src/parachain/vaults";
 import Big from "big.js";
 import { MockTransactionAPI } from "../transaction";
+import { Issue, Redeem } from "../../../src";
 
 export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
-    getRequiredCollateralForWrapped(amount: Big): Promise<Big> {
+    getRequiredCollateralForWrapped(_amount: Big): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     list(): Promise<VaultExt[]> {
@@ -17,31 +16,31 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     listPaged(): Promise<VaultExt[]> {
         throw new Error("Method not implemented.");
     }
-    mapIssueRequests(vaultId: AccountId): Promise<Map<H256, IssueRequestExt>> {
+    mapIssueRequests(_vaultId: AccountId): Promise<Map<H256, Issue>> {
         throw new Error("Method not implemented.");
     }
-    mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>> {
+    mapRedeemRequests(_vaultId: AccountId): Promise<Map<H256, Redeem>> {
         throw new Error("Method not implemented.");
     }
-    mapReplaceRequests(vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
+    mapReplaceRequests(_vaultId: AccountId): Promise<Map<H256, ReplaceRequestExt>> {
         throw new Error("Method not implemented.");
     }
-    get(vaultId: AccountId): Promise<VaultExt> {
+    get(_vaultId: AccountId): Promise<VaultExt> {
         throw new Error("Method not implemented.");
     }
-    getVaultCollateralization(vaultId: AccountId, newCollateral?: Big, onlyIssued?: boolean): Promise<Big> {
+    getVaultCollateralization(_vaultId: AccountId, _newCollateral?: Big, _onlyIssued?: boolean): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     getSystemCollateralization(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getRequiredCollateralForVault(vaultId: AccountId): Promise<Big> {
+    getRequiredCollateralForVault(_vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getIssuedAmount(vaultId: AccountId): Promise<Big> {
+    getIssuedAmount(_vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getIssuableAmount(vaultId: AccountId): Promise<Big> {
+    getIssuableAmount(_vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     getTotalIssuedAmount(): Promise<Big> {
@@ -50,10 +49,10 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getTotalIssuableAmount(): Promise<string> {
         throw new Error("Method not implemented.");
     }
-    selectRandomVaultIssue(btc: Big): Promise<AccountId> {
+    selectRandomVaultIssue(_btc: Big): Promise<AccountId> {
         throw new Error("Method not implemented.");
     }
-    selectRandomVaultRedeem(btc: Big): Promise<AccountId> {
+    selectRandomVaultRedeem(_btc: Big): Promise<AccountId> {
         throw new Error("Method not implemented.");
     }
     getPremiumRedeemVaults(): Promise<Map<AccountId, Big>> {
@@ -65,7 +64,7 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getVaultsWithRedeemableTokens(): Promise<Map<AccountId, Big>> {
         throw new Error("Method not implemented.");
     }
-    isVaultFlaggedForTheft(vaultId: AccountId): Promise<boolean> {
+    isVaultFlaggedForTheft(_vaultId: AccountId): Promise<boolean> {
         throw new Error("Method not implemented.");
     }
     getLiquidationCollateralThreshold(): Promise<Big> {
@@ -77,16 +76,16 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getSecureCollateralThreshold(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getFeesWrapped(vaultId: AccountId): Promise<Big> {
+    getFeesWrapped(_vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getFeesCollateral(vaultId: AccountId): Promise<Big> {
+    getFeesCollateral(_vaultId: AccountId): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getAPY(vaultId: AccountId): Promise<string> {
+    getAPY(_vaultId: AccountId): Promise<string> {
         throw new Error("Method not implemented.");
     }
-    getSLA(vaultId: AccountId): Promise<string> {
+    getSLA(_vaultId: AccountId): Promise<string> {
         throw new Error("Method not implemented.");
     }
     getMaxSLA(): Promise<string> {
@@ -95,10 +94,10 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getPunishmentFee(): Promise<string> {
         throw new Error("Method not implemented.");
     }
-    withdrawCollateral(amount: Big): Promise<void> {
+    withdrawCollateral(_amount: Big): Promise<void> {
         throw new Error("Method not implemented.");
     }
-    lockAdditionalCollateral(amount: Big): Promise<void> {
+    lockAdditionalCollateral(_amount: Big): Promise<void> {
         throw new Error("Method not implemented.");
     }
     getLiquidationVaultId(): Promise<string> {

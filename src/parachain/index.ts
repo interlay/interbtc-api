@@ -1,6 +1,6 @@
 export { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-export { IssueAPI, DefaultIssueAPI, IssueRequestExt } from "./issue";
-export { RedeemAPI, DefaultRedeemAPI, RedeemRequestExt } from "./redeem";
+export { IssueAPI, DefaultIssueAPI } from "./issue";
+export { RedeemAPI, DefaultRedeemAPI } from "./redeem";
 export { RefundAPI, DefaultRefundAPI, RefundRequestExt } from "./refund";
 export { StakedRelayerAPI, DefaultStakedRelayerAPI } from "./staked-relayer";
 export { OracleAPI, DefaultOracleAPI } from "./oracle";

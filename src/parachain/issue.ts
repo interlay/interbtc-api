@@ -23,14 +23,9 @@ import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { Issue, IssueStatus } from "../types/issueTypes";
+import { Issue, IssueStatus } from "../types";
 
 export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big };
-
-export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
-    // network encoded btc address
-    btc_address: string;
-}
 
 export function encodeIssueRequest(
     req: IssueRequest,
@@ -45,7 +40,6 @@ export function encodeIssueRequest(
     return {
         id: stripHexPrefix(id.toString()),
         creationBlock: req.opentime.toNumber(),
-        creationTimestamp: Date.now(), //FIXME
         vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
         vaultDOTAddress: req.vault.toString(),
         userDOTAddress: req.requester.toString(),

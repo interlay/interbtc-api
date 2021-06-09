@@ -27,11 +27,11 @@ import {
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { encodeIssueRequest } from "./issue";
-import { RedeemRequestExt, encodeRedeemRequest } from "./redeem";
+import { encodeRedeemRequest } from "./redeem";
 import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import {Issue} from "../types";
+import {Issue, Redeem} from "../types";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -91,7 +91,7 @@ export interface VaultsAPI extends TransactionAPI {
      * @param vaultId - The AccountId of the vault used to filter redeem requests
      * @returns A map with redeem ids to redeem requests involving said vault
      */
-    mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>>;
+    mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, Redeem>>;
     /**
      * Fetch the replace requests associated with a vault. In the returned requests,
      * the vault is either the replaced or the replacing one.
@@ -312,12 +312,12 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         }
     }
 
-    async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, RedeemRequestExt>> {
+    async mapRedeemRequests(vaultId: AccountId): Promise<Map<H256, Redeem>> {
         try {
             const redeemRequestPairs: [H256, RedeemRequest][] = await this.api.rpc.redeem.getVaultRedeemRequests(
                 vaultId
             );
-            return new Map(redeemRequestPairs.map(([id, req]) => [id, encodeRedeemRequest(req, this.btcNetwork)]));
+            return new Map(redeemRequestPairs.map(([id, req]) => [id, encodeRedeemRequest(req, this.btcNetwork, id)]));
         } catch (err) {
             return Promise.reject(`Error during redeem request retrieval: ${err}`);
         }
