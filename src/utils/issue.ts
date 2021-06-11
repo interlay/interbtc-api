@@ -14,8 +14,8 @@ export interface IssueResult {
     request: IssueRequestResult;
     initialDotBalance: Big;
     finalDotBalance: Big;
-    initialPolkaBtcBalance: Big;
-    finalPolkaBtcBalance: Big;
+    initialInterBtcBalance: Big;
+    finalInterBtcBalance: Big;
 }
 
 export async function issueSingle(
@@ -39,7 +39,7 @@ export async function issueSingle(
         issueAPI.setAccount(issuingAccount);
         const requesterAccountId = api.createType("AccountId", issuingAccount.address);
         const initialBalanceDOT = await collateralAPI.balance(requesterAccountId);
-        const initialBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
+        const initialBalanceInterBTC = await treasuryAPI.balance(requesterAccountId);
         const blocksToMine = 3;
 
         // request issue
@@ -89,7 +89,7 @@ export async function issueSingle(
             }
         }
 
-        const [finalBalancePolkaBTC, finalBalanceDOT] = await Promise.all([
+        const [finalBalanceInterBTC, finalBalanceDOT] = await Promise.all([
             treasuryAPI.balance(requesterAccountId),
             collateralAPI.balance(requesterAccountId)
         ]);
@@ -97,8 +97,8 @@ export async function issueSingle(
             request: requestResult,
             initialDotBalance: initialBalanceDOT,
             finalDotBalance: finalBalanceDOT,
-            initialPolkaBtcBalance: initialBalancePolkaBTC,
-            finalPolkaBtcBalance: finalBalancePolkaBTC,
+            initialInterBtcBalance: initialBalanceInterBTC,
+            finalInterBtcBalance: finalBalanceInterBTC,
         };
     } catch (e) {
         // IssueCompleted errors occur when multiple vaults attempt to execute the same request

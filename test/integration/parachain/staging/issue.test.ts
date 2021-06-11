@@ -152,7 +152,7 @@ describe("issue", () => {
                 false
             );
             assert.equal(
-                issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
+                issueResult.finalInterBtcBalance.sub(issueResult.initialInterBtcBalance).toString(),
                 amount.sub(feesToPay).toString(),
                 "Final balance was not increased by the exact amount specified"
             );
@@ -178,7 +178,7 @@ describe("issue", () => {
                 false
             );
             assert.equal(
-                issueResult.finalPolkaBtcBalance.sub(issueResult.initialPolkaBtcBalance).toString(),
+                issueResult.finalInterBtcBalance.sub(issueResult.initialInterBtcBalance).toString(),
                 amount.sub(feesToPay).sub(oneSatoshi).toString(),
                 "Final balance was not increased by the exact amount specified"
             );

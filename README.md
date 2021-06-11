@@ -1,6 +1,6 @@
-# PolkaBTC JS
+# InterBTC JS
 
-JavaScript library to interact with PolkaBTC
+JavaScript library to interact with InterBTC
 
 ## Getting started
 
@@ -57,14 +57,14 @@ yarn build
 The library assumes you have a [BTC-Parachain](https://github.com/interlay/btc-parachain) running locally.
 
 To use the library, you will first need to create a PolkadotJS `APIPromise` instance,
-and then to instantiate a `PolkaBTCAPI` instance.
+and then to instantiate a `InterBTCAPI` instance.
 
 ```typescript
-import { createPolkabtcAPI } from "@interlay/polkabtc";
+import { createInterbtcAPI } from "@interlay/interbtc";
 
 const defaultParachainEndpoint = "ws://127.0.0.1:9944";
 const isMainnet = false;
-const polkaBTC = await createPolkabtcAPI(defaultParachainEndpoint, isMainnet);
+const interBTC = await createInterbtcAPI(defaultParachainEndpoint, isMainnet);
 ```
 
 To emit transactions, an `account` has to be set.
@@ -77,10 +77,10 @@ See more details here: https://polkadot.js.org/docs/extension/usage/
 import { createTestKeyring } from "@polkadot/keyring/testing";
 const keyring = createTestKeyring();
 const keypair = keyring.getPairs()[0];
-polkaBTC.setAccount(keypair);
+interBTC.setAccount(keypair);
 ```
 
-The different functionalities are then exposed through the `PolkaBTCAPI` instance.
+The different functionalities are then exposed through the `InterBTCAPI` instance.
 
 
 Certain API calls require a parameters of type `AccountId`. For testing, an empty accountId will suffice:
@@ -89,7 +89,7 @@ Certain API calls require a parameters of type `AccountId`. For testing, an empt
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 
 const activeStakedRelayerId = <AccountId>{};
-const feesEarnedByActiveStakedRelayer = await polkaBTC.stakedRelayer.getFeesEarned(
+const feesEarnedByActiveStakedRelayer = await interBTC.stakedRelayer.getFeesEarned(
     activeStakedRelayerId
 );
 ```

@@ -24,8 +24,8 @@ export type BtcTxFees = {
 };
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface OracleAPI extends TransactionAPI {

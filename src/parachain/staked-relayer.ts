@@ -16,7 +16,7 @@ import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { computeStake, ElectrsAPI, getTxProof, newAccountId } from "..";
 
 /**
- * @category PolkaBTC Bridge
+ * @category InterBTC Bridge
  * The type Big represents Wrapped or Collateral large denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
@@ -39,7 +39,7 @@ export interface StakedRelayerAPI extends TransactionAPI {
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
-     * @returns Total rewards in PolkaBTC for the given staked relayer
+     * @returns Total rewards in InterBTC for the given staked relayer
      */
     getWrappingFees(stakedRelayerId: AccountId): Promise<Big>;
     /**

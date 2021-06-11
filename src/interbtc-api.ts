@@ -33,7 +33,7 @@ export function getBitcoinNetwork(network: string = "mainnet"): Network {
     }
 }
 
-export interface PolkaBTCAPI {
+export interface InterBTCAPI {
     readonly api: ApiPromise;
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
@@ -55,11 +55,11 @@ export interface PolkaBTCAPI {
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
-export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
+export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
