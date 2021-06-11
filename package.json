@@ -39,7 +39,7 @@
   "engineStrict": true,
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
-    "@interlay/polkabtc-types": "0.7.4",
+    "@interlay/interbtc-types": "0.8.1",
     "@polkadot/api": "4.12.1",
     "@polkadot/typegen": "4.12.1",
     "@polkadot/keyring": "6.6.2-6",

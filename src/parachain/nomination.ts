@@ -78,14 +78,14 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         const parsedVaultId = newAccountId(this.api, vaultId);
         const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount));
         const tx = this.api.tx.nomination.depositCollateral(parsedVaultId, amountAsPlanck);
-        await this.sendLogged(tx, this.api.events.nomination.IncreaseNominatedCollateral);
+        await this.sendLogged(tx, this.api.events.nomination.DepositCollateral);
     }
 
     async withdrawCollateral(vaultId: string, amount: Big): Promise<void> {
         const parsedVaultId = newAccountId(this.api, vaultId);
         const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount));
         const tx = this.api.tx.nomination.withdrawCollateral(parsedVaultId, amountAsPlanck);
-        await this.sendLogged(tx, this.api.events.nomination.WithdrawNominatedCollateral);
+        await this.sendLogged(tx, this.api.events.nomination.WithdrawCollateral);
     }
 
     async optIn(): Promise<void> {

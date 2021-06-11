@@ -1,4 +1,4 @@
-import definitions, { RpcFunctionDefinition } from "@interlay/polkabtc-types";
+import definitions, { RpcFunctionDefinition } from "@interlay/interbtc-types";
 export default {
     types: definitions.types[0].types,
     rpc: parseProviderRpcDefinitions(definitions.rpc),

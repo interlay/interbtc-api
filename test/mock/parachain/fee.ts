@@ -1,5 +1,5 @@
 import { FeeAPI } from "../../../src/parachain";
-import { PolkaBTC } from "../../../src/interfaces/default";
+import { Wrapped } from "../../../src/interfaces/default";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
 import Big from "big.js";
@@ -16,7 +16,7 @@ export class MockFeeAPI implements FeeAPI {
         throw new Error("Method not implemented.");
     }
     
-    getGriefingCollateralInPlanck(_amountSat: PolkaBTC, _griefingCollateralRate: Big): Promise<Big> {
+    getGriefingCollateralInPlanck(_amountSat: Wrapped, _griefingCollateralRate: Big): Promise<Big> {
         throw new Error("Method not implemented.");
     }
 
@@ -32,7 +32,7 @@ export class MockFeeAPI implements FeeAPI {
         return Promise.resolve(new Map<AccountId, ReplaceRequestExt>());
     }
 
-    async request(_amount: PolkaBTC): Promise<void> {
+    async request(_amount: Wrapped): Promise<void> {
         return;
     }
 }

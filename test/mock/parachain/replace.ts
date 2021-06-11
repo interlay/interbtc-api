@@ -1,6 +1,6 @@
 import { ReplaceAPI } from "../../../src/parachain";
 import { BlockNumber } from "@polkadot/types/interfaces";
-import { PolkaBTC, DOT, Collateral, Wrapped } from "../../../src/interfaces/default";
+import { Collateral } from "../../../src/interfaces/default";
 import BN from "bn.js";
 import { ReplaceRequestExt } from "../../../src/parachain/replace";
 import { AccountId } from "@polkadot/types/interfaces";
@@ -25,8 +25,8 @@ export class MockReplaceAPI extends MockTransactionAPI implements ReplaceAPI {
         throw new Error("Method not implemented.");
     }
 
-    async getGriefingCollateralRate(): Promise<DOT> {
-        return Promise.resolve(new BN(12) as DOT);
+    async getGriefingCollateralRate(): Promise<Collateral> {
+        return Promise.resolve(new BN(12) as Collateral);
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {
