@@ -3,7 +3,6 @@ import { u64, u128 } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { Bytes } from "@polkadot/types";
-import BN from "bn.js";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import { AddressOrPair } from "@polkadot/api/types";
@@ -54,9 +53,9 @@ export interface StakedRelayerAPI extends TransactionAPI {
      * @note this does not account for interest compounding
      *
      * @param stakedRelayerId the id of the relayer
-     * @returns the APY as a percentage string
+     * @returns the APY as a percentage
      */
-    getAPY(stakedRelayerId: AccountId): Promise<string>;
+    getAPY(stakedRelayerId: AccountId): Promise<Big>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
      * @returns The SLA score, an integer in the range [0, MaxSLA]
@@ -66,14 +65,6 @@ export interface StakedRelayerAPI extends TransactionAPI {
      * @returns The maximum SLA score, a positive integer
      */
     getMaxSLA(): Promise<number>;
-    /**
-     * @param planckStake Stake amount (denoted in Planck) to register with
-     */
-    register(planckStake: BN): Promise<void>;
-    /**
-     * Deregister the Staked Relayer
-     */
-    deregister(): Promise<void>;
     /**
      * A Staked Relayer reports misbehavior by a Vault, providing a fraud proof
     * (malicious Bitcoin transaction and the corresponding transaction inclusion proof).
@@ -102,18 +93,8 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
     constructor(api: ApiPromise, btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.collateralAPI = new DefaultCollateralAPI(api);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI);
         this.feeAPI = new DefaultFeeAPI(api);
-    }
-
-    async register(planckStake: BN): Promise<void> {
-        const tx = this.api.tx.stakedRelayers.registerStakedRelayer(planckStake);
-        await this.sendLogged(tx, this.api.events.stakedRelayers.RegisterStakedRelayer);
-    }
-
-    async deregister(): Promise<void> {
-        const tx = this.api.tx.stakedRelayers.deregisterStakedRelayer();
-        await this.sendLogged(tx, this.api.events.stakedRelayers.DeregisterStakedRelayer);    
     }
 
     async reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
@@ -177,7 +158,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return planckToDOT(computeStake(new Big(stake), new Big(rewardPerToken), new Big(rewardTally)));
     }
 
-    async getAPY(stakedRelayerId: AccountId): Promise<string> {
+    async getAPY(stakedRelayerId: AccountId): Promise<Big> {
         const [feesWrapped, feesCollateral, lockedCollateral] = await Promise.all([
             await this.getWrappingFees(stakedRelayerId),
             await this.getCollateralFees(stakedRelayerId),
@@ -189,13 +170,13 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
     async getSLA(stakedRelayerId: AccountId): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const sla = await this.api.query.sla.relayerSla.at(head, stakedRelayerId);
-        return Number(decodeFixedPointType(sla));
+        return decodeFixedPointType(sla).toNumber();
     }
 
     async getMaxSLA(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const maxSLA = await this.api.query.sla.relayerTargetSla.at(head);
-        return Number(decodeFixedPointType(maxSLA));
+        return decodeFixedPointType(maxSLA).toNumber();
     }
 
 }

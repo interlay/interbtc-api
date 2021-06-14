@@ -13,7 +13,6 @@ export interface FeeAPI {
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
      * @param griefingCollateralRate
-     * @param oracleAPI
      * @returns The griefing collateral, in DOT
      */
     getGriefingCollateral(
@@ -27,7 +26,7 @@ export interface FeeAPI {
      * @param dotToBtcRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string>;
+    calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing PolkaBTC
      */
@@ -56,16 +55,19 @@ export class DefaultFeeAPI implements FeeAPI {
     async getIssueGriefingCollateralRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral.at(head);
-        return new Big(decodeFixedPointType(griefingCollateralRate));
+        return decodeFixedPointType(griefingCollateralRate);
     }
 
     async getReplaceGriefingCollateralRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral.at(head);
-        return new Big(decodeFixedPointType(griefingCollateralRate));
+        return decodeFixedPointType(griefingCollateralRate);
     }
 
-    async calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string> {
+    async calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<Big> {
+        if(lockedDOT.eq(new Big(0))) {
+            return new Big(0);
+        }
         if(dotToBtcRate === undefined) {
             dotToBtcRate = await this.oracleAPI.getExchangeRate();
         }
@@ -73,6 +75,6 @@ export class DefaultFeeAPI implements FeeAPI {
         const totalFees = feesDOT.add(feesPolkaBTCInDot);
 
         // convert to percent
-        return totalFees.div(lockedDOT).mul(100).toString();
+        return totalFees.div(lockedDOT).mul(100);
     }
 }

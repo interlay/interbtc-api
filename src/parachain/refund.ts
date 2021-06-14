@@ -53,6 +53,11 @@ export interface RefundAPI extends TransactionAPI {
      * @returns A refund request object
      */
     getRequestByIssueId(issueId: H256): Promise<RefundRequestExt>;
+    /**
+     * @param issueId The ID of the refund request to fetch
+     * @returns The ID of the refund request
+     */
+    getRequestIdByIssueId(issueId: H256): Promise<H256>;
 }
 
 export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI {
@@ -85,6 +90,15 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
     async getRequestById(refundId: H256): Promise<RefundRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return encodeRefundRequest(await this.api.query.refund.refundRequests.at(head, refundId), this.btcNetwork);
+    }
+
+    async getRequestIdByIssueId(issueId: H256): Promise<H256> {
+        try {
+            const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(issueId);
+            return keyValuePair[0];
+        } catch (error) {
+            return Promise.reject(`Error fetching refund request by issue id: ${error}`);
+        }
     }
 
     async getRequestByIssueId(issueId: H256): Promise<RefundRequestExt> {

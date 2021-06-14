@@ -5,8 +5,9 @@ import type { AnyTuple } from "@polkadot/types/types";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
+import BN from "bn.js";
 
-import { satToBTC, IssueRequestExt, getBitcoinNetwork } from "..";
+import { satToBTC, getBitcoinNetwork, newAccountId } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
 import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
@@ -14,6 +15,7 @@ import { DefaultTreasuryAPI } from "../parachain/treasury";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "..";
 import { DefaultRedeemAPI } from "../parachain";
+import { RequestResult } from "../parachain/redeem";
 
 export interface IssueResult {
     request: IssueRequestResult;
@@ -21,6 +23,12 @@ export interface IssueResult {
     finalDotBalance: Big;
     initialPolkaBtcBalance: Big;
     finalPolkaBtcBalance: Big;
+}
+
+export enum ExecuteRedeem {
+    False,
+    Manually, 
+    Auto
 }
 
 /**
@@ -109,6 +117,8 @@ export async function issueSingle(
         const bitcoinjsNetwork = getBitcoinNetwork(network);
         const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, electrsAPI);
 
+        const vaultId = vaultAddress !== undefined ? newAccountId(api, vaultAddress) : vaultAddress;
+
         issueAPI.setAccount(issuingAccount);
         const requesterAccountId = api.createType("AccountId", issuingAccount.address);
         const initialBalanceDOT = await collateralAPI.balance(requesterAccountId);
@@ -116,25 +126,14 @@ export async function issueSingle(
         const blocksToMine = 3;
 
         // request issue
-        let rawRequestResult;
-        if (vaultAddress) {
-            const vaultAccountId = api.createType("AccountId", vaultAddress);
-            rawRequestResult = await issueAPI.requestAdvanced(
-                new Map([[vaultAccountId, amount]]),
-                atomic
-            );
-        } else {
-            rawRequestResult = await issueAPI.request(amount, atomic);
-        }
+        const rawRequestResult = await issueAPI.request(amount, vaultId, atomic);
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
         const requestResult = rawRequestResult[0];
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
 
-        let amountAsBtc = new Big(satToBTC(
-            (issueRequest as IssueRequestExt).amount.add((issueRequest as IssueRequestExt).fee).toString()
-        ));
+        let amountAsBtc = satToBTC(issueRequest.amount.add(issueRequest.fee));
 
         if (triggerRefund) {
             // Send 1 more Btc than needed
@@ -142,7 +141,7 @@ export async function issueSingle(
         } else if (autoExecute === false) {
             // Send 1 less Satoshi than requested
             // to trigger the user failsafe and disable auto-execution.
-            const oneSatoshi = new Big(satToBTC("1"));
+            const oneSatoshi = satToBTC(new BN(1));
             amountAsBtc = amountAsBtc.sub(oneSatoshi);
         }
 
@@ -192,43 +191,42 @@ export async function redeem(
     redeemingAccount: KeyringPair,
     amount: Big,
     vaultAddress?: string,
-    autoExecute = true,
+    autoExecute = ExecuteRedeem.Auto,
     network = "regtest",
     atomic = true,
-    timeout = 2 * 60 * 1000
-) {
+    timeout = 5 * 60 * 1000
+): Promise<RequestResult> {
     const bitcoinjsNetwork = getBitcoinNetwork(network);
     const redeemAPI = new DefaultRedeemAPI(api, bitcoinjsNetwork, electrsAPI);
-
     redeemAPI.setAccount(redeemingAccount);
 
-    let cachedVaults: Map<AccountId, Big> | undefined = undefined;
-    if(vaultAddress) {
-        const vaultId = api.createType("AccountId", vaultAddress);
-        cachedVaults = new Map([[vaultId, amount.mul(2)]])
-    }
-
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-    const [{id}] = await redeemAPI.request(
+    const [redeemRequest] = await redeemAPI.request(
         amount,
         btcAddress,
+        vaultAddress ? newAccountId(api, vaultAddress) : undefined,
         atomic,
         0, // retries
-        cachedVaults
     );
 
-    if (autoExecute === false) {
-        const opreturnData = stripHexPrefix(id.toString());
+    switch (autoExecute) {
+    case ExecuteRedeem.Manually: {
+        const opreturnData = stripHexPrefix(redeemRequest.id.toString());
         const btcTxId = await electrsAPI.waitForOpreturn(opreturnData, timeout, 5000)
-                .catch(_ => { throw new Error(`Redeem request was not executed, timeout expired`) });
+            .catch(_ => { throw new Error("Redeem request was not executed, timeout expired"); });
         // manually execute issue
-        await redeemAPI.execute(id.toString(), btcTxId);
-    } else {
+        await redeemAPI.execute(redeemRequest.id.toString(), btcTxId);
+        break;
+    }
+    case ExecuteRedeem.Auto: {
         // wait for vault to execute issue
-        while (!(await redeemAPI.getRequestById(id)).status.isCompleted) {
+        while (!(await redeemAPI.getRequestById(redeemRequest.id)).status.isCompleted) {
             await sleep(1000);
         }
+        break;
     }
+    }
+    return redeemRequest;
 }
 
 export async function issueAndRedeem(
@@ -240,11 +238,11 @@ export async function issueAndRedeem(
     issueAmount = new Big(0.1),
     redeemAmount = new Big(0.009),
     autoExecuteIssue = true,
-    autoExecuteRedeem = true,
+    autoExecuteRedeem = ExecuteRedeem.Auto,
     triggerRefund = false,
     network = "regtest",
     atomic = true
-) {
+): Promise<[IssueRequestResult, RequestResult]> {
     const issueResult = await issueSingle(
         api,
         electrsAPI,
@@ -258,7 +256,7 @@ export async function issueAndRedeem(
         atomic
     );
 
-    await redeem(
+    const redeemRequest = await redeem(
         api,
         electrsAPI,
         account,
@@ -268,4 +266,5 @@ export async function issueAndRedeem(
         network,
         atomic
     );
+    return [issueResult.request, redeemRequest];
 }

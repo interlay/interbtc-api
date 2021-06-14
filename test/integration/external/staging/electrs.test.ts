@@ -6,6 +6,7 @@ import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs"
 import { createPolkadotAPI } from "../../../../src/factory";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
+import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 
 describe("ElectrsAPI testnet", function () {
     const txid = "0af83672b9f80f2ad53218a8f67899ea07d7da4f07a16ba2c954030895a91d9a";
@@ -13,12 +14,12 @@ describe("ElectrsAPI testnet", function () {
     let api: ApiPromise;
     let electrsAPI: ElectrsAPI;
 
-    beforeEach(async () => {
+    before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         electrsAPI = new DefaultElectrsAPI("testnet");
     });
 
-    afterEach(async () => {
+    after(async () => {
         await api.disconnect();
     });
 
@@ -102,7 +103,7 @@ describe("ElectrsAPI regtest", function () {
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
-        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
+        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,

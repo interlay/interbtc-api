@@ -7,7 +7,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 describe("Bitcoin", () => {
     let registry: TypeRegistry;
 
-    beforeEach(() => {
+    before(() => {
         registry = createAPIRegistry();
     });
 

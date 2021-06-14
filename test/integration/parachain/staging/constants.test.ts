@@ -10,67 +10,61 @@ describe("Constants", function () {
     let api: ApiPromise;
     let constantAPI: ConstantsAPI;
 
-    beforeEach(async () => {
+    before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         constantAPI = new DefaultConstantsAPI(api);
     });
 
-    afterEach(async () => {
+    after(async () => {
         await api.disconnect();
     });
 
     describe("getDotExistentialDeposit", () => {
         it("should sucessfully return", async () => {
-            this.timeout(500);
             const returnValue = await constantAPI.getDotExistentialDeposit();
             assert.isDefined(returnValue);
-        });
+        }).timeout(500);
     });
 
     describe("getPolkaBtcExistentialDeposit", () => {
         it("should sucessfully return", async () => {
-            this.timeout(500);
             const returnValue = await constantAPI.getPolkaBtcExistentialDeposit();
             assert.isDefined(returnValue);
-        });
+        }).timeout(500);
     });
 
     describe("getSystemBlockHashCount", () => {
         it("should sucessfully return", async () => {
-            this.timeout(500);
             const returnValue = await constantAPI.getSystemBlockHashCount();
             assert.isDefined(returnValue);
-        });
+        }).timeout(500);
     });
 
     describe("getSystemDbWeight", () => {
         it("should sucessfully return", async () => {
-            this.timeout(500);
             const returnValue = await constantAPI.getSystemDbWeight();
             assert.isDefined(returnValue);
-        });
+        }).timeout(500);
     });
 
     describe("getTimestampMinimumPeriod", () => {
         it("should sucessfully return", async () => {
             const returnValue = await constantAPI.getTimestampMinimumPeriod();
             assert.isDefined(returnValue);
-        });
+        }).timeout(500);
     });
 
     describe("getTransactionByteFee", () => {
         it("should sucessfully return", async () => {
-            this.timeout(500);
             const returnValue = await constantAPI.getTransactionByteFee();
             assert.isDefined(returnValue);
-        });
+        }).timeout(500);
     });
 
     describe("getTransactionWeightToFee", () => {
         it("should sucessfully return", async () => {
-            this.timeout(500);
             const returnValue = await constantAPI.getTransactionWeightToFee();
             assert.isDefined(returnValue);
-        });
+        }).timeout(500);
     });
 });

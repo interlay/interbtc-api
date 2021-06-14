@@ -6,25 +6,20 @@ import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
-import { TypeRegistry } from "@polkadot/types";
-import { DefaultElectrsAPI, ElectrsAPI } from "../../../../src";
+import { DefaultElectrsAPI, ElectrsAPI, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 
 describe("stakedRelayerAPI", () => {
     let api: ApiPromise;
     let stakedRelayerAPI: StakedRelayerAPI;
     let keyring: Keyring;
-    let eve: KeyringPair;
+    let alice_stash: KeyringPair;
     let electrsAPI: ElectrsAPI;
-    const registry = new TypeRegistry();
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        eve = keyring.addFromUri("//Eve");
-    });
-
-    beforeEach(() => {
-        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
+        alice_stash = keyring.addFromUri("//Alice//stash");
+        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });
 
@@ -32,44 +27,49 @@ describe("stakedRelayerAPI", () => {
         api.disconnect();
     });
 
-    describe("request", () => {
-        it("should getMonitoredVaultsCollateralizationRate", async () => {
-            const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
-            assert.isDefined(monitoredVaultsCollateralizationRate);
-        });
-
-        it("should getLastBTCDOTExchangeRateAndTime", async () => {
-            const lastBTCDOTExchangeRateAndTime = await stakedRelayerAPI.getLastBTCDOTExchangeRateAndTime();
-            assert.isDefined(lastBTCDOTExchangeRateAndTime);
-        });
-
-        it("should getCurrentStateOfBTCParachain", async () => {
-            const currentStateOfBTCParachain = await stakedRelayerAPI.getCurrentStateOfBTCParachain();
-            assert.isDefined(currentStateOfBTCParachain);
-        });
+    it("should getMonitoredVaultsCollateralizationRate", async () => {
+        const monitoredVaultsCollateralizationRate = await stakedRelayerAPI.getMonitoredVaultsCollateralizationRate();
+        assert.isDefined(monitoredVaultsCollateralizationRate);
     });
 
-    describe("sla", () => {
-        it("should getMaxSLA", async () => {
-            const feesToPay = await stakedRelayerAPI.getMaxSLA();
-            assert.equal(feesToPay, 100);
-        });
-
-        it("should get SLA", async () => {
-            const sla = await stakedRelayerAPI.getSLA(registry.createType("AccountId", eve.address));
-            const slaBig = new Big(sla);
-            const slaBenchmark = new Big("0");
-            assert.isTrue(slaBig.gte(slaBenchmark));
-        });
+    it("should list relayers", async () => {
+        const list = (await stakedRelayerAPI.list()).map(v => v.toString());
+        assert.deepEqual(list, [alice_stash.address]);
     });
 
-    describe("fees", () => {
-        it("should getFees", async () => {
-            const feesPolkaBTC = await stakedRelayerAPI.getWrappingFees(registry.createType("AccountId", eve.address));
-            const feesDOT = await stakedRelayerAPI.getCollateralFees(registry.createType("AccountId", eve.address));
-            const feeBenchmark = new Big("0");
-            assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
-            assert.isTrue(new Big(feesDOT).gte(feeBenchmark));
-        });
+    it("should getLastBTCDOTExchangeRateAndTime", async () => {
+        const lastBTCDOTExchangeRateAndTime = await stakedRelayerAPI.getLastBTCDOTExchangeRateAndTime();
+        assert.isDefined(lastBTCDOTExchangeRateAndTime);
+    });
+
+    it("should getCurrentStateOfBTCParachain", async () => {
+        const currentStateOfBTCParachain = await stakedRelayerAPI.getCurrentStateOfBTCParachain();
+        assert.isDefined(currentStateOfBTCParachain);
+    });
+
+    it("should getMaxSLA", async () => {
+        const feesToPay = await stakedRelayerAPI.getMaxSLA();
+        assert.equal(feesToPay, 100);
+    });
+
+    it("should get SLA", async () => {
+        const sla = await stakedRelayerAPI.getSLA(newAccountId(api, alice_stash.address));
+        const slaBig = new Big(sla);
+        const slaBenchmark = new Big("0");
+        assert.isTrue(slaBig.gte(slaBenchmark));
+    });
+
+    it("should get APY", async () => {
+        const apy = await stakedRelayerAPI.getAPY(newAccountId(api, alice_stash.address));
+        const apyBenchmark = new Big("0");
+        assert.isTrue(apy.gte(apyBenchmark));
+    });
+
+    it("should getFees", async () => {
+        const feesPolkaBTC = await stakedRelayerAPI.getWrappingFees(newAccountId(api, alice_stash.address));
+        const feesDOT = await stakedRelayerAPI.getCollateralFees(newAccountId(api, alice_stash.address));
+        const feeBenchmark = new Big("0");
+        assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
+        assert.isTrue(new Big(feesDOT).gte(feeBenchmark));
     });
 });

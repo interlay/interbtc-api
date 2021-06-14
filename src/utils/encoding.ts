@@ -57,17 +57,17 @@ export function uint8ArrayToString(bytes: Uint8Array): string {
     return stripHexPrefix(bytes.toString()).split("").join("");
 }
 
-export function decodeFixedPointType(x: SignedFixedPoint | UnsignedFixedPoint): string {
+export function decodeFixedPointType(x: SignedFixedPoint | UnsignedFixedPoint): Big {
     const xBig = new Big(x.toString());
     const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-    const xDecoded = xBig.div(scalingFactor);
-    return xDecoded.toString();
+    return xBig.div(scalingFactor);
 }
 
-export function encodeUnsignedFixedPoint(api: ApiPromise, x: string): UnsignedFixedPoint {
-    const xBig = new Big(x);
+export function encodeUnsignedFixedPoint(api: ApiPromise, x: Big): UnsignedFixedPoint {
     const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-    const xScaled = xBig.mul(scalingFactor);
+    // If there are any decimals left after scaling up by the scaling factor,
+    // the resulting FixedU128 will be wrong. As such, trim any decimals.
+    const xScaled = x.mul(scalingFactor).round(0, 0);
     return api.createType("FixedU128", xScaled.toFixed());
 }
 

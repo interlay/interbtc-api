@@ -8,6 +8,7 @@ import { Nominator } from "../interfaces";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import { bnToBig, computeStake, decodeFixedPointType, dotToPlanck, newAccountId, planckToDOT, storageKeyToFirstInner } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { ElectrsAPI } from "../external";
 /**
  * @category PolkaBTC Bridge
  * The type Big represents DOT or PolkaBTC denominations,
@@ -69,9 +70,9 @@ export interface NominationAPI extends TransactionAPI {
 export class DefaultNominationAPI extends DefaultTransactionAPI implements NominationAPI {
     vaultsAPI: VaultsAPI;
 
-    constructor(api: ApiPromise, btcNetwork: Network, account?: AddressOrPair) {
+    constructor(api: ApiPromise, btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI);
     }
 
     async depositCollateral(vaultId: string, amount: Big): Promise<void> {
@@ -150,7 +151,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
                 planckToDOT(
                     computeStake(
                         bnToBig(nominator.collateral),
-                        new Big(decodeFixedPointType(vault.slash_per_token)),
+                        decodeFixedPointType(vault.slash_per_token),
                         bnToBig(nominator.slash_tally)
                     )
                 )

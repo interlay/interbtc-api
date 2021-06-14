@@ -3,10 +3,10 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 
-import { DefaultNominationAPI, DefaultVaultsAPI, NominationAPI, VaultsAPI } from "../../../../src";
+import { DefaultElectrsAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, NominationAPI, REGTEST_ESPLORA_BASE_PATH, VaultsAPI } from "../../../../src";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("NominationAPI", () => {
     let api: ApiPromise;
@@ -14,13 +14,15 @@ describe("NominationAPI", () => {
     let nominationAPI: NominationAPI;
     let vaultsAPI: VaultsAPI;
     let charlie_stash: KeyringPair;
+    let electrsAPI: ElectrsAPI;
 
     before(async () => {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
-        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, bob);
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest);
+        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, bob);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         // The account of a vault from docker-compose
         charlie_stash = keyring.addFromUri("//Charlie//stash");
     });

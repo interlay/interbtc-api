@@ -50,6 +50,7 @@ export interface RedeemAPI extends TransactionAPI {
      * Send a redeem request transaction
      * @param amount PolkaBTC amount (denoted in Bitcoin) to redeem
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
+     * @param vaultId (optional) ID of the vault to redeem with.
      * @param atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to re-try redeeming, if some of the requests fail. Defaults to 0.
@@ -59,6 +60,7 @@ export interface RedeemAPI extends TransactionAPI {
     request(
         amount: Big,
         btcAddressEnc: string,
+        vaultId?: AccountId,
         atomic?: boolean,
         retries?: number,
         availableVaults?: Map<AccountId, Big>
@@ -95,10 +97,10 @@ export interface RedeemAPI extends TransactionAPI {
      * of the vault will be slashed and sent to the redeemer
      * @param redeemId The ID returned by the redeem request transaction
      * @param reimburse (Optional) In case of redeem failure:
-     *  - `false` = retry redeeming, with a different Vault
+     *  - (Default) `false` = retry redeeming, with a different Vault
      *  - `true` = accept reimbursement in polkaBTC
      */
-    cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
+    cancel(redeemId: string, reimburse?: boolean): Promise<void>;
     /**
      * @remarks Testnet utility function
      * @param blocks The time difference in number of blocks between a redeem request
@@ -153,7 +155,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns If users execute a redeem with a Vault flagged for premium redeem,
      * they can earn a DOT premium, slashed from the Vault's collateral.
      */
-    getPremiumRedeemFee(): Promise<string>;
+    getPremiumRedeemFee(): Promise<Big>;
     /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of PolkaBTC to burn, denominated as PolkaBTC
@@ -184,7 +186,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
         this.oracleAPI = new DefaultOracleAPI(api, account);
     }
@@ -196,11 +198,18 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async request(
         amount: Big,
         btcAddressEnc: string,
+        vaultId?: AccountId,
         atomic: boolean = true,
         retries: number = 0,
         cachedVaults?: Map<AccountId, Big>,
     ): Promise<RequestResult[]> {
         try {
+            if(vaultId) {
+                // If a vault account id is defined, request to issue with that vault only.
+                // Initialize the `amountsPerVault` map with a single entry,the (vaultId, amount) pair
+                const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
+                return await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
+            }
             const availableVaults = cachedVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
@@ -208,7 +217,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
-                return (await this.request(remainder, btcAddressEnc, atomic, retries - 1, availableVaults)).concat(result);
+                return (await this.request(remainder, btcAddressEnc, vaultId, atomic, retries - 1, availableVaults)).concat(result);
             }
         } catch (e) {
             return Promise.reject(e);
@@ -249,9 +258,9 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         }
     }
 
-    async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
-        const reimburseValue = reimburse ? reimburse : false;
-        const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
+    async cancel(requestId: string, reimburse = false): Promise<void> {
+        const parsedRequestId = this.api.createType("H256", requestId);
+        const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
         await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
@@ -383,7 +392,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async getFeeRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemFee = await this.api.query.fee.redeemFee.at(head);
-        return new Big(decodeFixedPointType(redeemFee));
+        return decodeFixedPointType(redeemFee);
     }
 
     async getDustValue(): Promise<Big> {
@@ -392,7 +401,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return satToBTC(dustValueSat);
     }
 
-    async getPremiumRedeemFee(): Promise<string> {
+    async getPremiumRedeemFee(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
         return decodeFixedPointType(premiumRedeemFee);

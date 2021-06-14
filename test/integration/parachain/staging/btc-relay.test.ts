@@ -13,25 +13,23 @@ describe("BTCRelay", function () {
     let electrsAPI: ElectrsAPI;
     let btcRelay: BTCRelayAPI;
 
-    beforeEach(async () => {
+    before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         electrsAPI = new DefaultElectrsAPI("testnet");
         btcRelay = new DefaultBTCRelayAPI(api, electrsAPI);
     });
 
-    afterEach(async () => {
+    after(async () => {
         await api.disconnect();
     });
 
     it("should getLatestBTCBlockFromBTCRelay", async () => {
-        this.timeout(500);
         const latestBTCBlockFromBTCRelay = await btcRelay.getLatestBlock();
         assert.isDefined(latestBTCBlockFromBTCRelay);
-    });
+    }).timeout(500);
 
     it("should getLatestBTCBlockHeightFromBTCRelay", async () => {
-        this.timeout(500);
         const latestBTCBlockHeightFromBTCRelay = await btcRelay.getLatestBlockHeight();
         assert.isDefined(latestBTCBlockHeightFromBTCRelay);
-    });
+    }).timeout(500);
 });

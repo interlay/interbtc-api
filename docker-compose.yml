@@ -153,3 +153,17 @@ services:
                 vault --keyfile="keyfile.json" --keyname=ferdie_stash --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://polkabtc:9944'
         environment:
             <<: *client-env
+    vault_to_ban:
+        image: "registry.gitlab.com/interlay/polkabtc-clients/vault:0.7.11"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                echo '{"ferdie": "0x42438b7883391c05512a938e36c2df0131e088b3756d6aa7a755fbff19d2f842"}' > keyfile.json
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Ferdie wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                vault --keyfile="keyfile.json" --keyname=ferdie --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://polkabtc:9944'
+        environment:
+            <<: *client-env

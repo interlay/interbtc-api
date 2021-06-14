@@ -42,7 +42,7 @@ export interface ReplaceAPI extends TransactionAPI {
      * @returns The minimum amount of btc that is accepted for replace requests; any lower values would
      * risk the bitcoin client to reject the payment
      */
-    getBtcDustValue(): Promise<Big>;
+    getDustValue(): Promise<Big>;
     /**
      * @returns The time difference in number of blocks between when a replace request is created
      * and required completion time by a vault. The replace period has an upper limit
@@ -86,6 +86,12 @@ export interface ReplaceAPI extends TransactionAPI {
      * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      */
     execute(replaceId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
+    /**
+     * 
+     * @param amount The amount of wrapped tokens to request replacement for.
+     * @returns The griefing collateral, as a big denomination (e.g. DOT, not Planck)
+     */
+    getGriefingCollateral(amount: Big): Promise<Big>;
 }
 
 export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceAPI {
@@ -147,7 +153,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         await this.sendLogged(requestTx, this.api.events.replace.ExecuteReplace);
     }
 
-    async getBtcDustValue(): Promise<Big> {
+    async getDustValue(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const dustSatoshi = await this.api.query.replace.replaceBtcDustValue.at(head);
         return satToBTC(dustSatoshi);
