@@ -34,8 +34,8 @@ export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRe
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface IssueAPI extends TransactionAPI {
@@ -49,8 +49,8 @@ export interface IssueAPI extends TransactionAPI {
     getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits>;
 
     /**
-     * Request issuing of PolkaBTC.
-     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue.
+     * Request issuing of InterBTC.
+     * @param amountSat InterBTC amount (denoted in Satoshi) to issue.
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to re-try issuing, if some of the requests fail. Defaults to 0.
@@ -66,7 +66,7 @@ export interface IssueAPI extends TransactionAPI {
 
     /**
      * Send a batch of aggregated issue transactions (to one or more vaults)
-     * @param amountsPerVault A mapping of vaults to issue from, and PolkaBTC amounts (in Satoshi) to issue using each vault
+     * @param amountsPerVault A mapping of vaults to issue from, and InterBTC amounts (in Satoshi) to issue using each vault
      * @param griefingCollateralRate The percentage of an issue request which must be locked as griefing collateral
      * (must correspond to the parachain property)
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
@@ -91,7 +91,7 @@ export interface IssueAPI extends TransactionAPI {
     execute(issueId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
-     * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
+     * the issuance of InterBTC can be cancelled. As a result, the griefing collateral
      * of the requester will be slashed and sent to the vault that had prepared to issue.
      * @param issueId The ID returned by the issue request transaction
      */

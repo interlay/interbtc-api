@@ -7,8 +7,8 @@ import { btcToSat, newAccountId, satToBTC } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface TreasuryAPI extends TransactionAPI {
@@ -27,7 +27,7 @@ export interface TreasuryAPI extends TransactionAPI {
      */
     transfer(destination: string, amount: Big): Promise<void>;
     /**
-     * Subscribe to balance updates, denominated in PolkaBTC
+     * Subscribe to balance updates, denominated in InterBTC
      * @param account AccountId string
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)

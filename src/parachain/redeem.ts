@@ -37,8 +37,8 @@ export function encodeRedeemRequest(req: RedeemRequest, network: Network): Redee
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface RedeemAPI extends TransactionAPI {
@@ -48,7 +48,7 @@ export interface RedeemAPI extends TransactionAPI {
     list(): Promise<RedeemRequestExt[]>;
     /**
      * Send a redeem request transaction
-     * @param amount PolkaBTC amount (denoted in Bitcoin) to redeem
+     * @param amount InterBTC amount (denoted in Bitcoin) to redeem
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
      * @param atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
@@ -66,7 +66,7 @@ export interface RedeemAPI extends TransactionAPI {
 
     /**
      * Send a batch of aggregated redeem transactions (to one or more vaults)
-     * @param amountsPerVault A mapping of vaults to redeem from, and PolkaBTC amounts (in Satoshi) to redeem using each vault
+     * @param amountsPerVault A mapping of vaults to redeem from, and InterBTC amounts (in Satoshi) to redeem using each vault
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
@@ -92,12 +92,12 @@ export interface RedeemAPI extends TransactionAPI {
     execute(redeemId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean>;
     /**
      * Send a redeem cancellation transaction. After the redeem period has elapsed,
-     * the redeemal of PolkaBTC can be cancelled. As a result, the griefing collateral
+     * the redeemal of InterBTC can be cancelled. As a result, the griefing collateral
      * of the vault will be slashed and sent to the redeemer
      * @param redeemId The ID returned by the redeem request transaction
      * @param reimburse (Optional) In case of redeem failure:
      *  - `false` = retry redeeming, with a different Vault
-     *  - `true` = accept reimbursement in polkaBTC
+     *  - `true` = accept reimbursement in interBTC
      */
     cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
     /**
@@ -157,7 +157,7 @@ export interface RedeemAPI extends TransactionAPI {
     getPremiumRedeemFee(): Promise<string>;
     /**
      * Burn wrapped tokens for a premium
-     * @param amount The amount of PolkaBTC to burn, denominated as PolkaBTC
+     * @param amount The amount of InterBTC to burn, denominated as InterBTC
      */
     burn(amount: Big): Promise<void>;
     /**

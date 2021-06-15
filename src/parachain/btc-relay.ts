@@ -6,7 +6,7 @@ import { H256Le } from "../interfaces/default";
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 
 /**
- * @category PolkaBTC Bridge
+ * @category InterBTC Bridge
  */
 export interface BTCRelayAPI {
     /**

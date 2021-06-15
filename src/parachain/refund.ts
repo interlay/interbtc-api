@@ -19,8 +19,8 @@ export function encodeRefundRequest(req: RefundRequest, network: Network): Refun
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface RefundAPI extends TransactionAPI {

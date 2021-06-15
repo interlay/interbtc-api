@@ -65,10 +65,10 @@ describe("stakedRelayerAPI", () => {
 
     describe("fees", () => {
         it("should getFees", async () => {
-            const feesPolkaBTC = await stakedRelayerAPI.getWrappingFees(registry.createType("AccountId", eve.address));
+            const feesInterBTC = await stakedRelayerAPI.getWrappingFees(registry.createType("AccountId", eve.address));
             const feesDOT = await stakedRelayerAPI.getCollateralFees(registry.createType("AccountId", eve.address));
             const feeBenchmark = new Big("0");
-            assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
+            assert.isTrue(new Big(feesInterBTC).gte(feeBenchmark));
             assert.isTrue(new Big(feesDOT).gte(feeBenchmark));
         });
     });

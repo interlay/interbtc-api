@@ -2,8 +2,8 @@ import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { ApiPromise } from "@polkadot/api";
 import { TypeRegistry } from "@polkadot/types";
 import MockProvider from "./provider";
-import { getAPITypes, getRPCTypes, PolkaBTCAPI } from "../../src";
-import MockPolkaBTCAPI from "./polkabtc-api";
+import { getAPITypes, getRPCTypes, InterBTCAPI } from "../../src";
+import MockInterBTCAPI from "./interbtc-api";
 
 export function createProvider(): ProviderInterface {
     const registry = new TypeRegistry();
@@ -17,7 +17,7 @@ export function createPolkadotAPI(): Promise<ApiPromise> {
     return ApiPromise.create({ provider, types, rpc });
 }
 
-export async function createPolkabtcAPI(): Promise<PolkaBTCAPI> {
+export async function createInterbtcAPI(): Promise<InterBTCAPI> {
     const api = await createPolkadotAPI();
-    return new MockPolkaBTCAPI(api);
+    return new MockInterBTCAPI(api);
 }

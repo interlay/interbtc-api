@@ -6,7 +6,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { RegistryTypes } from "@polkadot/types/types";
 import { DefinitionRpc, DefinitionRpcSub } from "@polkadot/types/types";
 import * as definitions from "./interfaces/definitions";
-import { PolkaBTCAPI, DefaultPolkaBTCAPI } from "./polkabtc-api";
+import { InterBTCAPI, DefaultInterBTCAPI } from "./interbtc-api";
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
     if (/https?:\/\//.exec(endpoint)) {
@@ -25,14 +25,14 @@ export function createPolkadotAPI(endpoint: string, autoConnect?: number | false
     return ApiPromise.create({ provider, types, rpc });
 }
 
-export async function createPolkabtcAPI(
+export async function createInterbtcAPI(
     endpoint: string,
     network: string = "mainnet",
     account?: AddressOrPair,
     autoConnect?: number | false | undefined
-): Promise<PolkaBTCAPI> {
+): Promise<InterBTCAPI> {
     const api = await createPolkadotAPI(endpoint, autoConnect);
-    return new DefaultPolkaBTCAPI(api, network, account);
+    return new DefaultInterBTCAPI(api, network, account);
 }
 
 export function getAPITypes(): RegistryTypes {
