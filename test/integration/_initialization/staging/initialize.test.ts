@@ -27,7 +27,7 @@ import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { defaultParachainEndpoint } from "../../../config";
 import { DefaultTreasuryAPI } from "../../../../src/parachain/treasury";
 
-describe.only("Initialize parachain state", () => {
+describe("Initialize parachain state", () => {
     let api: ApiPromise;
     let issueAPI: IssueAPI;
     let redeemAPI: RedeemAPI;

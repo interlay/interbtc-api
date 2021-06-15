@@ -128,7 +128,7 @@ describe("redeem", () => {
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
-        it.only("should request and execute issue, request (and wait for execute) redeem", async () => {
+        it("should request and execute issue, request (and wait for execute) redeem", async () => {
             const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
             const issueAmount = new Big("0.1");
