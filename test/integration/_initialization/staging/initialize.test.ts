@@ -25,7 +25,7 @@ import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { defaultParachainEndpoint } from "../../../config";
 import { DefaultTreasuryAPI } from "../../../../src/parachain/treasury";
 
-describe("Initialize parachain state", () => {
+describe.only("Initialize parachain state", () => {
     let api: ApiPromise;
     let issueAPI: IssueAPI;
     let redeemAPI: RedeemAPI;
@@ -118,8 +118,6 @@ describe("Initialize parachain state", () => {
     it("should redeem 0.05 PolkaBTC", async () => {
         const polkaBtcToRedeem = new Big("0.05");
         const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        // const charlie_stashAccountId = api.createType("AccountId", charlie_stash.address);
-        // await redeemAPI.request(polkaBtcToRedeem, redeemAddress, charlie_stashAccountId);
         await redeemAPI.request(polkaBtcToRedeem, redeemAddress);
     });
 });

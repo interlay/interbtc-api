@@ -42,12 +42,11 @@ export function encodeRedeemRequest(
         userDOTAddress: req.redeemer.toString(),
         amountBTC: satToBTC(req.amount_btc.toString()),
         dotPremium: planckToDOT(req.premium.toString()),
-        fee: satToBTC(req.fee.toString()),
+        bridgeFee: satToBTC(req.fee.toString()),
         btcTransferFee: satToBTC(req.transfer_fee_btc.toString()),
         creationBlock: req.opentime.toNumber(),
         vaultDOTAddress: req.vault.toString(),
         userBTCAddress: encodeBtcAddress(req.btc_address, network),
-        btcTxId: "",
         status
     };
 }

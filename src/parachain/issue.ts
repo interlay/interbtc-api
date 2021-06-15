@@ -18,6 +18,7 @@ import {
     planckToDOT,
     encodeBtcAddress,
     storageKeyToFirstInner,
+    ensureHashEncoded,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
@@ -30,7 +31,7 @@ export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big }
 export function encodeIssueRequest(
     req: IssueRequest,
     network: Network,
-    id: H256,
+    id: H256 | string,
 ): Issue {
     const amountBTC = satToBTC(req.amount.toString());
     const fee = satToBTC(req.fee.toString());
@@ -44,15 +45,10 @@ export function encodeIssueRequest(
         vaultDOTAddress: req.vault.toString(),
         userDOTAddress: req.requester.toString(),
         vaultWalletPubkey: req.btc_public_key.toString(),
-        btcTxId: "",
-        fee,
-        amountBTC,
+        bridgeFee: fee,
+        amountInterBTC: amountBTC,
         griefingCollateral: planckToDOT(req.griefing_collateral.toString()),
-        confirmations: 0,
         status,
-        refundBtcAddress: "",
-        refundAmountBTC: "0",
-        executedAmountBTC: "0"
     };
 }
 
@@ -73,7 +69,7 @@ export interface IssueAPI extends TransactionAPI {
 
     /**
      * Request issuing of PolkaBTC.
-     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue.
+     * @param amount PolkaBTC amount (denoted in BTC) to issue.
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to re-try issuing, if some of the requests fail. Defaults to 0.
@@ -81,7 +77,7 @@ export interface IssueAPI extends TransactionAPI {
      * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
-        amountSat: Big,
+        amount: Big,
         atomic?: boolean,
         retries?: number,
         availableVaults?: Map<AccountId, Big>
@@ -149,12 +145,12 @@ export interface IssueAPI extends TransactionAPI {
      * @param issueId The ID of the issue request to fetch
      * @returns An issue request object
      */
-    getRequestById(issueId: H256): Promise<Issue>;
+    getRequestById(issueId: H256 | string): Promise<Issue>;
     /**
      * @param issueId The IDs of the batch of issue request to fetch
      * @returns The issue request objects
      */
-    getRequestsByIds(issueIds: H256[]): Promise<Issue[]>;
+    getRequestsByIds(issueIds: (H256 | string)[]): Promise<Issue[]>;
     /**
      * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
@@ -213,7 +209,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountBTC), new Big(0));
+            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountInterBTC), new Big(0));
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
@@ -250,13 +246,13 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", requestId);
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 
-    async cancel(issueId: H256): Promise<void> {
+    async cancel(issueId: H256 | string): Promise<void> {
         const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
         await this.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
     }
@@ -308,16 +304,19 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         return new Big(decodeFixedPointType(issueFee));
     }
 
-    async getRequestById(issueId: H256): Promise<Issue> {
+    async getRequestById(issueId: H256 | string): Promise<Issue> {
         return (await this.getRequestsByIds([issueId]))[0];
     }
 
-    async getRequestsByIds(issueIds: H256[]): Promise<Issue[]> {
+    async getRequestsByIds(issueIds: (H256 | string)[]): Promise<Issue[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return Promise.all(
             issueIds.map(async (issueId) =>
                 encodeIssueRequest(
-                    await this.api.query.issue.issueRequests.at(head, issueId),
+                    await this.api.query.issue.issueRequests.at(
+                        head,
+                        ensureHashEncoded(this.api, issueId)
+                    ),
                     this.btcNetwork,
                     issueId,
                 )

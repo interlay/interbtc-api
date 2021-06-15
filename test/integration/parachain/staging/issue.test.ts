@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { btcToSat, dotToPlanck, satToBTC } from "../../../../src/utils";
+import { dotToPlanck, satToBTC } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
@@ -75,9 +75,9 @@ describe("issue", () => {
                 "Created multiple requests instead of one (ensure vault in docker has sufficient collateral)"
             );
             const issueRequest = requestResults[0];
-            assert.equal(issueRequest.id.length, 32);
+            assert.equal(issueRequest.id.length, 64);
 
-            assert.equal(issueRequest.amountBTC.toString(), btcToSat(amount.sub(feesToPay).toString()), "Amount different than expected");
+            assert.equal(issueRequest.amountInterBTC.toString(), amount.sub(feesToPay).toString(), "Amount different than expected");
         });
 
         it("should batch request across several vaults", async () => {
@@ -92,15 +92,15 @@ describe("issue", () => {
                 2,
                 "Created wrong amount of requests, ensure vault collateral settings in docker are correct"
             );
-            const firstExpected = new Big(1634575267885);
-            const secondExpected = new Big(255924732116);
+            const firstExpected = new Big(16345.75267885);
+            const secondExpected = new Big(2559.24732116);
             assert.deepEqual(
-                issueRequests[0].amountBTC.toString(),
+                issueRequests[0].amountInterBTC.toString(),
                 firstExpected.toString(),
                 "First vault issue amount different than expected"
             );
             assert.deepEqual(
-                issueRequests[1].amountBTC.toString(),
+                issueRequests[1].amountInterBTC.toString(),
                 secondExpected.toString(),
                 "Second vault issue amount different than expected"
             );

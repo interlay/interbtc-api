@@ -8,6 +8,7 @@ import { DefaultCollateralAPI } from "../parachain/collateral";
 import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTreasuryAPI } from "../parachain/treasury";
 import { Issue, IssueStatus } from "../types";
+import { BitcoinNetwork } from "../types/bitcoinTypes";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 
 export interface IssueResult {
@@ -27,7 +28,7 @@ export async function issueSingle(
     vaultAddress?: string,
     autoExecute = true,
     triggerRefund = false,
-    network = "regtest",
+    network: BitcoinNetwork = "regtest",
     atomic = true
 ): Promise<IssueResult> {
     try {
@@ -55,7 +56,7 @@ export async function issueSingle(
         }
         const issueRequest = rawRequestResult[0];
 
-        let amountAsBtc = new Big(issueRequest.amountBTC);
+        let amountAsBtc = new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee);
 
         if (triggerRefund) {
             // Send 1 more Btc than needed
@@ -80,8 +81,7 @@ export async function issueSingle(
             await issueAPI.execute(issueRequest.id, txData.txid);
         } else {
             // wait for vault to execute issue
-            const hashId = api.createType("H256", issueRequest.id); //TODO: double-check this is correct
-            while ((await issueAPI.getRequestById(hashId)).status !== IssueStatus.Completed) {
+            while ((await issueAPI.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
                 await sleep(1000);
             }
         }

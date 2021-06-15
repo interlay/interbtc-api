@@ -3,13 +3,13 @@ export interface Redeem {
     userDOTAddress: string;
     amountBTC: string;
     dotPremium: string;
-    fee: string;
+    bridgeFee: string;
     btcTransferFee: string;
     creationTimestamp?: number;
     creationBlock: number;
     vaultDOTAddress: string;
     userBTCAddress: string;
-    btcTxId: string;
+    btcTxId?: string;
     confirmations?: number;
     btcBlockHeight?: number;
     status: RedeemStatus;

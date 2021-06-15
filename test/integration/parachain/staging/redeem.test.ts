@@ -84,7 +84,7 @@ describe("redeem", () => {
             // request issue
             issueAPI.setAccount(alice);
             const issueRequest = (await issueAPI.request(new Big(issueAmountAsBtcString)))[0];
-            const txAmountRequired = new Big(satToBTC(new Big(issueRequest.amountBTC).add(issueRequest.fee).toString()));
+            const txAmountRequired = new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee);
 
             // send btc tx
             const vaultBtcAddress = issueRequest.vaultBTCAddress;
@@ -95,8 +95,7 @@ describe("redeem", () => {
             const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, txAmountRequired, blocksToMine);
             assert.equal(Buffer.from(txData.txid, "hex").length, 32, "Transaction length not 32 bytes");
 
-            const idHash = api.createType("H256", issueRequest.id);
-            while (!((await issueAPI.getRequestById(idHash)).status === IssueStatus.Completed)) {
+            while (!((await issueAPI.getRequestById(issueRequest.id)).status === IssueStatus.Completed)) {
                 await sleep(1000);
             }
 
@@ -129,7 +128,7 @@ describe("redeem", () => {
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
-        it("should request and execute issue, request (and wait for execute) redeem", async () => {
+        it.only("should request and execute issue, request (and wait for execute) redeem", async () => {
             const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
             const blocksToMine = 3;
             const issueAmount = new Big("0.1");

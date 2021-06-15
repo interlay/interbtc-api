@@ -17,11 +17,12 @@ import { FaucetClient } from "./clients";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
+import {BitcoinNetwork} from "./types/bitcoinTypes";
 
 export * from "./factory";
 export * from "./parachain/transaction";
 
-export function getBitcoinNetwork(network: string = "mainnet"): Network {
+export function getBitcoinNetwork(network: BitcoinNetwork | string = "mainnet"): Network {
     switch (network) {
     case "mainnet":
         return networks.bitcoin;
