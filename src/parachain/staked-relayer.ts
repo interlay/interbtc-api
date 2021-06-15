@@ -13,10 +13,10 @@ import { decodeFixedPointType, satToBTC, planckToDOT, storageKeyToFirstInner } f
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { computeReward, ElectrsAPI, getTxProof } from "..";
+import { computeStake, ElectrsAPI, getTxProof, newAccountId } from "..";
 
 /**
- * @category PolkaBTC Bridge
+ * @category InterBTC Bridge
  * The type Big represents Wrapped or Collateral large denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
@@ -39,7 +39,7 @@ export interface StakedRelayerAPI extends TransactionAPI {
     getCurrentStateOfBTCParachain(): Promise<StatusCode>;
     /**
      * @param stakedRelayerId The ID of a staked relayer
-     * @returns Total rewards in PolkaBTC for the given staked relayer
+     * @returns Total rewards in InterBTC for the given staked relayer
      */
     getWrappingFees(stakedRelayerId: AccountId): Promise<Big>;
     /**
@@ -117,7 +117,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
     }
 
     async reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedVaultId = this.api.createType("AccountId", vaultId);
+        const parsedVaultId = newAccountId(this.api, vaultId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const tx = this.api.tx.stakedRelayers.reportVaultTheft(parsedVaultId, merkleProof, rawTx);
         await this.sendLogged(tx, this.api.events.stakedRelayers.VaultTheft);    
@@ -166,8 +166,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         const stake = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.stake.at(head, stakedRelayerId));
         const rewardPerToken = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardPerToken.at(head));
         const rewardTally = decodeFixedPointType(await this.api.query.wrappedRelayerRewards.rewardTally.at(head, stakedRelayerId));
-        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
-        return new Big(satToBTC(fees.toString()));
+        return satToBTC(computeStake(new Big(stake), new Big(rewardPerToken), new Big(rewardTally)));
     }
 
     async getCollateralFees(stakedRelayerId: AccountId): Promise<Big> {
@@ -175,8 +174,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         const stake = decodeFixedPointType(await this.api.query.collateralRelayerRewards.stake.at(head, stakedRelayerId));
         const rewardPerToken = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardPerToken.at(head));
         const rewardTally = decodeFixedPointType(await this.api.query.collateralRelayerRewards.rewardTally.at(head, stakedRelayerId));
-        const fees = computeReward(new Big(stake), new Big(rewardPerToken), new Big(rewardTally));
-        return new Big(planckToDOT(fees.toString()));
+        return planckToDOT(computeStake(new Big(stake), new Big(rewardPerToken), new Big(rewardTally)));
     }
 
     async getAPY(stakedRelayerId: AccountId): Promise<string> {

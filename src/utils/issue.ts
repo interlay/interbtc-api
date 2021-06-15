@@ -1,6 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
+import BN from "bn.js";
 
 import { satToBTC, getBitcoinNetwork } from "..";
 import { ElectrsAPI } from "../external/electrs";
@@ -15,8 +16,8 @@ export interface IssueResult {
     request: Issue;
     initialDotBalance: Big;
     finalDotBalance: Big;
-    initialPolkaBtcBalance: Big;
-    finalPolkaBtcBalance: Big;
+    initialInterBtcBalance: Big;
+    finalInterBtcBalance: Big;
 }
 
 export async function issueSingle(
@@ -40,7 +41,7 @@ export async function issueSingle(
         issueAPI.setAccount(issuingAccount);
         const requesterAccountId = api.createType("AccountId", issuingAccount.address);
         const initialBalanceDOT = await collateralAPI.balance(requesterAccountId);
-        const initialBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
+        const initialBalanceInterBTC = await treasuryAPI.balance(requesterAccountId);
         const blocksToMine = 3;
 
         // request issue
@@ -64,7 +65,7 @@ export async function issueSingle(
         } else if (autoExecute === false) {
             // Send 1 less Satoshi than requested
             // to trigger the user failsafe and disable auto-execution.
-            const oneSatoshi = new Big(satToBTC("1"));
+            const oneSatoshi = satToBTC(new BN(1));
             amountAsBtc = amountAsBtc.sub(oneSatoshi);
         }
 
@@ -86,7 +87,7 @@ export async function issueSingle(
             }
         }
 
-        const [finalBalancePolkaBTC, finalBalanceDOT] = await Promise.all([
+        const [finalBalanceInterBTC, finalBalanceDOT] = await Promise.all([
             treasuryAPI.balance(requesterAccountId),
             collateralAPI.balance(requesterAccountId),
         ]);
@@ -94,8 +95,8 @@ export async function issueSingle(
             request: issueRequest,
             initialDotBalance: initialBalanceDOT,
             finalDotBalance: finalBalanceDOT,
-            initialPolkaBtcBalance: initialBalancePolkaBTC,
-            finalPolkaBtcBalance: finalBalancePolkaBTC,
+            initialInterBtcBalance: initialBalanceInterBTC,
+            finalInterBtcBalance: finalBalanceInterBTC,
         };
     } catch (e) {
         // IssueCompleted errors occur when multiple vaults attempt to execute the same request

@@ -7,7 +7,7 @@ import { Vault } from "../../../../src/interfaces/default";
 import { assert } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
-import { stripHexPrefix, satToBTC } from "../../../../src/utils";
+import { stripHexPrefix } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";

@@ -27,10 +27,10 @@ describe("Constants", function () {
         });
     });
 
-    describe("getPolkaBtcExistentialDeposit", () => {
+    describe("getInterBtcExistentialDeposit", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);
-            const returnValue = constantAPI.getPolkaBtcExistentialDeposit();
+            const returnValue = constantAPI.getInterBtcExistentialDeposit();
             assert.isDefined(returnValue);
         });
     });

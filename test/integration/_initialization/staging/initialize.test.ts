@@ -16,6 +16,8 @@ import {
     BTCRelayAPI,
     DefaultBTCRelayAPI,
     setNumericStorage,
+    NominationAPI,
+    DefaultNominationAPI,
 } from "../../../../src";
 import { issueSingle } from "../../../../src/utils/issue";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -32,6 +34,7 @@ describe.only("Initialize parachain state", () => {
     let oracleAPI: OracleAPI;
     let electrsAPI: ElectrsAPI;
     let treasuryAPI: TreasuryAPI;
+    let nominationAPI: NominationAPI;
     let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -58,6 +61,7 @@ describe.only("Initialize parachain state", () => {
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         oracleAPI = new DefaultOracleAPI(api, bob);
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
         // Sleep for 2 min to wait for vaults to register
@@ -101,23 +105,29 @@ describe.only("Initialize parachain state", () => {
         assert.equal(exchangeRateToSet, exchangeRate.toString());
     });
 
-    it("should issue 0.1 PolkaBTC", async () => {
-        const polkaBtcToIssue = new Big(0.1);
-        const feesToPay = await issueAPI.getFeesToPay(polkaBtcToIssue);
+    it("should enable vault nomination", async () => {
+        await nominationAPI.setNominationEnabled(true);
+        const isNominationEnabled = await nominationAPI.isNominationEnabled();
+        assert.isTrue(isNominationEnabled);
+    });
+
+    it("should issue 0.1 InterBTC", async () => {
+        const interBtcToIssue = new Big(0.1);
+        const feesToPay = await issueAPI.getFeesToPay(interBtcToIssue);
         const aliceAccountId = api.createType("AccountId", alice.address);
-        const alicePolkaBTCBefore = await treasuryAPI.balance(aliceAccountId);
-        await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, charlie_stash.address);
-        const alicePolkaBTCAfter = await treasuryAPI.balance(aliceAccountId);
+        const aliceInterBTCBefore = await treasuryAPI.balance(aliceAccountId);
+        await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, interBtcToIssue, charlie_stash.address);
+        const aliceInterBTCAfter = await treasuryAPI.balance(aliceAccountId);
         assert.equal(
-            alicePolkaBTCBefore.add(polkaBtcToIssue).sub(feesToPay).toString(),
-            alicePolkaBTCAfter.toString(),
+            aliceInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
+            aliceInterBTCAfter.toString(),
             "Issued amount is different from the requested amount"
         );
     });
 
-    it("should redeem 0.05 PolkaBTC", async () => {
-        const polkaBtcToRedeem = new Big("0.05");
+    it("should redeem 0.05 InterBTC", async () => {
+        const interBtcToRedeem = new Big("0.05");
         const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        await redeemAPI.request(polkaBtcToRedeem, redeemAddress);
+        await redeemAPI.request(interBtcToRedeem, redeemAddress);
     });
 });

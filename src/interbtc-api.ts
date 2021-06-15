@@ -3,6 +3,7 @@ import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
+import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
 import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
 import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./parachain/redeem";
@@ -33,7 +34,7 @@ export function getBitcoinNetwork(network: BitcoinNetwork | string = "mainnet"):
     }
 }
 
-export interface PolkaBTCAPI {
+export interface InterBTCAPI {
     readonly api: ApiPromise;
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
@@ -49,16 +50,17 @@ export interface PolkaBTCAPI {
     readonly system: SystemAPI;
     readonly replace: ReplaceAPI;
     readonly fee: FeeAPI;
+    readonly nomination: NominationAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
-export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
+export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
@@ -73,6 +75,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly system: SystemAPI;
     public readonly replace: ReplaceAPI;
     public readonly fee: FeeAPI;
+    public readonly nomination: NominationAPI;
 
     constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
@@ -90,6 +93,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.fee = new DefaultFeeAPI(api);
         this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, _account);
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
+        this.nomination = new DefaultNominationAPI(api, btcNetwork, _account);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {
@@ -108,6 +112,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
         this.replace.setAccount(account);
         this.issue.setAccount(account);
         this.redeem.setAccount(account);
+        this.nomination.setAccount(account);
     }
 
     get account(): AddressOrPair | undefined {

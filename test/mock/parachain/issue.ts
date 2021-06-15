@@ -58,26 +58,24 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         return Promise.resolve([
             <Issue>{
                 id: "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c",
-                amountBTC: new BN(600).toString(),
+                amountInterBTC: new BN(600).toString(),
                 userDOTAddress: decodedAccountId1,
-                fee: new BN(6).toString(),
+                bridgeFee: new BN(6).toString(),
                 griefingCollateral: new BN(10).toString(),
                 creationBlock: 10908,
                 vaultBTCAddress: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
                 vaultDOTAddress: decodedAccountId1,
-                btcTxId: "",
                 status: IssueStatus.PendingWithBtcTxNotFound,
             },
             <Issue>{
                 id: "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c",
-                amountBTC: new BN(4510).toString(),
+                amountInterBTC: new BN(4510).toString(),
                 userDOTAddress: decodedAccountId2,
-                fee: new BN(6).toString(),
+                bridgeFee: new BN(6).toString(),
                 griefingCollateral: new BN(76).toString(),
                 creationBlock: 11938,
                 vaultBTCAddress: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
                 vaultDOTAddress: decodedAccountId2,
-                btcTxId: "",
                 status: IssueStatus.PendingWithBtcTxNotFound,
             },
         ]);
@@ -96,14 +94,13 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
 
         return <Issue>{
             id: "0x41fd1760b07dc5bc3b1548b6ffdd057444fb3a426460a199a6e2d42a7960e83c",
-            amountBTC: new BN(4510).toString(),
+            amountInterBTC: new BN(4510).toString(),
             userDOTAddress: decodedAccountId1,
-            fee: new BN(6).toString(),
+            bridgeFee: new BN(6).toString(),
             griefingCollateral: new BN(76).toString(),
             creationBlock: 11938,
             vaultBTCAddress: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
             vaultDOTAddress: decodedAccountId1,
-            btcTxId: "",
             status: IssueStatus.PendingWithBtcTxNotFound,
         };
     }

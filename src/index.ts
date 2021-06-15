@@ -1,5 +1,5 @@
 export * from "./factory";
-export * from "./polkabtc-api";
+export * from "./interbtc-api";
 export * from "./parachain";
 export * from "./clients";
 export * from "./external";

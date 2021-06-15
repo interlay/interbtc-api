@@ -4,8 +4,8 @@ import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface FeeAPI {
@@ -21,15 +21,15 @@ export interface FeeAPI {
         griefingCollateralRate: Big
     ): Promise<Big>;
     /**
-     * @param feesPolkaBTC Satoshi value representing the BTC fees accrued
+     * @param feesInterBTC Satoshi value representing the BTC fees accrued
      * @param feesDOT Planck value representing the DOT fees accrued
      * @param lockedDOT Planck value representing the value locked to gain yield
      * @param dotToBtcRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string>;
+    calculateAPY(feesInterBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string>;
     /**
-     * @returns The griefing collateral rate for issuing PolkaBTC
+     * @returns The griefing collateral rate for issuing InterBTC
      */
     getIssueGriefingCollateralRate(): Promise<Big>;
     /**
@@ -65,12 +65,12 @@ export class DefaultFeeAPI implements FeeAPI {
         return new Big(decodeFixedPointType(griefingCollateralRate));
     }
 
-    async calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string> {
+    async calculateAPY(feesInterBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string> {
         if(dotToBtcRate === undefined) {
             dotToBtcRate = await this.oracleAPI.getExchangeRate();
         }
-        const feesPolkaBTCInDot = feesPolkaBTC.mul(dotToBtcRate);
-        const totalFees = feesDOT.add(feesPolkaBTCInDot);
+        const feesInterBTCInDot = feesInterBTC.mul(dotToBtcRate);
+        const totalFees = feesDOT.add(feesInterBTCInDot);
 
         // convert to percent
         return totalFees.div(lockedDOT).mul(100).toString();

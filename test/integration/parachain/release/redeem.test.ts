@@ -58,7 +58,7 @@ describe("redeem", () => {
             await vaultBitcoinCoreClient.mineBlocks(3);
             await DefaultTransactionAPI.waitForEvent(api, api.events.stakedRelayers.VaultTheft, 17 * 60000);
 
-            // Burn PolkaBTC for a premium, to restore peg
+            // Burn InterBTC for a premium, to restore peg
             redeemAPI.setAccount(alice);
             await redeemAPI.burn(amount);
 

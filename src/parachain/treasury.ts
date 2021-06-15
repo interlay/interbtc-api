@@ -3,12 +3,12 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 
-import { btcToSat, satToBTC } from "../utils";
+import { btcToSat, newAccountId, satToBTC } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface TreasuryAPI extends TransactionAPI {
@@ -27,7 +27,7 @@ export interface TreasuryAPI extends TransactionAPI {
      */
     transfer(destination: string, amount: Big): Promise<void>;
     /**
-     * Subscribe to balance updates, denominated in PolkaBTC
+     * Subscribe to balance updates, denominated in InterBTC
      * @param account AccountId string
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)
@@ -44,19 +44,19 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
     async total(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const totalBN = await this.api.query.wrapped.totalIssuance.at(head);
-        return new Big(satToBTC(totalBN.toString()));
+        return satToBTC(totalBN);
     }
 
     async balance(id: AccountId): Promise<Big> {
         const account = await this.api.query.wrapped.account(id);
-        return new Big(satToBTC(account.free.toString()));
+        return satToBTC(account.free);
     }
 
     async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
         try {
-            const accountId = this.api.createType("AccountId", account);
+            const accountId = newAccountId(this.api, account);
             const unsubscribe = await this.api.query.wrapped.account(accountId, (balance) => {
-                callback(account, new Big(satToBTC(balance.free.toString())));
+                callback(account, satToBTC(balance.free));
             });
             return unsubscribe;
         } catch (error) {
@@ -69,7 +69,7 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
     }
 
     async transfer(destination: string, amount: Big): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount.toString()));
+        const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount));
         const transferTransaction = this.api.tx.wrapped.transfer(destination, amountSmallDenomination);
         await this.sendLogged(transferTransaction, this.api.events.wrapped.Transfer);
     }

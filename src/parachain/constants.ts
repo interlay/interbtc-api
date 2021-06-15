@@ -4,7 +4,7 @@ import { Vec } from "@polkadot/types/codec";
 import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
 /**
- * @category PolkaBTC Bridge
+ * @category InterBTC Bridge
  * The type Big represents Wrapped or Collateral token denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
@@ -14,9 +14,9 @@ export interface ConstantsAPI {
      */
     getDotExistentialDeposit(): Balance;
     /**
-     * @returns The minimum amount of PolkaBTC required to keep an account open.
+     * @returns The minimum amount of InterBTC required to keep an account open.
      */
-    getPolkaBtcExistentialDeposit(): Balance;
+    getInterBtcExistentialDeposit(): Balance;
     /**
      * @returns Maximum number of block number to block hash mappings to keep (oldest pruned first).
      */
@@ -49,7 +49,7 @@ export class DefaultConstantsAPI implements ConstantsAPI {
         return this.api.consts.collateral.existentialDeposit;
     }
 
-    getPolkaBtcExistentialDeposit(): Balance {
+    getInterBtcExistentialDeposit(): Balance {
         return this.api.consts.wrapped.existentialDeposit;
     }
 

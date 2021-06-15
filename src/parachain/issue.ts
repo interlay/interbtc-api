@@ -25,6 +25,7 @@ import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issue
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { Issue, IssueStatus } from "../types";
+import BN from "bn.js";
 
 export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big };
 
@@ -33,8 +34,8 @@ export function encodeIssueRequest(
     network: Network,
     id: H256 | string,
 ): Issue {
-    const amountBTC = satToBTC(req.amount.toString());
-    const fee = satToBTC(req.fee.toString());
+    const amountBTC = satToBTC(req.amount);
+    const fee = satToBTC(req.fee);
     const status = req.status.isCompleted ? IssueStatus.Completed :
         req.status.isCancelled ? IssueStatus.Cancelled :
             IssueStatus.PendingWithBtcTxNotFound;
@@ -45,16 +46,16 @@ export function encodeIssueRequest(
         vaultDOTAddress: req.vault.toString(),
         userDOTAddress: req.requester.toString(),
         vaultWalletPubkey: req.btc_public_key.toString(),
-        bridgeFee: fee,
-        amountInterBTC: amountBTC,
-        griefingCollateral: planckToDOT(req.griefing_collateral.toString()),
+        bridgeFee: fee.toString(),
+        amountInterBTC: amountBTC.toString(),
+        griefingCollateral: planckToDOT(req.griefing_collateral).toString(),
         status,
     };
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface IssueAPI extends TransactionAPI {
@@ -68,8 +69,8 @@ export interface IssueAPI extends TransactionAPI {
     getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits>;
 
     /**
-     * Request issuing of PolkaBTC.
-     * @param amount PolkaBTC amount (denoted in BTC) to issue.
+     * Request issuing of InterBTC.
+     * @param amount InterBTC amount (denoted in BTC) to issue.
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to re-try issuing, if some of the requests fail. Defaults to 0.
@@ -85,7 +86,7 @@ export interface IssueAPI extends TransactionAPI {
 
     /**
      * Send a batch of aggregated issue transactions (to one or more vaults)
-     * @param amountsPerVault A mapping of vaults to issue from, and PolkaBTC amounts (in Satoshi) to issue using each vault
+     * @param amountsPerVault A mapping of vaults to issue from, and InterBTC amounts (in Satoshi) to issue using each vault
      * @param griefingCollateralRate The percentage of an issue request which must be locked as griefing collateral
      * (must correspond to the parachain property)
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
@@ -107,7 +108,7 @@ export interface IssueAPI extends TransactionAPI {
     execute(issueId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
-     * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
+     * the issuance of InterBTC can be cancelled. As a result, the griefing collateral
      * of the requester will be slashed and sent to the vault that had prepared to issue.
      * @param issueId The ID returned by the issue request transaction
      */
@@ -126,11 +127,6 @@ export interface IssueAPI extends TransactionAPI {
      * to prevent griefing of vault collateral.
      */
     getIssuePeriod(): Promise<number>;
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
     /**
      * @returns An array containing the issue requests
      */
@@ -223,15 +219,12 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     async requestAdvanced(amountsPerVault: Map<AccountId, Big>, atomic: boolean): Promise<Issue[]> {
         const txs = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = await this.getGriefingCollateral(amount);
-            // mul() here is a hacky workaround for rounding errors
-            const griefingCollateralPlanck = new Big(dotToPlanck(griefingCollateral.toString()) || "0").add(100);
-            const griefingCollateralCompact = this.api.createType(
-                "Compact<Collateral>",
-                griefingCollateralPlanck.toString()
-            );
-            const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount.toString()));
-            txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralCompact));
+            const griefingCollateralBig = await this.getGriefingCollateral(amount);
+            // add() here is a hacky workaround for rounding errors
+            const griefingCollateralPlanck = dotToPlanck(griefingCollateralBig).add(new BN(100));
+            const griefingCollateral = this.api.createType("Collateral", griefingCollateralPlanck);
+            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount));
+            txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateral));
         }
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
@@ -291,7 +284,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     async getFeesToPay(amount: Big): Promise<Big> {
         const feePercentage = await this.getFeeRate();
         const feeBtc = amount.mul(feePercentage);
-        return new Big(roundUpBtcToNearestSatoshi(feeBtc.toString()));
+        return new Big(roundUpBtcToNearestSatoshi(feeBtc));
     }
 
     /**
