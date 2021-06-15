@@ -1,4 +1,4 @@
-import { DOT, ErrorCode, StatusCode } from "../../../src/interfaces/default";
+import { Collateral, ErrorCode, StatusCode } from "../../../src/interfaces/default";
 import { u32, u64, u128, Bytes } from "@polkadot/types/primitive";
 import { AccountId, BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import BN from "bn.js";
@@ -60,30 +60,30 @@ export class MockStakedRelayerAPI extends MockTransactionAPI implements StakedRe
         return false;
     }
 
-    async getStakedDOTAmount(_activeStakedRelayerId: AccountId): Promise<DOT> {
-        return Promise.resolve(new BN(101456) as DOT);
+    async getStakedDOTAmount(_activeStakedRelayerId: AccountId): Promise<Collateral> {
+        return Promise.resolve(new BN(101456) as Collateral);
     }
 
-    numberToDOT(x: number): DOT {
-        return new BN(x) as DOT;
+    numberToDOT(x: number): Collateral {
+        return new BN(x) as Collateral;
     }
 
-    async getStakedDOTAmounts(): Promise<DOT[]> {
-        const mockStakedDOTAmounts: DOT[] = [0.04, 4, 12].map((x) => this.numberToDOT(x));
+    async getStakedDOTAmounts(): Promise<Collateral[]> {
+        const mockStakedDOTAmounts: Collateral[] = [0.04, 4, 12].map((x) => this.numberToDOT(x));
         return Promise.resolve(mockStakedDOTAmounts);
     }
 
-    async getTotalStakedDOTAmount(): Promise<DOT> {
-        const stakedDOTAmounts: DOT[] = await this.getStakedDOTAmounts();
+    async getTotalStakedDOTAmount(): Promise<Collateral> {
+        const stakedDOTAmounts: Collateral[] = await this.getStakedDOTAmounts();
         if (stakedDOTAmounts.length) {
-            const sumReducer = (accumulator: DOT, currentValue: DOT) => accumulator.add(currentValue) as DOT;
+            const sumReducer = (accumulator: Collateral, currentValue: Collateral) => accumulator.add(currentValue) as Collateral;
             return stakedDOTAmounts.reduce(sumReducer);
         }
-        return new BN(0) as DOT;
+        return new BN(0) as Collateral;
     }
 
-    async getFeesEarned(_activeStakedRelayerId: AccountId): Promise<DOT> {
-        return new BN(120.6) as DOT;
+    async getFeesEarned(_activeStakedRelayerId: AccountId): Promise<Collateral> {
+        return new BN(120.6) as Collateral;
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {

@@ -3,7 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 
-import { btcToSat, satToBTC } from "../utils";
+import { btcToSat, newAccountId, satToBTC } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
@@ -44,19 +44,19 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
     async total(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const totalBN = await this.api.query.wrapped.totalIssuance.at(head);
-        return new Big(satToBTC(totalBN.toString()));
+        return satToBTC(totalBN);
     }
 
     async balance(id: AccountId): Promise<Big> {
         const account = await this.api.query.wrapped.account(id);
-        return new Big(satToBTC(account.free.toString()));
+        return satToBTC(account.free);
     }
 
     async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
         try {
-            const accountId = this.api.createType("AccountId", account);
+            const accountId = newAccountId(this.api, account);
             const unsubscribe = await this.api.query.wrapped.account(accountId, (balance) => {
-                callback(account, new Big(satToBTC(balance.free.toString())));
+                callback(account, satToBTC(balance.free));
             });
             return unsubscribe;
         } catch (error) {
@@ -69,7 +69,7 @@ export class DefaultTreasuryAPI extends DefaultTransactionAPI implements Treasur
     }
 
     async transfer(destination: string, amount: Big): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount.toString()));
+        const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount));
         const transferTransaction = this.api.tx.wrapped.transfer(destination, amountSmallDenomination);
         await this.sendLogged(transferTransaction, this.api.events.wrapped.Transfer);
     }

@@ -15,6 +15,7 @@ import {
     btcToSat,
     satToBTC,
     getTxProof,
+    newAccountId,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { CollateralAPI } from ".";
@@ -115,11 +116,6 @@ export interface RedeemAPI extends TransactionAPI {
      * and to potentially punish a vault for inactivity or stealing BTC.
      */
     getRedeemPeriod(): Promise<number>;
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
     /**
      * @param account The ID of the account whose redeem requests are to be retrieved
      * @returns A mapping from the redeem request ID to the redeem request object, corresponding to the requests of
@@ -228,7 +224,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const amountWrapped = this.api.createType("Compact<Wrapped>", btcToSat(amount.toString()));
+            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount));
             txes.push(this.api.tx.redeem.requestRedeem(amountWrapped, btcAddress, vault));
         }
         // batchAll fails atomically, batch allows partial successes
@@ -265,7 +261,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async burn(amount: Big): Promise<void> {
-        const amountSat = this.api.createType("Balance", btcToSat(amount.toString()));
+        const amountSat = this.api.createType("Balance", btcToSat(amount));
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
         await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
     }
@@ -286,7 +282,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async getMaxBurnableTokens(): Promise<Big> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault();
-        return new Big(satToBTC(liquidationVault.issued_tokens.toString()));
+        return satToBTC(liquidationVault.issued_tokens);
     }
 
     async getBurnExchangeRate(): Promise<Big> {
@@ -295,10 +291,10 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         if(wrappedSatoshi.isZero()) {
             return Promise.reject("There are no burnable tokens. The burn exchange rate is undefined");
         }
-        const wrappedBtc = new Big(satToBTC(wrappedSatoshi.toString()));
+        const wrappedBtc = satToBTC(wrappedSatoshi);
         const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
         const collateralDot = await this.collateralAPI.balanceLocked(
-            this.api.createType("AccountId", liquidationVaultId)
+            newAccountId(this.api, liquidationVaultId)
         );
         return collateralDot.div(wrappedBtc);
     }
@@ -309,7 +305,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             this.api.query.redeem.redeemTransactionSize.at(head),
             this.oracleAPI.getBtcTxFeesPerByte()
         ]);
-        const btcFees = new Big(satToBTC(satoshiFees.fast.toString()));
+        const btcFees = satToBTC(new BN(satoshiFees.fast));
         return btcFees.mul(new Big(size.toString()));
     }
 
@@ -398,7 +394,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async getDustValue(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const dustValueSat = await this.api.query.redeem.redeemBtcDustValue.at(head);
-        return new Big(satToBTC(dustValueSat.toString()));
+        return satToBTC(dustValueSat);
     }
 
     async getPremiumRedeemFee(): Promise<string> {

@@ -3,7 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 
-import { dotToPlanck, planckToDOT } from "../utils";
+import { dotToPlanck, newAccountId, planckToDOT } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
@@ -50,26 +50,26 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
     async totalLocked(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const totalLockedBN = await this.api.query.collateralCurrency.totalLocked.at(head);
-        return new Big(planckToDOT(totalLockedBN.toString()));
+        return planckToDOT(totalLockedBN);
     }
 
     async balanceLocked(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.collateral.account.at(head, id);
-        return new Big(planckToDOT(account.reserved.toString()));
+        return planckToDOT(account.reserved);
     }
 
     async balance(id: AccountId): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const account = await this.api.query.collateral.account.at(head, id);
-        return new Big(planckToDOT(account.free.toString()));
+        return planckToDOT(account.free);
     }
 
     async subscribeToBalance(account: string, callback: (account: string, balance: Big) => void): Promise<() => void> {
         try {
-            const accountId = this.api.createType("AccountId", account);
+            const accountId = newAccountId(this.api, account);
             const unsubscribe = await this.api.query.collateral.account(accountId, (balance) => {
-                callback(account, new Big(planckToDOT(balance.free.toString())));
+                callback(account, planckToDOT(balance.free));
             });
             return unsubscribe;
         } catch (error) {
@@ -82,7 +82,7 @@ export class DefaultCollateralAPI extends DefaultTransactionAPI implements Colla
     }
 
     async transfer(address: string, amount: Big): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", dotToPlanck(amount.toString()));
+        const amountSmallDenomination = this.api.createType("Balance", dotToPlanck(amount));
         const transferTx = this.api.tx.collateral.transfer(address, amountSmallDenomination);
         await this.sendLogged(transferTx, this.api.events.collateral.Transfer);
     }

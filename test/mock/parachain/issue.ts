@@ -9,7 +9,7 @@ import Big from "big.js";
 
 import { IssueAPI, IssueRequestResult, IssueRequestExt, IssueLimits } from "../../../src/parachain/issue";
 import { MockTransactionAPI } from "../transaction";
-import { DOT, PolkaBTC } from "../../../src/interfaces/default";
+import { Collateral, Wrapped } from "../../../src/interfaces/default";
 
 export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
     getGriefingCollateral(_amount: Big): Promise<Big> {
@@ -64,21 +64,21 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
         return Promise.resolve([
             <IssueRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId1),
-                amount: new BN(600) as PolkaBTC,
+                amount: new BN(600) as Wrapped,
                 opentime: new BN(10908) as BlockNumber,
-                fee: new BN(6) as PolkaBTC,
+                fee: new BN(6) as Wrapped,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
                 requester: new GenericAccountId(registry, decodedAccountId1),
-                griefing_collateral: new BN(10) as DOT,
+                griefing_collateral: new BN(10) as Collateral,
             },
             <IssueRequestExt>{
                 vault: new GenericAccountId(registry, decodedAccountId2),
-                amount: new BN(4510) as PolkaBTC,
+                amount: new BN(4510) as Wrapped,
                 opentime: new BN(11938) as BlockNumber,
-                fee: new BN(6) as PolkaBTC,
+                fee: new BN(6) as Wrapped,
                 btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
                 requester: new GenericAccountId(registry, decodedAccountId2),
-                griefing_collateral: new BN(76) as DOT,
+                griefing_collateral: new BN(76) as Collateral,
             },
         ]);
     }
@@ -97,12 +97,12 @@ export class MockIssueAPI extends MockTransactionAPI implements IssueAPI {
 
         return <IssueRequestExt>{
             vault: new GenericAccountId(registry, decodedAccountId1),
-            amount: new BN(4510) as PolkaBTC,
+            amount: new BN(4510) as Wrapped,
             opentime: new BN(11938) as BlockNumber,
-            fee: new BN(6) as PolkaBTC,
+            fee: new BN(6) as Wrapped,
             btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
             requester: new GenericAccountId(registry, decodedAccountId1),
-            griefing_collateral: new BN(76) as DOT,
+            griefing_collateral: new BN(76) as Collateral,
         };
     }
 

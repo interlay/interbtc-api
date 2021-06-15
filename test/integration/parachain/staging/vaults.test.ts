@@ -117,9 +117,7 @@ describe("vaultsAPI", () => {
 
     it("should get the issuable PolkaBTC", async () => {
         const issuablePolkaBtc = await vaultsAPI.getTotalIssuableAmount();
-        const issuablePolkaBtcU128 = api.createType("u128", issuablePolkaBtc);
-        const zeroU128 = api.createType("u128", 0);
-        assert.isTrue(issuablePolkaBtcU128.gt(zeroU128));
+        assert.isTrue(issuablePolkaBtc.gt(0));
     });
 
     describe("sla", () => {

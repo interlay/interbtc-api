@@ -53,11 +53,6 @@ export interface RefundAPI extends TransactionAPI {
      * @returns A refund request object
      */
     getRequestByIssueId(issueId: H256): Promise<RefundRequestExt>;
-    /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
 }
 
 export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI {

@@ -47,7 +47,7 @@ export class MockVaultsAPI extends MockTransactionAPI implements VaultsAPI {
     getTotalIssuedAmount(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
-    getTotalIssuableAmount(): Promise<string> {
+    getTotalIssuableAmount(): Promise<Big> {
         throw new Error("Method not implemented.");
     }
     selectRandomVaultIssue(btc: Big): Promise<AccountId> {

@@ -3,6 +3,9 @@ import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
 import { TransactionAPI } from "../../src";
 
 export class MockTransactionAPI implements TransactionAPI {
+    getAccount(): AddressOrPair {
+        throw new Error("Method not implemented.");
+    }
     setAccount(_account: AddressOrPair): void {
         return;
     }

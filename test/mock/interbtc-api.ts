@@ -22,7 +22,7 @@ import { MockIssueAPI } from "./parachain/issue";
 import { MockRedeemAPI } from "./parachain/redeem";
 import { MockVaultsAPI } from "./parachain/vaults";
 import { MockStakedRelayerAPI } from "./parachain/staked-relayer";
-import { PolkaBTCAPI } from "../../src";
+import { InterBTCAPI } from "../../src";
 import { FaucetClient } from "../../src/clients";
 import { MockOracleAPI } from "./parachain/oracle";
 import { MockElectrsAPI } from "./external/electrs";
@@ -35,7 +35,7 @@ import { MockRefundAPI } from "./parachain/refund";
 import { MockFeeAPI } from "./parachain/fee";
 import { MockNominationAPI } from "./parachain/nomination";
 
-export default class MockPolkaBTCAPI implements PolkaBTCAPI {
+export default class MockInterBTCAPI implements InterBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
