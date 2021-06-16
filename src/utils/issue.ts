@@ -6,12 +6,14 @@ import BN from "bn.js";
 import { satToBTC, getBitcoinNetwork } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
-import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
+import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTreasuryAPI } from "../parachain/treasury";
+import { Issue, IssueStatus } from "../types";
+import { BitcoinNetwork } from "../types/bitcoinTypes";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 
 export interface IssueResult {
-    request: IssueRequestResult;
+    request: Issue;
     initialDotBalance: Big;
     finalDotBalance: Big;
     initialInterBtcBalance: Big;
@@ -27,7 +29,7 @@ export async function issueSingle(
     vaultAddress?: string,
     autoExecute = true,
     triggerRefund = false,
-    network = "regtest",
+    network: BitcoinNetwork = "regtest",
     atomic = true
 ): Promise<IssueResult> {
     try {
@@ -46,20 +48,16 @@ export async function issueSingle(
         let rawRequestResult;
         if (vaultAddress) {
             const vaultAccountId = api.createType("AccountId", vaultAddress);
-            rawRequestResult = await issueAPI.requestAdvanced(
-                new Map([[vaultAccountId, amount]]),
-                atomic
-            );
+            rawRequestResult = await issueAPI.requestAdvanced(new Map([[vaultAccountId, amount]]), atomic);
         } else {
             rawRequestResult = await issueAPI.request(amount, atomic);
         }
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
-        const requestResult = rawRequestResult[0];
-        const issueRequest = await issueAPI.getRequestById(requestResult.id);
+        const issueRequest = rawRequestResult[0];
 
-        let amountAsBtc = satToBTC(issueRequest.amount.add(issueRequest.fee));
+        let amountAsBtc = new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee);
 
         if (triggerRefund) {
             // Send 1 more Btc than needed
@@ -72,7 +70,7 @@ export async function issueSingle(
         }
 
         // send btc tx
-        const vaultBtcAddress = requestResult.issueRequest.btc_address;
+        const vaultBtcAddress = issueRequest.vaultBTCAddress;
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
         }
@@ -81,20 +79,20 @@ export async function issueSingle(
 
         if (autoExecute === false) {
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            await issueAPI.execute(requestResult.id.toString(), txData.txid);
+            await issueAPI.execute(issueRequest.id, txData.txid);
         } else {
             // wait for vault to execute issue
-            while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {
+            while ((await issueAPI.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
                 await sleep(1000);
             }
         }
 
         const [finalBalanceInterBTC, finalBalanceDOT] = await Promise.all([
             treasuryAPI.balance(requesterAccountId),
-            collateralAPI.balance(requesterAccountId)
+            collateralAPI.balance(requesterAccountId),
         ]);
         return {
-            request: requestResult,
+            request: issueRequest,
             initialDotBalance: initialBalanceDOT,
             finalDotBalance: finalBalanceDOT,
             initialInterBtcBalance: initialBalanceInterBTC,
@@ -110,4 +108,3 @@ export async function issueSingle(
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
-

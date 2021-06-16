@@ -11,10 +11,13 @@ import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
     decodeFixedPointType,
-    encodeParachainRequest,
     btcToSat,
     satToBTC,
     getTxProof,
+    stripHexPrefix,
+    encodeBtcAddress,
+    planckToDOT,
+    storageKeyToFirstInner,
     newAccountId,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
@@ -24,16 +27,29 @@ import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RedeemRequest } from "../interfaces/default";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import { Redeem, RedeemStatus } from "../types";
 
-export type RequestResult = { id: Hash; redeemRequest: RedeemRequestExt };
-
-export interface RedeemRequestExt extends Omit<RedeemRequest, "btc_address"> {
-    // network encoded btc address
-    btc_address: string;
-}
-
-export function encodeRedeemRequest(req: RedeemRequest, network: Network): RedeemRequestExt {
-    return encodeParachainRequest<RedeemRequest, RedeemRequestExt>(req, network);
+export function encodeRedeemRequest(
+    req: RedeemRequest,
+    network: Network,
+    id: H256,
+): Redeem {
+    const status = req.status.isCompleted ?
+        RedeemStatus.Completed : req.status.isRetried ?
+            RedeemStatus.Retried : req.status.isReimbursed ?
+                RedeemStatus.Reimbursed : RedeemStatus.PendingWithBtcTxNotFound;
+    return {
+        id: stripHexPrefix(id.toString()),
+        userDOTAddress: req.redeemer.toString(),
+        amountBTC: satToBTC(req.amount_btc).toString(),
+        dotPremium: planckToDOT(req.premium).toString(),
+        bridgeFee: satToBTC(req.fee).toString(),
+        btcTransferFee: satToBTC(req.transfer_fee_btc).toString(),
+        creationBlock: req.opentime.toNumber(),
+        vaultDOTAddress: req.vault.toString(),
+        userBTCAddress: encodeBtcAddress(req.btc_address, network),
+        status
+    };
 }
 
 /**
@@ -45,7 +61,7 @@ export interface RedeemAPI extends TransactionAPI {
     /**
      * @returns An array containing the redeem requests
      */
-    list(): Promise<RedeemRequestExt[]>;
+    list(): Promise<Redeem[]>;
     /**
      * Send a redeem request transaction
      * @param amount InterBTC amount (denoted in Bitcoin) to redeem
@@ -62,7 +78,7 @@ export interface RedeemAPI extends TransactionAPI {
         atomic?: boolean,
         retries?: number,
         availableVaults?: Map<AccountId, Big>
-    ): Promise<RequestResult[]>;
+    ): Promise<Redeem[]>;
 
     /**
      * Send a batch of aggregated redeem transactions (to one or more vaults)
@@ -77,7 +93,7 @@ export interface RedeemAPI extends TransactionAPI {
         amountsPerVault: Map<AccountId, Big>,
         btcAddressEnc: string,
         atomic: boolean
-    ): Promise<RequestResult[]>;
+    ): Promise<Redeem[]>;
 
     /**
      * Send a redeem execution transaction
@@ -121,13 +137,13 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns A mapping from the redeem request ID to the redeem request object, corresponding to the requests of
      * the given account
      */
-    mapForUser(account: AccountId): Promise<Map<H256, RedeemRequestExt>>;
+    mapForUser(account: AccountId): Promise<Map<H256, Redeem>>;
     /**
      * @param redeemId The ID of the redeem request to fetch
      * @returns A redeem request object
      */
-    getRequestById(redeemId: H256): Promise<RedeemRequestExt>;
-    getRequestsById(redeemIds: H256[]): Promise<RedeemRequestExt[]>;
+    getRequestById(redeemId: H256): Promise<Redeem>;
+    getRequestsById(redeemIds: H256[]): Promise<Redeem[]>;
     /**
      * Whenever a redeem request associated with `account` expires, call the callback function with the
      * ID of the expired request. Already expired requests are stored in memory, so as not to call back
@@ -200,12 +216,12 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         atomic: boolean = true,
         retries: number = 0,
         cachedVaults?: Map<AccountId, Big>,
-    ): Promise<RequestResult[]> {
+    ): Promise<Redeem[]> {
         try {
             const availableVaults = cachedVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.plus(req.redeemRequest.amount_btc.toString()), new Big(0));
+            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountBTC), new Big(0));
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
@@ -220,7 +236,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         amountsPerVault: Map<AccountId, Big>,
         btcAddressEnc: string,
         atomic: boolean
-    ): Promise<RequestResult[]> {
+    ): Promise<Redeem[]> {
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
@@ -233,7 +249,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const result = await this.sendLogged(batch, this.api.events.issue.RequestRedeem);
             const ids = this.getRedeemIdsFromEvents(result.events);
             const redeemRequests = await this.getRequestsById(ids);
-            return ids.map((id, idx) => ({ id, redeemRequest: redeemRequests[idx] }));
+            return redeemRequests;
         } catch (e) {
             return Promise.reject(e);
         }
@@ -309,30 +325,30 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return btcFees.mul(new Big(size.toString()));
     }
 
-    async list(): Promise<RedeemRequestExt[]> {
+    async list(): Promise<Redeem[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemRequests = await this.api.query.redeem.redeemRequests.entriesAt(head);
-        return redeemRequests.map((v) => encodeRedeemRequest(v[1], this.btcNetwork));
+        return redeemRequests.map(([id, req]) => encodeRedeemRequest(req, this.btcNetwork, storageKeyToFirstInner(id)));
     }
 
-    async mapForUser(account: AccountId): Promise<Map<H256, RedeemRequestExt>> {
+    async mapForUser(account: AccountId): Promise<Map<H256, Redeem>> {
         const redeemRequestPairs: [H256, RedeemRequest][] = await this.api.rpc.redeem.getRedeemRequests(account);
-        const mapForUser: Map<H256, RedeemRequestExt> = new Map<H256, RedeemRequestExt>();
+        const mapForUser: Map<H256, Redeem> = new Map<H256, Redeem>();
         redeemRequestPairs.forEach((redeemRequestPair) =>
-            mapForUser.set(redeemRequestPair[0], encodeRedeemRequest(redeemRequestPair[1], this.btcNetwork))
+            mapForUser.set(redeemRequestPair[0], encodeRedeemRequest(redeemRequestPair[1], this.btcNetwork, redeemRequestPair[0]))
         );
         return mapForUser;
     }
 
     async subscribeToRedeemExpiry(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
-        const redeemPeriod = this.api.createType("BlockNumber", await this.getRedeemPeriod());
+        const redeemPeriod = await this.getRedeemPeriod();
         const unsubscribe = this.onRedeem(
             account,
-            (seen: Set<H256>, request: RedeemRequestExt, id: H256, currentBlockNumber: BN) => {
+            (seen: Set<H256>, request: Redeem, id: H256, currentBlockNumber: BN) => {
                 if (
-                    request.opentime.add(redeemPeriod).lte(currentBlockNumber)
+                    currentBlockNumber.gtn(request.creationBlock + redeemPeriod)
                     && !seen.has(id)
-                    && request.status.isPending
+                    && request.status === RedeemStatus.PendingWithBtcTxNotFound
                 ) {
                     seen.add(id);
                     callback(id);
@@ -345,9 +361,9 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async subscribeToRedeemCompletion(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
         const unsubscribe = this.onRedeem(
             account,
-            (seen: Set<H256>, request: RedeemRequestExt, id: H256, _currentBlockNumber: BN) => {
+            (seen: Set<H256>, request: Redeem, id: H256, _currentBlockNumber: BN) => {
                 if (
-                    request.status.isCompleted
+                    request.status === RedeemStatus.Completed
                     && !seen.has(id)
                 ) {
                     seen.add(id);
@@ -360,7 +376,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async onRedeem(
         account: AccountId,
-        fn: (set: Set<H256>, request: RedeemRequestExt, id: H256, blockNumber: BN) => void
+        fn: (set: Set<H256>, request: Redeem, id: H256, blockNumber: BN) => void
     ): Promise<() => void> {
         const seen = new Set<H256>();
         try {
@@ -403,15 +419,18 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return decodeFixedPointType(premiumRedeemFee);
     }
 
-    async getRequestById(redeemId: H256): Promise<RedeemRequestExt> {
+    async getRequestById(redeemId: H256): Promise<Redeem> {
         return (await this.getRequestsById([redeemId]))[0];
     }
 
-    async getRequestsById(redeemIds: H256[]): Promise<RedeemRequestExt[]> {
+    async getRequestsById(redeemIds: H256[]): Promise<Redeem[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return Promise.all(
             redeemIds.map(async (redeemId) =>
-                encodeRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, redeemId), this.btcNetwork)
+                encodeRedeemRequest(
+                    await this.api.query.redeem.redeemRequests.at(head, redeemId),
+                    this.btcNetwork,
+                    redeemId)
             )
         );
     }

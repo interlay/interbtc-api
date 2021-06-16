@@ -1,17 +1,18 @@
 import { AddressOrPair } from "@polkadot/api/types";
-import { AccountId, Hash, H256 } from "@polkadot/types/interfaces";
+import { AccountId, H256 } from "@polkadot/types/interfaces";
 import Big from "big.js";
-import { RedeemAPI, RedeemRequestExt, RequestResult } from "../../../src/parachain/redeem";
+import { Redeem } from "../../../src";
+import { RedeemAPI } from "../../../src/parachain/redeem";
 import { MockTransactionAPI } from "../transaction";
 
 export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
-    list(): Promise<RedeemRequestExt[]> {
+    list(): Promise<Redeem[]> {
         throw new Error("Method not implemented.");
     }
-    getRequestById(_redeemId: H256): Promise<RedeemRequestExt> {
+    getRequestById(_redeemId: H256): Promise<Redeem> {
         throw new Error("Method not implemented.");
     }
-    getRequestsById(_redeemIds: H256[]): Promise<RedeemRequestExt[]> {
+    getRequestsById(_redeemIds: H256[]): Promise<Redeem[]> {
         throw new Error("Method not implemented.");
     }
     setRedeemPeriod(_blocks: number): Promise<void> {
@@ -43,20 +44,20 @@ export class MockRedeemAPI extends MockTransactionAPI implements RedeemAPI {
         _atomic?: boolean,
         _retries?: number,
         _availableVaults?: Map<AccountId, Big>
-    ): Promise<RequestResult[]> {
-        return Promise.resolve([{ id: <Hash>{}, redeemRequest: (await this.list())[0] }]);
+    ): Promise<Redeem[]> {
+        return Promise.resolve([(await this.list())[0]]);
     }
 
     async requestAdvanced(
         _amountsPerVault: Map<AccountId, Big>,
         _btcAddressEnc: string,
         _atomic: boolean
-    ): Promise<RequestResult[]> {
+    ): Promise<Redeem[]> {
         return this.request(new Big(0), "");
     }
 
-    async mapForUser(_account: AccountId): Promise<Map<H256, RedeemRequestExt>> {
-        return Promise.resolve(new Map<H256, RedeemRequestExt>());
+    async mapForUser(_account: AccountId): Promise<Map<H256, Redeem>> {
+        return Promise.resolve(new Map<H256, Redeem>());
     }
 
     async getDustValue(): Promise<Big> {

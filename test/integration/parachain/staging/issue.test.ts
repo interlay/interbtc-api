@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { btcToSat, roundLastNDigits, satToBTC } from "../../../../src/utils";
+import { satToBTC } from "../../../../src/utils";
 import { assert, expect } from "../../../chai";
 import { defaultParachainEndpoint } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
@@ -75,15 +75,10 @@ describe("issue", () => {
                 1,
                 "Created multiple requests instead of one (ensure vault in docker has sufficient collateral)"
             );
-            const requestResult = requestResults[0];
-            assert.equal(requestResult.id.length, 32);
+            const issueRequest = requestResults[0];
+            assert.equal(issueRequest.id.length, 64);
 
-            const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            assert.equal(
-                issueRequest.amount.toString(),
-                btcToSat(amount.sub(feesToPay)).toString(),
-                "Amount different than expected"
-            );
+            assert.equal(issueRequest.amountInterBTC.toString(), amount.sub(feesToPay).toString(), "Amount different than expected");
         });
 
         it("should batch request across several vaults", async () => {
@@ -92,26 +87,26 @@ describe("issue", () => {
             issueAPI.setAccount(alice);
 
             const amount = new Big(19000); // approx. 1.2x vault capacity
-            const requestResults = await issueAPI.request(amount);
+            const issueRequests = await issueAPI.request(amount);
             assert.equal(
-                requestResults.length,
+                issueRequests.length,
                 2,
                 "Created wrong amount of requests, ensure vault collateral settings in docker are correct"
             );
-            const firstExpected = new Big(1634575267885);
-            const secondExpected = new Big(255924732116);
+            const firstExpected = new Big(16345.75267885);
+            const secondExpected = new Big(2559.24732116);
             // Sometimes this test fails with a difference that is not really relevant:
             // -1634575173360
             // +1634575267885
             // As such, round the numbers before comparing
             assert.deepEqual(
-                roundLastNDigits(7, requestResults[0].issueRequest.amount),
-                roundLastNDigits(7, firstExpected),
+                new Big(issueRequests[0].amountInterBTC).round(2).toString(),
+                firstExpected.round(2).toString(),
                 "First vault issue amount different than expected"
             );
             assert.deepEqual(
-                roundLastNDigits(7, requestResults[1].issueRequest.amount),
-                roundLastNDigits(7, secondExpected),
+                new Big(issueRequests[1].amountInterBTC).round(2).toString(),
+                secondExpected.round(2).toString(),
                 "Second vault issue amount different than expected"
             );
         });

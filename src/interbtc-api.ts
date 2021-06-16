@@ -18,11 +18,12 @@ import { FaucetClient } from "./clients";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
+import {BitcoinNetwork} from "./types/bitcoinTypes";
 
 export * from "./factory";
 export * from "./parachain/transaction";
 
-export function getBitcoinNetwork(network: string = "mainnet"): Network {
+export function getBitcoinNetwork(network: BitcoinNetwork = "mainnet"): Network {
     switch (network) {
     case "mainnet":
         return networks.bitcoin;
@@ -76,7 +77,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
 
-    constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
+    constructor(readonly api: ApiPromise, network: BitcoinNetwork = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
         this.vaults = new DefaultVaultsAPI(api, btcNetwork, _account);
         this.faucet = new FaucetClient("");

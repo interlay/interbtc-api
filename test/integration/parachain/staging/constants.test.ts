@@ -22,7 +22,7 @@ describe("Constants", function () {
     describe("getDotExistentialDeposit", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);
-            const returnValue = await constantAPI.getDotExistentialDeposit();
+            const returnValue = constantAPI.getDotExistentialDeposit();
             assert.isDefined(returnValue);
         });
     });
@@ -30,7 +30,7 @@ describe("Constants", function () {
     describe("getInterBtcExistentialDeposit", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);
-            const returnValue = await constantAPI.getInterBtcExistentialDeposit();
+            const returnValue = constantAPI.getInterBtcExistentialDeposit();
             assert.isDefined(returnValue);
         });
     });
@@ -38,7 +38,7 @@ describe("Constants", function () {
     describe("getSystemBlockHashCount", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);
-            const returnValue = await constantAPI.getSystemBlockHashCount();
+            const returnValue = constantAPI.getSystemBlockHashCount();
             assert.isDefined(returnValue);
         });
     });
@@ -46,14 +46,14 @@ describe("Constants", function () {
     describe("getSystemDbWeight", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);
-            const returnValue = await constantAPI.getSystemDbWeight();
+            const returnValue = constantAPI.getSystemDbWeight();
             assert.isDefined(returnValue);
         });
     });
 
     describe("getTimestampMinimumPeriod", () => {
         it("should sucessfully return", async () => {
-            const returnValue = await constantAPI.getTimestampMinimumPeriod();
+            const returnValue = constantAPI.getTimestampMinimumPeriod();
             assert.isDefined(returnValue);
         });
     });
@@ -61,7 +61,7 @@ describe("Constants", function () {
     describe("getTransactionByteFee", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);
-            const returnValue = await constantAPI.getTransactionByteFee();
+            const returnValue = constantAPI.getTransactionByteFee();
             assert.isDefined(returnValue);
         });
     });
@@ -69,7 +69,7 @@ describe("Constants", function () {
     describe("getTransactionWeightToFee", () => {
         it("should sucessfully return", async () => {
             this.timeout(500);
-            const returnValue = await constantAPI.getTransactionWeightToFee();
+            const returnValue = constantAPI.getTransactionWeightToFee();
             assert.isDefined(returnValue);
         });
     });
