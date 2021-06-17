@@ -20,6 +20,7 @@ import {
     storageKeyToFirstInner,
     newAccountId,
     ensureHashEncoded,
+    addHexPrefix,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { CollateralAPI } from ".";
@@ -223,7 +224,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         try {
             if(vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
-                // Initialize the `amountsPerVault` map with a single entry,the (vaultId, amount) pair
+                // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
                 const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
                 return await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             }
@@ -276,7 +277,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async cancel(requestId: string, reimburse = false): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", requestId);
+        const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
         await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }

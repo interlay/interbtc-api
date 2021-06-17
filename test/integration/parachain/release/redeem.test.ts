@@ -97,7 +97,6 @@ describe("redeem", () => {
             }
         })
 
-        // The cancellation period set by docker-compose is 50 blocks, each being relayed every 6s
         await aliceBitcoinCoreClient.mineBlocks(2);
         await redeemAPI.cancel(redeemRequest.id.toString(), true);
 

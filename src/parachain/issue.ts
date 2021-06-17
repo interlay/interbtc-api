@@ -207,7 +207,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         try {
             if(vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
-                // Initialize the `amountsPerVault` map with a single entry,the (vaultId, amount) pair
+                // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
                 const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
                 return await this.requestAdvanced(amountsPerVault, atomic);
             }

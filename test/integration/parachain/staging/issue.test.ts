@@ -92,8 +92,6 @@ describe("issue", () => {
             "Created multiple requests instead of one (ensure vault in docker has sufficient collateral)"
         );
         const requestResult = requestResults[0];
-        assert.equal(requestResult.id.length, 32);
-
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
         assert.equal(issueRequest.amountInterBTC.toString(), amount.sub(feesToPay).toString(), "Amount different than expected");
     });
