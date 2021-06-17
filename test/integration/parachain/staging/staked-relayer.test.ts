@@ -66,10 +66,10 @@ describe("stakedRelayerAPI", () => {
     });
 
     it("should getFees", async () => {
-        const feesPolkaBTC = await stakedRelayerAPI.getWrappingFees(newAccountId(api, alice_stash.address));
+        const feesInterBTC = await stakedRelayerAPI.getWrappingFees(newAccountId(api, alice_stash.address));
         const feesDOT = await stakedRelayerAPI.getCollateralFees(newAccountId(api, alice_stash.address));
         const feeBenchmark = new Big("0");
-        assert.isTrue(new Big(feesPolkaBTC).gte(feeBenchmark));
+        assert.isTrue(new Big(feesInterBTC).gte(feeBenchmark));
         assert.isTrue(new Big(feesDOT).gte(feeBenchmark));
     });
 });

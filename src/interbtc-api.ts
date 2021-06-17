@@ -18,11 +18,12 @@ import { FaucetClient } from "./clients";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
+import {BitcoinNetwork} from "./types/bitcoinTypes";
 
 export * from "./factory";
 export * from "./parachain/transaction";
 
-export function getBitcoinNetwork(network: string = "mainnet"): Network {
+export function getBitcoinNetwork(network: BitcoinNetwork = "mainnet"): Network {
     switch (network) {
     case "mainnet":
         return networks.bitcoin;
@@ -33,7 +34,7 @@ export function getBitcoinNetwork(network: string = "mainnet"): Network {
     }
 }
 
-export interface PolkaBTCAPI {
+export interface InterBTCAPI {
     readonly api: ApiPromise;
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
@@ -55,11 +56,11 @@ export interface PolkaBTCAPI {
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
-export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
+export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
@@ -76,7 +77,7 @@ export class DefaultPolkaBTCAPI implements PolkaBTCAPI {
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
 
-    constructor(readonly api: ApiPromise, network: string = "mainnet", private _account?: AddressOrPair) {
+    constructor(readonly api: ApiPromise, network: BitcoinNetwork = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
         this.electrsAPI = new DefaultElectrsAPI(network);
         this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, _account);

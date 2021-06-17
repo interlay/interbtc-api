@@ -10,8 +10,8 @@ import { bnToBig, computeStake, decodeFixedPointType, dotToPlanck, newAccountId,
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface NominationAPI extends TransactionAPI {

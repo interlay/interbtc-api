@@ -4,31 +4,31 @@ import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
+ * @category InterBTC Bridge
+ * The type Big represents large denominations (e.g. DOT or BTC),
+ * while the type BN represents small denominations (e.g. Planck or Satoshi).
  */
 export interface FeeAPI {
     /**
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
      * @param griefingCollateralRate
-     * @returns The griefing collateral, in DOT
+     * @returns The griefing collateral, as large denomination (e.g. DOT)
      */
     getGriefingCollateral(
         amount: Big,
         griefingCollateralRate: Big
     ): Promise<Big>;
     /**
-     * @param feesPolkaBTC Satoshi value representing the BTC fees accrued
-     * @param feesDOT Planck value representing the DOT fees accrued
-     * @param lockedDOT Planck value representing the value locked to gain yield
-     * @param dotToBtcRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
+     * @param feesInterBTC BTC fees accrued, in large denomination
+     * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
+     * @param lockedCollateral Collateral value representing the value locked to gain yield. Large denomination (e.g. DOT)
+     * @param collateralToWrappedRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<Big>;
+    calculateAPY(feesInterBTC: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big>;
     /**
-     * @returns The griefing collateral rate for issuing PolkaBTC
+     * @returns The griefing collateral rate for issuing InterBTC
      */
     getIssueGriefingCollateralRate(): Promise<Big>;
     /**
@@ -64,17 +64,17 @@ export class DefaultFeeAPI implements FeeAPI {
         return decodeFixedPointType(griefingCollateralRate);
     }
 
-    async calculateAPY(feesPolkaBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<Big> {
-        if(lockedDOT.eq(new Big(0))) {
+    async calculateAPY(feesInterBTC: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big> {
+        if(lockedCollateral.eq(new Big(0))) {
             return new Big(0);
         }
-        if(dotToBtcRate === undefined) {
-            dotToBtcRate = await this.oracleAPI.getExchangeRate();
+        if(collateralToWrappedRate === undefined) {
+            collateralToWrappedRate = await this.oracleAPI.getExchangeRate();
         }
-        const feesPolkaBTCInDot = feesPolkaBTC.mul(dotToBtcRate);
-        const totalFees = feesDOT.add(feesPolkaBTCInDot);
+        const feesInterBTCInDot = feesInterBTC.mul(collateralToWrappedRate);
+        const totalFees = feesCollateral.add(feesInterBTCInDot);
 
         // convert to percent
-        return totalFees.div(lockedDOT).mul(100);
+        return totalFees.div(lockedCollateral).mul(100);
     }
 }

@@ -11,7 +11,7 @@ import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOI
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle } from "../../../../src/utils";
-import { DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, newAccountId, REGTEST_ESPLORA_BASE_PATH, sleep } from "../../../../src";
+import { DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep } from "../../../../src";
 import { assert } from "../../../chai";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -74,7 +74,7 @@ describe("redeem", () => {
         assert.equal(maxBurnableTokens.toString(), "0.0001");
         const burnExchangeRate = await redeemAPI.getBurnExchangeRate();
         assert.equal(burnExchangeRate.toString(), "5782.847805");
-        // Burn PolkaBTC for a premium, to restore peg
+        // Burn InterBTC for a premium, to restore peg
         await redeemAPI.burn(amount);
 
         // it takes about 15 mins for the theft to be reported
@@ -103,7 +103,7 @@ describe("redeem", () => {
 
         const redeemRequestAfterCancellation = await redeemAPI.getRequestById(redeemRequest.id);
 
-        assert.isTrue(redeemRequestAfterCancellation.status.isReimbursed, "Failed to cancel issue request");
+        assert.isTrue(redeemRequestAfterCancellation.status === RedeemStatus.Reimbursed, "Failed to cancel issue request");
         assert.isTrue(redeemRequestExpiryCallback, "Callback was not called when the redeem request expired.");
         // Set issue period back to its initial value to minimize side effects.
         await redeemAPI.setRedeemPeriod(initialRedeemPeriod);

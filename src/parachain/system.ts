@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 
 /**
- * @category PolkaBTC Bridge
+ * @category InterBTC Bridge
  */
 export interface SystemAPI {
     /**

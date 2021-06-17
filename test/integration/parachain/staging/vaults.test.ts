@@ -59,10 +59,10 @@ describe("vaultsAPI", () => {
     }
 
     it("should get issuable", async () => {
-        const issuablePolkaBTC = await vaultsAPI.getTotalIssuableAmount();
-        const issuablePolkaBTCBig = new Big(issuablePolkaBTC);
-        const minIssuablePolkaBTC = new Big(1);
-        assert.isTrue(issuablePolkaBTCBig.gte(minIssuablePolkaBTC));
+        const issuableInterBTC = await vaultsAPI.getTotalIssuableAmount();
+        const issuableInterBTCBig = new Big(issuableInterBTC);
+        const minIssuableInterBTC = new Big(1);
+        assert.isTrue(issuableInterBTCBig.gte(minIssuableInterBTC));
     });
 
     it("should deposit and withdraw collateral", async () => {
@@ -149,25 +149,25 @@ describe("vaultsAPI", () => {
     });
 
     it("should select random vault for issue", async () => {
-        const polkaBTC = new Big(0);
-        const randomVault = await vaultsAPI.selectRandomVaultIssue(polkaBTC);
+        const interBTC = new Big(0);
+        const randomVault = await vaultsAPI.selectRandomVaultIssue(interBTC);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for issuing is found", async () => {
-        const polkaBTC = new Big(9000000);
-        assert.isRejected(vaultsAPI.selectRandomVaultIssue(polkaBTC));
+        const interBTC = new Big(9000000);
+        assert.isRejected(vaultsAPI.selectRandomVaultIssue(interBTC));
     });
 
     it("should select random vault for redeem", async () => {
-        const polkaBTC = new Big(0);
-        const randomVault = await vaultsAPI.selectRandomVaultRedeem(polkaBTC);
+        const interBTC = new Big(0);
+        const randomVault = await vaultsAPI.selectRandomVaultRedeem(interBTC);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for redeeming is found", async () => {
-        const polkaBTC = new Big(9000000);
-        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(polkaBTC));
+        const interBTC = new Big(9000000);
+        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(interBTC));
     });
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {
@@ -186,18 +186,20 @@ describe("vaultsAPI", () => {
     });
 
     it("should list issue request by a vault", async () => {
-        const bobId = api.createType("AccountId", ferdie_stash.address);
+        const bobAddress = ferdie_stash.address;
+        const bobId = api.createType("AccountId", bobAddress);
         const issueRequests = await vaultsAPI.mapIssueRequests(bobId);
         issueRequests.forEach((request) => {
-            assert.deepEqual(request.vault, bobId);
+            assert.deepEqual(request.vaultDOTAddress, bobAddress);
         });
     });
 
     it("should list redeem request by a vault", async () => {
-        const bobId = api.createType("AccountId", ferdie_stash.address);
+        const bobAddress = ferdie_stash.address;
+        const bobId = api.createType("AccountId", bobAddress);
         const redeemRequests = await vaultsAPI.mapRedeemRequests(bobId);
         redeemRequests.forEach((request) => {
-            assert.deepEqual(request.vault, bobId);
+            assert.deepEqual(request.vaultDOTAddress, bobAddress);
         });
     });
 
@@ -209,15 +211,15 @@ describe("vaultsAPI", () => {
         });
     });
 
-    it("should get the issuable PolkaBTC for a vault", async () => {
+    it("should get the issuable InterBTC for a vault", async () => {
         const bobId = api.createType("AccountId", ferdie_stash.address);
-        const issuablePolkaBtc = await vaultsAPI.getIssuableAmount(bobId);
-        assert.isTrue(issuablePolkaBtc.gt(0));
+        const issuableInterBtc = await vaultsAPI.getIssuableAmount(bobId);
+        assert.isTrue(issuableInterBtc.gt(0));
     });
 
-    it("should get the issuable PolkaBTC", async () => {
-        const issuablePolkaBtc = await vaultsAPI.getTotalIssuableAmount();
-        assert.isTrue(issuablePolkaBtc.gt(0));
+    it("should get the issuable InterBTC", async () => {
+        const issuableInterBtc = await vaultsAPI.getTotalIssuableAmount();
+        assert.isTrue(issuableInterBtc.gt(0));
     });
 
     it("should getMaxSLA", async () => {
@@ -231,10 +233,10 @@ describe("vaultsAPI", () => {
     });
 
     it("should getFees", async () => {
-        const feesPolkaBTC = await vaultsAPI.getFeesWrapped(registry.createType("AccountId", charlie_stash.address));
+        const feesInterBTC = await vaultsAPI.getFeesWrapped(registry.createType("AccountId", charlie_stash.address));
         const feesDOT = await vaultsAPI.getFeesCollateral(registry.createType("AccountId", charlie_stash.address));
         const benchmarkFees = new Big("0");
-        assert.isTrue(new Big(feesPolkaBTC).gte(benchmarkFees));
+        assert.isTrue(new Big(feesInterBTC).gte(benchmarkFees));
         assert.isTrue(new Big(feesDOT).gte(benchmarkFees));
     });
 

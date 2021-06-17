@@ -96,5 +96,5 @@ describe("replace", () => {
         assert.equal(requestsList[0].btc_address, firstMapEntry.value.btc_address);
         assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
         assert.equal(requestsList[0].btc_height.toString(), firstMapEntry.value.btc_height.toString());
-    }).timeout(500);
+    }).timeout(50000);
 });

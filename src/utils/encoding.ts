@@ -1,5 +1,6 @@
 import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
 import { SignedFixedPoint, UnsignedFixedPoint, BtcAddress } from "../interfaces";
+import { H256 } from "@polkadot/types/interfaces";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import type { Struct } from "@polkadot/types";
@@ -35,6 +36,27 @@ function isHexPrefixed(str: string): boolean {
  */
 export function stripHexPrefix(str: string): string {
     return isHexPrefixed(str) ? str.slice(2) : str;
+}
+
+/**
+ * Ensure the `0x` hex prefix is present
+ * @param str
+ **/
+export function addHexPrefix(str: string): string {
+    return isHexPrefixed(str) ? str : "0x" + str;
+}
+
+/**
+ * Ensure a hash value is an encoded H256
+ * @param api The polkadot API promise used to encode if necessary
+ * @param hash The either H256 or string encoded hash
+ **/
+export function ensureHashEncoded(api: ApiPromise, hash: H256 | string): H256 {
+    if (typeof(hash) === "string") {
+        return api.createType("H256", addHexPrefix(hash as string));
+    } else {
+        return hash as H256;
+    }
 }
 
 /**

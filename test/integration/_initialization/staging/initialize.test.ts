@@ -86,7 +86,7 @@ describe("Initialize parachain state", () => {
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
         // Sleep for 2 min to wait for vaults to register
-        // await sleep(2 * 60 * 1000);
+        await sleep(2 * 60 * 1000);
     });
 
     after(async () => {
@@ -120,27 +120,27 @@ describe("Initialize parachain state", () => {
         assert.isTrue(isNominationEnabled);
     });
 
-    it("should issue 0.1 PolkaBTC", async () => {
-        const polkaBtcToIssue = new Big(0.1);
-        const feesToPay = await issueAPI.getFeesToPay(polkaBtcToIssue);
+    it("should issue 0.1 InterBTC", async () => {
+        const interBtcToIssue = new Big(0.1);
+        const feesToPay = await issueAPI.getFeesToPay(interBtcToIssue);
         const aliceAccountId = api.createType("AccountId", alice.address);
-        const alicePolkaBTCBefore = await treasuryAPI.balance(aliceAccountId);
-        await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, polkaBtcToIssue, charlie_stash.address);
-        const alicePolkaBTCAfter = await treasuryAPI.balance(aliceAccountId);
+        const aliceInterBTCBefore = await treasuryAPI.balance(aliceAccountId);
+        await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, interBtcToIssue, charlie_stash.address);
+        const aliceInterBTCAfter = await treasuryAPI.balance(aliceAccountId);
         assert.equal(
-            alicePolkaBTCBefore.add(polkaBtcToIssue).sub(feesToPay).toString(),
-            alicePolkaBTCAfter.toString(),
+            aliceInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
+            aliceInterBTCAfter.toString(),
             "Issued amount is different from the requested amount"
         );
         const totalIssuance = await treasuryAPI.total();
-        assert.equal(totalIssuance.toString(), polkaBtcToIssue.toString());
+        assert.equal(totalIssuance.toString(), interBtcToIssue.toString());
         const vaultIssuedAmount = await vaultsAPI.getIssuedAmount(newAccountId(api, charlie_stash.address));
-        assert.equal(vaultIssuedAmount.toString(), polkaBtcToIssue.toString());
+        assert.equal(vaultIssuedAmount.toString(), interBtcToIssue.toString());
     });
 
-    it("should redeem 0.05 PolkaBTC", async () => {
-        const polkaBtcToRedeem = new Big("0.05");
+    it("should redeem 0.05 InterBTC", async () => {
+        const interBtcToRedeem = new Big("0.05");
         const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        await redeemAPI.request(polkaBtcToRedeem, redeemAddress);
+        await redeemAPI.request(interBtcToRedeem, redeemAddress);
     });
 });

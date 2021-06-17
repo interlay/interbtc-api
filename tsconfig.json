@@ -16,7 +16,7 @@
             "ES2019"
         ],
         "paths": {
-            "@interlay/polkabtc/*": [
+            "@interlay/interbtc/*": [
                 "src/*"
             ],
             "@polkadot/api/augment": [

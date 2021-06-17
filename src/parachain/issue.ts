@@ -10,33 +10,54 @@ import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     decodeFixedPointType,
     roundUpBtcToNearestSatoshi,
-    encodeParachainRequest,
     getTxProof,
     btcToSat,
     dotToPlanck,
     allocateAmountsToVaults, 
-    getRequestIdsFromEvents
+    getRequestIdsFromEvents,
+    satToBTC,
+    stripHexPrefix,
+    planckToDOT,
+    encodeBtcAddress,
+    storageKeyToFirstInner,
+    ensureHashEncoded,
+    addHexPrefix,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { Issue, IssueStatus } from "../types";
 import BN from "bn.js";
 
-export type IssueRequestResult = { id: Hash; issueRequest: IssueRequestExt };
 export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big };
 
-export interface IssueRequestExt extends Omit<IssueRequest, "btc_address"> {
-    // network encoded btc address
-    btc_address: string;
-}
-
-export function encodeIssueRequest(req: IssueRequest, network: Network): IssueRequestExt {
-    return encodeParachainRequest<IssueRequest, IssueRequestExt>(req, network);
+export function encodeIssueRequest(
+    req: IssueRequest,
+    network: Network,
+    id: H256 | string,
+): Issue {
+    const amountBTC = satToBTC(req.amount);
+    const fee = satToBTC(req.fee);
+    const status = req.status.isCompleted ? IssueStatus.Completed :
+        req.status.isCancelled ? IssueStatus.Cancelled :
+            IssueStatus.PendingWithBtcTxNotFound;
+    return {
+        id: stripHexPrefix(id.toString()),
+        creationBlock: req.opentime.toNumber(),
+        vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
+        vaultDOTAddress: req.vault.toString(),
+        userDOTAddress: req.requester.toString(),
+        vaultWalletPubkey: req.btc_public_key.toString(),
+        bridgeFee: fee.toString(),
+        amountInterBTC: amountBTC.toString(),
+        griefingCollateral: planckToDOT(req.griefing_collateral).toString(),
+        status,
+    };
 }
 
 /**
- * @category PolkaBTC Bridge
- * The type Big represents DOT or PolkaBTC denominations,
+ * @category InterBTC Bridge
+ * The type Big represents DOT or InterBTC denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface IssueAPI extends TransactionAPI {
@@ -50,8 +71,8 @@ export interface IssueAPI extends TransactionAPI {
     getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits>;
 
     /**
-     * Request issuing of PolkaBTC.
-     * @param amountSat PolkaBTC amount (denoted in Satoshi) to issue.
+     * Request issuing of InterBTC.
+     * @param amount InterBTC amount (denoted in BTC) to issue.
      * @param vaultId (optional) ID of the vault to issue with.
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
@@ -60,25 +81,22 @@ export interface IssueAPI extends TransactionAPI {
      * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
-        amountSat: Big,
+        amount: Big,
         vaultId?: AccountId,
         atomic?: boolean,
         retries?: number,
         availableVaults?: Map<AccountId, Big>
-    ): Promise<IssueRequestResult[]>;
+    ): Promise<Issue[]>;
 
     /**
      * Send a batch of aggregated issue transactions (to one or more vaults)
-     * @param amountsPerVault A mapping of vaults to issue from, and PolkaBTC amounts (in Satoshi) to issue using each vault
+     * @param amountsPerVault A mapping of vaults to issue from, and InterBTC amounts (in Satoshi) to issue using each vault
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
      * @returns An array of type {issueId, vault} if the requests succeeded.
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
-    requestAdvanced(
-        amountsPerVault: Map<AccountId, Big>,
-        atomic: boolean
-    ): Promise<IssueRequestResult[]>;
+    requestAdvanced(amountsPerVault: Map<AccountId, Big>, atomic: boolean): Promise<Issue[]>;
 
     /**
      * Send an issue execution transaction
@@ -92,7 +110,7 @@ export interface IssueAPI extends TransactionAPI {
     execute(issueId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
-     * the issuance of PolkaBTC can be cancelled. As a result, the griefing collateral
+     * the issuance of InterBTC can be cancelled. As a result, the griefing collateral
      * of the requester will be slashed and sent to the vault that had prepared to issue.
      * @param issueId The ID returned by the issue request transaction
      */
@@ -114,23 +132,23 @@ export interface IssueAPI extends TransactionAPI {
     /**
      * @returns An array containing the issue requests
      */
-    list(): Promise<IssueRequestExt[]>;
+    list(): Promise<Issue[]>;
     /**
      * @param account The ID of the account whose issue requests are to be retrieved
      * @returns A mapping from the issue request ID to the issue request object, corresponding to the requests of
      * the given account
      */
-    mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>>;
+    mapForUser(account: AccountId): Promise<Map<H256, Issue>>;
     /**
      * @param issueId The ID of the issue request to fetch
      * @returns An issue request object
      */
-    getRequestById(issueId: H256): Promise<IssueRequestExt>;
+    getRequestById(issueId: H256 | string): Promise<Issue>;
     /**
      * @param issueId The IDs of the batch of issue request to fetch
      * @returns The issue request objects
      */
-    getRequestsByIds(issueIds: H256[]): Promise<IssueRequestExt[]>;
+    getRequestsByIds(issueIds: (H256 | string)[]): Promise<Issue[]>;
     /**
      * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
@@ -164,12 +182,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             return { singleVaultMaxIssuable: Big(0), totalMaxIssuable: Big(0) };
         }
         const singleVaultMaxIssuable = vaultsArr[0][1];
-        const totalMaxIssuable = vaultsArr.reduce(
-            (total, [_, vaultAvailable]) => {
-                return total.plus(vaultAvailable);
-            },
-            new Big(0)
-        );
+        const totalMaxIssuable = vaultsArr.reduce((total, [_, vaultAvailable]) => {
+            return total.plus(vaultAvailable);
+        }, new Big(0));
         return { singleVaultMaxIssuable, totalMaxIssuable };
     }
 
@@ -187,8 +202,8 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         vaultId?: AccountId,
         atomic: boolean = true,
         retries: number = 0,
-        cachedVaults?: Map<AccountId, Big>,
-    ): Promise<IssueRequestResult[]> {
+        cachedVaults?: Map<AccountId, Big>
+    ): Promise<Issue[]> {
         try {
             if(vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
@@ -196,10 +211,10 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
                 const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
                 return await this.requestAdvanced(amountsPerVault, atomic);
             }
-            const availableVaults = cachedVaults || await this.vaultsAPI.getVaultsWithIssuableTokens();
+            const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.plus(req.issueRequest.amount.toString()), new Big(0));
+            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountInterBTC), new Big(0));
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
@@ -210,18 +225,14 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         }
     }
 
-    async requestAdvanced(
-        amountsPerVault: Map<AccountId, Big>,
-        atomic: boolean
-    ): Promise<IssueRequestResult[]> {
+    async requestAdvanced(amountsPerVault: Map<AccountId, Big>, atomic: boolean): Promise<Issue[]> {
         const txs = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateral = await this.getGriefingCollateral(amount);
-            // mul() here is a hacky workaround for rounding errors
-            const griefingCollateralPlanck = dotToPlanck(griefingCollateral).add(new BN(100));
-            const griefingCollateralCompact = this.api.createType("Collateral", griefingCollateralPlanck);
+            const griefingCollateralBig = await this.getGriefingCollateral(amount);
+            // add() here is a hacky workaround for rounding errors
+            const griefingCollateralPlanck = dotToPlanck(griefingCollateralBig).add(new BN(100));
             const amountWrapped = this.api.createType("Wrapped", btcToSat(amount));
-            txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralCompact));
+            txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralPlanck));
         }
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
@@ -229,31 +240,28 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const result = await this.sendLogged(batch, this.api.events.issue.RequestIssue);
             const ids = this.getIssueIdsFromEvents(result.events);
             const issueRequests = await this.getRequestsByIds(ids);
-            return ids.map((issueId, idx) => ({ id: issueId, issueRequest: issueRequests[idx] }));
+            return issueRequests;
         } catch (e) {
             return Promise.reject(e);
         }
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", requestId);
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 
     async cancel(requestId: string): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", requestId);
+        const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
         const cancelIssueTx = this.api.tx.issue.cancelIssue(parsedRequestId);
         await this.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
     }
 
     async setIssuePeriod(blocks: number): Promise<void> {
         const period = this.api.createType("BlockNumber", blocks);
-        const tx = this.api.tx.sudo
-            .sudo(
-                this.api.tx.issue.setIssuePeriod(period)
-            );
+        const tx = this.api.tx.sudo.sudo(this.api.tx.issue.setIssuePeriod(period));
         await this.sendLogged(tx);
     }
 
@@ -262,17 +270,17 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         return blockNumber.toNumber();
     }
 
-    async list(): Promise<IssueRequestExt[]> {
+    async list(): Promise<Issue[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const issueRequests = await this.api.query.issue.issueRequests.entriesAt(head);
-        return issueRequests.map((v) => v[1]).map((req: IssueRequest) => encodeIssueRequest(req, this.btcNetwork));
+        return issueRequests.map(([id, req]) => encodeIssueRequest(req, this.btcNetwork, storageKeyToFirstInner(id)));
     }
 
-    async mapForUser(account: AccountId): Promise<Map<H256, IssueRequestExt>> {
+    async mapForUser(account: AccountId): Promise<Map<H256, Issue>> {
         const issueRequestPairs: [H256, IssueRequest][] = await this.api.rpc.issue.getIssueRequests(account);
-        const mapForUser: Map<H256, IssueRequestExt> = new Map<H256, IssueRequestExt>();
+        const mapForUser: Map<H256, Issue> = new Map<H256, Issue>();
         issueRequestPairs.forEach((issueRequestPair) =>
-            mapForUser.set(issueRequestPair[0], encodeIssueRequest(issueRequestPair[1], this.btcNetwork))
+            mapForUser.set(issueRequestPair[0], encodeIssueRequest(issueRequestPair[1], this.btcNetwork, issueRequestPair[0]))
         );
         return mapForUser;
     }
@@ -297,15 +305,22 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         return decodeFixedPointType(issueFee);
     }
 
-    async getRequestById(issueId: H256): Promise<IssueRequestExt> {
+    async getRequestById(issueId: H256 | string): Promise<Issue> {
         return (await this.getRequestsByIds([issueId]))[0];
     }
 
-    async getRequestsByIds(issueIds: H256[]): Promise<IssueRequestExt[]> {
+    async getRequestsByIds(issueIds: (H256 | string)[]): Promise<Issue[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return Promise.all(
             issueIds.map(async (issueId) =>
-                encodeIssueRequest(await this.api.query.issue.issueRequests.at(head, issueId), this.btcNetwork)
+                encodeIssueRequest(
+                    await this.api.query.issue.issueRequests.at(
+                        head,
+                        ensureHashEncoded(this.api, issueId)
+                    ),
+                    this.btcNetwork,
+                    issueId,
+                )
             )
         );
     }

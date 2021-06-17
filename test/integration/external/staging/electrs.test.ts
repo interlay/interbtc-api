@@ -81,7 +81,7 @@ describe("ElectrsAPI testnet", function () {
         });
 
         it("should return correct tx id when called with amount and receiver", async () => {
-            // uses an op_return that is part of 2 testnet polkaBTC txs, but
+            // uses an op_return that is part of 2 testnet interBTC txs, but
             // only the first one has the queried `amount` parameter
             // https://blockstream.info/testnet/tx/f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91?expand
             // https://blockstream.info/testnet/tx/4b1900dc48aaa9fa84a340e94aa21d20b54371d19ea6b8edd68a558cd36afdd0?expand

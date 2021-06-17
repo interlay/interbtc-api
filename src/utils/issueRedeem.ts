@@ -10,19 +10,20 @@ import BN from "bn.js";
 import { satToBTC, getBitcoinNetwork, newAccountId } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultCollateralAPI } from "../parachain/collateral";
-import { IssueRequestResult, DefaultIssueAPI } from "../parachain/issue";
+import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTreasuryAPI } from "../parachain/treasury";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "..";
 import { DefaultRedeemAPI } from "../parachain";
-import { RequestResult } from "../parachain/redeem";
+import { Issue, IssueStatus, Redeem, RedeemStatus } from "../types";
+import { BitcoinNetwork } from "../types/bitcoinTypes";
 
 export interface IssueResult {
-    request: IssueRequestResult;
+    request: Issue;
     initialDotBalance: Big;
     finalDotBalance: Big;
-    initialPolkaBtcBalance: Big;
-    finalPolkaBtcBalance: Big;
+    initialInterBtcBalance: Big;
+    finalInterBtcBalance: Big;
 }
 
 export enum ExecuteRedeem {
@@ -108,32 +109,29 @@ export async function issueSingle(
     vaultAddress?: string,
     autoExecute = true,
     triggerRefund = false,
-    network = "regtest",
+    network: BitcoinNetwork = "regtest",
     atomic = true
 ): Promise<IssueResult> {
     try {
         const treasuryAPI = new DefaultTreasuryAPI(api);
-        const collateralAPI = new DefaultCollateralAPI(api);
         const bitcoinjsNetwork = getBitcoinNetwork(network);
         const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, electrsAPI);
+        const collateralAPI = new DefaultCollateralAPI(api);
 
         const vaultId = vaultAddress !== undefined ? newAccountId(api, vaultAddress) : vaultAddress;
-
         issueAPI.setAccount(issuingAccount);
         const requesterAccountId = api.createType("AccountId", issuingAccount.address);
         const initialBalanceDOT = await collateralAPI.balance(requesterAccountId);
-        const initialBalancePolkaBTC = await treasuryAPI.balance(requesterAccountId);
+        const initialBalanceInterBTC = await treasuryAPI.balance(requesterAccountId);
         const blocksToMine = 3;
 
-        // request issue
         const rawRequestResult = await issueAPI.request(amount, vaultId, atomic);
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
-        const requestResult = rawRequestResult[0];
-        const issueRequest = await issueAPI.getRequestById(requestResult.id);
+        const issueRequest = rawRequestResult[0];
 
-        let amountAsBtc = satToBTC(issueRequest.amount.add(issueRequest.fee));
+        let amountAsBtc = new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee);
 
         if (triggerRefund) {
             // Send 1 more Btc than needed
@@ -146,7 +144,7 @@ export async function issueSingle(
         }
 
         // send btc tx
-        const vaultBtcAddress = requestResult.issueRequest.btc_address;
+        const vaultBtcAddress = issueRequest.vaultBTCAddress;
         if (vaultBtcAddress === undefined) {
             throw new Error("Undefined vault address returned from RequestIssue");
         }
@@ -154,33 +152,32 @@ export async function issueSingle(
         const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtc, blocksToMine);
 
         if (autoExecute === false) {
-            // manually execute issue
-            await issueAPI.execute(requestResult.id.toString(), txData.txid);
+            // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
+            await issueAPI.execute(issueRequest.id, txData.txid);
         } else {
             // wait for vault to execute issue
-            while (!(await issueAPI.getRequestById(requestResult.id)).status.isCompleted) {
+            while ((await issueAPI.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
                 await sleep(1000);
             }
         }
 
-        const [finalBalancePolkaBTC, finalBalanceDOT] = await Promise.all([
+        const [finalBalanceInterBTC, finalBalanceDOT] = await Promise.all([
             treasuryAPI.balance(requesterAccountId),
-            collateralAPI.balance(requesterAccountId)
+            collateralAPI.balance(requesterAccountId),
         ]);
         return {
-            request: requestResult,
+            request: issueRequest,
             initialDotBalance: initialBalanceDOT,
             finalDotBalance: finalBalanceDOT,
-            initialPolkaBtcBalance: initialBalancePolkaBTC,
-            finalPolkaBtcBalance: finalBalancePolkaBTC,
+            initialInterBtcBalance: initialBalanceInterBTC,
+            finalInterBtcBalance: finalBalanceInterBTC,
         };
     } catch (e) {
         // IssueCompleted errors occur when multiple vaults attempt to execute the same request
         console.log(e);
-        throw new Error(`Issuing failed: ${e.toString()}`);
+        throw new Error(`Issuing failed: ${e.message}`);
     }
 }
-
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -192,10 +189,10 @@ export async function redeem(
     amount: Big,
     vaultAddress?: string,
     autoExecute = ExecuteRedeem.Auto,
-    network = "regtest",
+    network: BitcoinNetwork = "regtest",
     atomic = true,
     timeout = 5 * 60 * 1000
-): Promise<RequestResult> {
+): Promise<Redeem> {
     const bitcoinjsNetwork = getBitcoinNetwork(network);
     const redeemAPI = new DefaultRedeemAPI(api, bitcoinjsNetwork, electrsAPI);
     redeemAPI.setAccount(redeemingAccount);
@@ -220,7 +217,7 @@ export async function redeem(
     }
     case ExecuteRedeem.Auto: {
         // wait for vault to execute issue
-        while (!(await redeemAPI.getRequestById(redeemRequest.id)).status.isCompleted) {
+        while ((await redeemAPI.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
             await sleep(1000);
         }
         break;
@@ -240,9 +237,9 @@ export async function issueAndRedeem(
     autoExecuteIssue = true,
     autoExecuteRedeem = ExecuteRedeem.Auto,
     triggerRefund = false,
-    network = "regtest",
+    network: BitcoinNetwork = "regtest",
     atomic = true
-): Promise<[IssueRequestResult, RequestResult]> {
+): Promise<[Issue, Redeem]> {
     const issueResult = await issueSingle(
         api,
         electrsAPI,
@@ -261,7 +258,7 @@ export async function issueAndRedeem(
         electrsAPI,
         account,
         redeemAmount,
-        issueResult.request.issueRequest.vault.toString(),
+        issueResult.request.vaultDOTAddress,
         autoExecuteRedeem,
         network,
         atomic

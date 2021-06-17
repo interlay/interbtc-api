@@ -20,7 +20,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { DefaultStakedRelayerAPI, ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH, StakedRelayerAPI } from "../../../../src";
+import { DefaultStakedRelayerAPI, ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH, StakedRelayerAPI, IssueStatus } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
