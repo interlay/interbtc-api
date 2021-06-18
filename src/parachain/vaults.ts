@@ -567,12 +567,12 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async getAPY(vaultId: AccountId): Promise<Big> {
-        const [feesInterBTC, feesDOT, lockedDOT] = await Promise.all([
+        const [feesWrapped, feesCollateral, lockedCollateral] = await Promise.all([
             await this.getFeesWrapped(vaultId),
             await this.getFeesCollateral(vaultId),
             await this.collateralAPI.balanceLocked(vaultId),
         ]);
-        return this.feeAPI.calculateAPY(feesInterBTC, feesDOT, lockedDOT);
+        return this.feeAPI.calculateAPY(feesWrapped, feesCollateral, lockedCollateral);
     }
 
     async getSLA(vaultId: AccountId): Promise<number> {

@@ -160,7 +160,7 @@ export interface IssueAPI extends TransactionAPI {
     getFeesToPay(amountBtc: Big): Promise<Big>;
     /**
      * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
-     * @returns The griefing collateral, in BTC
+     * @returns The griefing collateral, in DOT
      */
     getGriefingCollateral(amount: Big): Promise<Big>;
 }

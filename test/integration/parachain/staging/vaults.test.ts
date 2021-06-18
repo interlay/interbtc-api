@@ -127,7 +127,6 @@ describe("vaultsAPI", () => {
         );
 
         const premiumRedeemAmount = premiumRedeemVaults.values().next().value as Big;
-        console.log(premiumRedeemAmount.toString());
         assert.isTrue(
             premiumRedeemAmount.gte(issuableAmount),
             "Amount available for premium redeem should be higher"
@@ -233,10 +232,10 @@ describe("vaultsAPI", () => {
     });
 
     it("should getFees", async () => {
-        const feesInterBTC = await vaultsAPI.getFeesWrapped(registry.createType("AccountId", charlie_stash.address));
+        const feesWrapped = await vaultsAPI.getFeesWrapped(registry.createType("AccountId", charlie_stash.address));
         const feesDOT = await vaultsAPI.getFeesCollateral(registry.createType("AccountId", charlie_stash.address));
         const benchmarkFees = new Big("0");
-        assert.isTrue(new Big(feesInterBTC).gte(benchmarkFees));
+        assert.isTrue(new Big(feesWrapped).gte(benchmarkFees));
         assert.isTrue(new Big(feesDOT).gte(benchmarkFees));
     });
 

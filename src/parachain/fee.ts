@@ -20,13 +20,13 @@ export interface FeeAPI {
         griefingCollateralRate: Big
     ): Promise<Big>;
     /**
-     * @param feesInterBTC BTC fees accrued, in large denomination
+     * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
      * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
      * @param lockedCollateral Collateral value representing the value locked to gain yield. Large denomination (e.g. DOT)
      * @param collateralToWrappedRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesInterBTC: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big>;
+    calculateAPY(feesWrapped: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
      */
@@ -64,15 +64,15 @@ export class DefaultFeeAPI implements FeeAPI {
         return decodeFixedPointType(griefingCollateralRate);
     }
 
-    async calculateAPY(feesInterBTC: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big> {
+    async calculateAPY(feesWrapped: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big> {
         if(lockedCollateral.eq(new Big(0))) {
             return new Big(0);
         }
         if(collateralToWrappedRate === undefined) {
             collateralToWrappedRate = await this.oracleAPI.getExchangeRate();
         }
-        const feesInterBTCInDot = feesInterBTC.mul(collateralToWrappedRate);
-        const totalFees = feesCollateral.add(feesInterBTCInDot);
+        const feesWrappedAsCollateral = feesWrapped.mul(collateralToWrappedRate);
+        const totalFees = feesCollateral.add(feesWrappedAsCollateral);
 
         // convert to percent
         return totalFees.div(lockedCollateral).mul(100);

@@ -100,28 +100,23 @@ describe("issue", () => {
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
 
-        const amount = new Big(19000); // approx. 1.2x vault capacity
+        const requestLimits = await issueAPI.getRequestLimits();
+
+        const amount = requestLimits.singleVaultMaxIssuable.mul(1.1);
         const issueRequests = await issueAPI.request(amount);
         assert.equal(
             issueRequests.length,
             2,
             "Created wrong amount of requests, ensure vault collateral settings in docker are correct"
         );
-        const firstExpected = new Big(16345.75267885);
-        const secondExpected = new Big(2559.24732116);
-        // Sometimes this test fails with a difference that is not really relevant:
-        // -16345.75173360
-        // +16345.75267885
-        // As such, round the numbers before comparing
-        assert.deepEqual(
-            new Big(issueRequests[0].amountInterBTC).round(2).toString(),
-            firstExpected.round(2).toString(),
-            "First vault issue amount different than expected"
-        );
-        assert.deepEqual(
-            new Big(issueRequests[1].amountInterBTC).round(2).toString(),
-            secondExpected.round(2).toString(),
-            "Second vault issue amount different than expected"
+        const issuedAmount1 = new Big(issueRequests[0].amountInterBTC);
+        const issueFee1 = new Big(issueRequests[0].bridgeFee);
+        const issuedAmount2 = new Big(issueRequests[1].amountInterBTC);
+        const issueFee2 = new Big(issueRequests[1].bridgeFee);
+        assert.equal(
+            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).round(5).toString(),
+            amount.round(5).toString(),
+            "Issued amount is not equal to requested amount"
         );
     });
 
