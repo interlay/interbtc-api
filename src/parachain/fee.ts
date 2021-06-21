@@ -5,29 +5,28 @@ import { ApiPromise } from "@polkadot/api";
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
+ * The type Big represents large denominations (e.g. DOT or BTC),
+ * while the type BN represents small denominations (e.g. Planck or Satoshi).
  */
 export interface FeeAPI {
     /**
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
      * @param griefingCollateralRate
-     * @param oracleAPI
-     * @returns The griefing collateral, in DOT
+     * @returns The griefing collateral, as large denomination (e.g. DOT)
      */
     getGriefingCollateral(
         amount: Big,
         griefingCollateralRate: Big
     ): Promise<Big>;
     /**
-     * @param feesInterBTC Satoshi value representing the BTC fees accrued
-     * @param feesDOT Planck value representing the DOT fees accrued
-     * @param lockedDOT Planck value representing the value locked to gain yield
-     * @param dotToBtcRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
+     * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
+     * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
+     * @param lockedCollateral Collateral value representing the value locked to gain yield. Large denomination (e.g. DOT)
+     * @param collateralToWrappedRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesInterBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string>;
+    calculateAPY(feesWrapped: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
      */
@@ -56,23 +55,26 @@ export class DefaultFeeAPI implements FeeAPI {
     async getIssueGriefingCollateralRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral.at(head);
-        return new Big(decodeFixedPointType(griefingCollateralRate));
+        return decodeFixedPointType(griefingCollateralRate);
     }
 
     async getReplaceGriefingCollateralRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral.at(head);
-        return new Big(decodeFixedPointType(griefingCollateralRate));
+        return decodeFixedPointType(griefingCollateralRate);
     }
 
-    async calculateAPY(feesInterBTC: Big, feesDOT: Big, lockedDOT: Big, dotToBtcRate?: Big): Promise<string> {
-        if(dotToBtcRate === undefined) {
-            dotToBtcRate = await this.oracleAPI.getExchangeRate();
+    async calculateAPY(feesWrapped: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big> {
+        if(lockedCollateral.eq(new Big(0))) {
+            return new Big(0);
         }
-        const feesInterBTCInDot = feesInterBTC.mul(dotToBtcRate);
-        const totalFees = feesDOT.add(feesInterBTCInDot);
+        if(collateralToWrappedRate === undefined) {
+            collateralToWrappedRate = await this.oracleAPI.getExchangeRate();
+        }
+        const feesWrappedAsCollateral = feesWrapped.mul(collateralToWrappedRate);
+        const totalFees = feesCollateral.add(feesWrappedAsCollateral);
 
         // convert to percent
-        return totalFees.div(lockedDOT).mul(100).toString();
+        return totalFees.div(lockedCollateral).mul(100);
     }
 }

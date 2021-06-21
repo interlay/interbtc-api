@@ -37,7 +37,8 @@ export function bnToBig(x: BN): Big {
 }
 
 export function bigToBn(x: Big): BN {
-    return new BN(roundUpBigToNearestInteger(x).toString());
+    // Convert to string using `toFixed`, to avoid cases like `5e+23`
+    return new BN(roundUpBigToNearestInteger(x).toFixed());
 }
 
 export function satToBTC(sat: BN): Big {

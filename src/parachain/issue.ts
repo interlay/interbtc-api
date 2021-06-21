@@ -13,15 +13,17 @@ import {
     getTxProof,
     btcToSat,
     dotToPlanck,
+    allocateAmountsToVaults, 
+    getRequestIdsFromEvents,
     satToBTC,
     stripHexPrefix,
     planckToDOT,
     encodeBtcAddress,
     storageKeyToFirstInner,
     ensureHashEncoded,
+    addHexPrefix,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
-import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { Issue, IssueStatus } from "../types";
@@ -71,6 +73,7 @@ export interface IssueAPI extends TransactionAPI {
     /**
      * Request issuing of InterBTC.
      * @param amount InterBTC amount (denoted in BTC) to issue.
+     * @param vaultId (optional) ID of the vault to issue with.
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to re-try issuing, if some of the requests fail. Defaults to 0.
@@ -79,6 +82,7 @@ export interface IssueAPI extends TransactionAPI {
      */
     request(
         amount: Big,
+        vaultId?: AccountId,
         atomic?: boolean,
         retries?: number,
         availableVaults?: Map<AccountId, Big>
@@ -87,8 +91,6 @@ export interface IssueAPI extends TransactionAPI {
     /**
      * Send a batch of aggregated issue transactions (to one or more vaults)
      * @param amountsPerVault A mapping of vaults to issue from, and InterBTC amounts (in Satoshi) to issue using each vault
-     * @param griefingCollateralRate The percentage of an issue request which must be locked as griefing collateral
-     * (must correspond to the parachain property)
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
      * @returns An array of type {issueId, vault} if the requests succeeded.
@@ -112,7 +114,7 @@ export interface IssueAPI extends TransactionAPI {
      * of the requester will be slashed and sent to the vault that had prepared to issue.
      * @param issueId The ID returned by the issue request transaction
      */
-    cancel(issueId: H256): Promise<void>;
+    cancel(issueId: string): Promise<void>;
     /**
      * @remarks Testnet utility function
      * @param blocks The time difference in number of blocks between an issue request is created
@@ -158,7 +160,7 @@ export interface IssueAPI extends TransactionAPI {
     getFeesToPay(amountBtc: Big): Promise<Big>;
     /**
      * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
-     * @returns The griefing collateral, in BTC
+     * @returns The griefing collateral, in DOT
      */
     getGriefingCollateral(amount: Big): Promise<Big>;
 }
@@ -169,7 +171,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
 
     constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI);
         this.feeAPI = new DefaultFeeAPI(api);
     }
 
@@ -197,11 +199,18 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
 
     async request(
         amount: Big,
+        vaultId?: AccountId,
         atomic: boolean = true,
         retries: number = 0,
         cachedVaults?: Map<AccountId, Big>
     ): Promise<Issue[]> {
         try {
+            if(vaultId) {
+                // If a vault account id is defined, request to issue with that vault only.
+                // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
+                const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
+                return await this.requestAdvanced(amountsPerVault, atomic);
+            }
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
@@ -209,7 +218,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
-                return (await this.request(remainder, atomic, retries - 1, availableVaults)).concat(result);
+                return (await this.request(remainder, vaultId, atomic, retries - 1, availableVaults)).concat(result);
             }
         } catch (e) {
             return Promise.reject(e);
@@ -244,8 +253,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
 
-    async cancel(issueId: H256 | string): Promise<void> {
-        const cancelIssueTx = this.api.tx.issue.cancelIssue(issueId);
+    async cancel(requestId: string): Promise<void> {
+        const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
+        const cancelIssueTx = this.api.tx.issue.cancelIssue(parsedRequestId);
         await this.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
     }
 
@@ -292,8 +302,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     async getFeeRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const issueFee = await this.api.query.fee.issueFee.at(head);
-        // TODO: return Big from decodeFixedPointType
-        return new Big(decodeFixedPointType(issueFee));
+        return decodeFixedPointType(issueFee);
     }
 
     async getRequestById(issueId: H256 | string): Promise<Issue> {

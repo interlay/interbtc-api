@@ -79,10 +79,10 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
 
     constructor(readonly api: ApiPromise, network: BitcoinNetwork = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork, _account);
+        this.electrsAPI = new DefaultElectrsAPI(network);
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, _account);
         this.faucet = new FaucetClient("");
         this.oracle = new DefaultOracleAPI(api);
-        this.electrsAPI = new DefaultElectrsAPI(network);
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork, this.electrsAPI, _account);
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, _account);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
@@ -93,7 +93,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.fee = new DefaultFeeAPI(api);
         this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, _account);
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.nomination = new DefaultNominationAPI(api, btcNetwork, _account);
+        this.nomination = new DefaultNominationAPI(api, btcNetwork, this.electrsAPI, _account);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

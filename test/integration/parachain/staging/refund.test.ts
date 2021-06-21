@@ -6,10 +6,11 @@ import Big from "big.js";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { defaultParachainEndpoint } from "../../../config";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
-import { issueSingle } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/issueRedeem";
+import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 
 describe("refund", () => {
     let api: ApiPromise;
@@ -21,10 +22,17 @@ describe("refund", () => {
     let eve_stash: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
-        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
         refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         alice = keyring.addFromUri("//Alice");
         eve_stash = keyring.addFromUri("//Eve//stash");
@@ -63,7 +71,10 @@ describe("refund", () => {
             true
         );
         const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
+        const refundId = await refundAPI.getRequestIdByIssueId(issueResult.request.id);
+        const refundClone = await refundAPI.getRequestById(refundId);
         assert.notEqual(refund.amount_btc.toString(), "0");
+        assert.equal(refund.amount_btc.toString(), refundClone.amount_btc.toString());
     }).timeout(1000000);
 
     it("should list a single refund request", async () => {

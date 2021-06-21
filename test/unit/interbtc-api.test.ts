@@ -10,7 +10,7 @@ describe("InterBTCAPI", () => {
     let interBTC: InterBTCAPI;
     const registry = createAPIRegistry();
 
-    beforeEach(async () => {
+    before(async () => {
         const api = sinon.createStubInstance(ApiPromise);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         interBTC = new DefaultInterBTCAPI(<any>api);

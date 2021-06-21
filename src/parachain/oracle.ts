@@ -11,11 +11,12 @@ import {
     decodeFixedPointType,
     encodeUnsignedFixedPoint,
     storageKeyToFirstInner,
+    roundUpBigToNearestInteger,
 } from "../utils";
 import { ErrorCode } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
-const defaultFeedName = "DOT/BTC";
+export const DEFAULT_FEED_NAME = "DOT/BTC";
 
 export type BtcTxFees = {
     fast: number;
@@ -60,7 +61,7 @@ export interface OracleAPI extends TransactionAPI {
      * Send a transaction to set the DOT/BTC exchange rate
      * @param exchangeRate The rate to set
      */
-    setExchangeRate(exchangeRate: string): Promise<void>;
+    setExchangeRate(exchangeRate: Big): Promise<void>;
     /**
      * Send a transaction to set the current fee rates for BTC transactions
      * @param fees.fast Estimated Satoshis per bytes to get included in the next block (~10 min)
@@ -96,7 +97,8 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
     async convertSatoshiToPlanck(amount: BN): Promise<BN> {
         const planckPerSatoshi = await this.getRawExchangeRate();
         const amountSatoshiBig = new Big(amount.toString());
-        return new BN(planckPerSatoshi.mul(amountSatoshiBig).toString());
+        const planck = roundUpBigToNearestInteger(planckPerSatoshi.mul(amountSatoshiBig));
+        return new BN(planck.toString());
     }
 
     async convertBitcoinToDot(amount: Big): Promise<Big> {
@@ -118,10 +120,10 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
     async getRawExchangeRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
-        return new Big(decodeFixedPointType(encodedRawRate));
+        return decodeFixedPointType(encodedRawRate);
     }
 
-    async setExchangeRate(dotPerBtc: string): Promise<void> {
+    async setExchangeRate(dotPerBtc: Big): Promise<void> {
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
         await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetExchangeRate);
@@ -158,7 +160,7 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
     }
 
     getFeed(): Promise<string> {
-        return Promise.resolve(defaultFeedName);
+        return Promise.resolve(DEFAULT_FEED_NAME);
     }
 
     async getLastExchangeRateTime(): Promise<Date> {

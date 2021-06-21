@@ -26,11 +26,12 @@ import {
 } from "../utils";
 import { CollateralAPI, DefaultCollateralAPI } from "./collateral";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import { encodeIssueRequest } from "./issue";
-import { encodeRedeemRequest } from "./redeem";
 import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { ElectrsAPI } from "../external";
+import { DefaultIssueAPI, encodeIssueRequest } from "./issue";
+import { encodeRedeemRequest } from "./redeem";
 import {Issue, Redeem} from "../types";
 
 export interface WalletExt {
@@ -225,39 +226,30 @@ export interface VaultsAPI extends TransactionAPI {
      * @param vaultId the id of the vault
      * @returns the APY as a percentage string
      */
-    getAPY(vaultId: AccountId): Promise<string>;
+    getAPY(vaultId: AccountId): Promise<Big>;
     /**
      * @param vaultId The vault account ID
      * @returns The SLA score of the given vault, an integer in the range [0, MaxSLA]
      */
-    getSLA(vaultId: AccountId): Promise<string>;
+    getSLA(vaultId: AccountId): Promise<number>;
     /**
      * @returns The maximum SLA score, a positive integer
      */
-    getMaxSLA(): Promise<string>;
+    getMaxSLA(): Promise<number>;
     /**
      * @returns Fee that a Vault has to pay if it fails to execute redeem or replace requests
      * (for redeem, on top of the slashed BTC-in-DOT value of the request). The fee is
      * paid in DOT based on the InterBTC amount at the current exchange rate.
      */
-    getPunishmentFee(): Promise<string>;
+    getPunishmentFee(): Promise<Big>;
     /**
-     * Set an account to use when sending transactions from this API
-     * @param account Keyring account
-     */
-    setAccount(account: AddressOrPair): void;
-    /**
-     * @returns The signer or injector address to sign transactions with, if one is set.
-     */
-    getAccount(): AddressOrPair | undefined;
-    /**
-     * @param amount Value to withdraw from staking
+     * @param amount The amount of collateral to withdraw
      */
     withdrawCollateral(amount: Big): Promise<void>;
     /**
-     * @param amount Value to increase stake by
+     * @param amount The amount of extra collateral to lock
      */
-    lockAdditionalCollateral(amount: Big): Promise<void>;
+    depositCollateral(amount: Big): Promise<void>;
     /**
      * @returns The account id of the liquidation vault
      */
@@ -275,7 +267,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     oracleAPI: OracleAPI;
     feeAPI: FeeAPI;
 
-    constructor(api: ApiPromise, btcNetwork: Network, account?: AddressOrPair) {
+    constructor(api: ApiPromise, btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.btcNetwork = btcNetwork;
         this.collateralAPI = new DefaultCollateralAPI(api);
@@ -294,7 +286,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         await this.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
     }
 
-    async lockAdditionalCollateral(amount: Big): Promise<void> {
+    async depositCollateral(amount: Big): Promise<void> {
         const amountAsPlanck = this.api.createType("Collateral", dotToPlanck(amount));
         const tx = this.api.tx.vaultRegistry.depositCollateral(amountAsPlanck);
         await this.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
@@ -400,13 +392,13 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         if (!collateralization) {
             return Promise.resolve(undefined);
         }
-        return new Big(decodeFixedPointType(collateralization));
+        return decodeFixedPointType(collateralization);
     }
 
     async getSystemCollateralization(): Promise<Big | undefined> {
         try {
             const collateralization = await this.api.rpc.vaultRegistry.getTotalCollateralization();
-            return new Big(decodeFixedPointType(collateralization));
+            return decodeFixedPointType(collateralization);
         } catch (e) {
             if (this.isNoTokensIssuedError(e)) {
                 return Promise.resolve(undefined);
@@ -445,7 +437,10 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const interBtcCapacity = await this.calculateCapacity(lockedDot);
         const backedTokens = vault.issued_tokens.add(vault.to_be_issued_tokens);
         const issuedAmountBtc = satToBTC(backedTokens);
-        return interBtcCapacity.sub(issuedAmountBtc);
+        const issuableAmountExcludingFees = interBtcCapacity.sub(issuedAmountBtc);
+        const issueAPI = new DefaultIssueAPI(this.api, this.btcNetwork, this.electrsAPI);
+        const fees = await issueAPI.getFeesToPay(issuableAmountExcludingFees);
+        return issuableAmountExcludingFees.sub(fees);
     }
 
     private async getIssuedAmounts(): Promise<Big[]> {
@@ -538,19 +533,19 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async getLiquidationCollateralThreshold(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold.at(head);
-        return new Big(decodeFixedPointType(threshold));
+        return decodeFixedPointType(threshold);
     }
 
     async getPremiumRedeemThreshold(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold.at(head);
-        return new Big(decodeFixedPointType(threshold));
+        return decodeFixedPointType(threshold);
     }
 
     async getSecureCollateralThreshold(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold.at(head);
-        return new Big(decodeFixedPointType(threshold));
+        return decodeFixedPointType(threshold);
     }
 
     async getFeesWrapped(vaultId: AccountId): Promise<Big> {
@@ -571,27 +566,27 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return planckToDOT(fees);
     }
 
-    async getAPY(vaultId: AccountId): Promise<string> {
-        const [feesInterBTC, feesDOT, lockedDOT] = await Promise.all([
+    async getAPY(vaultId: AccountId): Promise<Big> {
+        const [feesWrapped, feesCollateral, lockedCollateral] = await Promise.all([
             await this.getFeesWrapped(vaultId),
             await this.getFeesCollateral(vaultId),
             await this.collateralAPI.balanceLocked(vaultId),
         ]);
-        return this.feeAPI.calculateAPY(feesInterBTC, feesDOT, lockedDOT);
+        return this.feeAPI.calculateAPY(feesWrapped, feesCollateral, lockedCollateral);
     }
 
-    async getSLA(vaultId: AccountId): Promise<string> {
+    async getSLA(vaultId: AccountId): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const sla = await this.api.query.sla.vaultSla.at(head, vaultId);
-        return decodeFixedPointType(sla);
+        return decodeFixedPointType(sla).toNumber();
     }
 
-    async getMaxSLA(): Promise<string> {
+    async getMaxSLA(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const maxSLA = await this.api.query.sla.relayerTargetSla.at(head);
         const maxSlaBig = new Big(maxSLA.toString());
         const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-        return maxSlaBig.div(divisor).toString();
+        return maxSlaBig.div(divisor).toNumber();
     }
 
     /**
@@ -599,7 +594,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
      * (for redeem, on top of the slashed BTC-in-DOT value of the request). The fee is
      * paid in DOT based on the InterBTC amount at the current exchange rate.
      */
-    async getPunishmentFee(): Promise<string> {
+    async getPunishmentFee(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const fee = await this.api.query.fee.punishmentFee.at(head);
         return decodeFixedPointType(fee);

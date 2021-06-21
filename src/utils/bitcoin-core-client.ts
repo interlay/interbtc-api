@@ -40,6 +40,7 @@ export class BitcoinCoreClient {
         txid: string;
         rawTx: string;
     }> {
+        console.log(`Broadcasting tx: ${amount.toString()} BTC`);
         const tx = await this.broadcastTx(recipient, amount, data);
         await this.mineBlocks(blocksToMine);
         return tx;

@@ -11,7 +11,7 @@ describe("Encoding", () => {
         return new (registry.createClass("H256Le"))(registry, hash) as H256Le;
     };
 
-    beforeEach(() => {
+    before(() => {
         registry = new TypeRegistry();
         registry.register(getAPITypes());
     });

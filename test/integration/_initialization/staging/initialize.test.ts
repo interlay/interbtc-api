@@ -18,13 +18,25 @@ import {
     setNumericStorage,
     NominationAPI,
     DefaultNominationAPI,
+    VaultsAPI,
+    DefaultVaultsAPI,
+    newAccountId,
+    REGTEST_ESPLORA_BASE_PATH,
 } from "../../../../src";
-import { issueSingle } from "../../../../src/utils/issue";
+import { issueSingle } from "../../../../src/utils/";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { DefaultOracleAPI } from "../../../../src/parachain/oracle";
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
-import { defaultParachainEndpoint } from "../../../config";
+import { 
+    DEFAULT_BITCOIN_CORE_HOST,
+    DEFAULT_BITCOIN_CORE_NETWORK,
+    DEFAULT_BITCOIN_CORE_PASSWORD,
+    DEFAULT_BITCOIN_CORE_PORT,
+    DEFAULT_BITCOIN_CORE_USERNAME,
+    DEFAULT_BITCOIN_CORE_WALLET,
+    DEFAULT_PARACHAIN_ENDPOINT
+} from "../../../config";
 import { DefaultTreasuryAPI } from "../../../../src/parachain/treasury";
 
 describe("Initialize parachain state", () => {
@@ -34,6 +46,7 @@ describe("Initialize parachain state", () => {
     let oracleAPI: OracleAPI;
     let electrsAPI: ElectrsAPI;
     let treasuryAPI: TreasuryAPI;
+    let vaultsAPI: VaultsAPI;
     let nominationAPI: NominationAPI;
     let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
@@ -48,20 +61,28 @@ describe("Initialize parachain state", () => {
     }
 
     before(async function () {
-        api = await createPolkadotAPI(defaultParachainEndpoint);
+        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
         alice = keyring.addFromUri("//Alice");
         bob = keyring.addFromUri("//Bob");
         charlie_stash = keyring.addFromUri("//Charlie//stash");
 
-        electrsAPI = new DefaultElectrsAPI("http://0.0.0.0:3002");
-        bitcoinCoreClient = new BitcoinCoreClient("regtest", "0.0.0.0", "rpcuser", "rpcpassword", "18443", "Alice");
+        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         oracleAPI = new DefaultOracleAPI(api, bob);
         treasuryAPI = new DefaultTreasuryAPI(api, alice);
-        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, alice);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
         // Sleep for 2 min to wait for vaults to register
@@ -83,26 +104,14 @@ describe("Initialize parachain state", () => {
         const stableParachainConfirmations = await btcRelayAPI.getStableParachainConfirmations();
         assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
 
-        await bitcoinCoreClient.mineBlocksWithoutDelay(10);
-    });
-
-    it("should set the issue and redeem periods", async () => {
-        const issuePeriodToSet = 50;
-        const redeemPeriodToSet = 50;
-        await issueAPI.setIssuePeriod(50);
-        const issuePeriod = await issueAPI.getIssuePeriod();
-        assert.equal(issuePeriodToSet, issuePeriod, "Setting the issue period failed");
-
-        await redeemAPI.setRedeemPeriod(50);
-        const redeemPeriod = await redeemAPI.getRedeemPeriod();
-        assert.equal(redeemPeriodToSet, redeemPeriod, "Setting the redeem period failed");
+        await bitcoinCoreClient.mineBlocks(3);
     });
 
     it("should set the exchange rate", async () => {
-        const exchangeRateToSet = "3855.23187";
+        const exchangeRateToSet = new Big("3855.23187");
         await oracleAPI.setExchangeRate(exchangeRateToSet);
         const exchangeRate = await oracleAPI.getExchangeRate();
-        assert.equal(exchangeRateToSet, exchangeRate.toString());
+        assert.equal(exchangeRateToSet.toString(), exchangeRate.toString());
     });
 
     it("should enable vault nomination", async () => {
@@ -123,6 +132,10 @@ describe("Initialize parachain state", () => {
             aliceInterBTCAfter.toString(),
             "Issued amount is different from the requested amount"
         );
+        const totalIssuance = await treasuryAPI.total();
+        assert.equal(totalIssuance.toString(), interBtcToIssue.toString());
+        const vaultIssuedAmount = await vaultsAPI.getIssuedAmount(newAccountId(api, charlie_stash.address));
+        assert.equal(vaultIssuedAmount.toString(), interBtcToIssue.toString());
     });
 
     it("should redeem 0.05 InterBTC", async () => {

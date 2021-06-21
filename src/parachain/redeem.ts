@@ -19,6 +19,8 @@ import {
     planckToDOT,
     storageKeyToFirstInner,
     newAccountId,
+    ensureHashEncoded,
+    addHexPrefix,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { CollateralAPI } from ".";
@@ -66,6 +68,7 @@ export interface RedeemAPI extends TransactionAPI {
      * Send a redeem request transaction
      * @param amount InterBTC amount (denoted in Bitcoin) to redeem
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
+     * @param vaultId (optional) ID of the vault to redeem with.
      * @param atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to re-try redeeming, if some of the requests fail. Defaults to 0.
@@ -75,6 +78,7 @@ export interface RedeemAPI extends TransactionAPI {
     request(
         amount: Big,
         btcAddressEnc: string,
+        vaultId?: AccountId,
         atomic?: boolean,
         retries?: number,
         availableVaults?: Map<AccountId, Big>
@@ -103,19 +107,18 @@ export interface RedeemAPI extends TransactionAPI {
      * @param txId (Optional) The ID of the Bitcoin transaction that sends funds from the vault to the redeemer's address
      * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction.
      * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
-     * @returns A boolean value indicating whether the execution was successful. The function throws an error otherwise.
      */
-    execute(redeemId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean>;
+    execute(redeemId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
      * Send a redeem cancellation transaction. After the redeem period has elapsed,
      * the redeemal of InterBTC can be cancelled. As a result, the griefing collateral
      * of the vault will be slashed and sent to the redeemer
      * @param redeemId The ID returned by the redeem request transaction
      * @param reimburse (Optional) In case of redeem failure:
-     *  - `false` = retry redeeming, with a different Vault
+     *  - (Default) `false` = retry redeeming, with a different Vault
      *  - `true` = accept reimbursement in interBTC
      */
-    cancel(redeemId: H256, reimburse?: boolean): Promise<void>;
+    cancel(redeemId: string, reimburse?: boolean): Promise<void>;
     /**
      * @remarks Testnet utility function
      * @param blocks The time difference in number of blocks between a redeem request
@@ -142,8 +145,8 @@ export interface RedeemAPI extends TransactionAPI {
      * @param redeemId The ID of the redeem request to fetch
      * @returns A redeem request object
      */
-    getRequestById(redeemId: H256): Promise<Redeem>;
-    getRequestsById(redeemIds: H256[]): Promise<Redeem[]>;
+    getRequestById(redeemId: H256 | string): Promise<Redeem>;
+    getRequestsById(redeemIds: (H256 | string)[]): Promise<Redeem[]>;
     /**
      * Whenever a redeem request associated with `account` expires, call the callback function with the
      * ID of the expired request. Already expired requests are stored in memory, so as not to call back
@@ -170,7 +173,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns If users execute a redeem with a Vault flagged for premium redeem,
      * they can earn a DOT premium, slashed from the Vault's collateral.
      */
-    getPremiumRedeemFee(): Promise<string>;
+    getPremiumRedeemFee(): Promise<Big>;
     /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of InterBTC to burn, denominated as InterBTC
@@ -201,7 +204,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, account);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, account);
         this.collateralAPI = new DefaultCollateralAPI(api, account);
         this.oracleAPI = new DefaultOracleAPI(api, account);
     }
@@ -213,11 +216,18 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async request(
         amount: Big,
         btcAddressEnc: string,
+        vaultId?: AccountId,
         atomic: boolean = true,
         retries: number = 0,
         cachedVaults?: Map<AccountId, Big>,
     ): Promise<Redeem[]> {
         try {
+            if(vaultId) {
+                // If a vault account id is defined, request to issue with that vault only.
+                // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
+                const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
+                return await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
+            }
             const availableVaults = cachedVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
@@ -225,7 +235,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
-                return (await this.request(remainder, btcAddressEnc, atomic, retries - 1, availableVaults)).concat(result);
+                return (await this.request(remainder, btcAddressEnc, vaultId, atomic, retries - 1, availableVaults)).concat(result);
             }
         } catch (e) {
             return Promise.reject(e);
@@ -255,24 +265,20 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         }
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<boolean> {
+    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
         const parsedRequestId = this.api.createType("H256", requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const ids = this.getRedeemIdsFromEvents(result.events);
         if (ids.length > 1) {
-            throw new Error("Unexpected multiple redeem events from single execute transaction!");
+            Promise.reject("Unexpected multiple redeem events from single execute transaction!");
         }
-        else if (ids.length === 1) {
-            return true;
-        }
-        return false;
     }
 
-    async cancel(redeemId: H256, reimburse?: boolean): Promise<void> {
-        const reimburseValue = reimburse ? reimburse : false;
-        const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(redeemId, reimburseValue);
+    async cancel(requestId: string, reimburse = false): Promise<void> {
+        const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
+        const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
         await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
@@ -404,7 +410,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async getFeeRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemFee = await this.api.query.fee.redeemFee.at(head);
-        return new Big(decodeFixedPointType(redeemFee));
+        return decodeFixedPointType(redeemFee);
     }
 
     async getDustValue(): Promise<Big> {
@@ -413,25 +419,28 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return satToBTC(dustValueSat);
     }
 
-    async getPremiumRedeemFee(): Promise<string> {
+    async getPremiumRedeemFee(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
         return decodeFixedPointType(premiumRedeemFee);
     }
 
-    async getRequestById(redeemId: H256): Promise<Redeem> {
-        return (await this.getRequestsById([redeemId]))[0];
+    async getRequestById(redeemId: H256 | string): Promise<Redeem> {
+        const id = ensureHashEncoded(this.api, redeemId);
+        return (await this.getRequestsById([id]))[0];
     }
 
-    async getRequestsById(redeemIds: H256[]): Promise<Redeem[]> {
+    async getRequestsById(redeemIds: (H256 | string)[]): Promise<Redeem[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return Promise.all(
-            redeemIds.map(async (redeemId) =>
-                encodeRedeemRequest(
-                    await this.api.query.redeem.redeemRequests.at(head, redeemId),
+            redeemIds.map(async (redeemId) => {
+                const id = ensureHashEncoded(this.api, redeemId);
+                return encodeRedeemRequest(
+                    await this.api.query.redeem.redeemRequests.at(head, id),
                     this.btcNetwork,
-                    redeemId)
-            )
+                    id
+                );
+            })
         );
     }
 }

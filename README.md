@@ -62,7 +62,7 @@ and then to instantiate a `InterBTCAPI` instance.
 ```typescript
 import { createInterbtcAPI } from "@interlay/interbtc";
 
-const defaultParachainEndpoint = "ws://127.0.0.1:9944";
+const DEFAULT_PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
 const isMainnet = false;
 const interBTC = await createInterbtcAPI(defaultParachainEndpoint, isMainnet);
 ```
