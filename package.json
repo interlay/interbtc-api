@@ -41,8 +41,8 @@
     "@interlay/esplora-btc-api": "0.4.0",
     "@interlay/interbtc-types": "0.8.1",
     "@polkadot/api": "4.12.1",
-    "@polkadot/typegen": "4.12.1",
     "@polkadot/keyring": "6.6.2-6",
+    "@polkadot/typegen": "4.12.1",
     "@types/big.js": "6.0.2",
     "big.js": "6.0.3",
     "bitcoin-core": "^3.0.0",
@@ -73,8 +73,8 @@
     "nyc": "^15.1.0",
     "prettier": "^2.0.5",
     "ts-node": "^9.0.0",
-    "typedoc": "^0.20.27",
-    "typedoc-plugin-markdown": "^3.5.0",
+    "typedoc": "^0.21.0",
+    "typedoc-plugin-markdown": "^3.10.1",
     "typescript": "^4.1.3"
   },
   "files": [
