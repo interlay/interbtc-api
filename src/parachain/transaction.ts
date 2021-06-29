@@ -33,13 +33,15 @@ export class DefaultTransactionAPI {
     ): Promise<ISubmittableResult> {
         const { unsubscribe, result } = await new Promise((resolve, reject) => {
             if (this.account === undefined) {
-                return reject(ACCOUNT_NOT_SET_ERROR_MESSAGE);
+                return reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
             }
 
             let unsubscribe: () => void;
             // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
             transaction
-                .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
+                .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) =>
+                    callback({ unsubscribe, result })
+                )
                 .then((u: () => void) => (unsubscribe = u))
                 .catch((error) => reject(error));
 
@@ -56,7 +58,7 @@ export class DefaultTransactionAPI {
         DefaultTransactionAPI.printEvents(this.api, result.events);
 
         if (successEventType && !DefaultTransactionAPI.doesArrayContainEvent(result.events, successEventType)) {
-            return Promise.reject("Transaction failed: Expected event was not emitted");
+            return Promise.reject(new Error("Transaction failed: Expected event was not emitted"));
         }
         return result;
     }
@@ -108,7 +110,7 @@ export class DefaultTransactionAPI {
             new Promise<void>((resolve, _reject) => {
                 api.query.system.events((eventsVec) => {
                     const events = eventsVec.toArray();
-                    if(this.doesArrayContainEvent(events, event)) {
+                    if (this.doesArrayContainEvent(events, event)) {
                         resolve();
                     }
                 });
@@ -136,5 +138,4 @@ export class DefaultTransactionAPI {
         }
         return false;
     }
-
 }

@@ -15,10 +15,7 @@ export interface FeeAPI {
      * @param griefingCollateralRate
      * @returns The griefing collateral, as large denomination (e.g. DOT)
      */
-    getGriefingCollateral(
-        amount: Big,
-        griefingCollateralRate: Big
-    ): Promise<Big>;
+    getGriefingCollateral(amount: Big, griefingCollateralRate: Big): Promise<Big>;
     /**
      * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
      * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
@@ -26,7 +23,12 @@ export interface FeeAPI {
      * @param collateralToWrappedRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
-    calculateAPY(feesWrapped: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big>;
+    calculateAPY(
+        feesWrapped: Big,
+        feesCollateral: Big,
+        lockedCollateral: Big,
+        collateralToWrappedRate?: Big
+    ): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
      */
@@ -35,6 +37,10 @@ export interface FeeAPI {
      * @returns The griefing collateral rate for the Vault replace request
      */
     getReplaceGriefingCollateralRate(): Promise<Big>;
+    /**
+     * @returns The percentage of issued token that is received by the vault as reward
+     */
+    getIssueFee(): Promise<Big>;
 }
 
 export class DefaultFeeAPI implements FeeAPI {
@@ -44,10 +50,7 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api);
     }
 
-    async getGriefingCollateral(
-        amount: Big,
-        griefingCollateralRate: Big
-    ): Promise<Big> {
+    async getGriefingCollateral(amount: Big, griefingCollateralRate: Big): Promise<Big> {
         const dotAmount = await this.oracleAPI.convertBitcoinToDot(amount);
         return dotAmount.mul(griefingCollateralRate);
     }
@@ -64,11 +67,22 @@ export class DefaultFeeAPI implements FeeAPI {
         return decodeFixedPointType(griefingCollateralRate);
     }
 
-    async calculateAPY(feesWrapped: Big, feesCollateral: Big, lockedCollateral: Big, collateralToWrappedRate?: Big): Promise<Big> {
-        if(lockedCollateral.eq(new Big(0))) {
+    async getIssueFee(): Promise<Big> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const issueFee = await this.api.query.fee.issueFee.at(head);
+        return decodeFixedPointType(issueFee);
+    }
+
+    async calculateAPY(
+        feesWrapped: Big,
+        feesCollateral: Big,
+        lockedCollateral: Big,
+        collateralToWrappedRate?: Big
+    ): Promise<Big> {
+        if (lockedCollateral.eq(new Big(0))) {
             return new Big(0);
         }
-        if(collateralToWrappedRate === undefined) {
+        if (collateralToWrappedRate === undefined) {
             collateralToWrappedRate = await this.oracleAPI.getExchangeRate();
         }
         const feesWrappedAsCollateral = feesWrapped.mul(collateralToWrappedRate);

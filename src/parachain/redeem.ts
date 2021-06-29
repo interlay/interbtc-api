@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { AccountId, Hash, H256, Header } from "@polkadot/types/interfaces";
-import { EventRecord } from "@polkadot/types/interfaces/system";
+import { EventRecord } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -17,29 +17,27 @@ import {
     stripHexPrefix,
     encodeBtcAddress,
     planckToDOT,
-    storageKeyToFirstInner,
+    storageKeyToNthInner,
     newAccountId,
     ensureHashEncoded,
     addHexPrefix,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
-import { CollateralAPI } from ".";
-import { DefaultCollateralAPI } from "./collateral";
+import { TokensAPI, DefaultTokensAPI } from "./tokens";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RedeemRequest } from "../interfaces/default";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import { Redeem, RedeemStatus } from "../types";
+import { CurrencyIdLiteral, Redeem, RedeemStatus } from "../types";
 
-export function encodeRedeemRequest(
-    req: RedeemRequest,
-    network: Network,
-    id: H256,
-): Redeem {
-    const status = req.status.isCompleted ?
-        RedeemStatus.Completed : req.status.isRetried ?
-            RedeemStatus.Retried : req.status.isReimbursed ?
-                RedeemStatus.Reimbursed : RedeemStatus.PendingWithBtcTxNotFound;
+export function encodeRedeemRequest(req: RedeemRequest, network: Network, id: H256): Redeem {
+    const status = req.status.isCompleted
+        ? RedeemStatus.Completed
+        : req.status.isRetried
+            ? RedeemStatus.Retried
+            : req.status.isReimbursed
+                ? RedeemStatus.Reimbursed
+                : RedeemStatus.PendingWithBtcTxNotFound;
     return {
         id: stripHexPrefix(id.toString()),
         userDOTAddress: req.redeemer.toString(),
@@ -50,7 +48,7 @@ export function encodeRedeemRequest(
         creationBlock: req.opentime.toNumber(),
         vaultDOTAddress: req.vault.toString(),
         userBTCAddress: encodeBtcAddress(req.btc_address, network),
-        status
+        status,
     };
 }
 
@@ -93,11 +91,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns An array of type {redeemId, vault} if the requests succeeded.
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
-    requestAdvanced(
-        amountsPerVault: Map<AccountId, Big>,
-        btcAddressEnc: string,
-        atomic: boolean
-    ): Promise<Redeem[]>;
+    requestAdvanced(amountsPerVault: Map<AccountId, Big>, btcAddressEnc: string, atomic: boolean): Promise<Redeem[]>;
 
     /**
      * Send a redeem execution transaction
@@ -127,7 +121,7 @@ export interface RedeemAPI extends TransactionAPI {
      * and to potentially punish a vault for inactivity or stealing BTC.
      */
     setRedeemPeriod(blocks: number): Promise<void>;
-     /**
+    /**
      *
      * @returns The time difference in number of blocks between a redeem request
      * is created and required completion time by a vault.
@@ -197,7 +191,7 @@ export interface RedeemAPI extends TransactionAPI {
 
 export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
     private vaultsAPI: VaultsAPI;
-    private collateralAPI: CollateralAPI;
+    private tokensAPI: TokensAPI;
     private oracleAPI: OracleAPI;
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
@@ -205,7 +199,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     constructor(api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, account);
-        this.collateralAPI = new DefaultCollateralAPI(api, account);
+        this.tokensAPI = new DefaultTokensAPI(api, account);
         this.oracleAPI = new DefaultOracleAPI(api, account);
     }
 
@@ -219,23 +213,25 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         vaultId?: AccountId,
         atomic: boolean = true,
         retries: number = 0,
-        cachedVaults?: Map<AccountId, Big>,
+        cachedVaults?: Map<AccountId, Big>
     ): Promise<Redeem[]> {
         try {
-            if(vaultId) {
+            if (vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
                 // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
                 const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
                 return await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             }
-            const availableVaults = cachedVaults || await this.vaultsAPI.getVaultsWithRedeemableTokens();
+            const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithRedeemableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             const successfulSum = result.reduce((sum, req) => sum.plus(req.amountBTC), new Big(0));
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
-                return (await this.request(remainder, btcAddressEnc, vaultId, atomic, retries - 1, availableVaults)).concat(result);
+                return (
+                    await this.request(remainder, btcAddressEnc, vaultId, atomic, retries - 1, availableVaults)
+                ).concat(result);
             }
         } catch (e) {
             return Promise.reject(e);
@@ -250,7 +246,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount));
+            const amountWrapped = this.api.createType("Balance", btcToSat(amount));
             txes.push(this.api.tx.redeem.requestRedeem(amountWrapped, btcAddress, vault));
         }
         // batchAll fails atomically, batch allows partial successes
@@ -272,7 +268,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const ids = this.getRedeemIdsFromEvents(result.events);
         if (ids.length > 1) {
-            Promise.reject("Unexpected multiple redeem events from single execute transaction!");
+            Promise.reject(new Error("Unexpected multiple redeem events from single execute transaction!"));
         }
     }
 
@@ -290,10 +286,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async setRedeemPeriod(blocks: number): Promise<void> {
         const period = this.api.createType("BlockNumber", blocks);
-        const tx = this.api.tx.sudo
-            .sudo(
-                this.api.tx.redeem.setRedeemPeriod(period)
-            );
+        const tx = this.api.tx.sudo.sudo(this.api.tx.redeem.setRedeemPeriod(period));
         await this.sendLogged(tx);
     }
 
@@ -310,12 +303,13 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async getBurnExchangeRate(): Promise<Big> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault();
         const wrappedSatoshi = liquidationVault.issued_tokens.add(liquidationVault.to_be_issued_tokens);
-        if(wrappedSatoshi.isZero()) {
-            return Promise.reject("There are no burnable tokens. The burn exchange rate is undefined");
+        if (wrappedSatoshi.isZero()) {
+            return Promise.reject(new Error("There are no burnable tokens. The burn exchange rate is undefined"));
         }
         const wrappedBtc = satToBTC(wrappedSatoshi);
         const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
-        const collateralDot = await this.collateralAPI.balanceLocked(
+        const collateralDot = await this.tokensAPI.balanceLocked(
+            CurrencyIdLiteral.DOT,
             newAccountId(this.api, liquidationVaultId)
         );
         return collateralDot.div(wrappedBtc);
@@ -325,7 +319,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const [size, satoshiFees] = await Promise.all([
             this.api.query.redeem.redeemTransactionSize.at(head),
-            this.oracleAPI.getBtcTxFeesPerByte()
+            this.oracleAPI.getBtcTxFeesPerByte(),
         ]);
         const btcFees = satToBTC(new BN(satoshiFees.fast));
         return btcFees.mul(new Big(size.toString()));
@@ -334,14 +328,17 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async list(): Promise<Redeem[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemRequests = await this.api.query.redeem.redeemRequests.entriesAt(head);
-        return redeemRequests.map(([id, req]) => encodeRedeemRequest(req, this.btcNetwork, storageKeyToFirstInner(id)));
+        return redeemRequests.map(([id, req]) => encodeRedeemRequest(req, this.btcNetwork, storageKeyToNthInner(id)));
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, Redeem>> {
         const redeemRequestPairs: [H256, RedeemRequest][] = await this.api.rpc.redeem.getRedeemRequests(account);
         const mapForUser: Map<H256, Redeem> = new Map<H256, Redeem>();
         redeemRequestPairs.forEach((redeemRequestPair) =>
-            mapForUser.set(redeemRequestPair[0], encodeRedeemRequest(redeemRequestPair[1], this.btcNetwork, redeemRequestPair[0]))
+            mapForUser.set(
+                redeemRequestPair[0],
+                encodeRedeemRequest(redeemRequestPair[1], this.btcNetwork, redeemRequestPair[0])
+            )
         );
         return mapForUser;
     }
@@ -352,9 +349,9 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             account,
             (seen: Set<H256>, request: Redeem, id: H256, currentBlockNumber: BN) => {
                 if (
-                    currentBlockNumber.gtn(request.creationBlock + redeemPeriod)
-                    && !seen.has(id)
-                    && request.status === RedeemStatus.PendingWithBtcTxNotFound
+                    currentBlockNumber.gtn(request.creationBlock + redeemPeriod) &&
+                    !seen.has(id) &&
+                    request.status === RedeemStatus.PendingWithBtcTxNotFound
                 ) {
                     seen.add(id);
                     callback(id);
@@ -364,14 +361,14 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return unsubscribe;
     }
 
-    async subscribeToRedeemCompletion(account: AccountId, callback: (requestRedeemId: H256) => void): Promise<() => void> {
+    async subscribeToRedeemCompletion(
+        account: AccountId,
+        callback: (requestRedeemId: H256) => void
+    ): Promise<() => void> {
         const unsubscribe = this.onRedeem(
             account,
             (seen: Set<H256>, request: Redeem, id: H256, _currentBlockNumber: BN) => {
-                if (
-                    request.status === RedeemStatus.Completed
-                    && !seen.has(id)
-                ) {
+                if (request.status === RedeemStatus.Completed && !seen.has(id)) {
                     seen.add(id);
                     callback(id);
                 }

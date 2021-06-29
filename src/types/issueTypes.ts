@@ -29,3 +29,9 @@ export enum IssueStatus {
     PendingWithTooFewConfirmations,
     PendingWithEnoughConfirmations,
 }
+
+export enum NominationStatus {
+    Staked,
+    Unstaked,
+    Refunded,
+}

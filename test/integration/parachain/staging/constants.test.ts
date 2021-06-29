@@ -19,20 +19,6 @@ describe("Constants", function () {
         await api.disconnect();
     });
 
-    describe("getDotExistentialDeposit", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = constantAPI.getDotExistentialDeposit();
-            assert.isDefined(returnValue);
-        }).timeout(500);
-    });
-
-    describe("getInterBtcExistentialDeposit", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = constantAPI.getInterBtcExistentialDeposit();
-            assert.isDefined(returnValue);
-        }).timeout(500);
-    });
-
     describe("getSystemBlockHashCount", () => {
         it("should sucessfully return", async () => {
             const returnValue = constantAPI.getSystemBlockHashCount();

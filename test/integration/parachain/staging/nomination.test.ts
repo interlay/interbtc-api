@@ -2,29 +2,46 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
+import BN from "bn.js";
 
-import { DefaultElectrsAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, NominationAPI, REGTEST_ESPLORA_BASE_PATH, VaultsAPI } from "../../../../src";
+import { BitcoinCoreClient, CurrencyIdLiteral, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultTokensAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, satToBTC, setNumericStorage, TokensAPI, VaultsAPI } from "../../../../src";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("NominationAPI", () => {
     let api: ApiPromise;
+    let alice: KeyringPair;
     let bob: KeyringPair;
     let nominationAPI: NominationAPI;
+    let tokensAPI: TokensAPI;
     let vaultsAPI: VaultsAPI;
+    let feeAPI: FeeAPI;
     let charlie_stash: KeyringPair;
     let electrsAPI: ElectrsAPI;
+    let bitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
+        alice = keyring.addFromUri("//Alice");
         bob = keyring.addFromUri("//Bob");
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, bob);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        tokensAPI = new DefaultTokensAPI(api);
+        feeAPI = new DefaultFeeAPI(api);
+
         // The account of a vault from docker-compose
         charlie_stash = keyring.addFromUri("//Charlie//stash");
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
     });
 
     after(() => {
@@ -40,27 +57,60 @@ describe("NominationAPI", () => {
         assert.equal(0, (await nominationAPI.listVaults()).length);
     });
 
+    async function setIssueFee(x: BN) {
+        const previousAccount = nominationAPI.getAccount();
+        nominationAPI.setAccount(alice);
+        await setNumericStorage(api, "Fee", "IssueFee", x, nominationAPI, 128);
+        if(previousAccount) {
+            nominationAPI.setAccount(previousAccount);
+        }
+    }
+
     it("Should nominate to and withdraw from a vault", async () => {
         await optInAndPreserveAPIAccount(charlie_stash);
 
+        const issueFee = await feeAPI.getIssueFee();
+        const nominatorDeposit = new Big(100);
+        // Set issue fees to 100%
+        await setIssueFee(new BN("1000000000000000000"));
+        const stakingCapacityBeforeNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address));
         // Deposit
-        await nominationAPI.depositCollateral(charlie_stash.address, new Big(1));
-        const nominators = await nominationAPI.listNominators();
-        assert.equal(1, nominators.length);
-        const nominator = nominators[0];
-        // `nominator` is of type `[nominatorId, vaultId]`.
-        const nominatorId = nominator[0].toString();
-        const vaultId = nominator[1].toString();
+        await nominationAPI.depositCollateral(charlie_stash.address, nominatorDeposit);
+        const stakingCapacityAfterNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address));
+        assert.equal(
+            stakingCapacityBeforeNomination.sub(nominatorDeposit).toString(),
+            stakingCapacityAfterNomination.toString(),
+            "Nomination failed to decrease staking capacity"
+        );
+        const nominations = await nominationAPI.listNominationPairs();
+        assert.equal(1, nominations.length, "There should be one nomination pair in the system");
+        const nomination = nominations[0];
+        // `nomination` is of type `[nominatorId, vaultId]`.
+        const nominatorId = nomination[0].toString();
+        const vaultId = nomination[1].toString();
         assert.equal(bob.address, nominatorId);
         assert.equal(charlie_stash.address, vaultId);
-        
+
+        const interBtcToIssue = new Big(1);
+        await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
+        const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorRewards(CurrencyIdLiteral.INTERBTC, bob.address)).map(v => v[1].toString());
+        assert.equal(1, wrappedRewardsBeforeWithdrawal.length);
+        assert.isTrue(new Big(wrappedRewardsBeforeWithdrawal[0]).gt(0.4), "Nominator should receive at least 0.4 interBTC");
+
         // Withdraw
-        await nominationAPI.withdrawCollateral(charlie_stash.address, new Big(1));
-        const nominatorsAfterWithdrawal = await nominationAPI.listNominators();
+        await nominationAPI.withdrawCollateral(charlie_stash.address, nominatorDeposit);
+        const nominatorsAfterWithdrawal = await nominationAPI.listNominationPairs();
         assert.equal(1, nominatorsAfterWithdrawal.length);
         const nominatorCollateral = await nominationAPI.getTotalNomination(bob.address);
         assert.equal("0", nominatorCollateral.toString());
 
+        const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorRewards(CurrencyIdLiteral.INTERBTC, bob.address)).map(v => v[1].toString());
+        assert.equal(
+            new Big(wrappedRewardsBeforeWithdrawal[0]).round(5, 0).toString(),
+            new Big(wrappedRewardsAfterWithdrawal[0]).round(5, 0).toString(),
+            "Reward amount has been affected by the withdrawal"
+        );
+        await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
         await optOutAndPreserveAPIAccount(charlie_stash);
     });
 

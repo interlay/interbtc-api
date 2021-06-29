@@ -21,7 +21,7 @@
                 "avoidEscape": true
             }
         ],
-        "indent": "error",
+        "indent": ["error", 4, { "SwitchCase": 1 }],
         "max-len": [
             "error",
             {

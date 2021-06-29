@@ -25,9 +25,6 @@ export async function setNumericStorage(
     const data = bnToHex(value, bits, isLittleEndian);
     const storageKey = api.createType("StorageKey", key);
     const storageData = api.createType("StorageData", data);
-    const tx = api.tx.sudo
-        .sudo(
-            api.tx.system.setStorage([[storageKey, storageData] as ITuple<[StorageKey, Bytes]>])
-        );
+    const tx = api.tx.sudo.sudo(api.tx.system.setStorage([[storageKey, storageData] as ITuple<[StorageKey, Bytes]>]));
     await transactionAPI.sendLogged(tx);
 }

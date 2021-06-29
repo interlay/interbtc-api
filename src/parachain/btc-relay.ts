@@ -39,7 +39,7 @@ export interface BTCRelayAPI {
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {
-    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) { }
+    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) {}
 
     async getStableBitcoinConfirmations(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();

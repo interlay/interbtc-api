@@ -165,17 +165,17 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     constructor(network: string = "mainnet") {
         let basePath = "";
         switch (network) {
-        case "mainnet":
-            basePath = MAINNET_ESPLORA_BASE_PATH;
-            break;
-        case "testnet":
-            basePath = TESTNET_ESPLORA_BASE_PATH;
-            break;
-        case "regtest":
-            basePath = REGTEST_ESPLORA_BASE_PATH;
-            break;
-        default:
-            basePath = network;
+            case "mainnet":
+                basePath = MAINNET_ESPLORA_BASE_PATH;
+                break;
+            case "testnet":
+                basePath = TESTNET_ESPLORA_BASE_PATH;
+                break;
+            case "regtest":
+                basePath = REGTEST_ESPLORA_BASE_PATH;
+                break;
+            default:
+                basePath = network;
         }
         const conf = new Configuration({ basePath });
         this.blockApi = new BlockApi(conf);
@@ -202,14 +202,14 @@ export class DefaultElectrsAPI implements ElectrsAPI {
 
     async getUtxoAmount(txid: string, recipient: string): Promise<number> {
         let amount = 0;
-        if(!txid) {
+        if (!txid) {
             return amount;
         }
         const tx = await this.getTx(txid);
-        if(!tx.vout) {
+        if (!tx.vout) {
             return amount;
         }
-        tx.vout.forEach(vout=> {
+        tx.vout.forEach((vout) => {
             if (vout.scriptpubkey_address === recipient && vout.value) {
                 amount = vout.value;
             }
@@ -251,7 +251,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: Big): Promise<string> {
         const data = Buffer.from(opReturn, "hex");
         if (data.length !== 32) {
-            return Promise.reject("Requires a 32 byte hash as OP_RETURN");
+            return Promise.reject(new Error("Requires a 32 byte hash as OP_RETURN"));
         }
         const opReturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
         const hash = bitcoinjs.crypto.sha256(opReturnBuffer).toString("hex");
@@ -273,7 +273,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
                 }
             }
         }
-        return Promise.reject("No transaction id found");
+        return Promise.reject(new Error("No transaction id found"));
     }
 
     async waitForOpreturn(data: string, timeoutMs: number, retryIntervalMs: number): Promise<string> {
@@ -283,10 +283,12 @@ export class DefaultElectrsAPI implements ElectrsAPI {
                 .catch((_error) => {
                     setTimeout(() => {
                         console.log("Did not find opreturn, retrying...");
-                        if(timeoutMs < retryIntervalMs) {
-                            reject("Timeout elapsed");
+                        if (timeoutMs < retryIntervalMs) {
+                            reject(new Error("Timeout elapsed"));
                         } else {
-                            this.waitForOpreturn(data, timeoutMs - retryIntervalMs, retryIntervalMs).then(resolve).catch(reject);
+                            this.waitForOpreturn(data, timeoutMs - retryIntervalMs, retryIntervalMs)
+                                .then(resolve)
+                                .catch(reject);
                         }
                     }, retryIntervalMs);
                 });
@@ -350,7 +352,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     async getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]> {
         const [unparsedMerkleProof, unparsedRawTx] = await Promise.all([
             this.getMerkleProof(txid),
-            this.getRawTransaction(txid)
+            this.getRawTransaction(txid),
         ]);
         // To avoid taking an ApiPromise object as a constructor parameter,
         // use the default TypeRegistry (without custom type metadata),
