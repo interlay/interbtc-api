@@ -18,7 +18,7 @@ jobs:
             node-version: "14.x"
       - run: npm install
       - run: npm run build
-      - run: npx typedoc
+      - run: sh generate_docs
 
       - name: Deploy to GitHub Pages
         if: success()

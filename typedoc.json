@@ -1,5 +1,6 @@
 {
     "categoryOrder": ["InterBTC Bridge", "InterBTC Bridge", "Clients", "Bitcoin Core", "*"],
+    "plugin": "typedoc-plugin-markdown",
     "entryPoints": ["src/index.ts"],
     "out": "docs"
 }
