@@ -13,11 +13,9 @@ import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
-import Big from "big.js";
-import BN from "bn.js";
+import { BTCAmount } from "@interlay/monetary-js";
 
 import { MAINNET_ESPLORA_BASE_PATH, REGTEST_ESPLORA_BASE_PATH, TESTNET_ESPLORA_BASE_PATH } from "../utils/constants";
-import { btcToSat } from "../utils/currency";
 
 export type TxStatus = {
     confirmed: boolean;
@@ -94,7 +92,7 @@ export interface ElectrsAPI {
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: Big): Promise<string>;
+    getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: BTCAmount): Promise<string>;
     /**
      * Fetch the last bitcoin transaction ID based on the recipient address and amount.
      * Throw an error if no such transaction is found.
@@ -103,11 +101,11 @@ export interface ElectrsAPI {
      * Performs the lookup using an external service, Esplora
      *
      * @param recipientAddress Match the receiving address of a UTXO
-     * @param amountAsBTC Match the amount (in BTC) of a UTXO that contains said recipientAddress.
+     * @param amount Match the amount (in BTC) of a UTXO that contains said recipientAddress.
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByRecipientAddress(recipientAddress: string, amountAsBTC?: Big): Promise<string>;
+    getTxIdByRecipientAddress(recipientAddress: string, amount?: BTCAmount): Promise<string>;
     /**
      * Fetch the Bitcoin transaction that matches the given TxId
      *
@@ -219,7 +217,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return amount;
     }
 
-    async getTxIdByRecipientAddress(recipientAddress: string, amount?: Big): Promise<string> {
+    async getTxIdByRecipientAddress(recipientAddress: string, amount?: BTCAmount): Promise<string> {
         try {
             const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
             for (const utxo of utxos.reverse()) {
@@ -240,17 +238,19 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      * @param amountAsBTC (Optional) Amount the recipient must receive
      * @returns Boolean value
      */
-    private utxoHasAtLeastAmount(utxo: UTXO | VOut, amount?: Big): boolean {
+    private utxoHasAtLeastAmount(utxo: UTXO | VOut, amount?: BTCAmount): boolean {
         if (amount) {
-            const expectedBtcAsSatoshi = btcToSat(amount);
-            if (utxo.value === undefined || expectedBtcAsSatoshi > new BN(utxo.value)) {
+            if (utxo.value === undefined) {
                 return false;
+            } else {
+                const utxoValue = BTCAmount.from.Satoshi(utxo.value);
+                return utxoValue >= amount;
             }
         }
         return true;
     }
 
-    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: Big): Promise<string> {
+    async getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: BTCAmount): Promise<string> {
         const data = Buffer.from(opReturn, "hex");
         if (data.length !== 32) {
             return Promise.reject(new Error("Requires a 32 byte hash as OP_RETURN"));
@@ -306,7 +306,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      * `recipientAddress` is defined too
      * @returns Boolean value
      */
-    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amount?: Big): boolean {
+    private txOutputHasRecipientAndAmount(vout: VOut, recipientAddress?: string, amount?: BTCAmount): boolean {
         if (recipientAddress) {
             if (recipientAddress !== vout.scriptpubkey_address) {
                 return false;

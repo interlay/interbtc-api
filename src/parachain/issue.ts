@@ -4,15 +4,13 @@ import { Bytes } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
+import { Bitcoin, BTCAmount } from "@interlay/monetary-js";
 
 import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import {
     decodeFixedPointType,
-    roundUpBtcToNearestSatoshi,
     getTxProof,
-    btcToSat,
-    dotToPlanck,
     allocateAmountsToVaults,
     getRequestIdsFromEvents,
     satToBTC,
@@ -27,9 +25,8 @@ import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { Issue, IssueStatus } from "../types";
-import BN from "bn.js";
 
-export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big };
+export type IssueLimits = { singleVaultMaxIssuable: BTCAmount; totalMaxIssuable: BTCAmount };
 
 export function encodeIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
     const amountBTC = satToBTC(req.amount);
@@ -55,8 +52,6 @@ export function encodeIssueRequest(req: IssueRequest, network: Network, id: H256
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface IssueAPI extends TransactionAPI {
     /**
@@ -66,7 +61,7 @@ export interface IssueAPI extends TransactionAPI {
      * parachain (incurring an extra request).
      * @returns An object of type {singleVault, maxTotal, vaultsCache}
      */
-    getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits>;
+    getRequestLimits(vaults?: Map<AccountId, BTCAmount>): Promise<IssueLimits>;
 
     /**
      * Request issuing of InterBTC.
@@ -79,11 +74,11 @@ export interface IssueAPI extends TransactionAPI {
      * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
-        amount: Big,
+        amount: BTCAmount,
         vaultId?: AccountId,
         atomic?: boolean,
         retries?: number,
-        availableVaults?: Map<AccountId, Big>
+        availableVaults?: Map<AccountId, BTCAmount>
     ): Promise<Issue[]>;
 
     /**
@@ -94,7 +89,7 @@ export interface IssueAPI extends TransactionAPI {
      * @returns An array of type {issueId, vault} if the requests succeeded.
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
-    requestAdvanced(amountsPerVault: Map<AccountId, Big>, atomic: boolean): Promise<Issue[]>;
+    requestAdvanced(amountsPerVault: Map<AccountId, BTCAmount>, atomic: boolean): Promise<Issue[]>;
 
     /**
      * Send an issue execution transaction
@@ -152,15 +147,15 @@ export interface IssueAPI extends TransactionAPI {
      */
     getFeeRate(): Promise<Big>;
     /**
-     * @param amountBtc The amount, in BTC, for which to compute the issue fees
+     * @param amount The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
-    getFeesToPay(amountBtc: Big): Promise<Big>;
+    getFeesToPay(amount: BTCAmount): Promise<BTCAmount>;
     /**
      * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
      * @returns The griefing collateral, in DOT
      */
-    getGriefingCollateral(amount: Big): Promise<Big>;
+    getGriefingCollateral(amount: BTCAmount): Promise<BTCAmount>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
@@ -173,16 +168,16 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         this.feeAPI = new DefaultFeeAPI(api);
     }
 
-    async getRequestLimits(vaults?: Map<AccountId, Big>): Promise<IssueLimits> {
+    async getRequestLimits(vaults?: Map<AccountId, BTCAmount>): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
         const vaultsArr = [...vaults.entries()];
         if (vaultsArr.length === 0) {
-            return { singleVaultMaxIssuable: Big(0), totalMaxIssuable: Big(0) };
+            return { singleVaultMaxIssuable: BTCAmount.zero, totalMaxIssuable: BTCAmount.zero };
         }
         const singleVaultMaxIssuable = vaultsArr[0][1];
         const totalMaxIssuable = vaultsArr.reduce((total, [_, vaultAvailable]) => {
-            return total.plus(vaultAvailable);
-        }, new Big(0));
+            return total.add(vaultAvailable);
+        }, BTCAmount.zero);
         return { singleVaultMaxIssuable, totalMaxIssuable };
     }
 
@@ -196,23 +191,23 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     }
 
     async request(
-        amount: Big,
+        amount: BTCAmount,
         vaultId?: AccountId,
         atomic: boolean = true,
         retries: number = 0,
-        cachedVaults?: Map<AccountId, Big>
+        cachedVaults?: Map<AccountId, BTCAmount>
     ): Promise<Issue[]> {
         try {
             if (vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
                 // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
-                const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
+                const amountsPerVault = new Map<AccountId, BTCAmount>([[vaultId, amount]]);
                 return await this.requestAdvanced(amountsPerVault, atomic);
             }
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountInterBTC), new Big(0));
+            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountInterBTC), BTCAmount.zero);
             const remainder = amount.sub(successfulSum);
             if (remainder.eq(0) || retries === 0) return result;
             else {
@@ -223,14 +218,19 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         }
     }
 
-    async requestAdvanced(amountsPerVault: Map<AccountId, Big>, atomic: boolean): Promise<Issue[]> {
+    async requestAdvanced(amountsPerVault: Map<AccountId, BTCAmount>, atomic: boolean): Promise<Issue[]> {
         const txs = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const griefingCollateralBig = await this.getGriefingCollateral(amount);
+            let griefingCollateral = await this.getGriefingCollateral(amount);
             // add() here is a hacky workaround for rounding errors
-            const griefingCollateralPlanck = dotToPlanck(griefingCollateralBig).add(new BN(100));
-            const amountWrapped = this.api.createType("Balance", btcToSat(amount));
-            txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralPlanck));
+            griefingCollateral = griefingCollateral.add(BTCAmount.from.Satoshi(100));
+            txs.push(
+                this.api.tx.issue.requestIssue(
+                    amount.toString(Bitcoin.units.Satoshi),
+                    vault,
+                    griefingCollateral.toString(Bitcoin.units.Satoshi)
+                )
+            );
         }
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
@@ -286,15 +286,14 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         return mapForUser;
     }
 
-    async getGriefingCollateral(amount: Big): Promise<Big> {
+    async getGriefingCollateral(amount: BTCAmount): Promise<BTCAmount> {
         const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
         return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate);
     }
 
-    async getFeesToPay(amount: Big): Promise<Big> {
+    async getFeesToPay(amount: BTCAmount): Promise<BTCAmount> {
         const feePercentage = await this.getFeeRate();
-        const feeBtc = amount.mul(feePercentage);
-        return new Big(roundUpBtcToNearestSatoshi(feeBtc));
+        return amount.mul(feePercentage);
     }
 
     /**

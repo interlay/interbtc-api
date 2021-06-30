@@ -3,15 +3,12 @@ import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
-import BN from "bn.js";
+import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 
 import {
-    BTC_IN_SAT,
-    DOT_IN_PLANCK,
     decodeFixedPointType,
     encodeUnsignedFixedPoint,
     storageKeyToNthInner,
-    roundUpBigToNearestInteger,
 } from "../utils";
 import { ErrorCode } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
@@ -26,14 +23,12 @@ export type BtcTxFees = {
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface OracleAPI extends TransactionAPI {
     /**
      * @returns The DOT/BTC exchange rate
      */
-    getExchangeRate(): Promise<Big>;
+    getExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>>;
     /**
      * Obtains the current fees for BTC transactions, in satoshi/byte.
      * @returns An object with the values `fast` (estimated fee for inclusion
@@ -41,10 +36,6 @@ export interface OracleAPI extends TransactionAPI {
      * and `hour` (fee for inclusion in the next 6 blocks, or ~60 minutes).
      */
     getBtcTxFeesPerByte(): Promise<BtcTxFees>;
-    /**
-     * @returns The feed name (such as "DOT/BTC")
-     */
-    getFeed(): Promise<string>;
     /**
      * @returns Last exchange rate time
      */
@@ -70,17 +61,13 @@ export interface OracleAPI extends TransactionAPI {
      */
     setBtcTxFeesPerByte(fees: BtcTxFees): Promise<void>;
     /**
-     * @returns The Planck/Satoshi exchange rate
+     * @returns Converted value
      */
-    getRawExchangeRate(): Promise<Big>;
+    convertWrappedToCollateral(amount: BTCAmount): Promise<PolkadotAmount>;
     /**
-     * @returns Convert a Satoshi amount to Planck
+     * @returns Converted value
      */
-    convertSatoshiToPlanck(amount: BN): Promise<BN>;
-    /**
-     * @returns Convert a Bitcoin amount to Dot
-     */
-    convertBitcoinToDot(amount: Big): Promise<Big>;
+    convertCollateralToWrapped(amount: PolkadotAmount): Promise<BTCAmount>;
     /**
      * @returns The period of time (in milliseconds) after an oracle's last submission
      * during which it is considered online
@@ -93,33 +80,31 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         super(api, account);
     }
 
-    async convertSatoshiToPlanck(amount: BN): Promise<BN> {
-        const planckPerSatoshi = await this.getRawExchangeRate();
-        const amountSatoshiBig = new Big(amount.toString());
-        const planck = roundUpBigToNearestInteger(planckPerSatoshi.mul(amountSatoshiBig));
-        return new BN(planck.toString());
+    async getExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
+        const decodedRawRate = decodeFixedPointType(encodedRawRate);
+        return new ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>(
+            Polkadot,
+            Bitcoin,
+            decodedRawRate
+        );
     }
 
-    async convertBitcoinToDot(amount: Big): Promise<Big> {
-        const dotPerBtc = await this.getExchangeRate();
-        return dotPerBtc.mul(amount);
+    async convertWrappedToCollateral(amount: BTCAmount): Promise<PolkadotAmount> {
+        const rate = await this.getExchangeRate();
+        return rate.toBase(amount);
     }
 
-    async getExchangeRate(): Promise<Big> {
-        const rawRate = await this.getRawExchangeRate();
-        return new Big(this.convertFromRawExchangeRate(rawRate));
+    async convertCollateralToWrapped(amount: PolkadotAmount): Promise<BTCAmount> {
+        const rate = await this.getExchangeRate();
+        return rate.toCounter(amount);
     }
 
     async getOnlineTimeout(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const moment = await this.api.query.exchangeRateOracle.maxDelay.at(head);
         return moment.toNumber();
-    }
-
-    async getRawExchangeRate(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
-        return decodeFixedPointType(encodedRawRate);
     }
 
     async setExchangeRate(dotPerBtc: Big): Promise<void> {
@@ -156,10 +141,6 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         return nameMap;
     }
 
-    getFeed(): Promise<string> {
-        return Promise.resolve(DEFAULT_FEED_NAME);
-    }
-
     async getLastExchangeRateTime(): Promise<Date> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(head);
@@ -183,12 +164,5 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
 
     private convertMoment(moment: Moment): Date {
         return new Date(moment.toNumber());
-    }
-
-    // Converts the raw exchange rate (Planck to Satoshi) into
-    // DOT to BTC
-    private convertFromRawExchangeRate(rate: Big): Big {
-        const divisor = new Big(DOT_IN_PLANCK / BTC_IN_SAT);
-        return rate.div(divisor);
     }
 }

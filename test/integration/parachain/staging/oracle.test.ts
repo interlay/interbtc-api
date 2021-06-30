@@ -74,11 +74,6 @@ describe("OracleAPI", () => {
         assert.equal(onlineTimeout, expectedOnlineTimeout);
     });
 
-    it("should getFeed", async () => {
-        const feed = await oracle.getFeed();
-        assert.equal(feed, DEFAULT_FEED_NAME);
-    });
-
     it("should getLastExchangeRateTime", async () => {
         const lastExchangeRateTime = await oracle.getLastExchangeRateTime();
         const dateAnHourAgo = new Date();
