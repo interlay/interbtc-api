@@ -25,11 +25,11 @@ describe("TokensAPI", () => {
         return api.disconnect();
     });
 
-    it("should subscribe to DOT balanace updates", async () => {
+    it("should subscribe to DOT balance updates", async () => {
         testBalanceSubscription(CurrencyIdLiteral.DOT);
     });
 
-    it("should subscribe to INTERBTC balanace updates", async () => {
+    it("should subscribe to INTERBTC balance updates", async () => {
         testBalanceSubscription(CurrencyIdLiteral.INTERBTC);
     });
 

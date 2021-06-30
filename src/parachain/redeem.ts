@@ -268,7 +268,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
         const ids = this.getRedeemIdsFromEvents(result.events);
         if (ids.length > 1) {
-            Promise.reject(new Error("Unexpected multiple redeem events from single execute transaction!"));
+            return Promise.reject(new Error("Unexpected multiple redeem events from single execute transaction!"));
         }
     }
 
@@ -391,12 +391,8 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             });
             return unsubscribe;
         } catch (error) {
-            console.log(`Error onRedeem: ${error}`);
+            return Promise.reject(new Error(`Error onRedeem: ${error}`));
         }
-        // as a fallback, return an empty void function
-        return () => {
-            return;
-        };
     }
 
     async getFeesToPay(amount: Big): Promise<Big> {

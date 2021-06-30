@@ -226,7 +226,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
                 }
             }
         } catch (e) {
-            console.log(`Error during tx lookup by address: ${e}`);
+            return Promise.reject(new Error(`Error during tx lookup by address: ${e}`));
         }
         return Promise.reject(new Error("No transaction found for recipient and amount"));
     }
@@ -260,7 +260,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         try {
             txs = await this.getData(this.scripthashApi.getRecentTxsByScripthash(hash));
         } catch (e) {
-            console.log(`Error during tx lookup by OP_RETURN: ${e}`);
+            return Promise.reject(new Error(`Error during tx lookup by OP_RETURN: ${e}`));
         }
 
         for (const tx of txs) {

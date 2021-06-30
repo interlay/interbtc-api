@@ -20,14 +20,14 @@ export interface FeeAPI {
      * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
      * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
      * @param lockedCollateral Collateral value representing the value locked to gain yield. Large denomination (e.g. DOT)
-     * @param collateralToWrappedRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
+     * @param exchangeRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
      * @returns The APY, given the parameters
      */
     calculateAPY(
         feesWrapped: Big,
         feesCollateral: Big,
         lockedCollateral: Big,
-        collateralToWrappedRate?: Big
+        exchangeRate?: Big
     ): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
@@ -77,15 +77,15 @@ export class DefaultFeeAPI implements FeeAPI {
         feesWrapped: Big,
         feesCollateral: Big,
         lockedCollateral: Big,
-        collateralToWrappedRate?: Big
+        exchangeRate?: Big
     ): Promise<Big> {
         if (lockedCollateral.eq(new Big(0))) {
             return new Big(0);
         }
-        if (collateralToWrappedRate === undefined) {
-            collateralToWrappedRate = await this.oracleAPI.getExchangeRate();
+        if (exchangeRate === undefined) {
+            exchangeRate = await this.oracleAPI.getExchangeRate();
         }
-        const feesWrappedAsCollateral = feesWrapped.mul(collateralToWrappedRate);
+        const feesWrappedAsCollateral = feesWrapped.mul(exchangeRate);
         const totalFees = feesCollateral.add(feesWrappedAsCollateral);
 
         // convert to percent

@@ -180,7 +180,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
 
     async getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], Big][]> {
         if (!nominatorId && !vaultId) {
-            Promise.reject(new Error("At least one parameter should be specified"));
+            return Promise.reject(new Error("At least one parameter should be specified"));
         }
         const parsedNominatorId = nominatorId ? newAccountId(this.api, nominatorId) : undefined;
         const parsedVaultId = vaultId ? newAccountId(this.api, vaultId) : undefined;
@@ -217,7 +217,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         // There is at most one entry determined by this pair
         const filteredNominations = await this.getFilteredNominations(nominatorId, vaultId);
         if (filteredNominations.length === 0) {
-            Promise.reject(new Error("No nomination associated with this (nominator, vault) pair"));
+            return Promise.reject(new Error("No nomination associated with this (nominator, vault) pair"));
         }
         const filteredNomination = filteredNominations[0];
         if (filteredNomination[1].eq(new Big(0))) {

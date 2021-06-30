@@ -82,7 +82,7 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
             });
             return unsubscribe;
         } catch (error) {
-            console.log(`Error during balance subscription callback: ${error}`);
+            Promise.reject(error);
         }
         // as a fallback, return an empty void function
         return () => {

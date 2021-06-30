@@ -171,8 +171,7 @@ export async function issueSingle(
         };
     } catch (e) {
         // IssueCompleted errors occur when multiple vaults attempt to execute the same request
-        console.log(e);
-        throw new Error(`Issuing failed: ${e}`);
+        return Promise.reject(new Error(`Issuing failed: ${e}`));
     }
 }
 export function sleep(ms: number): Promise<void> {
