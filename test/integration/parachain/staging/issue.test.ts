@@ -8,7 +8,7 @@ import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs"
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { newAccountId, REGTEST_ESPLORA_BASE_PATH, satToBTC } from "../../../../src/utils";
-import { assert, expect } from "../../../chai";
+import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
@@ -194,15 +194,6 @@ describe("issue", () => {
     it("should getFeeRate", async () => {
         const feePercentage = await issueAPI.getFeeRate();
         assert.equal(feePercentage.toString(), "0.005");
-    });
-
-    it("should getIssuePeriod", async () => {
-        try {
-            const period = await issueAPI.getIssuePeriod();
-            expect(period.toString()).equal("50");
-        } catch (error) {
-            console.log(error);
-        }
     });
 
     it("should getGriefingCollateral", async () => {

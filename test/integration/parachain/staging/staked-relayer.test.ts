@@ -5,8 +5,7 @@ import { assert } from "../../../chai";
 import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
-import Big from "big.js";
-import { DefaultElectrsAPI, ElectrsAPI, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { DefaultElectrsAPI, ElectrsAPI, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 
 describe("stakedRelayerAPI", () => {
     let api: ApiPromise;
@@ -32,11 +31,6 @@ describe("stakedRelayerAPI", () => {
         assert.isDefined(monitoredVaultsCollateralizationRate);
     });
 
-    it("should list relayers", async () => {
-        const list = (await stakedRelayerAPI.list()).map(v => v.toString());
-        assert.deepEqual(list, [alice_stash.address]);
-    });
-
     it("should getLastBTCDOTExchangeRateAndTime", async () => {
         const lastBTCDOTExchangeRateAndTime = await stakedRelayerAPI.getLastBTCDOTExchangeRateAndTime();
         assert.isDefined(lastBTCDOTExchangeRateAndTime);
@@ -47,29 +41,4 @@ describe("stakedRelayerAPI", () => {
         assert.isDefined(currentStateOfBTCParachain);
     });
 
-    it("should getMaxSLA", async () => {
-        const feesToPay = await stakedRelayerAPI.getMaxSLA();
-        assert.equal(feesToPay, 100);
-    });
-
-    it("should get SLA", async () => {
-        const sla = await stakedRelayerAPI.getSLA(newAccountId(api, alice_stash.address));
-        const slaBig = new Big(sla);
-        const slaBenchmark = new Big("0");
-        assert.isTrue(slaBig.gte(slaBenchmark));
-    });
-
-    it("should get APY", async () => {
-        const apy = await stakedRelayerAPI.getAPY(newAccountId(api, alice_stash.address));
-        const apyBenchmark = new Big("0");
-        assert.isTrue(apy.gte(apyBenchmark));
-    });
-
-    it("should getFees", async () => {
-        const feesWrapped = await stakedRelayerAPI.getWrappingFees(newAccountId(api, alice_stash.address));
-        const feesDOT = await stakedRelayerAPI.getCollateralFees(newAccountId(api, alice_stash.address));
-        const feeBenchmark = new Big("0");
-        assert.isTrue(new Big(feesWrapped).gte(feeBenchmark));
-        assert.isTrue(new Big(feesDOT).gte(feeBenchmark));
-    });
 });

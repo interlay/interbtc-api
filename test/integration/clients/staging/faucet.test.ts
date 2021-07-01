@@ -3,15 +3,16 @@ import { FaucetClient } from "../../../../src/clients";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { DEFAULT_PARACHAIN_ENDPOINT, DEFAULT_FAUCET_ENDPOINT } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { AccountData } from "@polkadot/types/interfaces/balances";
 import { assert } from "../../../chai";
 import Big from "big.js";
+import { CurrencyIdLiteral, DefaultTokensAPI, TokensAPI } from "../../../../src";
 
 describe("Faucet", function () {
     this.timeout(100000);
 
     let api: ApiPromise;
     let faucet: FaucetClient;
+    let tokensAPI: TokensAPI;
 
     let keyring: Keyring;
     let helen: KeyringPair;
@@ -19,6 +20,7 @@ describe("Faucet", function () {
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         faucet = new FaucetClient(DEFAULT_FAUCET_ENDPOINT);
+        tokensAPI = new DefaultTokensAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         helen = keyring.addFromUri("//Helen");
     });
@@ -30,13 +32,14 @@ describe("Faucet", function () {
     describe("Funding", () => {
         it("should get funds from faucet", async () => {
             const helenAccountId = api.createType("AccountId", helen.address);
-            const expectedAllowance = 10000000000;
-            const balanceBeforeFunding = (await api.query.collateral.account(helenAccountId)) as AccountData;
+            const expectedAllowance = 100;
+            const balanceBeforeFunding = await tokensAPI.balance(CurrencyIdLiteral.DOT, helenAccountId);
             await faucet.fundAccount(helenAccountId);
-            const balanceAfterFunding = (await api.query.collateral.account(helenAccountId)) as AccountData;
-            const balanceBeforeFundingBig = new Big(balanceBeforeFunding.free.toString());
-            const balanceAfterFundingBig = new Big(balanceAfterFunding.free.toString());
-            assert.isTrue(balanceBeforeFundingBig.add(new Big(expectedAllowance)).eq(balanceAfterFundingBig));
+            const balanceAfterFunding = await tokensAPI.balance(CurrencyIdLiteral.DOT, helenAccountId);
+            assert.equal(
+                balanceBeforeFunding.add(new Big(expectedAllowance)).toString(),
+                balanceAfterFunding.toString()
+            );
         });
 
         it("should fail to get funds from faucet again", async () => {

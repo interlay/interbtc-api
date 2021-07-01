@@ -79,9 +79,14 @@ export function btcAddressFromParams(
     });
 }
 
-export async function getTxProof(electrsAPI: ElectrsAPI, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<[Bytes, Bytes]> {
+export async function getTxProof(
+    electrsAPI: ElectrsAPI,
+    btcTxId?: string,
+    merkleProof?: Bytes,
+    rawTx?: Bytes
+): Promise<[Bytes, Bytes]> {
     if (!merkleProof || !rawTx) {
-        if(!btcTxId) {
+        if (!btcTxId) {
             throw new Error("Either the `btcTxId` or both `merkleProof` and `rawTx` must be defined to execute.");
         }
         [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(btcTxId);

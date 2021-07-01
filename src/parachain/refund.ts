@@ -98,7 +98,7 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
             const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(id);
             return keyValuePair[0];
         } catch (error) {
-            return Promise.reject(`Error fetching refund request by issue id: ${error}`);
+            return Promise.reject(new Error(`Error fetching refund request by issue id: ${error}`));
         }
     }
 
@@ -108,7 +108,7 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
             const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(id);
             return encodeRefundRequest(keyValuePair[1], this.btcNetwork);
         } catch (error) {
-            return Promise.reject(`Error fetching refund request by issue id: ${error}`);
+            return Promise.reject(new Error(`Error fetching refund request by issue id: ${error}`));
         }
     }
 }

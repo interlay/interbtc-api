@@ -52,7 +52,7 @@ export function addHexPrefix(str: string): string {
  * @param hash The either H256 or string encoded hash
  **/
 export function ensureHashEncoded(api: ApiPromise, hash: H256 | string): H256 {
-    if (typeof(hash) === "string") {
+    if (typeof hash === "string") {
         return api.createType("H256", addHexPrefix(hash as string));
     } else {
         return hash as H256;
@@ -93,8 +93,8 @@ export function encodeUnsignedFixedPoint(api: ApiPromise, x: Big): UnsignedFixed
     return api.createType("FixedU128", xScaled.toFixed());
 }
 
-export function storageKeyToFirstInner<T extends Codec>(s: StorageKey<[T]>): T {
-    return s.args[0];
+export function storageKeyToNthInner<T extends Codec>(s: StorageKey<T[]>, n = 0): T {
+    return s.args[n];
 }
 
 export interface DecodedRequest extends Struct {
@@ -110,8 +110,8 @@ export function encodeParachainRequest<T extends DecodedRequest, K extends Decod
     req: T,
     network: Network
 ): K {
-    return ({
+    return {
         ...req,
         btc_address: encodeBtcAddress(req.btc_address, network),
-    } as unknown) as K;
+    } as unknown as K;
 }

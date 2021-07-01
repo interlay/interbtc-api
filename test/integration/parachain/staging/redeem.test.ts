@@ -17,10 +17,10 @@ import {
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { DefaultTreasuryAPI, TreasuryAPI } from "../../../../src/parachain/treasury";
+import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import Big from "big.js";
-import { DefaultStakedRelayerAPI, ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH, StakedRelayerAPI, IssueStatus } from "../../../../src";
+import { DefaultStakedRelayerAPI, ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH, StakedRelayerAPI, IssueStatus, CurrencyIdLiteral } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -28,7 +28,7 @@ export type RequestResult = { hash: Hash; vault: Vault };
 describe("redeem", () => {
     let redeemAPI: RedeemAPI;
     let issueAPI: IssueAPI;
-    let treasuryAPI: TreasuryAPI;
+    let tokensAPI: TokensAPI;
     let stakedRelayerAPI: StakedRelayerAPI;
     let api: ApiPromise;
     let keyring: Keyring;
@@ -49,7 +49,7 @@ describe("redeem", () => {
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
-        treasuryAPI = new DefaultTreasuryAPI(api);
+        tokensAPI = new DefaultTokensAPI(api);
         stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice_stash);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
@@ -89,7 +89,7 @@ describe("redeem", () => {
 
         // Skip this test. Vaults fail to auto-execute to redeem in good time.
         it.skip("should issue and auto-execute redeem", async () => {
-            const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
+            const initialBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
             const issueAmount = new Big("0.001");
             const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
             const redeemAmount = new Big("0.0009");
@@ -97,13 +97,13 @@ describe("redeem", () => {
 
             // check redeeming worked
             const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
-            const finalBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
+            const finalBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem), finalBalance);
         }).timeout(1000000);
 
         // Vaults fail to submit the opreturn tx in good time
         it.skip("should issue and manually execute redeem", async () => {
-            const initialBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
+            const initialBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
             const issueAmount = new Big("0.001");
             const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
             const redeemAmount = new Big("0.0009");
@@ -111,7 +111,7 @@ describe("redeem", () => {
 
             // check redeeming worked
             const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
-            const finalBalance = await treasuryAPI.balance(api.createType("AccountId", alice.address));
+            const finalBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem), finalBalance);
         }).timeout(1000000);
     });

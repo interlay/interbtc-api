@@ -12,7 +12,7 @@ import {
     createPolkadotAPI,
     OracleAPI,
     RedeemAPI,
-    TreasuryAPI,
+    TokensAPI,
     BTCRelayAPI,
     DefaultBTCRelayAPI,
     setNumericStorage,
@@ -22,6 +22,7 @@ import {
     DefaultVaultsAPI,
     newAccountId,
     REGTEST_ESPLORA_BASE_PATH,
+    CurrencyIdLiteral,
 } from "../../../../src";
 import { issueSingle } from "../../../../src/utils/";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -37,7 +38,7 @@ import {
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_PARACHAIN_ENDPOINT
 } from "../../../config";
-import { DefaultTreasuryAPI } from "../../../../src/parachain/treasury";
+import { DefaultTokensAPI } from "../../../../src/parachain/tokens";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -45,7 +46,7 @@ describe("Initialize parachain state", () => {
     let redeemAPI: RedeemAPI;
     let oracleAPI: OracleAPI;
     let electrsAPI: ElectrsAPI;
-    let treasuryAPI: TreasuryAPI;
+    let tokensAPI: TokensAPI;
     let vaultsAPI: VaultsAPI;
     let nominationAPI: NominationAPI;
     let btcRelayAPI: BTCRelayAPI;
@@ -80,11 +81,10 @@ describe("Initialize parachain state", () => {
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         oracleAPI = new DefaultOracleAPI(api, bob);
-        treasuryAPI = new DefaultTreasuryAPI(api, alice);
+        tokensAPI = new DefaultTokensAPI(api, alice);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-
         // Sleep for 2 min to wait for vaults to register
         await sleep(2 * 60 * 1000);
     });
@@ -94,9 +94,9 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the stable confirmations and ready the Btc Relay", async () => {
-        // Speed up the process by only requiring 1 parachain and 1 bitcoin confirmation
-        const stableBitcoinConfirmationsToSet = 1;
-        const stableParachainConfirmationsToSet = 1;
+        // Speed up the process by only requiring 0 parachain and 0 bitcoin confirmations
+        const stableBitcoinConfirmationsToSet = 0;
+        const stableParachainConfirmationsToSet = 0;
         await setNumericStorage(api, "BTCRelay", "StableBitcoinConfirmations", new BN(stableBitcoinConfirmationsToSet), issueAPI);
         await setNumericStorage(api, "BTCRelay", "StableParachainConfirmations", new BN(stableParachainConfirmationsToSet), issueAPI);
         const stableBitcoinConfirmations = await btcRelayAPI.getStableBitcoinConfirmations();
@@ -124,15 +124,16 @@ describe("Initialize parachain state", () => {
         const interBtcToIssue = new Big(0.1);
         const feesToPay = await issueAPI.getFeesToPay(interBtcToIssue);
         const aliceAccountId = api.createType("AccountId", alice.address);
-        const aliceInterBTCBefore = await treasuryAPI.balance(aliceAccountId);
+        const aliceInterBTCBefore = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, aliceAccountId);
+
         await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, interBtcToIssue, charlie_stash.address);
-        const aliceInterBTCAfter = await treasuryAPI.balance(aliceAccountId);
+        const aliceInterBTCAfter = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, aliceAccountId);
         assert.equal(
             aliceInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
             aliceInterBTCAfter.toString(),
             "Issued amount is different from the requested amount"
         );
-        const totalIssuance = await treasuryAPI.total();
+        const totalIssuance = await tokensAPI.total(CurrencyIdLiteral.INTERBTC);
         assert.equal(totalIssuance.toString(), interBtcToIssue.toString());
         const vaultIssuedAmount = await vaultsAPI.getIssuedAmount(newAccountId(api, charlie_stash.address));
         assert.equal(vaultIssuedAmount.toString(), interBtcToIssue.toString());
