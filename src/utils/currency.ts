@@ -67,8 +67,9 @@ export function dotToPlanck(dot: Big): BN {
     return bigToBn(dot.mul(DOT_IN_PLANCK));
 }
 
-export function computeStake(stake: Big, perToken: Big, tally: Big): BN {
-    return bigToBn(stake.mul(perToken).sub(tally));
+export function computeLazyDistribution(stake: Big, perToken: Big, tally: Big): BN {
+    const lazyDistribution = stake.mul(perToken).sub(tally);
+    return bigToBn(lazyDistribution);
 }
 
 export function roundLastNDigits(n: number, x: BN | Big | string): string {

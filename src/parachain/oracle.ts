@@ -1,6 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { BTreeSet } from "@polkadot/types/codec";
-import { Moment } from "@polkadot/types/interfaces/runtime";
+import { Moment } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
@@ -10,7 +10,7 @@ import {
     DOT_IN_PLANCK,
     decodeFixedPointType,
     encodeUnsignedFixedPoint,
-    storageKeyToFirstInner,
+    storageKeyToNthInner,
     roundUpBigToNearestInteger,
 } from "../utils";
 import { ErrorCode } from "../interfaces/default";
@@ -89,7 +89,6 @@ export interface OracleAPI extends TransactionAPI {
 }
 
 export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI {
-
     constructor(api: ApiPromise, account?: AddressOrPair) {
         super(api, account);
     }
@@ -153,9 +152,7 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const oracles = await this.api.query.exchangeRateOracle.authorizedOracles.entriesAt(head);
         const nameMap = new Map<string, string>();
-        oracles.forEach((oracle) =>
-            nameMap.set(storageKeyToFirstInner(oracle[0]).toString(), oracle[1].toUtf8())
-        );
+        oracles.forEach((oracle) => nameMap.set(storageKeyToNthInner(oracle[0]).toString(), oracle[1].toUtf8()));
         return nameMap;
     }
 

@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "description": "JavaScript library to interact with InterBTC",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -39,9 +39,9 @@
   "engineStrict": true,
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
-    "@interlay/interbtc-types": "0.8.1",
-    "@polkadot/api": "4.12.1",
-    "@polkadot/typegen": "4.12.1",
+    "@interlay/interbtc-types": "0.8.3",
+    "@polkadot/api": "4.15.1",
+    "@polkadot/typegen": "4.15.1",
     "@polkadot/keyring": "6.6.2-6",
     "@types/big.js": "6.0.2",
     "big.js": "6.0.3",

@@ -16,12 +16,12 @@ export interface Redeem {
 }
 
 export enum RedeemStatus {
-  Completed,
-  Expired,
-  Reimbursed,
-  Retried,
-  PendingWithBtcTxNotFound,
-  PendingWithBtcTxNotIncluded,
-  PendingWithTooFewConfirmations,
-  PendingWithEnoughConfirmations
+    Completed,
+    Expired,
+    Reimbursed,
+    Retried,
+    PendingWithBtcTxNotFound,
+    PendingWithBtcTxNotIncluded,
+    PendingWithTooFewConfirmations,
+    PendingWithEnoughConfirmations,
 }

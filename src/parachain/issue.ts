@@ -13,13 +13,13 @@ import {
     getTxProof,
     btcToSat,
     dotToPlanck,
-    allocateAmountsToVaults, 
+    allocateAmountsToVaults,
     getRequestIdsFromEvents,
     satToBTC,
     stripHexPrefix,
     planckToDOT,
     encodeBtcAddress,
-    storageKeyToFirstInner,
+    storageKeyToNthInner,
     ensureHashEncoded,
     addHexPrefix,
 } from "../utils";
@@ -31,16 +31,14 @@ import BN from "bn.js";
 
 export type IssueLimits = { singleVaultMaxIssuable: Big; totalMaxIssuable: Big };
 
-export function encodeIssueRequest(
-    req: IssueRequest,
-    network: Network,
-    id: H256 | string,
-): Issue {
+export function encodeIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
     const amountBTC = satToBTC(req.amount);
     const fee = satToBTC(req.fee);
-    const status = req.status.isCompleted ? IssueStatus.Completed :
-        req.status.isCancelled ? IssueStatus.Cancelled :
-            IssueStatus.PendingWithBtcTxNotFound;
+    const status = req.status.isCompleted
+        ? IssueStatus.Completed
+        : req.status.isCancelled
+            ? IssueStatus.Cancelled
+            : IssueStatus.PendingWithBtcTxNotFound;
     return {
         id: stripHexPrefix(id.toString()),
         creationBlock: req.opentime.toNumber(),
@@ -205,7 +203,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         cachedVaults?: Map<AccountId, Big>
     ): Promise<Issue[]> {
         try {
-            if(vaultId) {
+            if (vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
                 // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
                 const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
@@ -231,7 +229,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const griefingCollateralBig = await this.getGriefingCollateral(amount);
             // add() here is a hacky workaround for rounding errors
             const griefingCollateralPlanck = dotToPlanck(griefingCollateralBig).add(new BN(100));
-            const amountWrapped = this.api.createType("Wrapped", btcToSat(amount));
+            const amountWrapped = this.api.createType("Balance", btcToSat(amount));
             txs.push(this.api.tx.issue.requestIssue(amountWrapped, vault, griefingCollateralPlanck));
         }
         // batchAll fails atomically, batch allows partial successes
@@ -273,14 +271,17 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     async list(): Promise<Issue[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const issueRequests = await this.api.query.issue.issueRequests.entriesAt(head);
-        return issueRequests.map(([id, req]) => encodeIssueRequest(req, this.btcNetwork, storageKeyToFirstInner(id)));
+        return issueRequests.map(([id, req]) => encodeIssueRequest(req, this.btcNetwork, storageKeyToNthInner(id)));
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, Issue>> {
         const issueRequestPairs: [H256, IssueRequest][] = await this.api.rpc.issue.getIssueRequests(account);
         const mapForUser: Map<H256, Issue> = new Map<H256, Issue>();
         issueRequestPairs.forEach((issueRequestPair) =>
-            mapForUser.set(issueRequestPair[0], encodeIssueRequest(issueRequestPair[1], this.btcNetwork, issueRequestPair[0]))
+            mapForUser.set(
+                issueRequestPair[0],
+                encodeIssueRequest(issueRequestPair[1], this.btcNetwork, issueRequestPair[0])
+            )
         );
         return mapForUser;
     }
@@ -314,12 +315,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         return Promise.all(
             issueIds.map(async (issueId) =>
                 encodeIssueRequest(
-                    await this.api.query.issue.issueRequests.at(
-                        head,
-                        ensureHashEncoded(this.api, issueId)
-                    ),
+                    await this.api.query.issue.issueRequests.at(head, ensureHashEncoded(this.api, issueId)),
                     this.btcNetwork,
-                    issueId,
+                    issueId
                 )
             )
         );

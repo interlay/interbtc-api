@@ -12,25 +12,24 @@ import { DefaultFeeAPI, FeeAPI } from "./parachain/fee";
 import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "./parachain/staked-relayer";
 import { DefaultVaultsAPI, VaultsAPI } from "./parachain/vaults";
 import { DefaultSystemAPI, SystemAPI } from "./parachain/system";
-import { DefaultCollateralAPI, CollateralAPI } from "./parachain/collateral";
-import { DefaultTreasuryAPI, TreasuryAPI } from "./parachain/treasury";
+import { DefaultTokensAPI, TokensAPI } from "./parachain/tokens";
 import { FaucetClient } from "./clients";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
-import {BitcoinNetwork} from "./types/bitcoinTypes";
+import { BitcoinNetwork } from "./types/bitcoinTypes";
 
 export * from "./factory";
 export * from "./parachain/transaction";
 
 export function getBitcoinNetwork(network: BitcoinNetwork = "mainnet"): Network {
     switch (network) {
-    case "mainnet":
-        return networks.bitcoin;
-    case "testnet":
-        return networks.testnet;
-    default:
-        return networks.regtest;
+        case "mainnet":
+            return networks.bitcoin;
+        case "testnet":
+            return networks.testnet;
+        default:
+            return networks.regtest;
     }
 }
 
@@ -45,8 +44,7 @@ export interface InterBTCAPI {
     readonly oracle: OracleAPI;
     readonly electrsAPI: ElectrsAPI;
     readonly btcRelay: BTCRelayAPI;
-    readonly collateral: CollateralAPI;
-    readonly treasury: TreasuryAPI;
+    readonly tokens: TokensAPI;
     readonly system: SystemAPI;
     readonly replace: ReplaceAPI;
     readonly fee: FeeAPI;
@@ -70,8 +68,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly oracle: OracleAPI;
     public readonly electrsAPI: ElectrsAPI;
     public readonly btcRelay: BTCRelayAPI;
-    public readonly collateral: CollateralAPI;
-    public readonly treasury: TreasuryAPI;
+    public readonly tokens: TokensAPI;
     public readonly system: SystemAPI;
     public readonly replace: ReplaceAPI;
     public readonly fee: FeeAPI;
@@ -86,8 +83,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork, this.electrsAPI, _account);
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, _account);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
-        this.collateral = new DefaultCollateralAPI(api, _account);
-        this.treasury = new DefaultTreasuryAPI(api, _account);
+        this.tokens = new DefaultTokensAPI(api, _account);
         this.system = new DefaultSystemAPI(api);
         this.replace = new DefaultReplaceAPI(api, btcNetwork, this.electrsAPI, _account);
         this.fee = new DefaultFeeAPI(api);
@@ -107,8 +103,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.vaults.setAccount(account);
         this.stakedRelayer.setAccount(account);
         this.refund.setAccount(account);
-        this.collateral.setAccount(account);
-        this.treasury.setAccount(account);
+        this.tokens.setAccount(account);
         this.replace.setAccount(account);
         this.issue.setAccount(account);
         this.redeem.setAccount(account);

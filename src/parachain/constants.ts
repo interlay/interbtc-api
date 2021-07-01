@@ -1,4 +1,4 @@
-import { Balance, BalanceOf, BlockNumber, Moment, RuntimeDbWeight } from "@polkadot/types/interfaces/runtime";
+import { BalanceOf, BlockNumber, Moment, RuntimeDbWeight } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
 import { Vec } from "@polkadot/types/codec";
 import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
@@ -9,14 +9,6 @@ import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
  * while the type BN represents Planck or Satoshi denominations.
  */
 export interface ConstantsAPI {
-    /**
-     * @returns The minimum amount of DOT required to keep an account open.
-     */
-    getDotExistentialDeposit(): Balance;
-    /**
-     * @returns The minimum amount of InterBTC required to keep an account open.
-     */
-    getInterBtcExistentialDeposit(): Balance;
     /**
      * @returns Maximum number of block number to block hash mappings to keep (oldest pruned first).
      */
@@ -44,14 +36,6 @@ export interface ConstantsAPI {
 
 export class DefaultConstantsAPI implements ConstantsAPI {
     constructor(private api: ApiPromise) {}
-
-    getDotExistentialDeposit(): Balance {
-        return this.api.consts.collateral.existentialDeposit;
-    }
-
-    getInterBtcExistentialDeposit(): Balance {
-        return this.api.consts.wrapped.existentialDeposit;
-    }
 
     getSystemBlockHashCount(): BlockNumber {
         return this.api.consts.system.blockHashCount;

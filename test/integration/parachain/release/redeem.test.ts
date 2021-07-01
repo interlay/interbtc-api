@@ -10,7 +10,7 @@ import { Vault } from "../../../../src/interfaces/default";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { issueSingle } from "../../../../src/utils";
+import { issueSingle, stripHexPrefix } from "../../../../src/utils";
 import { DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep } from "../../../../src";
 import { assert } from "../../../chai";
 
@@ -92,10 +92,10 @@ describe("redeem", () => {
         alice = keyring.addFromUri("//Alice");
         
         redeemAPI.subscribeToRedeemExpiry(newAccountId(api, alice.address), (requestId) => {
-            if (redeemRequest.id.toString() === requestId.toString()) {
+            if (stripHexPrefix(redeemRequest.id.toString()) === stripHexPrefix(requestId.toString())) {
                 redeemRequestExpiryCallback = true;
             }
-        })
+        });
 
         await aliceBitcoinCoreClient.mineBlocks(2);
         await redeemAPI.cancel(redeemRequest.id.toString(), true);
@@ -106,5 +106,5 @@ describe("redeem", () => {
         assert.isTrue(redeemRequestExpiryCallback, "Callback was not called when the redeem request expired.");
         // Set issue period back to its initial value to minimize side effects.
         await redeemAPI.setRedeemPeriod(initialRedeemPeriod);
-    }).timeout(300000)
+    }).timeout(300000);
 });
