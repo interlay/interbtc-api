@@ -3,7 +3,9 @@
 cp -r docs/helpers tmp_docs_helpers/
 rm -rf ./docs
 
-./node_modules/typedoc/bin/typedoc --options typedoc.json src/index.ts
+# typedoc config is defined in typedoc.json
+npx typedoc
+
 cp -r tmp_docs_helpers docs/helpers
 cp -r docs/helpers/* docs/
 

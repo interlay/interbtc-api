@@ -2,5 +2,7 @@
     "categoryOrder": ["InterBTC Bridge", "InterBTC Bridge", "Clients", "Bitcoin Core", "*"],
     "plugin": "typedoc-plugin-markdown",
     "publicPath": "/",
-    "namedAnchors": true
+    "namedAnchors": true,
+    "entryPoints": ["src/index.ts"],
+    "out": "docs"
 }
