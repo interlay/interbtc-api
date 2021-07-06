@@ -6,12 +6,12 @@ import { Bytes } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import BN from "bn.js";
+import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
     decodeFixedPointType,
-    btcToSat,
     satToBTC,
     getTxProof,
     stripHexPrefix,
@@ -21,6 +21,7 @@ import {
     newAccountId,
     ensureHashEncoded,
     addHexPrefix,
+    bnToBig,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
@@ -28,7 +29,7 @@ import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RedeemRequest } from "../interfaces/default";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import { CurrencyIdLiteral, Redeem, RedeemStatus } from "../types";
+import { Redeem, RedeemStatus } from "../types";
 
 export function encodeRedeemRequest(req: RedeemRequest, network: Network, id: H256): Redeem {
     const status = req.status.isCompleted
@@ -64,7 +65,7 @@ export interface RedeemAPI extends TransactionAPI {
     list(): Promise<Redeem[]>;
     /**
      * Send a redeem request transaction
-     * @param amount InterBTC amount (denoted in Bitcoin) to redeem
+     * @param amount InterBTC amount to redeem
      * @param btcAddressEnc Bitcoin address where the redeemed BTC should be sent
      * @param vaultId (optional) ID of the vault to redeem with.
      * @param atomic (optional) Whether the request should be handled atomically or not. Only makes a difference
@@ -74,12 +75,12 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns An array of type {redeemId, redeemRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
-        amount: Big,
+        amount: BTCAmount,
         btcAddressEnc: string,
         vaultId?: AccountId,
         atomic?: boolean,
         retries?: number,
-        availableVaults?: Map<AccountId, Big>
+        availableVaults?: Map<AccountId, BTCAmount>
     ): Promise<Redeem[]>;
 
     /**
@@ -91,7 +92,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns An array of type {redeemId, vault} if the requests succeeded.
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
-    requestAdvanced(amountsPerVault: Map<AccountId, Big>, btcAddressEnc: string, atomic: boolean): Promise<Redeem[]>;
+    requestAdvanced(amountsPerVault: Map<AccountId, BTCAmount>, btcAddressEnc: string, atomic: boolean): Promise<Redeem[]>;
 
     /**
      * Send a redeem execution transaction
@@ -153,7 +154,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns The minimum amount of btc that is accepted for redeem requests; any lower values would
      * risk the bitcoin client to reject the payment
      */
-    getDustValue(): Promise<Big>;
+    getDustValue(): Promise<BTCAmount>;
     /**
      * @returns The fee charged for redeeming. For instance, "0.005" stands for 0.5%
      */
@@ -162,31 +163,32 @@ export interface RedeemAPI extends TransactionAPI {
      * @param amountBtc The amount, in BTC, for which to compute the redeem fees
      * @returns The fees, in BTC
      */
-    getFeesToPay(amount: Big): Promise<Big>;
+    getFeesToPay(amount: BTCAmount): Promise<BTCAmount>;
     /**
      * @returns If users execute a redeem with a Vault flagged for premium redeem,
      * they can earn a DOT premium, slashed from the Vault's collateral.
+     * This value is a percentage of the redeemed amount.
      */
     getPremiumRedeemFee(): Promise<Big>;
     /**
      * Burn wrapped tokens for a premium
-     * @param amount The amount of InterBTC to burn, denominated as InterBTC
+     * @param amount The amount of InterBTC to burn
      */
-    burn(amount: Big): Promise<void>;
+    burn(amount: BTCAmount): Promise<void>;
     /**
      * @returns The maximum amount of tokens that can be burned through a liquidation redeem
      */
-    getMaxBurnableTokens(): Promise<Big>;
+    getMaxBurnableTokens(): Promise<BTCAmount>;
     /**
      * @returns The exchange rate (collateral currency to wrapped token currency)
      * used when burning tokens
      */
-    getBurnExchangeRate(): Promise<Big>;
+    getBurnExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>>;
     /**
      * @returns The current inclusion fee based on the expected number of bytes
      * in the transaction, and the inclusion fee rate reported by the oracle
      */
-    getCurrentInclusionFee(): Promise<Big>;
+    getCurrentInclusionFee(): Promise<BTCAmount>;
 }
 
 export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
@@ -208,26 +210,26 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async request(
-        amount: Big,
+        amount: BTCAmount,
         btcAddressEnc: string,
         vaultId?: AccountId,
         atomic: boolean = true,
         retries: number = 0,
-        cachedVaults?: Map<AccountId, Big>
+        cachedVaults?: Map<AccountId, BTCAmount>
     ): Promise<Redeem[]> {
         try {
             if (vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
                 // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
-                const amountsPerVault = new Map<AccountId, Big>([[vaultId, amount]]);
+                const amountsPerVault = new Map<AccountId, BTCAmount>([[vaultId, amount]]);
                 return await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             }
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithRedeemableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountBTC), new Big(0));
+            const successfulSum = result.reduce((sum, req) => sum.add(BTCAmount.from.BTC(req.amountBTC)), BTCAmount.zero);
             const remainder = amount.sub(successfulSum);
-            if (remainder.eq(0) || retries === 0) return result;
+            if (remainder.isZero() || retries === 0) return result;
             else {
                 return (
                     await this.request(remainder, btcAddressEnc, vaultId, atomic, retries - 1, availableVaults)
@@ -239,14 +241,14 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async requestAdvanced(
-        amountsPerVault: Map<AccountId, Big>,
+        amountsPerVault: Map<AccountId, BTCAmount>,
         btcAddressEnc: string,
         atomic: boolean
     ): Promise<Redeem[]> {
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const amountWrapped = this.api.createType("Balance", btcToSat(amount));
+            const amountWrapped = this.api.createType("Balance", amount.str.Satoshi);
             txes.push(this.api.tx.redeem.requestRedeem(amountWrapped, btcAddress, vault));
         }
         // batchAll fails atomically, batch allows partial successes
@@ -278,8 +280,8 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
-    async burn(amount: Big): Promise<void> {
-        const amountSat = this.api.createType("Balance", btcToSat(amount));
+    async burn(amount: BTCAmount): Promise<void> {
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi);
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
         await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
     }
@@ -295,34 +297,43 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return blockNumber.toNumber();
     }
 
-    async getMaxBurnableTokens(): Promise<Big> {
+    async getMaxBurnableTokens(): Promise<BTCAmount> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault();
-        return satToBTC(liquidationVault.issued_tokens);
+        return BTCAmount.from.Satoshi(liquidationVault.issued_tokens.toString())
     }
 
-    async getBurnExchangeRate(): Promise<Big> {
+    async getBurnExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault();
         const wrappedSatoshi = liquidationVault.issued_tokens.add(liquidationVault.to_be_issued_tokens);
         if (wrappedSatoshi.isZero()) {
             return Promise.reject(new Error("There are no burnable tokens. The burn exchange rate is undefined"));
         }
-        const wrappedBtc = satToBTC(wrappedSatoshi);
+        const wrappedSatoshiBig = bnToBig(wrappedSatoshi);
         const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
+        // TODO: Compute burn exchange rate for various currencies
         const collateralDot = await this.tokensAPI.balanceLocked(
-            CurrencyIdLiteral.DOT,
+            Polkadot,
             newAccountId(this.api, liquidationVaultId)
         );
-        return collateralDot.div(wrappedBtc);
+        const exchangeRate = collateralDot.toBig().div(wrappedSatoshiBig);
+        return new ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>(
+            Polkadot,
+            Bitcoin,
+            exchangeRate,
+            Polkadot.units.DOT,
+            Bitcoin.units.BTC
+        );
     }
 
-    async getCurrentInclusionFee(): Promise<Big> {
+    async getCurrentInclusionFee(): Promise<BTCAmount> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const [size, satoshiFees] = await Promise.all([
             this.api.query.redeem.redeemTransactionSize.at(head),
             this.oracleAPI.getBtcTxFeesPerByte(),
         ]);
-        const btcFees = satToBTC(new BN(satoshiFees.fast));
-        return btcFees.mul(new Big(size.toString()));
+        BTCAmount.from.Satoshi(satoshiFees.fast);
+        const btcFees = BTCAmount.from.Satoshi(satoshiFees.fast);
+        return btcFees.mul(size.toString());
     }
 
     async list(): Promise<Redeem[]> {
@@ -395,7 +406,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         }
     }
 
-    async getFeesToPay(amount: Big): Promise<Big> {
+    async getFeesToPay(amount: BTCAmount): Promise<BTCAmount> {
         const feePercentage = await this.getFeeRate();
         return amount.mul(feePercentage);
     }
@@ -406,10 +417,10 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return decodeFixedPointType(redeemFee);
     }
 
-    async getDustValue(): Promise<Big> {
+    async getDustValue(): Promise<BTCAmount> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const dustValueSat = await this.api.query.redeem.redeemBtcDustValue.at(head);
-        return satToBTC(dustValueSat);
+        return BTCAmount.from.Satoshi(dustValueSat.toString());
     }
 
     async getPremiumRedeemFee(): Promise<Big> {

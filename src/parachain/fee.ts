@@ -1,9 +1,10 @@
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
-import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, MonetaryAmount, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "..";
+import { CollateralUnits } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -15,7 +16,7 @@ export interface FeeAPI {
      * @param griefingCollateralRate
      * @returns The griefing collateral
      */
-    getGriefingCollateral(amount: BTCAmount, griefingCollateralRate: Big): Promise<PolkadotAmount>;
+     getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, griefingCollateralRate: Big, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
      * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
@@ -50,8 +51,8 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api);
     }
 
-    async getGriefingCollateral(amount: BTCAmount, griefingCollateralRate: Big): Promise<PolkadotAmount> {
-        const dotAmount = await this.oracleAPI.convertWrappedToCollateral(amount);
+    async getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, griefingCollateralRate: Big, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>> {
+        const dotAmount = await this.oracleAPI.convertWrappedToCollateral(amount, collateralCurrency);
         return dotAmount.mul(griefingCollateralRate);
     }
 
@@ -73,21 +74,20 @@ export class DefaultFeeAPI implements FeeAPI {
         return decodeFixedPointType(issueFee);
     }
 
-    async calculateAPY(
+    async calculateAPY<C extends CollateralUnits>(
         feesWrapped: BTCAmount,
-        feesCollateral: PolkadotAmount,
-        lockedCollateral: PolkadotAmount,
-        exchangeRate?: ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>
+        feesCollateral: MonetaryAmount<Currency<C>, C>,
+        lockedCollateral: MonetaryAmount<Currency<C>, C>,
+        exchangeRate?: ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit>
     ): Promise<Big> {
         if (lockedCollateral.isZero()) {
             return new Big(0);
         }
         if (exchangeRate === undefined) {
-            exchangeRate = await this.oracleAPI.getExchangeRate();
+            exchangeRate = await this.oracleAPI.getExchangeRate(feesCollateral.currency);
         }
 
-        // similar to ETHBTCRate.toCounter(ETHAmount.from.ETH(amount));
-        const feesWrappedAsCollateral: PolkadotAmount = exchangeRate.toBase(feesWrapped);
+        const feesWrappedAsCollateral = exchangeRate.toBase(feesWrapped);
         const totalFees = feesCollateral.add(feesWrappedAsCollateral).toBig();
 
         // convert to percentage

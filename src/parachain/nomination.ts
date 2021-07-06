@@ -12,13 +12,12 @@ import {
     decodeFixedPointType,
     dotToPlanck,
     newAccountId,
-    planckToDOT,
-    satToBTC,
     storageKeyToNthInner,
 } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
-import { CurrencyIdLiteral, NominationStatus } from "../types";
+import { NominationStatus } from "../types";
+import { Bitcoin, BTCAmount, PolkadotAmount } from "../../../monetary/build";
 
 /**
  * @category InterBTC Bridge
@@ -59,10 +58,9 @@ export interface NominationAPI extends TransactionAPI {
      */
     listNominationPairs(): Promise<[AccountId, AccountId][]>;
     /**
-     * @param currencyId The id of the currency to compute rewards for
-     * @returns The rewards as a small denomination type (e.g. Satoshi or Planck), dependending on the currencyId parameter
+     * @returns The rewards (in InterBTC a nominator has accumulated)
      */
-    listNominatorRewards(currencyId: CurrencyIdLiteral): Promise<[[AccountId, AccountId], Big][]>;
+    listNominatorRewards(): Promise<[[AccountId, AccountId], BTCAmount][]>;
     /**
      * @returns A list of all vaults that opted in to the nomination feature.
      */
@@ -73,21 +71,20 @@ export interface NominationAPI extends TransactionAPI {
      * @param vaultId Id of vault who is opted in to nomination
      * @returns A list of `[nominatorId, vaultId], nominatedAmount` pairs
      */
-    getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], Big][]>;
+    getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], PolkadotAmount][]>;
     /**
      * @remarks At least one of the parameters must be specified
      * @param nominatorId Id of user who nominated to one or more vaults
      * @param vaultId Id of vault who is opted in to nomination
      * @returns The total nominated amount, filtered using the given parameters
      */
-    getTotalNomination(nominatorId?: string, vaultId?: string): Promise<Big>;
+    getTotalNomination(nominatorId?: string, vaultId?: string): Promise<PolkadotAmount>;
     /**
      *
-     * @param currencyId The id of the currency to compute rewards for
      * @param nominatorId Id of user who nominated to one or more vaults
-     * @returns The rewards as a small denomination type (e.g. Satoshi or Planck), dependending on the currencyId parameter
+     * @returns The rewards (in InterBTC a nominator has accumulated)
      */
-    getNominatorRewards(currencyId: CurrencyIdLiteral, nominatorId: string): Promise<[[AccountId, AccountId], Big][]>;
+    getNominatorRewards(nominatorId: string): Promise<[[AccountId, AccountId], BTCAmount][]>;
 }
 
 export class DefaultNominationAPI extends DefaultTransactionAPI implements NominationAPI {
@@ -148,37 +145,29 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         return rawList.map((v) => v[0]);
     }
 
-    async listNominatorRewards(currencyId: CurrencyIdLiteral): Promise<[[AccountId, AccountId], Big][]> {
+    async listNominatorRewards(): Promise<[[AccountId, AccountId], BTCAmount][]> {
         const rawList = await this.listNominatorsRaw();
         return await Promise.all(
-            rawList.map(async (v): Promise<[[AccountId, AccountId], Big]> => {
+            rawList.map(async (v): Promise<[[AccountId, AccountId], BTCAmount]> => {
                 const [[nominatorId, vaultId]] = v;
                 const reward = await this.vaultsAPI.computeReward(
-                    currencyId,
+                    Bitcoin,
                     vaultId.toString(),
                     nominatorId.toString()
                 );
-                // TODO: Replace with monetary lib
-                let rewardBig = new Big(0);
-                if (currencyId === CurrencyIdLiteral.DOT) {
-                    rewardBig = planckToDOT(reward);
-                } else {
-                    rewardBig = satToBTC(reward);
-                }
-                return [[nominatorId, vaultId], rewardBig];
+                return [[nominatorId, vaultId], reward];
             })
         );
     }
 
     async getNominatorRewards(
-        currencyId: CurrencyIdLiteral,
         nominatorId: string
-    ): Promise<[[AccountId, AccountId], Big][]> {
-        const nominatorRewards = await this.listNominatorRewards(currencyId);
+    ): Promise<[[AccountId, AccountId], BTCAmount][]> {
+        const nominatorRewards = await this.listNominatorRewards();
         return nominatorRewards.filter(([[id, _vaultId], _]) => id.toString() === nominatorId);
     }
 
-    async getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], Big][]> {
+    async getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], PolkadotAmount][]> {
         if (!nominatorId && !vaultId) {
             return Promise.reject(new Error("At least one parameter should be specified"));
         }
@@ -195,13 +184,13 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
             );
         });
         return await Promise.all(
-            nominationEntries.map(async (v): Promise<[[AccountId, AccountId], Big]> => {
+            nominationEntries.map(async (v): Promise<[[AccountId, AccountId], PolkadotAmount]> => {
                 const vaultId = v[0][1];
                 const vault = await this.vaultsAPI.get(vaultId);
                 const nominator = v[1];
                 return [
                     [nominator.id, vaultId],
-                    planckToDOT(
+                    PolkadotAmount.from.Planck(
                         computeLazyDistribution(
                             bnToBig(nominator.collateral),
                             decodeFixedPointType(vault.slash_per_token),
@@ -220,18 +209,18 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
             return Promise.reject(new Error("No nomination associated with this (nominator, vault) pair"));
         }
         const filteredNomination = filteredNominations[0];
-        if (filteredNomination[1].eq(new Big(0))) {
+        if (filteredNomination[1].isZero()) {
             return NominationStatus.Unstaked;
         } else {
             return NominationStatus.Staked;
         }
     }
 
-    async getTotalNomination(nominatorId?: string, vaultId?: string): Promise<Big> {
+    async getTotalNomination(nominatorId?: string, vaultId?: string): Promise<PolkadotAmount> {
         const filteredNominations = await this.getFilteredNominations(nominatorId, vaultId);
         return filteredNominations
             .map((v) => v[1])
-            .reduce((previousValue, currentValue) => previousValue.add(currentValue), new Big(0));
+            .reduce((previousValue, currentValue) => previousValue.add(currentValue), PolkadotAmount.zero);
     }
 
     async listVaults(): Promise<AccountId[]> {

@@ -4,7 +4,7 @@ import { Bytes } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { Bitcoin, BTCAmount } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
@@ -24,7 +24,7 @@ import {
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { Issue, IssueStatus } from "../types";
+import { CollateralUnits, Issue, IssueStatus } from "../types";
 
 export type IssueLimits = { singleVaultMaxIssuable: BTCAmount; totalMaxIssuable: BTCAmount };
 
@@ -155,7 +155,7 @@ export interface IssueAPI extends TransactionAPI {
      * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
      * @returns The griefing collateral, in DOT
      */
-    getGriefingCollateral(amount: BTCAmount): Promise<BTCAmount>;
+     getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
@@ -207,9 +207,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.plus(req.amountInterBTC), BTCAmount.zero);
+            const successfulSum = result.reduce((sum, req) => sum.add(BTCAmount.from.BTC(req.amountInterBTC)), BTCAmount.zero);
             const remainder = amount.sub(successfulSum);
-            if (remainder.eq(0) || retries === 0) return result;
+            if (remainder.isZero() || retries === 0) return result;
             else {
                 return (await this.request(remainder, vaultId, atomic, retries - 1, availableVaults)).concat(result);
             }
@@ -218,12 +218,13 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         }
     }
 
-    async requestAdvanced(amountsPerVault: Map<AccountId, BTCAmount>, atomic: boolean): Promise<Issue[]> {
+    async requestAdvanced(amountsPerVault: Map<AccountId, BTCAmount>, atomic: boolean, collateralCurrency = Polkadot): Promise<Issue[]> {
         const txs = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            let griefingCollateral = await this.getGriefingCollateral(amount);
+            let griefingCollateral = await this.getGriefingCollateral(amount, collateralCurrency);
             // add() here is a hacky workaround for rounding errors
-            griefingCollateral = griefingCollateral.add(BTCAmount.from.Satoshi(100));
+            const oneHundred = new MonetaryAmount<typeof collateralCurrency, typeof collateralCurrency.units>(collateralCurrency, 100);
+            griefingCollateral = griefingCollateral.add(oneHundred);
             txs.push(
                 this.api.tx.issue.requestIssue(
                     amount.toString(Bitcoin.units.Satoshi),
@@ -286,9 +287,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         return mapForUser;
     }
 
-    async getGriefingCollateral(amount: BTCAmount): Promise<BTCAmount> {
+    async getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>> {
         const griefingCollateralRate = await this.feeAPI.getIssueGriefingCollateralRate();
-        return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate);
+        return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate, collateralCurrency);
     }
 
     async getFeesToPay(amount: BTCAmount): Promise<BTCAmount> {

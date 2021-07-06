@@ -3,7 +3,7 @@ import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
-import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import {
     decodeFixedPointType,
@@ -12,6 +12,7 @@ import {
 } from "../utils";
 import { ErrorCode } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { CollateralUnits } from "../types/currency";
 
 export const DEFAULT_FEED_NAME = "DOT/BTC";
 
@@ -28,7 +29,7 @@ export interface OracleAPI extends TransactionAPI {
     /**
      * @returns The DOT/BTC exchange rate
      */
-    getExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>>;
+    getExchangeRate<C extends CollateralUnits>(currency: Currency<C>): Promise<ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit>>;
     /**
      * Obtains the current fees for BTC transactions, in satoshi/byte.
      * @returns An object with the values `fast` (estimated fee for inclusion
@@ -63,11 +64,11 @@ export interface OracleAPI extends TransactionAPI {
     /**
      * @returns Converted value
      */
-    convertWrappedToCollateral(amount: BTCAmount): Promise<PolkadotAmount>;
+     convertWrappedToCollateral<C extends CollateralUnits>(amount: BTCAmount, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @returns Converted value
      */
-    convertCollateralToWrapped(amount: PolkadotAmount): Promise<BTCAmount>;
+     convertCollateralToWrapped<C extends CollateralUnits>(amount: MonetaryAmount<Currency<C>, C>, collateralCurrency: Currency<C>): Promise<BTCAmount>;
     /**
      * @returns The period of time (in milliseconds) after an oracle's last submission
      * during which it is considered online
@@ -80,24 +81,24 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         super(api, account);
     }
 
-    async getExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>> {
+    async getExchangeRate<C extends CollateralUnits>(collateralCurrency: Currency<C>): Promise<ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit>> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
         const decodedRawRate = decodeFixedPointType(encodedRawRate);
-        return new ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>(
-            Polkadot,
+        return new ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit>(
+            collateralCurrency,
             Bitcoin,
             decodedRawRate
         );
     }
 
-    async convertWrappedToCollateral(amount: BTCAmount): Promise<PolkadotAmount> {
-        const rate = await this.getExchangeRate();
+    async convertWrappedToCollateral<C extends CollateralUnits>(amount: BTCAmount, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>> {
+        const rate = await this.getExchangeRate(collateralCurrency);
         return rate.toBase(amount);
     }
 
-    async convertCollateralToWrapped(amount: PolkadotAmount): Promise<BTCAmount> {
-        const rate = await this.getExchangeRate();
+    async convertCollateralToWrapped<C extends CollateralUnits>(amount: MonetaryAmount<Currency<C>, C>, collateralCurrency: Currency<C>): Promise<BTCAmount> {
+        const rate = await this.getExchangeRate(collateralCurrency);
         return rate.toCounter(amount);
     }
 
