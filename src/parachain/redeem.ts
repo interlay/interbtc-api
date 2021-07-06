@@ -92,7 +92,11 @@ export interface RedeemAPI extends TransactionAPI {
      * @returns An array of type {redeemId, vault} if the requests succeeded.
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
-    requestAdvanced(amountsPerVault: Map<AccountId, BTCAmount>, btcAddressEnc: string, atomic: boolean): Promise<Redeem[]>;
+    requestAdvanced(
+        amountsPerVault: Map<AccountId, BTCAmount>,
+        btcAddressEnc: string,
+        atomic: boolean
+    ): Promise<Redeem[]>;
 
     /**
      * Send a redeem execution transaction
@@ -227,7 +231,10 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithRedeemableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
-            const successfulSum = result.reduce((sum, req) => sum.add(BTCAmount.from.BTC(req.amountBTC)), BTCAmount.zero);
+            const successfulSum = result.reduce(
+                (sum, req) => sum.add(BTCAmount.from.BTC(req.amountBTC)),
+                BTCAmount.zero
+            );
             const remainder = amount.sub(successfulSum);
             if (remainder.isZero() || retries === 0) return result;
             else {
@@ -299,7 +306,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async getMaxBurnableTokens(): Promise<BTCAmount> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault();
-        return BTCAmount.from.Satoshi(liquidationVault.issued_tokens.toString())
+        return BTCAmount.from.Satoshi(liquidationVault.issued_tokens.toString());
     }
 
     async getBurnExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>> {
@@ -311,10 +318,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const wrappedSatoshiBig = bnToBig(wrappedSatoshi);
         const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
         // TODO: Compute burn exchange rate for various currencies
-        const collateralDot = await this.tokensAPI.balanceLocked(
-            Polkadot,
-            newAccountId(this.api, liquidationVaultId)
-        );
+        const collateralDot = await this.tokensAPI.balanceLocked(Polkadot, newAccountId(this.api, liquidationVaultId));
         const exchangeRate = collateralDot.toBig().div(wrappedSatoshiBig);
         return new ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>(
             Polkadot,

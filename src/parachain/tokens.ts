@@ -24,7 +24,10 @@ export interface TokensAPI extends TransactionAPI {
      * @param id The AccountId of a user
      * @returns The user's locked balance
      */
-    balanceLocked<C extends CurrencyUnits>(currency: Currency<C>, id: AccountId): Promise<MonetaryAmount<Currency<C>, C>>;
+    balanceLocked<C extends CurrencyUnits>(
+        currency: Currency<C>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @param destination The address of a user
      * @param amount The amount to transfer
@@ -55,13 +58,19 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         return newMonetaryAmount(rawAmount.toString(), currency);
     }
 
-    async balance<C extends CurrencyUnits>(currency: Currency<C>, id: AccountId): Promise<MonetaryAmount<Currency<C>, C>> {
+    async balance<C extends CurrencyUnits>(
+        currency: Currency<C>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
         const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
         const account = await this.api.query.tokens.accounts(id, currencyId);
         return newMonetaryAmount(account.free.toString(), currency);
     }
 
-    async balanceLocked<C extends CurrencyUnits>(currency: Currency<C>, id: AccountId): Promise<MonetaryAmount<Currency<C>, C>> {
+    async balanceLocked<C extends CurrencyUnits>(
+        currency: Currency<C>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
         const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
         const account = await this.api.query.tokens.accounts(id, currencyId);
         return newMonetaryAmount(account.reserved.toString(), currency);

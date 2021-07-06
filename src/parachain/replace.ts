@@ -89,7 +89,10 @@ export interface ReplaceAPI extends TransactionAPI {
      * @param amount The amount of wrapped tokens to request replacement for.
      * @returns The griefing collateral
      */
-    getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>>;
+    getGriefingCollateral<C extends CollateralUnits>(
+        amount: BTCAmount,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
 }
 
 export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceAPI {
@@ -137,7 +140,12 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         await this.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
     }
 
-    async accept(oldVault: AccountId, amount: BTCAmount, collateral: PolkadotAmount, btcAddress: string): Promise<void> {
+    async accept(
+        oldVault: AccountId,
+        amount: BTCAmount,
+        collateral: PolkadotAmount,
+        btcAddress: string
+    ): Promise<void> {
         const parsedBtcAddress = this.api.createType("BtcAddress", btcAddress);
         const amountSat = this.api.createType("Balance", amount.str.Satoshi);
         const collateralPlanck = this.api.createType("Balance", collateral.str.Planck);
@@ -158,7 +166,10 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         return BTCAmount.from.Satoshi(dustSatoshi.toString());
     }
 
-    async getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>> {
+    async getGriefingCollateral<C extends CollateralUnits>(
+        amount: BTCAmount,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
         const griefingCollateralRate = await this.feeAPI.getReplaceGriefingCollateralRate();
         return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate, collateralCurrency);
     }

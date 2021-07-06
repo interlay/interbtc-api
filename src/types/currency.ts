@@ -1,4 +1,17 @@
-import { BTCAmount, PolkadotAmount, KusamaAmount, CurrencyName, Polkadot, Kusama, Bitcoin, BTCUnit, ExchangeRate, KusamaUnit, PolkadotUnit, Ticker } from "@interlay/monetary-js";
+import {
+    BTCAmount,
+    PolkadotAmount,
+    KusamaAmount,
+    CurrencyName,
+    Polkadot,
+    Kusama,
+    Bitcoin,
+    BTCUnit,
+    ExchangeRate,
+    KusamaUnit,
+    PolkadotUnit,
+    Ticker,
+} from "@interlay/monetary-js";
 import BN from "bn.js";
 
 export enum CurrencyIdLiteral {
@@ -16,13 +29,13 @@ export type CurrencyUnits = BTCUnit | PolkadotUnit | KusamaUnit;
 
 export function monetaryToCurrencyId(monetary: CurrencyAmount): CurrencyIdLiteral {
     switch (monetary.currency.name) {
-        case(CurrencyName.Bitcoin): {
+        case CurrencyName.Bitcoin: {
             return CurrencyIdLiteral.INTERBTC;
         }
-        case(CurrencyName.Polkadot): {
+        case CurrencyName.Polkadot: {
             return CurrencyIdLiteral.DOT;
         }
-        case(CurrencyName.Kusama): {
+        case CurrencyName.Kusama: {
             return CurrencyIdLiteral.KSM;
         }
         // TODO: Add `Ethereum` currency?
@@ -32,10 +45,10 @@ export function monetaryToCurrencyId(monetary: CurrencyAmount): CurrencyIdLitera
 
 export function currencyIdToMonetary(currencyId: CurrencyIdLiteral): CollateralCurrency {
     switch (currencyId) {
-        case(CurrencyIdLiteral.DOT): {
+        case CurrencyIdLiteral.DOT: {
             return Polkadot;
         }
-        case(CurrencyIdLiteral.KSM): {
+        case CurrencyIdLiteral.KSM: {
             return Kusama;
         }
     }
@@ -43,14 +56,14 @@ export function currencyIdToMonetary(currencyId: CurrencyIdLiteral): CollateralC
 }
 
 export function rawAmountToCurrency(currencyId: CurrencyIdLiteral, rawAmount: BN): CurrencyAmount {
-    switch(currencyId) {
-        case(CurrencyIdLiteral.DOT): {
+    switch (currencyId) {
+        case CurrencyIdLiteral.DOT: {
             return PolkadotAmount.from.Planck(rawAmount.toString());
         }
-        case(CurrencyIdLiteral.INTERBTC): {
+        case CurrencyIdLiteral.INTERBTC: {
             return BTCAmount.from.Satoshi(rawAmount.toString());
         }
-        case(CurrencyIdLiteral.KSM): {
+        case CurrencyIdLiteral.KSM: {
             return KusamaAmount.from.Planck(rawAmount.toString());
         }
     }
@@ -58,16 +71,15 @@ export function rawAmountToCurrency(currencyId: CurrencyIdLiteral, rawAmount: BN
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     switch (ticker) {
-        case (Ticker.Bitcoin): {
+        case Ticker.Bitcoin: {
             return CurrencyIdLiteral.INTERBTC;
         }
-        case (Ticker.Polkadot): {
+        case Ticker.Polkadot: {
             return CurrencyIdLiteral.DOT;
         }
-        case (Ticker.Kusama): {
+        case Ticker.Kusama: {
             return CurrencyIdLiteral.KSM;
         }
     }
     throw new Error("No CurrencyId entry for provided ticker");
-
 }

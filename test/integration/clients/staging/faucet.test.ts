@@ -6,6 +6,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { assert } from "../../../chai";
 import Big from "big.js";
 import { CurrencyIdLiteral, DefaultTokensAPI, TokensAPI } from "../../../../src";
+import { Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 
 describe("Faucet", function () {
     this.timeout(100000);
@@ -32,12 +33,12 @@ describe("Faucet", function () {
     describe("Funding", () => {
         it("should get funds from faucet", async () => {
             const helenAccountId = api.createType("AccountId", helen.address);
-            const expectedAllowance = 100;
-            const balanceBeforeFunding = await tokensAPI.balance(CurrencyIdLiteral.DOT, helenAccountId);
+            const expectedAllowance = PolkadotAmount.from.DOT(1);
+            const balanceBeforeFunding = await tokensAPI.balance(Polkadot, helenAccountId);
             await faucet.fundAccount(helenAccountId);
-            const balanceAfterFunding = await tokensAPI.balance(CurrencyIdLiteral.DOT, helenAccountId);
+            const balanceAfterFunding = await tokensAPI.balance(Polkadot, helenAccountId);
             assert.equal(
-                balanceBeforeFunding.add(new Big(expectedAllowance)).toString(),
+                balanceBeforeFunding.add(expectedAllowance).toString(),
                 balanceAfterFunding.toString()
             );
         });

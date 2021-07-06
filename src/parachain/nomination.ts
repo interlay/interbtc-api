@@ -150,24 +150,21 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         return await Promise.all(
             rawList.map(async (v): Promise<[[AccountId, AccountId], BTCAmount]> => {
                 const [[nominatorId, vaultId]] = v;
-                const reward = await this.vaultsAPI.computeReward(
-                    Bitcoin,
-                    vaultId.toString(),
-                    nominatorId.toString()
-                );
+                const reward = await this.vaultsAPI.computeReward(Bitcoin, vaultId.toString(), nominatorId.toString());
                 return [[nominatorId, vaultId], reward];
             })
         );
     }
 
-    async getNominatorRewards(
-        nominatorId: string
-    ): Promise<[[AccountId, AccountId], BTCAmount][]> {
+    async getNominatorRewards(nominatorId: string): Promise<[[AccountId, AccountId], BTCAmount][]> {
         const nominatorRewards = await this.listNominatorRewards();
         return nominatorRewards.filter(([[id, _vaultId], _]) => id.toString() === nominatorId);
     }
 
-    async getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], PolkadotAmount][]> {
+    async getFilteredNominations(
+        nominatorId?: string,
+        vaultId?: string
+    ): Promise<[[AccountId, AccountId], PolkadotAmount][]> {
         if (!nominatorId && !vaultId) {
             return Promise.reject(new Error("At least one parameter should be specified"));
         }

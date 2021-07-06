@@ -1,7 +1,17 @@
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
-import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, MonetaryAmount, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
+import {
+    Bitcoin,
+    BTCAmount,
+    BTCUnit,
+    Currency,
+    ExchangeRate,
+    MonetaryAmount,
+    Polkadot,
+    PolkadotAmount,
+    PolkadotUnit,
+} from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "..";
 import { CollateralUnits } from "../types";
@@ -16,7 +26,11 @@ export interface FeeAPI {
      * @param griefingCollateralRate
      * @returns The griefing collateral
      */
-     getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, griefingCollateralRate: Big, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>>;
+    getGriefingCollateral<C extends CollateralUnits>(
+        amount: BTCAmount,
+        griefingCollateralRate: Big,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
      * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
@@ -51,7 +65,11 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api);
     }
 
-    async getGriefingCollateral<C extends CollateralUnits>(amount: BTCAmount, griefingCollateralRate: Big, collateralCurrency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>> {
+    async getGriefingCollateral<C extends CollateralUnits>(
+        amount: BTCAmount,
+        griefingCollateralRate: Big,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
         const dotAmount = await this.oracleAPI.convertWrappedToCollateral(amount, collateralCurrency);
         return dotAmount.mul(griefingCollateralRate);
     }

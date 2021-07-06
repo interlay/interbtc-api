@@ -80,6 +80,9 @@ export function roundLastNDigits(n: number, x: BN | Big | string): string {
     return bigNumber.div(new BN(power)).mul(new BN(power)).toString();
 }
 
-export function newMonetaryAmount<C extends CurrencyUnits>(rawAmount: BigSource, currency: Currency<C>): MonetaryAmount<Currency<C>, C> {
+export function newMonetaryAmount<C extends CurrencyUnits>(
+    rawAmount: BigSource,
+    currency: Currency<C>
+): MonetaryAmount<Currency<C>, C> {
     return new MonetaryAmount<Currency<C>, C>(currency, rawAmount);
 }

@@ -128,15 +128,15 @@ export async function issueSingle(
         }
         const issueRequest = rawRequestResult[0];
 
-        let amountAsBtc = new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee);
+        let amountAsBtc = BTCAmount.from.BTC(new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee));
 
         if (triggerRefund) {
             // Send 1 more Btc than needed
-            amountAsBtc = amountAsBtc.add(1);
+            amountAsBtc = amountAsBtc.add(BTCAmount.from.BTC(1));
         } else if (autoExecute === false) {
             // Send 1 less Satoshi than requested
             // to trigger the user failsafe and disable auto-execution.
-            const oneSatoshi = satToBTC(new BN(1));
+            const oneSatoshi = BTCAmount.from.Satoshi(1);
             amountAsBtc = amountAsBtc.sub(oneSatoshi);
         }
 

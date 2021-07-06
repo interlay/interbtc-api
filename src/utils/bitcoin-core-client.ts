@@ -1,6 +1,7 @@
 // disabling linting as `bitcoin-core` has no types, causing the import to fail
 
 import Big from "big.js";
+import { Bitcoin, BTCAmount } from "../../../monetary/build";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
@@ -32,7 +33,7 @@ export class BitcoinCoreClient {
 
     async sendBtcTxAndMine(
         recipient: string,
-        amount: Big,
+        amount: BTCAmount,
         blocksToMine: number,
         data?: string
     ): Promise<{
@@ -57,7 +58,7 @@ export class BitcoinCoreClient {
 
     async broadcastTx(
         recipient: string,
-        amount: Big,
+        amount: BTCAmount,
         data?: string
     ): Promise<{
         txid: string;
@@ -70,7 +71,7 @@ export class BitcoinCoreClient {
         const raw = await this.client.command(
             "createrawtransaction",
             [],
-            this.formatRawTxInput(recipient, amount, data)
+            this.formatRawTxInput(recipient, amount.toBig(Bitcoin.units.BTC), data)
         );
         const funded = await this.client.command("fundrawtransaction", raw);
         const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
@@ -99,8 +100,8 @@ export class BitcoinCoreClient {
         return await this.client.command("getbalance");
     }
 
-    async sendToAddress(address: string, amount: Big): Promise<void> {
-        return await this.client.command("sendtoaddress", address, amount.toString());
+    async sendToAddress(address: string, amount: BTCAmount): Promise<void> {
+        return await this.client.command("sendtoaddress", address, amount.toString(Bitcoin.units.BTC));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

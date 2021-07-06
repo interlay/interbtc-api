@@ -13,6 +13,7 @@ import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle, stripHexPrefix } from "../../../../src/utils";
 import { DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep } from "../../../../src";
 import { assert } from "../../../chai";
+import { BTCAmount } from "@interlay/monetary-js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -51,7 +52,7 @@ describe("redeem", () => {
 
     it("should liquidate a vault that committed theft", async () => {
         const vaultToLiquidate = keyring.addFromUri("//Ferdie//stash");
-        await issueSingle(api, electrsAPI, aliceBitcoinCoreClient, alice, new Big("0.0001"), vaultToLiquidate.address, true, false);
+        await issueSingle(api, electrsAPI, aliceBitcoinCoreClient, alice, BTCAmount.from.BTC(0.0001), vaultToLiquidate.address, true, false);
         const vaultBitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
@@ -63,7 +64,7 @@ describe("redeem", () => {
 
         // Steal some bitcoin (spend from the vault's account)
         const foreignBitcoinAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-        const amount = new Big("0.00001");
+        const amount = BTCAmount.from.BTC(0.00001);
         await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amount);
         await vaultBitcoinCoreClient.mineBlocks(3);
         await DefaultTransactionAPI.waitForEvent(api, api.events.stakedRelayers.VaultTheft, 17 * 60000);
@@ -81,8 +82,8 @@ describe("redeem", () => {
     }).timeout(18 * 60000);
 
     it("should cancel a redeem request", async () => {
-        const issueAmount = new Big("0.01");
-        const redeemAmount = new Big("0.009");
+        const issueAmount = BTCAmount.from.BTC(0.01);
+        const redeemAmount = BTCAmount.from.BTC(0.009);
         const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
         await redeemAPI.setRedeemPeriod(1);
         let redeemRequestExpiryCallback = false; 
