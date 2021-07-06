@@ -15,7 +15,7 @@ export interface SystemAPI {
     getCurrentActiveBlockNumber(): Promise<number>;
 
     /**
-     * On every new parachain block, call the callback function with the ID of the expired request.
+     * On every new parachain block, call the callback function with the new block header
      * @param callback Function to be called with every new block header
      */
     subscribeToNewBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
