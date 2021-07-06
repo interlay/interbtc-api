@@ -22,6 +22,7 @@ import { btcToSat } from "../utils/currency";
 export type TxStatus = {
     confirmed: boolean;
     confirmations: number;
+    blockHeight?: number;
 };
 
 export type TxOutput = {
@@ -65,7 +66,8 @@ export interface ElectrsAPI {
     getMerkleProof(txid: string): Promise<string>;
     /**
      * @param txid The ID of a Bitcoin transaction
-     * @returns A TxStatus object, containing the confirmation status and number of confirmations
+     * @returns A TxStatus object, containing the confirmation status and number of confirmations, plus block height if
+     * the tx is included in the blockchain
      */
     getTransactionStatus(txid: string): Promise<TxStatus>;
     /**
@@ -324,7 +326,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     }
 
     async getTransactionStatus(txid: string): Promise<TxStatus> {
-        const status = {
+        const status:TxStatus = {
             confirmed: false,
             confirmations: 0,
         };
@@ -337,6 +339,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         if (txStatus.block_height && latest_block_height - txStatus.block_height >= 0) {
             // use Bitoin Core definition of confirmations (= block depth)
             status.confirmations = latest_block_height - txStatus.block_height + 1;
+            status.blockHeight = txStatus.block_height;
             // note that block_height will only be set if confirmed == true, i.e. block
             // depth is at least 1. So confirmations 0 will only be returned while unconfirmed.
             // This is correct.
