@@ -286,7 +286,7 @@ export interface VaultsAPI extends TransactionAPI {
     computeReward(currencyId: CurrencyIdLiteral, localPoolId: string, accountId: string): Promise<BN>;
     /**
      * @param vaultId account id
-     * @returns The entire collateral backing a vault's issued tokens. 
+     * @returns The entire collateral backing a vault's issued tokens.
      * Expressed as large denomination (e.g. DOT)
      */
     getBackingCollateral(vaultId: AccountId): Promise<Big>;
@@ -544,7 +544,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getIssuableAmount(vaultId: AccountId): Promise<Big> {
         const vault = await this.get(vaultId);
-        const lockedDot = await this.getBackingCollateral(vaultId);
+        const lockedDot = planckToDOT(vault.backing_collateral.toBn());
         const interBtcCapacity = await this.calculateCapacity(lockedDot);
         const backedTokens = vault.issued_tokens.add(vault.to_be_issued_tokens);
         const issuedAmountBtc = satToBTC(backedTokens);
@@ -554,32 +554,26 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return issuableAmountExcludingFees.sub(fees);
     }
 
-    private async getIssuedAmounts(): Promise<Big[]> {
-        const vaults: VaultExt[] = await this.list();
-        const issuedTokens: Big[] = vaults.map((v) => satToBTC(v.issued_tokens));
-        return issuedTokens;
-    }
-
     async getTotalIssuedAmount(): Promise<Big> {
-        const issuedTokens: Big[] = await this.getIssuedAmounts();
-        if (issuedTokens.length) {
-            const sumReducer = (accumulator: Big, currentValue: Big) => accumulator.add(currentValue);
-            return issuedTokens.reduce(sumReducer);
-        }
-        return new Big(0);
+        const issuedTokens: Big = await this.tokensAPI.total(CurrencyIdLiteral.INTERBTC);
+        return issuedTokens;
     }
 
     async getTotalIssuableAmount(): Promise<Big> {
         const totalLockedDot = await this.tokensAPI.total(CurrencyIdLiteral.DOT);
-        const interBtcCapacity = await this.calculateCapacity(totalLockedDot);
-        const issuedAmountBtc = await this.getTotalIssuedAmount();
+        const [interBtcCapacity, issuedAmountBtc] = await Promise.all([
+            this.calculateCapacity(totalLockedDot),
+            this.getTotalIssuedAmount()
+        ])
         return interBtcCapacity.sub(issuedAmountBtc);
     }
 
     private async calculateCapacity(collateral: Big): Promise<Big> {
         const oracle = new DefaultOracleAPI(this.api);
-        const exchangeRate = await oracle.getExchangeRate();
-        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
+        const [exchangeRate, secureCollateralThreshold] = await Promise.all([
+            oracle.getExchangeRate(),
+            this.getSecureCollateralThreshold()
+        ])
         return collateral.div(exchangeRate).div(secureCollateralThreshold);
     }
 
