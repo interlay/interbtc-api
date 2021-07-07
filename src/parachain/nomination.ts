@@ -1,23 +1,15 @@
 import { Network } from "bitcoinjs-lib";
-import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId } from "@polkadot/types/interfaces";
+import { Bitcoin, Currency, BTCAmount, MonetaryAmount } from "@interlay/monetary-js";
 
 import { Nominator } from "../interfaces";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
-import {
-    bnToBig,
-    computeLazyDistribution,
-    decodeFixedPointType,
-    dotToPlanck,
-    newAccountId,
-    storageKeyToNthInner,
-} from "../utils";
+import { bnToBig, computeLazyDistribution, decodeFixedPointType, newAccountId, storageKeyToNthInner } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
-import { NominationStatus } from "../types";
-import { Bitcoin, BTCAmount, PolkadotAmount } from "../../../monetary/build";
+import { CollateralUnits, NominationStatus } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -27,14 +19,20 @@ import { Bitcoin, BTCAmount, PolkadotAmount } from "../../../monetary/build";
 export interface NominationAPI extends TransactionAPI {
     /**
      * @param vaultId Vault to nominate collateral to
-     * @param amount Amount, in collateral token (e.g. DOT), to deposit
+     * @param amount Amount to deposit, as a `Monetary.js` object
      */
-    depositCollateral(vaultId: string, amount: Big): Promise<void>;
+    depositCollateral<C extends CollateralUnits>(
+        vaultId: string,
+        amount: MonetaryAmount<Currency<C>, C>
+    ): Promise<void>;
     /**
      * @param vaultId Vault that collateral was nominated to
-     * @param amount Amount, in collateral token (e.g. DOT), to withdraw
+     * @param amount Amount to withdraw, as a `Monetary.js` object
      */
-    withdrawCollateral(vaultId: string, amount: Big): Promise<void>;
+    withdrawCollateral<C extends CollateralUnits>(
+        vaultId: string,
+        amount: MonetaryAmount<Currency<C>, C>
+    ): Promise<void>;
     /**
      * @remarks Function callable by vaults to opt in to the nomination feature
      */
@@ -67,18 +65,28 @@ export interface NominationAPI extends TransactionAPI {
     listVaults(): Promise<AccountId[]>;
     /**
      * @remarks At least one of the parameters must be specified
+     * @param currency The collateral currency of the nominations
      * @param nominatorId Id of user who nominated to one or more vaults
      * @param vaultId Id of vault who is opted in to nomination
      * @returns A list of `[nominatorId, vaultId], nominatedAmount` pairs
      */
-    getFilteredNominations(nominatorId?: string, vaultId?: string): Promise<[[AccountId, AccountId], PolkadotAmount][]>;
+    getFilteredNominations<C extends CollateralUnits>(
+        currency: Currency<C>,
+        nominatorId?: string,
+        vaultId?: string
+    ): Promise<[[AccountId, AccountId], MonetaryAmount<Currency<C>, C>][]>;
     /**
      * @remarks At least one of the parameters must be specified
+     * @param currency The collateral currency of the nominations
      * @param nominatorId Id of user who nominated to one or more vaults
      * @param vaultId Id of vault who is opted in to nomination
      * @returns The total nominated amount, filtered using the given parameters
      */
-    getTotalNomination(nominatorId?: string, vaultId?: string): Promise<PolkadotAmount>;
+    getTotalNomination<C extends CollateralUnits>(
+        currency: Currency<C>,
+        nominatorId?: string,
+        vaultId?: string
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      *
      * @param nominatorId Id of user who nominated to one or more vaults
@@ -95,16 +103,22 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI);
     }
 
-    async depositCollateral(vaultId: string, amount: Big): Promise<void> {
+    async depositCollateral<C extends CollateralUnits>(
+        vaultId: string,
+        amount: MonetaryAmount<Currency<C>, C>
+    ): Promise<void> {
         const parsedVaultId = newAccountId(this.api, vaultId);
-        const amountAsPlanck = this.api.createType("Balance", dotToPlanck(amount));
+        const amountAsPlanck = this.api.createType("Balance", amount.toString());
         const tx = this.api.tx.nomination.depositCollateral(parsedVaultId, amountAsPlanck);
         await this.sendLogged(tx, this.api.events.nomination.DepositCollateral);
     }
 
-    async withdrawCollateral(vaultId: string, amount: Big): Promise<void> {
+    async withdrawCollateral<C extends CollateralUnits>(
+        vaultId: string,
+        amount: MonetaryAmount<Currency<C>, C>
+    ): Promise<void> {
         const parsedVaultId = newAccountId(this.api, vaultId);
-        const amountAsPlanck = this.api.createType("Balance", dotToPlanck(amount));
+        const amountAsPlanck = this.api.createType("Balance", amount.toString());
         const tx = this.api.tx.nomination.withdrawCollateral(parsedVaultId, amountAsPlanck);
         await this.sendLogged(tx, this.api.events.nomination.WithdrawCollateral);
     }
@@ -145,6 +159,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         return rawList.map((v) => v[0]);
     }
 
+    // TODO: Are nominator rewards always in BTC, or might other currencies be used?
     async listNominatorRewards(): Promise<[[AccountId, AccountId], BTCAmount][]> {
         const rawList = await this.listNominatorsRaw();
         return await Promise.all(
@@ -161,10 +176,11 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         return nominatorRewards.filter(([[id, _vaultId], _]) => id.toString() === nominatorId);
     }
 
-    async getFilteredNominations(
+    async getFilteredNominations<C extends CollateralUnits>(
+        currency: Currency<C>,
         nominatorId?: string,
         vaultId?: string
-    ): Promise<[[AccountId, AccountId], PolkadotAmount][]> {
+    ): Promise<[[AccountId, AccountId], MonetaryAmount<Currency<C>, C>][]> {
         if (!nominatorId && !vaultId) {
             return Promise.reject(new Error("At least one parameter should be specified"));
         }
@@ -181,13 +197,14 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
             );
         });
         return await Promise.all(
-            nominationEntries.map(async (v): Promise<[[AccountId, AccountId], PolkadotAmount]> => {
+            nominationEntries.map(async (v): Promise<[[AccountId, AccountId], MonetaryAmount<Currency<C>, C>]> => {
                 const vaultId = v[0][1];
                 const vault = await this.vaultsAPI.get(vaultId);
                 const nominator = v[1];
                 return [
                     [nominator.id, vaultId],
-                    PolkadotAmount.from.Planck(
+                    new MonetaryAmount<Currency<C>, C>(
+                        currency,
                         computeLazyDistribution(
                             bnToBig(nominator.collateral),
                             decodeFixedPointType(vault.slash_per_token),
@@ -199,9 +216,13 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         );
     }
 
-    async getNominationStatus(nominatorId: string, vaultId: string): Promise<NominationStatus> {
+    async getNominationStatus<C extends CollateralUnits>(
+        currency: Currency<C>,
+        nominatorId: string,
+        vaultId: string
+    ): Promise<NominationStatus> {
         // There is at most one entry determined by this pair
-        const filteredNominations = await this.getFilteredNominations(nominatorId, vaultId);
+        const filteredNominations = await this.getFilteredNominations(currency, nominatorId, vaultId);
         if (filteredNominations.length === 0) {
             return Promise.reject(new Error("No nomination associated with this (nominator, vault) pair"));
         }
@@ -213,11 +234,16 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         }
     }
 
-    async getTotalNomination(nominatorId?: string, vaultId?: string): Promise<PolkadotAmount> {
-        const filteredNominations = await this.getFilteredNominations(nominatorId, vaultId);
+    async getTotalNomination<C extends CollateralUnits>(
+        currency: Currency<C>,
+        nominatorId?: string,
+        vaultId?: string
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
+        const filteredNominations = await this.getFilteredNominations(currency, nominatorId, vaultId);
+        const zero = new MonetaryAmount<Currency<C>, C>(currency, 0);
         return filteredNominations
             .map((v) => v[1])
-            .reduce((previousValue, currentValue) => previousValue.add(currentValue), PolkadotAmount.zero);
+            .reduce((previousValue, currentValue) => previousValue.add(currentValue), zero);
     }
 
     async listVaults(): Promise<AccountId[]> {

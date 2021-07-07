@@ -65,7 +65,7 @@ export interface IssueAPI extends TransactionAPI {
 
     /**
      * Request issuing of InterBTC.
-     * @param amount InterBTC amount (denoted in BTC) to issue.
+     * @param amount InterBTC amount to issue.
      * @param vaultId (optional) ID of the vault to issue with.
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
@@ -83,10 +83,10 @@ export interface IssueAPI extends TransactionAPI {
 
     /**
      * Send a batch of aggregated issue transactions (to one or more vaults)
-     * @param amountsPerVault A mapping of vaults to issue from, and InterBTC amounts (in Satoshi) to issue using each vault
+     * @param amountsPerVault A mapping of vaults to issue from, and InterBTC amounts to issue using each vault
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
-     * @returns An array of type {issueId, vault} if the requests succeeded.
+     * @returns An array of `Issue` objects, if the requests succeeded.
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
     requestAdvanced(amountsPerVault: Map<AccountId, BTCAmount>, atomic: boolean): Promise<Issue[]>;
@@ -153,6 +153,7 @@ export interface IssueAPI extends TransactionAPI {
     getFeesToPay(amount: BTCAmount): Promise<BTCAmount>;
     /**
      * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
+     * @param collateralCurrency The collateral, as a currency object (using `Monetary.js`)
      * @returns The griefing collateral, in DOT
      */
     getGriefingCollateral<C extends CollateralUnits>(
@@ -235,7 +236,8 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             // add() here is a hacky workaround for rounding errors
             const oneHundred = new MonetaryAmount<typeof collateralCurrency, typeof collateralCurrency.units>(
                 collateralCurrency,
-                100
+                100,
+                collateralCurrency.rawBase
             );
             griefingCollateral = griefingCollateral.add(oneHundred);
             txs.push(

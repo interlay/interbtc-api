@@ -4,10 +4,9 @@ import type { AnyTuple } from "@polkadot/types/types";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
-import BN from "bn.js";
 import { Bitcoin, BTCAmount, BTCUnit, MonetaryAmount, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
-import { satToBTC, getBitcoinNetwork, newAccountId } from "..";
+import { getBitcoinNetwork, newAccountId } from "..";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTokensAPI } from "../parachain/tokens";
@@ -129,7 +128,6 @@ export async function issueSingle(
         const issueRequest = rawRequestResult[0];
 
         let amountAsBtc = BTCAmount.from.BTC(new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee));
-
         if (triggerRefund) {
             // Send 1 more Btc than needed
             amountAsBtc = amountAsBtc.add(BTCAmount.from.BTC(1));

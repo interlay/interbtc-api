@@ -255,7 +255,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const btcAddress = this.api.createType("BtcAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vault, amount] of amountsPerVault) {
-            const amountWrapped = this.api.createType("Balance", amount.str.Satoshi);
+            const amountWrapped = this.api.createType("Balance", amount.str.Satoshi());
             txes.push(this.api.tx.redeem.requestRedeem(amountWrapped, btcAddress, vault));
         }
         // batchAll fails atomically, batch allows partial successes
@@ -288,7 +288,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async burn(amount: BTCAmount): Promise<void> {
-        const amountSat = this.api.createType("Balance", amount.str.Satoshi);
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi());
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
         await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
     }

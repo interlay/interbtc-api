@@ -1,12 +1,12 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
-import { DefaultOracleAPI, DEFAULT_FEED_NAME, OracleAPI } from "../../../../src/parachain/oracle";
+import { DefaultOracleAPI, OracleAPI } from "../../../../src/parachain/oracle";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
-import BN from "bn.js";
 import Big from "big.js";
+import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
@@ -26,16 +26,17 @@ describe("OracleAPI", () => {
     });
 
     it("initial setup should have set a rate of 3855.23187", async () => {
-        const exchangeRate = await oracle.getExchangeRate();
-        assert.equal(exchangeRate.toString(), "3855.23187");
+        const exchangeRate = await oracle.getExchangeRate(Polkadot);
+        assert.equal(exchangeRate.toString(undefined, 5, 0), "3855.23187");
     });
 
     it("should set exchange rate", async () => {
-        const previousExchangeRate = await oracle.getExchangeRate();
-        const exchangeRateToSet = new Big("3913.7424920372646687827621");
+        const previousExchangeRate = await oracle.getExchangeRate(Polkadot);
+        const exchangeRateValue = new Big("3913.7424920372646687827621");
+        const exchangeRateToSet = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
         await oracle.setExchangeRate(exchangeRateToSet);
-        const exchangeRate = await oracle.getExchangeRate();
-        assert.equal(exchangeRateToSet.round(8, 0).toString(), exchangeRate.round(8, 0).toString());
+        const exchangeRate = await oracle.getExchangeRate(Polkadot);
+        assert.equal(exchangeRateToSet.toBig().round(8, 0).toString(), exchangeRate.toBig().round(8, 0).toString());
 
         // Revert the exchange rate to its initial value,
         // so that this test is idempotent
@@ -43,8 +44,9 @@ describe("OracleAPI", () => {
     });
 
     it("should convert satoshi to planck", async () => {
-        const planck = await oracle.convertSatoshiToPlanck(new BN(100));
-        assert.equal(planck.toString(), "38552319");
+        const wrappedAmount = BTCAmount.from.BTC(100);
+        const collateralAmount = await oracle.convertWrappedToCollateral(wrappedAmount, Polkadot);
+        assert.equal(collateralAmount.toBig(Polkadot.units.DOT).round(0, 0).toString(), "385523");
     });
 
     it("should set BTC tx fees", async () => {

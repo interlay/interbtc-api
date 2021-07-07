@@ -1,7 +1,7 @@
 // disabling linting as `bitcoin-core` has no types, causing the import to fail
 
 import Big from "big.js";
-import { Bitcoin, BTCAmount } from "../../../monetary/build";
+import { Bitcoin, BTCAmount } from "@interlay/monetary-js";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
@@ -41,7 +41,7 @@ export class BitcoinCoreClient {
         txid: string;
         rawTx: string;
     }> {
-        console.log(`Broadcasting tx: ${amount.toString()} BTC`);
+        console.log(`Broadcasting tx: ${amount.toString(Bitcoin.base)} BTC`);
         const tx = await this.broadcastTx(recipient, amount, data);
         await this.mineBlocks(blocksToMine);
         return tx;

@@ -35,7 +35,7 @@ export interface BTCRelayAPI {
      * @param confirmations The number of block confirmations needed to accept the inclusion proof.
      * This parameter is only used if the `insecure` parameter is set to `true`.
      */
-    verifyTransactionInclusion(txid: string, confirmations?: number, insecure?: boolean): Promise<void>;
+    verifyTransactionInclusion(txid: string, confirmations?: number): Promise<void>;
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {

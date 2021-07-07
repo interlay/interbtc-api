@@ -87,6 +87,7 @@ export interface ReplaceAPI extends TransactionAPI {
     /**
      *
      * @param amount The amount of wrapped tokens to request replacement for.
+     * @param collateralCurrency The collateral, as a currency object (using `Monetary.js`)
      * @returns The griefing collateral
      */
     getGriefingCollateral<C extends CollateralUnits>(
@@ -121,10 +122,10 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     }
 
     async request(amount: BTCAmount): Promise<string> {
-        const amountSat = this.api.createType("Balance", amount.str.Satoshi);
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi());
         // TODO: Support multiple collateral currencies
         const griefingCollateral = await this.getGriefingCollateral(amount, Polkadot);
-        const griefingCollateralPlanck = this.api.createType("Balance", griefingCollateral.str.Planck);
+        const griefingCollateralPlanck = this.api.createType("Balance", griefingCollateral.str.Planck());
         const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck);
         const result = await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
         try {
@@ -135,7 +136,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     }
 
     async withdraw(amount: BTCAmount): Promise<void> {
-        const amountSat = this.api.createType("Balance", amount.str.Satoshi);
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi());
         const requestTx = this.api.tx.replace.withdrawReplace(amountSat);
         await this.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
     }
@@ -147,8 +148,8 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         btcAddress: string
     ): Promise<void> {
         const parsedBtcAddress = this.api.createType("BtcAddress", btcAddress);
-        const amountSat = this.api.createType("Balance", amount.str.Satoshi);
-        const collateralPlanck = this.api.createType("Balance", collateral.str.Planck);
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi());
+        const collateralPlanck = this.api.createType("Balance", collateral.str.Planck());
         const requestTx = this.api.tx.replace.acceptReplace(oldVault, amountSat, collateralPlanck, parsedBtcAddress);
         await this.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
     }

@@ -32,17 +32,17 @@ export interface FeeAPI {
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
-     * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
-     * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
-     * @param lockedCollateral Collateral value representing the value locked to gain yield. Large denomination (e.g. DOT)
-     * @param exchangeRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
+     * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
+     * @param feesCollateral Collateral fees accrued, in collateral token (e.g. DOT)
+     * @param lockedCollateral Collateral value representing the value locked to gain yield.
+     * @param exchangeRate (Optional) Conversion rate, as a `Monetary.js` object
      * @returns The APY, given the parameters
      */
     calculateAPY(
         feesWrapped: BTCAmount,
         feesCollateral: PolkadotAmount,
         lockedCollateral: PolkadotAmount,
-        exchangeRate?: ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>
+        exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>
     ): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
@@ -96,7 +96,7 @@ export class DefaultFeeAPI implements FeeAPI {
         feesWrapped: BTCAmount,
         feesCollateral: MonetaryAmount<Currency<C>, C>,
         lockedCollateral: MonetaryAmount<Currency<C>, C>,
-        exchangeRate?: ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit>
+        exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
     ): Promise<Big> {
         if (lockedCollateral.isZero()) {
             return new Big(0);
@@ -105,7 +105,7 @@ export class DefaultFeeAPI implements FeeAPI {
             exchangeRate = await this.oracleAPI.getExchangeRate(feesCollateral.currency);
         }
 
-        const feesWrappedAsCollateral = exchangeRate.toBase(feesWrapped);
+        const feesWrappedAsCollateral = exchangeRate.toCounter(feesWrapped);
         const totalFees = feesCollateral.add(feesWrappedAsCollateral).toBig();
 
         // convert to percentage

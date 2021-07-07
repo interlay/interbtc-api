@@ -326,7 +326,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     }
 
     async getTransactionStatus(txid: string): Promise<TxStatus> {
-        const status:TxStatus = {
+        const status: TxStatus = {
             confirmed: false,
             confirmations: 0,
         };

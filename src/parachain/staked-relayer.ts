@@ -24,7 +24,7 @@ export interface StakedRelayerAPI extends TransactionAPI {
     /**
      * @returns A tuple denoting [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime]
      */
-    getLastBTCDOTExchangeRateAndTime(): Promise<[ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>, Date]>;
+    getLastBTCDOTExchangeRateAndTime(): Promise<[ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>, Date]>;
     /**
      * @returns A parachain status code object
      */
@@ -88,7 +88,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return pair[1] !== undefined;
     }
 
-    async getLastBTCDOTExchangeRateAndTime(): Promise<[ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>, Date]> {
+    async getLastBTCDOTExchangeRateAndTime(): Promise<[ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>, Date]> {
         const lastBTCDOTExchangeRate = await this.oracleAPI.getExchangeRate(Polkadot);
         const lastBTCDOTExchangeRateTime = await this.oracleAPI.getLastExchangeRateTime();
         return [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime];

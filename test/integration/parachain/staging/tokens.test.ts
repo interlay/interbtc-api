@@ -1,11 +1,12 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { Bitcoin, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
-import Big from "big.js";
-import { CurrencyIdLiteral } from "../../../../src";
+import { CurrencyUnits } from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
@@ -26,34 +27,34 @@ describe("TokensAPI", () => {
     });
 
     it("should subscribe to DOT balance updates", async () => {
-        testBalanceSubscription(CurrencyIdLiteral.DOT);
+        testBalanceSubscription(Polkadot);
     });
 
     it("should subscribe to INTERBTC balance updates", async () => {
-        testBalanceSubscription(CurrencyIdLiteral.INTERBTC);
+        testBalanceSubscription(Bitcoin);
     });
 
-    async function testBalanceSubscription(currencyId: CurrencyIdLiteral): Promise<void> {
+    async function testBalanceSubscription<C extends CurrencyUnits>(currency: Currency<C>): Promise<void> {
         // Subscribe and receive two balance updates
-        let updatedBalance = new Big(0);
+        let updatedBalance = new MonetaryAmount<Currency<C>, C>(currency, 0);
         let updatedAccount = "";
-        function balanceUpdateCallback(account: string, newBalance: Big) {
+        function balanceUpdateCallback(account: string, newBalance: MonetaryAmount<Currency<C>, C>) {
             updatedBalance = newBalance;
             updatedAccount = account;
         }
-        const amountToUpdateBobsAccountBy = new Big(0.00000001);
+        const amountToUpdateBobsAccountBy = new MonetaryAmount<Currency<C>, C>(currency, 0.00000001);
         const bobBalanceBeforeTransfer = 
-            await tokens.balance(currencyId, api.createType("AccountId", bob.address));
-        const unsubscribe = await tokens.subscribeToBalance(currencyId, bob.address, balanceUpdateCallback);
+            await tokens.balance<typeof currency.units>(currency, api.createType("AccountId", bob.address));
+        const unsubscribe = await tokens.subscribeToBalance(currency, bob.address, balanceUpdateCallback);
 
         // Send the first transfer, expect the callback to be called with correct values
-        await tokens.transfer(currencyId, bob.address, amountToUpdateBobsAccountBy);
+        await tokens.transfer(bob.address, amountToUpdateBobsAccountBy);
         assert.equal(updatedAccount, bob.address);
         const expectedBobBalanceAfterFirstTransfer = bobBalanceBeforeTransfer.add(amountToUpdateBobsAccountBy);
         assert.equal(updatedBalance.toString(), expectedBobBalanceAfterFirstTransfer.toString());
 
         // Send the second transfer, expect the callback to be called with correct values
-        await tokens.transfer(currencyId, bob.address, amountToUpdateBobsAccountBy);
+        await tokens.transfer(bob.address, amountToUpdateBobsAccountBy);
         assert.equal(updatedAccount, bob.address);
         const expectedBobBalanceAfterSecondTransfer = expectedBobBalanceAfterFirstTransfer.add(amountToUpdateBobsAccountBy);
         assert.equal(updatedBalance.toString(), expectedBobBalanceAfterSecondTransfer.toString());

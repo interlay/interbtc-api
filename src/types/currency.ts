@@ -2,15 +2,14 @@ import {
     BTCAmount,
     PolkadotAmount,
     KusamaAmount,
-    CurrencyName,
     Polkadot,
     Kusama,
     Bitcoin,
     BTCUnit,
-    ExchangeRate,
     KusamaUnit,
     PolkadotUnit,
-    Ticker,
+    MonetaryAmount,
+    Currency,
 } from "@interlay/monetary-js";
 import BN from "bn.js";
 
@@ -27,15 +26,17 @@ export type CollateralCurrency = Polkadot | Kusama;
 export type CollateralUnits = PolkadotUnit | KusamaUnit;
 export type CurrencyUnits = BTCUnit | PolkadotUnit | KusamaUnit;
 
-export function monetaryToCurrencyId(monetary: CurrencyAmount): CurrencyIdLiteral {
+export function monetaryToCurrencyId<C extends CurrencyUnits>(
+    monetary: MonetaryAmount<Currency<C>, C>
+): CurrencyIdLiteral {
     switch (monetary.currency.name) {
-        case CurrencyName.Bitcoin: {
+        case Bitcoin.name: {
             return CurrencyIdLiteral.INTERBTC;
         }
-        case CurrencyName.Polkadot: {
+        case "Polkadot": {
             return CurrencyIdLiteral.DOT;
         }
-        case CurrencyName.Kusama: {
+        case "Kusama": {
             return CurrencyIdLiteral.KSM;
         }
         // TODO: Add `Ethereum` currency?
@@ -71,13 +72,13 @@ export function rawAmountToCurrency(currencyId: CurrencyIdLiteral, rawAmount: BN
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     switch (ticker) {
-        case Ticker.Bitcoin: {
+        case Bitcoin.ticker: {
             return CurrencyIdLiteral.INTERBTC;
         }
-        case Ticker.Polkadot: {
+        case Polkadot.ticker: {
             return CurrencyIdLiteral.DOT;
         }
-        case Ticker.Kusama: {
+        case Kusama.ticker: {
             return CurrencyIdLiteral.KSM;
         }
     }

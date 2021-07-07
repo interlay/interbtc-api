@@ -22,7 +22,6 @@ import {
     DefaultVaultsAPI,
     newAccountId,
     REGTEST_ESPLORA_BASE_PATH,
-    CurrencyIdLiteral,
 } from "../../../../src";
 import { issueSingle } from "../../../../src/utils/";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
@@ -39,7 +38,7 @@ import {
     DEFAULT_PARACHAIN_ENDPOINT
 } from "../../../config";
 import { DefaultTokensAPI } from "../../../../src/parachain/tokens";
-import { Bitcoin, BTCAmount, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -109,10 +108,11 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the exchange rate", async () => {
-        const exchangeRateToSet = new Big("3855.23187");
+        const exchangeRateValue = new Big("3855.23187");
+        const exchangeRateToSet = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
         await oracleAPI.setExchangeRate(exchangeRateToSet);
         const exchangeRate = await oracleAPI.getExchangeRate(Polkadot);
-        assert.equal(exchangeRateToSet.toString(), exchangeRate.toString());
+        assert.equal(exchangeRateToSet.toString(undefined, 5, 0), exchangeRate.toString(undefined, 5, 0));
     });
 
     it("should enable vault nomination", async () => {

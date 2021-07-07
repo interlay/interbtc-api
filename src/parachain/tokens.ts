@@ -5,22 +5,25 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId, newMonetaryAmount } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CurrencyAmount, monetaryToCurrencyId, CurrencyUnits, tickerToCurrencyIdLiteral } from "../types";
+import { monetaryToCurrencyId, CurrencyUnits, tickerToCurrencyIdLiteral } from "../types";
 
 /**
  * @category InterBTC Bridge
  */
 export interface TokensAPI extends TransactionAPI {
     /**
+     * @param currency The currency specification, a `Monetary.js` object
      * @returns The total amount in the system
      */
     total<C extends CurrencyUnits>(currency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
+     * @param currency The currency specification, a `Monetary.js` object
      * @param id The AccountId of a user
      * @returns The user's free balance
      */
     balance<C extends CurrencyUnits>(currency: Currency<C>, id: AccountId): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
+     * @param currency The currency specification, a `Monetary.js` object
      * @param id The AccountId of a user
      * @returns The user's locked balance
      */
@@ -30,11 +33,12 @@ export interface TokensAPI extends TransactionAPI {
     ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @param destination The address of a user
-     * @param amount The amount to transfer
+     * @param amount The amount to transfer, as a `Monetary.js` object
      */
-    transfer(destination: string, amount: CurrencyAmount): Promise<void>;
+    transfer<C extends CurrencyUnits>(destination: string, amount: MonetaryAmount<Currency<C>, C>): Promise<void>;
     /**
      * Subscribe to balance updates, denominated in InterBTC
+     * @param currency The currency specification, a `Monetary.js` object
      * @param account AccountId string
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)
@@ -97,9 +101,11 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         };
     }
 
-    async transfer(destination: string, amount: CurrencyAmount): Promise<void> {
-        // `toString(0)` converts to a string of the smallest denomination, regardless of the currency
-        const amountSmallDenomination = this.api.createType("Balance", amount.toString(0));
+    async transfer<C extends CurrencyUnits>(
+        destination: string,
+        amount: MonetaryAmount<Currency<C>, C>
+    ): Promise<void> {
+        const amountSmallDenomination = this.api.createType("Balance", amount.toString());
         const currencyId = monetaryToCurrencyId(amount);
         const transferTransaction = this.api.tx.tokens.transfer(destination, currencyId, amountSmallDenomination);
         await this.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
