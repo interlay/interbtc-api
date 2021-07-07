@@ -54,21 +54,18 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
         const totalBN = await this.api.query.tokens.totalIssuance.at(head, encodedCurrency);
-        // FIXME: should convert based on currency Id
         return satToBTC(totalBN);
     }
 
     async balance(currency: CurrencyIdLiteral, id: AccountId): Promise<Big> {
         const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
         const account = await this.api.query.tokens.accounts(id, encodedCurrency);
-        // FIXME: should convert based on currency Id
         return satToBTC(account.free);
     }
 
     async balanceLocked(currency: CurrencyIdLiteral, id: AccountId): Promise<Big> {
         const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
         const account = await this.api.query.tokens.accounts(id, encodedCurrency);
-        // FIXME: should convert based on currency Id
         return satToBTC(account.reserved);
     }
 
@@ -94,7 +91,6 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
     }
 
     async transfer(currency: CurrencyIdLiteral, destination: string, amount: Big): Promise<void> {
-        // FIXME: should convert based on currency Id
         const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount));
         const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
         const transferTransaction = this.api.tx.tokens.transfer(destination, encodedCurrency, amountSmallDenomination);

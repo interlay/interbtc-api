@@ -564,7 +564,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const [interBtcCapacity, issuedAmountBtc] = await Promise.all([
             this.calculateCapacity(totalLockedDot),
             this.getTotalIssuedAmount()
-        ])
+        ]);
         return interBtcCapacity.sub(issuedAmountBtc);
     }
 
@@ -573,7 +573,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const [exchangeRate, secureCollateralThreshold] = await Promise.all([
             oracle.getExchangeRate(),
             this.getSecureCollateralThreshold()
-        ])
+        ]);
         return collateral.div(exchangeRate).div(secureCollateralThreshold);
     }
 
