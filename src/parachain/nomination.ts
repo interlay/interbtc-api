@@ -9,7 +9,7 @@ import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
 import { bnToBig, computeLazyDistribution, decodeFixedPointType, newAccountId, storageKeyToNthInner } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
-import { CollateralUnits, NominationStatus } from "../types";
+import { CollateralUnit, NominationStatus } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -21,7 +21,7 @@ export interface NominationAPI extends TransactionAPI {
      * @param vaultId Vault to nominate collateral to
      * @param amount Amount to deposit, as a `Monetary.js` object
      */
-    depositCollateral<C extends CollateralUnits>(
+    depositCollateral<C extends CollateralUnit>(
         vaultId: string,
         amount: MonetaryAmount<Currency<C>, C>
     ): Promise<void>;
@@ -29,7 +29,7 @@ export interface NominationAPI extends TransactionAPI {
      * @param vaultId Vault that collateral was nominated to
      * @param amount Amount to withdraw, as a `Monetary.js` object
      */
-    withdrawCollateral<C extends CollateralUnits>(
+    withdrawCollateral<C extends CollateralUnit>(
         vaultId: string,
         amount: MonetaryAmount<Currency<C>, C>
     ): Promise<void>;
@@ -70,7 +70,7 @@ export interface NominationAPI extends TransactionAPI {
      * @param vaultId Id of vault who is opted in to nomination
      * @returns A list of `[nominatorId, vaultId], nominatedAmount` pairs
      */
-    getFilteredNominations<C extends CollateralUnits>(
+    getFilteredNominations<C extends CollateralUnit>(
         currency: Currency<C>,
         nominatorId?: string,
         vaultId?: string
@@ -82,7 +82,7 @@ export interface NominationAPI extends TransactionAPI {
      * @param vaultId Id of vault who is opted in to nomination
      * @returns The total nominated amount, filtered using the given parameters
      */
-    getTotalNomination<C extends CollateralUnits>(
+    getTotalNomination<C extends CollateralUnit>(
         currency: Currency<C>,
         nominatorId?: string,
         vaultId?: string
@@ -103,7 +103,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI);
     }
 
-    async depositCollateral<C extends CollateralUnits>(
+    async depositCollateral<C extends CollateralUnit>(
         vaultId: string,
         amount: MonetaryAmount<Currency<C>, C>
     ): Promise<void> {
@@ -113,7 +113,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         await this.sendLogged(tx, this.api.events.nomination.DepositCollateral);
     }
 
-    async withdrawCollateral<C extends CollateralUnits>(
+    async withdrawCollateral<C extends CollateralUnit>(
         vaultId: string,
         amount: MonetaryAmount<Currency<C>, C>
     ): Promise<void> {
@@ -176,7 +176,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         return nominatorRewards.filter(([[id, _vaultId], _]) => id.toString() === nominatorId);
     }
 
-    async getFilteredNominations<C extends CollateralUnits>(
+    async getFilteredNominations<C extends CollateralUnit>(
         currency: Currency<C>,
         nominatorId?: string,
         vaultId?: string
@@ -216,7 +216,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         );
     }
 
-    async getNominationStatus<C extends CollateralUnits>(
+    async getNominationStatus<C extends CollateralUnit>(
         currency: Currency<C>,
         nominatorId: string,
         vaultId: string
@@ -234,7 +234,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         }
     }
 
-    async getTotalNomination<C extends CollateralUnits>(
+    async getTotalNomination<C extends CollateralUnit>(
         currency: Currency<C>,
         nominatorId?: string,
         vaultId?: string

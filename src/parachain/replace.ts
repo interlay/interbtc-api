@@ -12,7 +12,7 @@ import { ReplaceRequest } from "../interfaces/default";
 import { encodeBtcAddress, storageKeyToNthInner } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CollateralUnits, ElectrsAPI, getTxProof } from "..";
+import { CollateralUnit, ElectrsAPI, getTxProof } from "..";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
@@ -90,7 +90,7 @@ export interface ReplaceAPI extends TransactionAPI {
      * @param collateralCurrency The collateral, as a currency object (using `Monetary.js`)
      * @returns The griefing collateral
      */
-    getGriefingCollateral<C extends CollateralUnits>(
+    getGriefingCollateral<C extends CollateralUnit>(
         amount: BTCAmount,
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
@@ -167,7 +167,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         return BTCAmount.from.Satoshi(dustSatoshi.toString());
     }
 
-    async getGriefingCollateral<C extends CollateralUnits>(
+    async getGriefingCollateral<C extends CollateralUnit>(
         amount: BTCAmount,
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>> {

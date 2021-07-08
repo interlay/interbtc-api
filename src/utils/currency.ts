@@ -1,7 +1,7 @@
 import Big, { BigSource } from "big.js";
 import BN from "bn.js";
 import { Currency, MonetaryAmount } from "@interlay/monetary-js";
-import { CurrencyUnits } from "../types/currency";
+import { CurrencyUnit } from "../types/currency";
 
 // set maximum exponents
 Big.PE = 21;
@@ -80,7 +80,7 @@ export function roundLastNDigits(n: number, x: BN | Big | string): string {
     return bigNumber.div(new BN(power)).mul(new BN(power)).toString();
 }
 
-export function newMonetaryAmount<C extends CurrencyUnits>(
+export function newMonetaryAmount<C extends CurrencyUnit>(
     rawAmount: BigSource,
     currency: Currency<C>
 ): MonetaryAmount<Currency<C>, C> {

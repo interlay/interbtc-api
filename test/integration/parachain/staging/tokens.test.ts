@@ -6,7 +6,7 @@ import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
-import { CurrencyUnits } from "../../../../src";
+import { CurrencyUnit } from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
@@ -34,7 +34,7 @@ describe("TokensAPI", () => {
         testBalanceSubscription(Bitcoin);
     });
 
-    async function testBalanceSubscription<C extends CurrencyUnits>(currency: Currency<C>): Promise<void> {
+    async function testBalanceSubscription<C extends CurrencyUnit>(currency: Currency<C>): Promise<void> {
         // Subscribe and receive two balance updates
         let updatedBalance = new MonetaryAmount<Currency<C>, C>(currency, 0);
         let updatedAccount = "";

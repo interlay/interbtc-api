@@ -14,7 +14,7 @@ import {
 } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "..";
-import { CollateralUnits } from "../types";
+import { CollateralUnit } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -26,7 +26,7 @@ export interface FeeAPI {
      * @param griefingCollateralRate
      * @returns The griefing collateral
      */
-    getGriefingCollateral<C extends CollateralUnits>(
+    getGriefingCollateral<C extends CollateralUnit>(
         amount: BTCAmount,
         griefingCollateralRate: Big,
         collateralCurrency: Currency<C>
@@ -65,7 +65,7 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api);
     }
 
-    async getGriefingCollateral<C extends CollateralUnits>(
+    async getGriefingCollateral<C extends CollateralUnit>(
         amount: BTCAmount,
         griefingCollateralRate: Big,
         collateralCurrency: Currency<C>
@@ -92,7 +92,7 @@ export class DefaultFeeAPI implements FeeAPI {
         return decodeFixedPointType(issueFee);
     }
 
-    async calculateAPY<C extends CollateralUnits>(
+    async calculateAPY<C extends CollateralUnit>(
         feesWrapped: BTCAmount,
         feesCollateral: MonetaryAmount<Currency<C>, C>,
         lockedCollateral: MonetaryAmount<Currency<C>, C>,

@@ -244,7 +244,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
                 return false;
             } else {
                 const utxoValue = BTCAmount.from.Satoshi(utxo.value);
-                return utxoValue >= amount;
+                return utxoValue.gte(amount);
             }
         }
         return true;

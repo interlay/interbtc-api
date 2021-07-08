@@ -24,7 +24,7 @@ import {
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CollateralUnits, Issue, IssueStatus } from "../types";
+import { CollateralUnit, Issue, IssueStatus } from "../types";
 
 export type IssueLimits = { singleVaultMaxIssuable: BTCAmount; totalMaxIssuable: BTCAmount };
 
@@ -156,7 +156,7 @@ export interface IssueAPI extends TransactionAPI {
      * @param collateralCurrency The collateral, as a currency object (using `Monetary.js`)
      * @returns The griefing collateral, in DOT
      */
-    getGriefingCollateral<C extends CollateralUnits>(
+    getGriefingCollateral<C extends CollateralUnit>(
         amount: BTCAmount,
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
@@ -302,7 +302,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         return mapForUser;
     }
 
-    async getGriefingCollateral<C extends CollateralUnits>(
+    async getGriefingCollateral<C extends CollateralUnit>(
         amount: BTCAmount,
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>> {
