@@ -4,15 +4,15 @@ import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Hash } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import { EventRecord } from "@polkadot/types/interfaces/system";
-import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import { Bytes } from "@polkadot/types";
+import { BTCAmount, Currency, MonetaryAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 
 import { ReplaceRequest } from "../interfaces/default";
-import { dotToPlanck, encodeBtcAddress, satToBTC, storageKeyToNthInner } from "../utils";
+import { encodeBtcAddress, storageKeyToNthInner } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { btcToSat, ElectrsAPI, getTxProof } from "..";
+import { CollateralUnit, ElectrsAPI, getTxProof } from "..";
 
 export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
     // network encoded btc address
@@ -34,15 +34,13 @@ export function encodeReplaceRequest(req: ReplaceRequest, network: Network): Rep
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface ReplaceAPI extends TransactionAPI {
     /**
      * @returns The minimum amount of btc that is accepted for replace requests; any lower values would
      * risk the bitcoin client to reject the payment
      */
-    getDustValue(): Promise<Big>;
+    getDustValue(): Promise<BTCAmount>;
     /**
      * @returns The time difference in number of blocks between when a replace request is created
      * and required completion time by a vault. The replace period has an upper limit
@@ -61,13 +59,13 @@ export interface ReplaceAPI extends TransactionAPI {
      * @param amount Amount issued, denoted in Bitcoin, to have replaced by another vault
      * @returns The request id
      */
-    request(amount: Big): Promise<string>;
+    request(amount: BTCAmount): Promise<string>;
     /**
      * Wihdraw a replace request
      * @param amount The amount of wrapped tokens to withdraw from the amount
      * requested to have replaced.
      */
-    withdraw(amount: Big): Promise<void>;
+    withdraw(amount: BTCAmount): Promise<void>;
     /**
      * Accept a replace request
      * @param oldVault ID of the old vault that to be (possibly partially) replaced
@@ -75,7 +73,7 @@ export interface ReplaceAPI extends TransactionAPI {
      * @param collateral The collateral for replacement
      * @param btcAddress The address that old-vault should transfer the btc to
      */
-    accept(oldVault: AccountId, amountSat: Big, collateral: Big, btcAddress: string): Promise<void>;
+    accept(oldVault: AccountId, amountSat: BTCAmount, collateral: PolkadotAmount, btcAddress: string): Promise<void>;
     /**
      * Execute a replace request
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
@@ -89,9 +87,13 @@ export interface ReplaceAPI extends TransactionAPI {
     /**
      *
      * @param amount The amount of wrapped tokens to request replacement for.
-     * @returns The griefing collateral, as a big denomination (e.g. DOT, not Planck)
+     * @param collateralCurrency The collateral, as a currency object (using `Monetary.js`)
+     * @returns The griefing collateral
      */
-    getGriefingCollateral(amount: Big): Promise<Big>;
+    getGriefingCollateral<C extends CollateralUnit>(
+        amount: BTCAmount,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
 }
 
 export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceAPI {
@@ -119,10 +121,11 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         throw new Error("Request transaction failed");
     }
 
-    async request(amount: Big): Promise<string> {
-        const amountSat = this.api.createType("Balance", btcToSat(amount));
-        const griefingCollateralDot = await this.getGriefingCollateral(amount);
-        const griefingCollateralPlanck = dotToPlanck(griefingCollateralDot);
+    async request(amount: BTCAmount): Promise<string> {
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi());
+        // TODO: Support multiple collateral currencies
+        const griefingCollateral = await this.getGriefingCollateral(amount, Polkadot);
+        const griefingCollateralPlanck = this.api.createType("Balance", griefingCollateral.str.Planck());
         const requestTx = this.api.tx.replace.requestReplace(amountSat, griefingCollateralPlanck);
         const result = await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
         try {
@@ -132,16 +135,21 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         }
     }
 
-    async withdraw(amount: Big): Promise<void> {
-        const amountSat = this.api.createType("Balance", btcToSat(amount));
+    async withdraw(amount: BTCAmount): Promise<void> {
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi());
         const requestTx = this.api.tx.replace.withdrawReplace(amountSat);
         await this.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
     }
 
-    async accept(oldVault: AccountId, amount: Big, collateral: Big, btcAddress: string): Promise<void> {
+    async accept(
+        oldVault: AccountId,
+        amount: BTCAmount,
+        collateral: PolkadotAmount,
+        btcAddress: string
+    ): Promise<void> {
         const parsedBtcAddress = this.api.createType("BtcAddress", btcAddress);
-        const amountSat = this.api.createType("Balance", btcToSat(amount));
-        const collateralPlanck = this.api.createType("Balance", dotToPlanck(collateral));
+        const amountSat = this.api.createType("Balance", amount.str.Satoshi());
+        const collateralPlanck = this.api.createType("Balance", collateral.str.Planck());
         const requestTx = this.api.tx.replace.acceptReplace(oldVault, amountSat, collateralPlanck, parsedBtcAddress);
         await this.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
     }
@@ -153,15 +161,18 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         await this.sendLogged(requestTx, this.api.events.replace.ExecuteReplace);
     }
 
-    async getDustValue(): Promise<Big> {
+    async getDustValue(): Promise<BTCAmount> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const dustSatoshi = await this.api.query.replace.replaceBtcDustValue.at(head);
-        return satToBTC(dustSatoshi);
+        return BTCAmount.from.Satoshi(dustSatoshi.toString());
     }
 
-    async getGriefingCollateral(amount: Big): Promise<Big> {
+    async getGriefingCollateral<C extends CollateralUnit>(
+        amount: BTCAmount,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
         const griefingCollateralRate = await this.feeAPI.getReplaceGriefingCollateralRate();
-        return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate);
+        return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate, collateralCurrency);
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {

@@ -9,9 +9,11 @@ import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
 import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 
 describe("vaultsAPI", () => {
     let bob: KeyringPair;
+    let ferdie: KeyringPair;
     let ferdie_stash: KeyringPair;
     let charlie_stash: KeyringPair;
     let dave_stash: KeyringPair;
@@ -32,6 +34,7 @@ describe("vaultsAPI", () => {
         dave_stash = keyring.addFromUri("//Dave//stash");
         eve_stash = keyring.addFromUri("//Eve//stash");
         ferdie_stash = keyring.addFromUri("//Ferdie//stash");
+        ferdie = keyring.addFromUri("//Ferdie");
         // Bob is the authorized oracle
         oracleAPI = new DefaultOracleAPI(api, bob);
         
@@ -55,19 +58,19 @@ describe("vaultsAPI", () => {
         return vaultAddress === dave_stash.address ||
             vaultAddress === charlie_stash.address ||
             vaultAddress === eve_stash.address ||
-            vaultAddress === ferdie_stash.address;
+            vaultAddress === ferdie_stash.address ||
+            vaultAddress === ferdie.address;
     }
 
     it("should get issuable", async () => {
         const issuableInterBTC = await vaultsAPI.getTotalIssuableAmount();
-        const issuableInterBTCBig = new Big(issuableInterBTC);
-        const minIssuableInterBTC = new Big(1);
-        assert.isTrue(issuableInterBTCBig.gte(minIssuableInterBTC));
+        const minExpectedIssuableInterBTC = BTCAmount.from.BTC(1);
+        assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
     it("should deposit and withdraw collateral", async () => {
         vaultsAPI.setAccount(charlie_stash);
-        const amount = new Big(100);
+        const amount = PolkadotAmount.from.DOT(100);
         const collateralizationBeforeDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
         await vaultsAPI.depositCollateral(amount);
         const collateralizationAfterDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
@@ -113,9 +116,10 @@ describe("vaultsAPI", () => {
         const premiumRedeemThreshold = await vaultsAPI.getPremiumRedeemThreshold();
         const modifyExchangeRateBy = premiumRedeemThreshold.mul(0.9).div(currentVaultCollateralization);
 
-        const initialExchangeRate = await oracleAPI.getExchangeRate();
+        const initialExchangeRate = await oracleAPI.getExchangeRate(Polkadot);
         // crash the exchange rate so that the vault falls below the premium redeem threshold
-        const exchangeRateToSet = initialExchangeRate.div(modifyExchangeRateBy);
+        const exchangeRateValue = initialExchangeRate.toBig().div(modifyExchangeRateBy);
+        const exchangeRateToSet = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
         await oracleAPI.setExchangeRate(exchangeRateToSet);
 
         const premiumRedeemVaults = await vaultsAPI.getPremiumRedeemVaults();
@@ -126,7 +130,7 @@ describe("vaultsAPI", () => {
             "Premium redeem vault is not the expected one"
         );
 
-        const premiumRedeemAmount = premiumRedeemVaults.values().next().value as Big;
+        const premiumRedeemAmount = premiumRedeemVaults.values().next().value as BTCAmount;
         assert.isTrue(
             premiumRedeemAmount.gte(issuableAmount),
             "Amount available for premium redeem should be higher"
@@ -148,24 +152,24 @@ describe("vaultsAPI", () => {
     });
 
     it("should select random vault for issue", async () => {
-        const interBTC = new Big(0);
+        const interBTC = BTCAmount.zero;
         const randomVault = await vaultsAPI.selectRandomVaultIssue(interBTC);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for issuing is found", async () => {
-        const interBTC = new Big(9000000);
+        const interBTC = BTCAmount.from.BTC(9000000);
         assert.isRejected(vaultsAPI.selectRandomVaultIssue(interBTC));
     });
 
     it("should select random vault for redeem", async () => {
-        const interBTC = new Big(0);
+        const interBTC = BTCAmount.zero;
         const randomVault = await vaultsAPI.selectRandomVaultRedeem(interBTC);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for redeeming is found", async () => {
-        const interBTC = new Big(9000000);
+        const interBTC = BTCAmount.from.BTC(9000000);
         assert.isRejected(vaultsAPI.selectRandomVaultRedeem(interBTC));
     });
 
@@ -213,12 +217,12 @@ describe("vaultsAPI", () => {
     it("should get the issuable InterBTC for a vault", async () => {
         const bobId = api.createType("AccountId", ferdie_stash.address);
         const issuableInterBtc = await vaultsAPI.getIssuableAmount(bobId);
-        assert.isTrue(issuableInterBtc.gt(0));
+        assert.isTrue(issuableInterBtc.gt(BTCAmount.zero));
     });
 
     it("should get the issuable InterBTC", async () => {
         const issuableInterBtc = await vaultsAPI.getTotalIssuableAmount();
-        assert.isTrue(issuableInterBtc.gt(0));
+        assert.isTrue(issuableInterBtc.gt(BTCAmount.zero));
     });
 
     it("should getMaxSLA", async () => {
@@ -233,10 +237,9 @@ describe("vaultsAPI", () => {
 
     it("should getFees", async () => {
         const feesWrapped = await vaultsAPI.getFeesWrapped(charlie_stash.address);
-        const feesDOT = await vaultsAPI.getFeesCollateral(charlie_stash.address);
-        const benchmarkFees = new Big("0");
-        assert.isTrue(new Big(feesWrapped).gte(benchmarkFees));
-        assert.isTrue(new Big(feesDOT).gte(benchmarkFees));
+        const feesDOT = await vaultsAPI.getFeesCollateral(charlie_stash.address, Polkadot);
+        assert.isTrue(feesWrapped.gte(BTCAmount.zero));
+        assert.isTrue(feesDOT.gte(PolkadotAmount.zero));
     });
 
     it("should getAPY", async () => {

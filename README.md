@@ -60,11 +60,12 @@ The different functionalities are then exposed through the `InterBTCAPI` instanc
 From the account you set, you can then start requesting to issue interBTC.
 
 ```ts
+import { BTCAmount } from "@interlay/monetary-js";
 // amount of BTC to convert to interBTC
 // NOTE: the bridge fees will be deducted from this. For example, if you request 1 BTC, you will receive about 0.995 interBTC
-const amount = new Big(0.001);
+const amount = BTCAmount.from.BTC(0.001);
 // request to issue interBTC
-const requestResults = await issueAPI.request(amount);
+const requestResults = await interBTC.issue.request(amount);
 // the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)
 // NOTE: the library will automatically distribute issue requests across multiple vaults if no single vault can fulfill the request.
 // Most of the time, a single vault will be able to fulfill the request.
@@ -75,15 +76,16 @@ At this point, you will need to send BTC using your favorite BTC wallet.
 ### Redeeming interBTC
 
 ```ts
+import { BTCAmount } from "@interlay/monetary-js";
 // the amount interBTC to burn
 // NOTE: the bridge fees will be deducted from this 
-const amount = new Big(0.001);
+const amount = BTCAmount.from.BTC(0.001);
 // your BTC address
 const btcAddress = "tb123....";
 // the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)
 // NOTE: the library will automatically distribute redeem requests across multiple vaults if no single vault can fulfill the request.
 // Most of the time, a single vault will be able to fulfill the request.
-const requestResults = await redeemAPI.request(amount, btcAddress);
+const requestResults = await interBTC.redeem.request(amount, btcAddress);
 ```
 
 At this point, one more more vaults will send BTC to the address specified within 24 hours.
@@ -143,12 +145,15 @@ Then, to run tests, run
 yarn test
 ```
 
-Certain API calls require a parameters of type `AccountId`. For testing, an empty accountId will suffice:
+Certain API calls require a parameter of type `AccountId`, which represents the Polkadot/Kusama account and can be instantiated as follows
 
 ```ts
 import { AccountId } from "@polkadot/types/interfaces/runtime";
 
-const activeStakedRelayerId = <AccountId>{};
+const activeStakedRelayerId = await interBTC.api.createType(
+    "AccountId",
+    "5Ck5SLSHYac6WFt5UZRSsdJjwmpSZq85fd5TRNAdZQVzEAPT"
+);
 const feesEarnedByActiveStakedRelayer = await interBTC.stakedRelayer.getFeesEarned(
     activeStakedRelayerId
 );

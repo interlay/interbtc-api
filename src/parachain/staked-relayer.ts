@@ -6,6 +6,7 @@ import { Bytes } from "@polkadot/types";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import { AddressOrPair } from "@polkadot/api/types";
+import { Bitcoin, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
@@ -14,8 +15,6 @@ import { DefaultOracleAPI, OracleAPI } from "./oracle";
 
 /**
  * @category InterBTC Bridge
- * The type Big represents Wrapped or Collateral large denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface StakedRelayerAPI extends TransactionAPI {
     /**
@@ -25,7 +24,7 @@ export interface StakedRelayerAPI extends TransactionAPI {
     /**
      * @returns A tuple denoting [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime]
      */
-    getLastBTCDOTExchangeRateAndTime(): Promise<[Big, Date]>;
+    getLastBTCDOTExchangeRateAndTime(): Promise<[ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>, Date]>;
     /**
      * @returns A parachain status code object
      */
@@ -89,8 +88,8 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         return pair[1] !== undefined;
     }
 
-    async getLastBTCDOTExchangeRateAndTime(): Promise<[Big, Date]> {
-        const lastBTCDOTExchangeRate = await this.oracleAPI.getExchangeRate();
+    async getLastBTCDOTExchangeRateAndTime(): Promise<[ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>, Date]> {
+        const lastBTCDOTExchangeRate = await this.oracleAPI.getExchangeRate(Polkadot);
         const lastBTCDOTExchangeRateTime = await this.oracleAPI.getLastExchangeRateTime();
         return [lastBTCDOTExchangeRate, lastBTCDOTExchangeRateTime];
     }

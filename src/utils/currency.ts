@@ -1,5 +1,7 @@
-import Big from "big.js";
+import Big, { BigSource } from "big.js";
 import BN from "bn.js";
+import { Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { CurrencyUnit } from "../types/currency";
 
 // set maximum exponents
 Big.PE = 21;
@@ -67,9 +69,8 @@ export function dotToPlanck(dot: Big): BN {
     return bigToBn(dot.mul(DOT_IN_PLANCK));
 }
 
-export function computeLazyDistribution(stake: Big, perToken: Big, tally: Big): BN {
-    const lazyDistribution = stake.mul(perToken).sub(tally);
-    return bigToBn(lazyDistribution);
+export function computeLazyDistribution(stake: Big, perToken: Big, tally: Big): Big {
+    return stake.mul(perToken).sub(tally);
 }
 
 export function roundLastNDigits(n: number, x: BN | Big | string): string {
@@ -77,4 +78,11 @@ export function roundLastNDigits(n: number, x: BN | Big | string): string {
     // Use BN such that we perform integer division
     const bigNumber = new BN(x.toString());
     return bigNumber.div(new BN(power)).mul(new BN(power)).toString();
+}
+
+export function newMonetaryAmount<C extends CurrencyUnit>(
+    rawAmount: BigSource,
+    currency: Currency<C>
+): MonetaryAmount<Currency<C>, C> {
+    return new MonetaryAmount<Currency<C>, C>(currency, rawAmount);
 }

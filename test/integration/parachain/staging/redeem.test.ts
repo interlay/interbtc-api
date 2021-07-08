@@ -1,6 +1,8 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
+import { Bitcoin, BTCAmount } from "@interlay/monetary-js";
+
 import { DefaultRedeemAPI, RedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
@@ -19,8 +21,7 @@ import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import Big from "big.js";
-import { DefaultStakedRelayerAPI, ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH, StakedRelayerAPI, IssueStatus, CurrencyIdLiteral } from "../../../../src";
+import { DefaultStakedRelayerAPI, ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH, StakedRelayerAPI } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -67,13 +68,13 @@ describe("redeem", () => {
 
     describe("request", () => {
         it("should fail if no account is set", () => {
-            const amount = new Big(10);
+            const amount = BTCAmount.from.BTC(10);
             assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
         });
 
         it("should issue and request redeem", async () => {
-            const issueAmount = new Big("0.001");
-            const redeemAmount = new Big("0.0009");
+            const issueAmount = BTCAmount.from.BTC(0.001);
+            const redeemAmount = BTCAmount.from.BTC(0.0009);
             await issueAndRedeem(
                 api,
                 electrsAPI,
@@ -89,29 +90,29 @@ describe("redeem", () => {
 
         // Skip this test. Vaults fail to auto-execute to redeem in good time.
         it.skip("should issue and auto-execute redeem", async () => {
-            const initialBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
-            const issueAmount = new Big("0.001");
+            const initialBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
+            const issueAmount = BTCAmount.from.BTC(0.001);
             const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
-            const redeemAmount = new Big("0.0009");
+            const redeemAmount = BTCAmount.from.BTC(0.0009);
             await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount);
 
             // check redeeming worked
             const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
-            const finalBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
+            const finalBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem), finalBalance);
         }).timeout(1000000);
 
         // Vaults fail to submit the opreturn tx in good time
         it.skip("should issue and manually execute redeem", async () => {
-            const initialBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
-            const issueAmount = new Big("0.001");
+            const initialBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
+            const issueAmount = BTCAmount.from.BTC(0.001);
             const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
-            const redeemAmount = new Big("0.0009");
+            const redeemAmount = BTCAmount.from.BTC(0.0009);
             await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, undefined, ExecuteRedeem.Manually);
 
             // check redeeming worked
             const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
-            const finalBalance = await tokensAPI.balance(CurrencyIdLiteral.INTERBTC, api.createType("AccountId", alice.address));
+            const finalBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
             assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem), finalBalance);
         }).timeout(1000000);
     });
@@ -143,9 +144,9 @@ describe("redeem", () => {
     });
 
     it("should getFeesToPay", async () => {
-        const amount = new Big("2");
+        const amount = BTCAmount.from.BTC(2);
         const feesToPay = await redeemAPI.getFeesToPay(amount);
-        assert.equal(feesToPay.toString(), "0.01");
+        assert.equal(feesToPay.str.BTC(), "0.01");
     });
 
     it("should getFeeRate", async () => {
@@ -165,7 +166,7 @@ describe("redeem", () => {
 
     it("should getDustValue", async () => {
         const dustValue = await redeemAPI.getDustValue();
-        assert.equal(dustValue.toString(), "0.00001");
+        assert.equal(dustValue.str.BTC(), "0.00001");
     });
 
 });

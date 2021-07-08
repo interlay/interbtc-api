@@ -7,6 +7,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { BTCAmount } from "@interlay/monetary-js";
 
 describe("ElectrsAPI testnet", function () {
     const txid = "0af83672b9f80f2ad53218a8f67899ea07d7da4f07a16ba2c954030895a91d9a";
@@ -67,7 +68,7 @@ describe("ElectrsAPI testnet", function () {
 
     it("should return correct tx id when called with amount and receiver", async () => {
         const recipientAddress = "tb1q9dxnjz0qwh7yj6axl0q9r7lyc9n3gat8nlrvhf";
-        const amount = new Big("0.0001236");
+        const amount = BTCAmount.from.BTC(0.0001236);
         const txid = await electrsAPI.getTxIdByRecipientAddress(recipientAddress, amount);
         assert.strictEqual(txid, "41640c7703ebd972dd913f89c6d66941894d03ef3934edc59259342c7cc8126e");
     });
@@ -87,7 +88,8 @@ describe("ElectrsAPI testnet", function () {
             // https://blockstream.info/testnet/tx/4b1900dc48aaa9fa84a340e94aa21d20b54371d19ea6b8edd68a558cd36afdd0?expand
             const opReturn = "1165adb125d9703328a37f18b5f8c35732c97a3cd2aab2ead6f28054fd023105";
             const receiverAddress = "tb1qr959hr9t8zd96w3cqke40da4czqfgmwl0yn5mq";
-            const amount = new Big("0.00088");
+            const amount = BTCAmount.from.BTC(0.00088);
+
             const txid = await electrsAPI.getTxIdByOpReturn(opReturn, receiverAddress, amount);
             assert.strictEqual(txid, "f5bcaeb5181154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91");
         });
@@ -120,7 +122,8 @@ describe("ElectrsAPI regtest", function () {
 
     it("should getTxIdByRecipientAddress", async () => {
         const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-        const amount = new Big("0.00022244");
+        const amount = BTCAmount.from.BTC(0.00022244);
+        
         const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amount, 6);
         const txid = await electrsAPI.getTxIdByRecipientAddress(recipientAddress, amount);
         assert.strictEqual(txid, txData.txid);
@@ -129,7 +132,8 @@ describe("ElectrsAPI regtest", function () {
     it("should getTxByOpreturn", async () => {
         const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
         const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-        const amount = new Big("0.00029");
+        const amount = BTCAmount.from.BTC(0.00029);
+
         const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amount, 6, opReturnValue);
         const txid = await electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount);
         assert.strictEqual(txid, txData.txid);
@@ -138,7 +142,8 @@ describe("ElectrsAPI regtest", function () {
     it("should use getTxStatus to return correct confirmations", async () => {
         const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
         const recipientAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-        const amount = new Big("0.00029");
+        const amount = BTCAmount.from.BTC(0.00029);
+
         const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
         // transaction in mempool
         let status = await electrsAPI.getTransactionStatus(txData.txid);

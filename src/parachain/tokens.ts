@@ -1,47 +1,52 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
-import Big from "big.js";
+import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
-import { btcToSat, newAccountId, satToBTC } from "../utils";
+import { newAccountId, newMonetaryAmount } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CurrencyIdLiteral, encodeCurrencyIdLiteral } from "../types";
+import { monetaryToCurrencyId, CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface TokensAPI extends TransactionAPI {
     /**
+     * @param currency The currency specification, a `Monetary.js` object
      * @returns The total amount in the system
      */
-    total(currency: CurrencyIdLiteral): Promise<Big>;
+    total<C extends CurrencyUnit>(currency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
+     * @param currency The currency specification, a `Monetary.js` object
      * @param id The AccountId of a user
      * @returns The user's free balance
      */
-    balance(currency: CurrencyIdLiteral, id: AccountId): Promise<Big>;
+    balance<C extends CurrencyUnit>(currency: Currency<C>, id: AccountId): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
+     * @param currency The currency specification, a `Monetary.js` object
      * @param id The AccountId of a user
      * @returns The user's locked balance
      */
-    balanceLocked(currency: CurrencyIdLiteral, id: AccountId): Promise<Big>;
+    balanceLocked<C extends CurrencyUnit>(
+        currency: Currency<C>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @param destination The address of a user
-     * @param amount The amount to transfer
+     * @param amount The amount to transfer, as a `Monetary.js` object
      */
-    transfer(currency: CurrencyIdLiteral, destination: string, amount: Big): Promise<void>;
+    transfer<C extends CurrencyUnit>(destination: string, amount: MonetaryAmount<Currency<C>, C>): Promise<void>;
     /**
      * Subscribe to balance updates, denominated in InterBTC
+     * @param currency The currency specification, a `Monetary.js` object
      * @param account AccountId string
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)
      */
-    subscribeToBalance(
-        currency: CurrencyIdLiteral,
+    subscribeToBalance<C extends CurrencyUnit>(
+        currency: Currency<C>,
         account: string,
-        callback: (account: string, balance: Big) => void
+        callback: (account: string, balance: MonetaryAmount<Currency<C>, C>) => void
     ): Promise<() => void>;
 }
 
@@ -50,35 +55,41 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         super(api, account);
     }
 
-    async total(currency: CurrencyIdLiteral): Promise<Big> {
+    async total<C extends CurrencyUnit>(currency: Currency<C>): Promise<MonetaryAmount<Currency<C>, C>> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
-        const totalBN = await this.api.query.tokens.totalIssuance.at(head, encodedCurrency);
-        return satToBTC(totalBN);
+        const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
+        const rawAmount = await this.api.query.tokens.totalIssuance.at(head, currencyId);
+        return newMonetaryAmount(rawAmount.toString(), currency);
     }
 
-    async balance(currency: CurrencyIdLiteral, id: AccountId): Promise<Big> {
-        const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
-        const account = await this.api.query.tokens.accounts(id, encodedCurrency);
-        return satToBTC(account.free);
+    async balance<C extends CurrencyUnit>(
+        currency: Currency<C>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
+        const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
+        const account = await this.api.query.tokens.accounts(id, currencyId);
+        return newMonetaryAmount(account.free.toString(), currency);
     }
 
-    async balanceLocked(currency: CurrencyIdLiteral, id: AccountId): Promise<Big> {
-        const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
-        const account = await this.api.query.tokens.accounts(id, encodedCurrency);
-        return satToBTC(account.reserved);
+    async balanceLocked<C extends CurrencyUnit>(
+        currency: Currency<C>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
+        const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
+        const account = await this.api.query.tokens.accounts(id, currencyId);
+        return newMonetaryAmount(account.reserved.toString(), currency);
     }
 
-    async subscribeToBalance(
-        currency: CurrencyIdLiteral,
+    async subscribeToBalance<C extends CurrencyUnit>(
+        currency: Currency<C>,
         account: string,
-        callback: (account: string, balance: Big) => void
+        callback: (account: string, balance: MonetaryAmount<Currency<C>, C>) => void
     ): Promise<() => void> {
         try {
             const accountId = newAccountId(this.api, account);
-            const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
-            const unsubscribe = await this.api.query.tokens.accounts(accountId, encodedCurrency, (balance) => {
-                callback(account, satToBTC(balance.free));
+            const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
+            const unsubscribe = await this.api.query.tokens.accounts(accountId, currencyId, (balance) => {
+                callback(account, newMonetaryAmount(balance.free.toString(), currency));
             });
             return unsubscribe;
         } catch (error) {
@@ -90,10 +101,13 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         };
     }
 
-    async transfer(currency: CurrencyIdLiteral, destination: string, amount: Big): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", btcToSat(amount));
-        const encodedCurrency = encodeCurrencyIdLiteral(this.api, currency);
-        const transferTransaction = this.api.tx.tokens.transfer(destination, encodedCurrency, amountSmallDenomination);
+    async transfer<C extends CurrencyUnit>(
+        destination: string,
+        amount: MonetaryAmount<Currency<C>, C>
+    ): Promise<void> {
+        const amountSmallDenomination = this.api.createType("Balance", amount.toString());
+        const currencyId = monetaryToCurrencyId(amount);
+        const transferTransaction = this.api.tx.tokens.transfer(destination, currencyId, amountSmallDenomination);
         await this.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
     }
 }

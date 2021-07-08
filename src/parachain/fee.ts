@@ -1,33 +1,48 @@
-import { decodeFixedPointType } from "..";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
+import {
+    Bitcoin,
+    BTCAmount,
+    BTCUnit,
+    Currency,
+    ExchangeRate,
+    MonetaryAmount,
+    Polkadot,
+    PolkadotAmount,
+    PolkadotUnit,
+} from "@interlay/monetary-js";
+
+import { decodeFixedPointType } from "..";
+import { CollateralUnit } from "../types";
 
 /**
  * @category InterBTC Bridge
- * The type Big represents large denominations (e.g. DOT or BTC),
- * while the type BN represents small denominations (e.g. Planck or Satoshi).
  */
 export interface FeeAPI {
     /**
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
      * @param griefingCollateralRate
-     * @returns The griefing collateral, as large denomination (e.g. DOT)
+     * @returns The griefing collateral
      */
-    getGriefingCollateral(amount: Big, griefingCollateralRate: Big): Promise<Big>;
+    getGriefingCollateral<C extends CollateralUnit>(
+        amount: BTCAmount,
+        griefingCollateralRate: Big,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
-     * @param feesWrapped Wrapped token fees accrued, in large denomination (e.g. BTC)
-     * @param feesCollateral Collateral fees accrued, in large denomination (e.g. DOT)
-     * @param lockedCollateral Collateral value representing the value locked to gain yield. Large denomination (e.g. DOT)
-     * @param exchangeRate (Optional) Conversion rate of the large denominations (DOT/BTC as opposed to Planck/Satoshi)
+     * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
+     * @param feesCollateral Collateral fees accrued, in collateral token (e.g. DOT)
+     * @param lockedCollateral Collateral value representing the value locked to gain yield.
+     * @param exchangeRate (Optional) Conversion rate, as a `Monetary.js` object
      * @returns The APY, given the parameters
      */
     calculateAPY(
-        feesWrapped: Big,
-        feesCollateral: Big,
-        lockedCollateral: Big,
-        exchangeRate?: Big
+        feesWrapped: BTCAmount,
+        feesCollateral: PolkadotAmount,
+        lockedCollateral: PolkadotAmount,
+        exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>
     ): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
@@ -50,8 +65,12 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api);
     }
 
-    async getGriefingCollateral(amount: Big, griefingCollateralRate: Big): Promise<Big> {
-        const dotAmount = await this.oracleAPI.convertBitcoinToDot(amount);
+    async getGriefingCollateral<C extends CollateralUnit>(
+        amount: BTCAmount,
+        griefingCollateralRate: Big,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
+        const dotAmount = await this.oracleAPI.convertWrappedToCollateral(amount, collateralCurrency);
         return dotAmount.mul(griefingCollateralRate);
     }
 
@@ -73,22 +92,23 @@ export class DefaultFeeAPI implements FeeAPI {
         return decodeFixedPointType(issueFee);
     }
 
-    async calculateAPY(
-        feesWrapped: Big,
-        feesCollateral: Big,
-        lockedCollateral: Big,
-        exchangeRate?: Big
+    async calculateAPY<C extends CollateralUnit>(
+        feesWrapped: BTCAmount,
+        feesCollateral: MonetaryAmount<Currency<C>, C>,
+        lockedCollateral: MonetaryAmount<Currency<C>, C>,
+        exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
     ): Promise<Big> {
-        if (lockedCollateral.eq(new Big(0))) {
+        if (lockedCollateral.isZero()) {
             return new Big(0);
         }
         if (exchangeRate === undefined) {
-            exchangeRate = await this.oracleAPI.getExchangeRate();
+            exchangeRate = await this.oracleAPI.getExchangeRate(feesCollateral.currency);
         }
-        const feesWrappedAsCollateral = feesWrapped.mul(exchangeRate);
-        const totalFees = feesCollateral.add(feesWrappedAsCollateral);
 
-        // convert to percent
-        return totalFees.div(lockedCollateral).mul(100);
+        const feesWrappedAsCollateral = exchangeRate.toCounter(feesWrapped);
+        const totalFees = feesCollateral.add(feesWrappedAsCollateral).toBig();
+
+        // convert to percentage
+        return totalFees.div(lockedCollateral.toBig()).mul(100);
     }
 }

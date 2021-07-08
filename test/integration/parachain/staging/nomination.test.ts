@@ -1,10 +1,11 @@
+import { BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
 
-import { BitcoinCoreClient, CurrencyIdLiteral, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultTokensAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, satToBTC, setNumericStorage, TokensAPI, VaultsAPI } from "../../../../src";
+import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultTokensAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, setNumericStorage, TokensAPI, VaultsAPI } from "../../../../src";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
@@ -70,13 +71,13 @@ describe("NominationAPI", () => {
         await optInAndPreserveAPIAccount(charlie_stash);
 
         const issueFee = await feeAPI.getIssueFee();
-        const nominatorDeposit = new Big(100);
+        const nominatorDeposit = PolkadotAmount.from.DOT(100);
         // Set issue fees to 100%
         await setIssueFee(new BN("1000000000000000000"));
-        const stakingCapacityBeforeNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address));
+        const stakingCapacityBeforeNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address), Polkadot);
         // Deposit
         await nominationAPI.depositCollateral(charlie_stash.address, nominatorDeposit);
-        const stakingCapacityAfterNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address));
+        const stakingCapacityAfterNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address), Polkadot);
         assert.equal(
             stakingCapacityBeforeNomination.sub(nominatorDeposit).toString(),
             stakingCapacityAfterNomination.toString(),
@@ -91,9 +92,9 @@ describe("NominationAPI", () => {
         assert.equal(bob.address, nominatorId);
         assert.equal(charlie_stash.address, vaultId);
 
-        const interBtcToIssue = new Big(1);
+        const interBtcToIssue = BTCAmount.from.BTC(1);
         await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
-        const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorRewards(CurrencyIdLiteral.INTERBTC, bob.address)).map(v => v[1].toString());
+        const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorRewards(bob.address)).map(v => v[1].str.BTC());
         assert.equal(1, wrappedRewardsBeforeWithdrawal.length);
         assert.isTrue(new Big(wrappedRewardsBeforeWithdrawal[0]).gt(0.4), "Nominator should receive at least 0.4 interBTC");
 
@@ -101,10 +102,10 @@ describe("NominationAPI", () => {
         await nominationAPI.withdrawCollateral(charlie_stash.address, nominatorDeposit);
         const nominatorsAfterWithdrawal = await nominationAPI.listNominationPairs();
         assert.equal(1, nominatorsAfterWithdrawal.length);
-        const nominatorCollateral = await nominationAPI.getTotalNomination(bob.address);
+        const nominatorCollateral = await nominationAPI.getTotalNomination(Polkadot, bob.address);
         assert.equal("0", nominatorCollateral.toString());
 
-        const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorRewards(CurrencyIdLiteral.INTERBTC, bob.address)).map(v => v[1].toString());
+        const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorRewards(bob.address)).map(v => v[1].str.BTC());
         assert.equal(
             new Big(wrappedRewardsBeforeWithdrawal[0]).round(5, 0).toString(),
             new Big(wrappedRewardsAfterWithdrawal[0]).round(5, 0).toString(),

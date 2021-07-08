@@ -3,18 +3,12 @@ import { BTreeSet } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
-import BN from "bn.js";
+import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
-import {
-    BTC_IN_SAT,
-    DOT_IN_PLANCK,
-    decodeFixedPointType,
-    encodeUnsignedFixedPoint,
-    storageKeyToNthInner,
-    roundUpBigToNearestInteger,
-} from "../utils";
+import { decodeFixedPointType, encodeUnsignedFixedPoint, storageKeyToNthInner } from "../utils";
 import { ErrorCode } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { CollateralUnit } from "../types/currency";
 
 export const DEFAULT_FEED_NAME = "DOT/BTC";
 
@@ -26,14 +20,15 @@ export type BtcTxFees = {
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface OracleAPI extends TransactionAPI {
     /**
+     * @param currency The collateral currency as a `Monetary.js` object
      * @returns The DOT/BTC exchange rate
      */
-    getExchangeRate(): Promise<Big>;
+    getExchangeRate<C extends CollateralUnit>(
+        currency: Currency<C>
+    ): Promise<ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>>;
     /**
      * Obtains the current fees for BTC transactions, in satoshi/byte.
      * @returns An object with the values `fast` (estimated fee for inclusion
@@ -41,10 +36,6 @@ export interface OracleAPI extends TransactionAPI {
      * and `hour` (fee for inclusion in the next 6 blocks, or ~60 minutes).
      */
     getBtcTxFeesPerByte(): Promise<BtcTxFees>;
-    /**
-     * @returns The feed name (such as "DOT/BTC")
-     */
-    getFeed(): Promise<string>;
     /**
      * @returns Last exchange rate time
      */
@@ -61,7 +52,9 @@ export interface OracleAPI extends TransactionAPI {
      * Send a transaction to set the DOT/BTC exchange rate
      * @param exchangeRate The rate to set
      */
-    setExchangeRate(exchangeRate: Big): Promise<void>;
+    setExchangeRate<C extends CollateralUnit>(
+        exchangeRate: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
+    ): Promise<void>;
     /**
      * Send a transaction to set the current fee rates for BTC transactions
      * @param fees.fast Estimated Satoshis per bytes to get included in the next block (~10 min)
@@ -70,17 +63,23 @@ export interface OracleAPI extends TransactionAPI {
      */
     setBtcTxFeesPerByte(fees: BtcTxFees): Promise<void>;
     /**
-     * @returns The Planck/Satoshi exchange rate
+     * @param amount The amount of wrapped tokens to convert
+     * @param collateralCurrency A `Monetary.js` object
+     * @returns Converted value
      */
-    getRawExchangeRate(): Promise<Big>;
+    convertWrappedToCollateral<C extends CollateralUnit>(
+        amount: BTCAmount,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
-     * @returns Convert a Satoshi amount to Planck
+     * @param amount The amount of collateral tokens to convert
+     * @param collateralCurrency A `Monetary.js` object
+     * @returns Converted value
      */
-    convertSatoshiToPlanck(amount: BN): Promise<BN>;
-    /**
-     * @returns Convert a Bitcoin amount to Dot
-     */
-    convertBitcoinToDot(amount: Big): Promise<Big>;
+    convertCollateralToWrapped<C extends CollateralUnit>(
+        amount: MonetaryAmount<Currency<C>, C>,
+        collateralCurrency: Currency<C>
+    ): Promise<BTCAmount>;
     /**
      * @returns The period of time (in milliseconds) after an oracle's last submission
      * during which it is considered online
@@ -93,21 +92,35 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         super(api, account);
     }
 
-    async convertSatoshiToPlanck(amount: BN): Promise<BN> {
-        const planckPerSatoshi = await this.getRawExchangeRate();
-        const amountSatoshiBig = new Big(amount.toString());
-        const planck = roundUpBigToNearestInteger(planckPerSatoshi.mul(amountSatoshiBig));
-        return new BN(planck.toString());
+    async getExchangeRate<C extends CollateralUnit>(
+        collateralCurrency: Currency<C>
+    ): Promise<ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
+        const decodedRawRate = decodeFixedPointType(encodedRawRate);
+        return new ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>(
+            Bitcoin,
+            collateralCurrency,
+            decodedRawRate,
+            Bitcoin.rawBase,
+            collateralCurrency.rawBase
+        );
     }
 
-    async convertBitcoinToDot(amount: Big): Promise<Big> {
-        const dotPerBtc = await this.getExchangeRate();
-        return dotPerBtc.mul(amount);
+    async convertWrappedToCollateral<C extends CollateralUnit>(
+        amount: BTCAmount,
+        collateralCurrency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
+        const rate = await this.getExchangeRate(collateralCurrency);
+        return rate.toCounter(amount);
     }
 
-    async getExchangeRate(): Promise<Big> {
-        const rawRate = await this.getRawExchangeRate();
-        return new Big(this.convertFromRawExchangeRate(rawRate));
+    async convertCollateralToWrapped<C extends CollateralUnit>(
+        amount: MonetaryAmount<Currency<C>, C>,
+        collateralCurrency: Currency<C>
+    ): Promise<BTCAmount> {
+        const rate = await this.getExchangeRate(collateralCurrency);
+        return rate.toBase(amount);
     }
 
     async getOnlineTimeout(): Promise<number> {
@@ -116,14 +129,10 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         return moment.toNumber();
     }
 
-    async getRawExchangeRate(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
-        return decodeFixedPointType(encodedRawRate);
-    }
-
-    async setExchangeRate(dotPerBtc: Big): Promise<void> {
-        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, dotPerBtc);
+    async setExchangeRate<C extends CollateralUnit>(
+        exchangeRate: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
+    ): Promise<void> {
+        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate.toBig());
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
         await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
@@ -156,10 +165,6 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         return nameMap;
     }
 
-    getFeed(): Promise<string> {
-        return Promise.resolve(DEFAULT_FEED_NAME);
-    }
-
     async getLastExchangeRateTime(): Promise<Date> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(head);
@@ -183,12 +188,5 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
 
     private convertMoment(moment: Moment): Date {
         return new Date(moment.toNumber());
-    }
-
-    // Converts the raw exchange rate (Planck to Satoshi) into
-    // DOT to BTC
-    private convertFromRawExchangeRate(rate: Big): Big {
-        const divisor = new Big(DOT_IN_PLANCK / BTC_IN_SAT);
-        return rate.div(divisor);
     }
 }

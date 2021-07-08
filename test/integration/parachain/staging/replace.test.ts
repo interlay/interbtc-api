@@ -18,6 +18,7 @@ import {
 import { assert } from "../../../chai";
 import { issueSingle, sleep } from "../../../../src/utils/issueRedeem";
 import { DefaultReplaceAPI, REGTEST_ESPLORA_BASE_PATH, ReplaceAPI } from "../../../../src";
+import { BTCAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -50,8 +51,8 @@ describe("replace", () => {
     });
 
     it("should request vault replacement", async () => {
-        const issueAmount = new Big("0.001");
-        const replaceAmount = new Big("0.0005");
+        const issueAmount = BTCAmount.from.BTC(0.001);
+        const replaceAmount = BTCAmount.from.BTC(0.0005);
         await issueSingle(
             api,
             electrsAPI,
@@ -67,13 +68,13 @@ describe("replace", () => {
 
     it("should getDustValue", async () => {
         const dustValue = await replaceAPI.getDustValue();
-        assert.equal(dustValue.toString(), "0.00001");
+        assert.equal(dustValue.str.BTC(), "0.00001");
     }).timeout(500);
 
     it("should getGriefingCollateral", async () => {
-        const amountToReplace = new Big(0.728);
-        const griefingCollateral = await replaceAPI.getGriefingCollateral(amountToReplace);
-        assert.equal(griefingCollateral.toString(), "280.660880136");
+        const amountToReplace = BTCAmount.from.BTC(0.728);
+        const griefingCollateral = await replaceAPI.getGriefingCollateral(amountToReplace, Polkadot);
+        assert.equal(griefingCollateral.str.DOT(), "280.660880136");
     }).timeout(500);
 
     it("should getReplacePeriod", async () => {
