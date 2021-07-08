@@ -4,7 +4,7 @@ import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
 import { Network } from "bitcoinjs-lib";
-import { Bitcoin, BTCAmount, Polkadot, PolkadotUnit, MonetaryAmount, Currency } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, Polkadot, PolkadotUnit, MonetaryAmount, Currency, PolkadotAmount } from "@interlay/monetary-js";
 
 import {
     Vault,
@@ -313,7 +313,7 @@ export interface VaultsAPI extends TransactionAPI {
      */
     getBackingCollateral<C extends CollateralUnits>(
         vaultId: AccountId,
-        collateralCurrency: Currency<C>
+        currency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
 }
 
@@ -601,7 +601,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getIssuableAmount(vaultId: AccountId): Promise<BTCAmount> {
         const vault = await this.get(vaultId);
-        const lockedDot = await this.getBackingCollateral(vaultId, Polkadot);
+        const lockedDot = PolkadotAmount.from.Planck(vault.backing_collateral.toString());
         const interBtcCapacity = await this.calculateCapacity(lockedDot);
         const backedTokens = vault.issued_tokens.add(vault.to_be_issued_tokens);
         const issuedAmountBtc = BTCAmount.from.Satoshi(backedTokens.toString());
@@ -618,19 +618,17 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async getTotalIssuedAmount(): Promise<BTCAmount> {
-        const issuedTokens: BTCAmount[] = await this.getIssuedAmounts();
-        if (issuedTokens.length) {
-            const sumReducer = (accumulator: BTCAmount, currentValue: BTCAmount) => accumulator.add(currentValue);
-            return issuedTokens.reduce(sumReducer);
-        }
-        return BTCAmount.zero;
+        const issuedTokens = await this.tokensAPI.total(Bitcoin);
+        return issuedTokens;
     }
 
     async getTotalIssuableAmount(): Promise<BTCAmount> {
         // TODO: Can generalize to multiple collateral tokens
         const totalLockedDot = await this.tokensAPI.total(Polkadot);
-        const interBtcCapacity = await this.calculateCapacity(totalLockedDot);
-        const issuedAmountBtc = await this.getTotalIssuedAmount();
+        const [interBtcCapacity, issuedAmountBtc] = await Promise.all([
+            this.calculateCapacity(totalLockedDot),
+            this.getTotalIssuedAmount()
+        ]);
         return interBtcCapacity.sub(issuedAmountBtc);
     }
 
@@ -638,8 +636,10 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         collateral: MonetaryAmount<Currency<C>, C>
     ): Promise<BTCAmount> {
         const oracle = new DefaultOracleAPI(this.api);
-        const exchangeRate = await oracle.getExchangeRate(collateral.currency);
-        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
+        const [exchangeRate, secureCollateralThreshold] = await Promise.all([
+            oracle.getExchangeRate(collateral.currency),
+            this.getSecureCollateralThreshold()
+        ]);
         const unusedCollateral = collateral.div(secureCollateralThreshold);
         return exchangeRate.toBase(unusedCollateral);
     }

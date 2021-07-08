@@ -5,7 +5,7 @@ import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
 
-import { BitcoinCoreClient, CurrencyIdLiteral, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultTokensAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, satToBTC, setNumericStorage, TokensAPI, VaultsAPI } from "../../../../src";
+import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultTokensAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, setNumericStorage, TokensAPI, VaultsAPI } from "../../../../src";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
