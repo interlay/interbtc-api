@@ -33,7 +33,6 @@ export interface BTCRelayAPI {
      *
      * @param txid The ID of a Bitcoin transaction
      * @param confirmations The number of block confirmations needed to accept the inclusion proof.
-     * This parameter is only used if the `insecure` parameter is set to `true`.
      */
     verifyTransactionInclusion(txid: string, confirmations?: number): Promise<void>;
 }
