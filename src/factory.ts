@@ -30,10 +30,11 @@ export async function createInterbtcAPI(
     endpoint: string,
     network: BitcoinNetwork = "mainnet",
     account?: AddressOrPair,
-    autoConnect?: number | false | undefined
+    autoConnect?: number | false | undefined,
+    indexEndpoint?: string
 ): Promise<InterBTCAPI> {
     const api = await createPolkadotAPI(endpoint, autoConnect);
-    return new DefaultInterBTCAPI(api, network, account);
+    return new DefaultInterBTCAPI(api, network, account, indexEndpoint);
 }
 
 export function getAPITypes(): RegistryTypes {
