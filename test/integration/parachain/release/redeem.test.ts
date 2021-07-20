@@ -1,7 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
@@ -67,7 +66,7 @@ describe("redeem", () => {
         const amount = BTCAmount.from.BTC(0.00001);
         await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amount);
         await vaultBitcoinCoreClient.mineBlocks(3);
-        await DefaultTransactionAPI.waitForEvent(api, api.events.stakedRelayers.VaultTheft, 17 * 60000);
+        await DefaultTransactionAPI.waitForEvent(api, api.events.relay.VaultTheft, 17 * 60000);
 
         // Sleep for 10s because maxBurnableTokens and burnExchangeRate don't get updated immediately
         await sleep(10 * 1000);
