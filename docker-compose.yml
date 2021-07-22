@@ -1,9 +1,9 @@
 version: "3.8"
 services:
     interbtc:
-        image: "registry.gitlab.com/interlay/interbtc:master-bc3fbfa9-1624755169"
+        image: "interlayhq/interbtc:interbtc-standalone-0.8.5"
         command:
-            - btc-parachain
+            - interbtc-standalone
             - --rpc-external
             - --ws-external
             - --rpc-methods
@@ -57,7 +57,7 @@ services:
         ports:
             - "3002:3002"
     oracle:
-        image: "registry.gitlab.com/interlay/interbtc-clients/oracle:master-590b9de9-1624871268"
+        image: "interlayhq/interbtc-clients:oracle-0-8-2"
         command:
             - /bin/sh
             - -c
@@ -68,7 +68,7 @@ services:
         environment:
             RUST_LOG: info
     faucet:
-        image: "registry.gitlab.com/interlay/interbtc-clients/faucet:master-590b9de9-1624871271"
+        image: "interlayhq/interbtc-clients:faucet-0-8-2"
         command:
             - /bin/sh
             - -c
@@ -82,7 +82,7 @@ services:
         ports:
             - "3036:3036"
     vault_1:
-        image: "registry.gitlab.com/interlay/interbtc-clients/vault:master-590b9de9-1624871268"
+        image: "interlayhq/interbtc-clients:vault-0-8-2"
         command:
             - /bin/sh
             - -c
@@ -99,7 +99,7 @@ services:
             BITCOIN_RPC_PASS: rpcpassword
             RUST_LOG: info
     vault_2:
-        image: "registry.gitlab.com/interlay/interbtc-clients/vault:master-590b9de9-1624871268"
+        image: "interlayhq/interbtc-clients:vault-0-8-2"
         command:
             - /bin/sh
             - -c
@@ -113,7 +113,7 @@ services:
         environment:
             <<: *client-env
     vault_3:
-        image: "registry.gitlab.com/interlay/interbtc-clients/vault:master-590b9de9-1624871268"
+        image: "interlayhq/interbtc-clients:vault-0-8-2"
         command:
             - /bin/sh
             - -c
@@ -127,7 +127,7 @@ services:
         environment:
             <<: *client-env
     vault_to_liquidate:
-        image: "registry.gitlab.com/interlay/interbtc-clients/vault:master-590b9de9-1624871268"
+        image: "interlayhq/interbtc-clients:vault-0-8-2"
         command:
             - /bin/sh
             - -c
@@ -141,7 +141,7 @@ services:
         environment:
             <<: *client-env
     vault_to_ban:
-        image: "registry.gitlab.com/interlay/interbtc-clients/vault:master-590b9de9-1624871268"
+        image: "interlayhq/interbtc-clients:vault-0-8-2"
         command:
             - /bin/sh
             - -c

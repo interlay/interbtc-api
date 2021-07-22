@@ -101,10 +101,7 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         };
     }
 
-    async transfer<C extends CurrencyUnit>(
-        destination: string,
-        amount: MonetaryAmount<Currency<C>, C>
-    ): Promise<void> {
+    async transfer<C extends CurrencyUnit>(destination: string, amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
         const amountSmallDenomination = this.api.createType("Balance", amount.toString());
         const currencyId = monetaryToCurrencyId(amount);
         const transferTransaction = this.api.tx.tokens.transfer(destination, currencyId, amountSmallDenomination);

@@ -10,6 +10,7 @@ import {
     MonetaryAmount,
     Currency,
 } from "@interlay/monetary-js";
+import { CurrencyId } from "../interfaces";
 
 export enum CurrencyIdLiteral {
     DOT = "DOT",
@@ -19,6 +20,7 @@ export enum CurrencyIdLiteral {
 
 export type CollateralAmount = PolkadotAmount | KusamaAmount;
 export type CollateralCurrency = Polkadot | Kusama;
+export type MonetaryCurrency = Bitcoin | Polkadot | Kusama;
 export type CollateralUnit = PolkadotUnit | KusamaUnit;
 export type CurrencyUnit = BTCUnit | PolkadotUnit | KusamaUnit;
 
@@ -51,6 +53,17 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
         case Kusama.ticker: {
             return CurrencyIdLiteral.KSM;
         }
+    }
+    throw new Error("No CurrencyId entry for provided ticker");
+}
+
+export function currencyIdToMonetaryCurrency<C extends CurrencyUnit>(currencyId: CurrencyId): Currency<C> {
+    if (currencyId.isInterbtc) {
+        return Bitcoin as unknown as Currency<C>;
+    } else if (currencyId.isDot) {
+        return Polkadot as unknown as Currency<C>;
+    } else if (currencyId.isKsm) {
+        return Kusama as unknown as Currency<C>;
     }
     throw new Error("No CurrencyId entry for provided ticker");
 }

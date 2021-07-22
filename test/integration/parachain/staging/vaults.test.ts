@@ -10,6 +10,7 @@ import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOI
 import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
 import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
+import { DefaultPoolsAPI } from "../../../../src/parachain/pools";
 
 describe("vaultsAPI", () => {
     let bob: KeyringPair;
@@ -21,6 +22,7 @@ describe("vaultsAPI", () => {
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
     let oracleAPI: DefaultOracleAPI;
+    let poolsAPI: DefaultPoolsAPI;
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
 
@@ -37,6 +39,7 @@ describe("vaultsAPI", () => {
         ferdie = keyring.addFromUri("//Ferdie");
         // Bob is the authorized oracle
         oracleAPI = new DefaultOracleAPI(api, bob);
+        poolsAPI = new DefaultPoolsAPI(api);
         
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
@@ -236,8 +239,8 @@ describe("vaultsAPI", () => {
     });
 
     it("should getFees", async () => {
-        const feesWrapped = await vaultsAPI.getFeesWrapped(charlie_stash.address);
-        const feesDOT = await vaultsAPI.getFeesCollateral(charlie_stash.address, Polkadot);
+        const feesWrapped = await poolsAPI.getFeesWrapped(charlie_stash.address);
+        const feesDOT = await poolsAPI.getFeesCollateral(charlie_stash.address, Polkadot);
         assert.isTrue(feesWrapped.gte(BTCAmount.zero));
         assert.isTrue(feesDOT.gte(PolkadotAmount.zero));
     });

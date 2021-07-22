@@ -81,8 +81,10 @@ export function roundLastNDigits(n: number, x: BN | Big | string): string {
 }
 
 export function newMonetaryAmount<C extends CurrencyUnit>(
-    rawAmount: BigSource,
-    currency: Currency<C>
+    amount: BigSource,
+    currency: Currency<C>,
+    base = false
 ): MonetaryAmount<Currency<C>, C> {
-    return new MonetaryAmount<Currency<C>, C>(currency, rawAmount);
+    const unit = base ? currency.base : currency.rawBase;
+    return new MonetaryAmount<Currency<C>, C>(currency, amount, unit);
 }

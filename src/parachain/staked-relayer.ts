@@ -62,8 +62,8 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
     async reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
         const parsedVaultId = newAccountId(this.api, vaultId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
-        const tx = this.api.tx.stakedRelayers.reportVaultTheft(parsedVaultId, merkleProof, rawTx);
-        await this.sendLogged(tx, this.api.events.stakedRelayers.VaultTheft);
+        const tx = this.api.tx.relay.reportVaultTheft(parsedVaultId, merkleProof, rawTx);
+        await this.sendLogged(tx, this.api.events.relay.VaultTheft);
     }
 
     async getMonitoredVaultsCollateralizationRate(): Promise<Map<AccountId, Big>> {

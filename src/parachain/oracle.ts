@@ -132,7 +132,13 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
     async setExchangeRate<C extends CollateralUnit>(
         exchangeRate: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
     ): Promise<void> {
-        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate.toBig());
+        const encodedExchangeRate = encodeUnsignedFixedPoint(
+            this.api,
+            exchangeRate.toBig({
+                baseUnit: exchangeRate.base.rawBase,
+                counterUnit: exchangeRate.counter.rawBase,
+            })
+        );
         const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
         await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
