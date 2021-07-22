@@ -4,7 +4,7 @@ import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
 import { Network } from "bitcoinjs-lib";
-import { Bitcoin, BTCAmount, Polkadot, PolkadotUnit, MonetaryAmount, Currency } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, Polkadot, PolkadotUnit, MonetaryAmount, Currency, PolkadotAmount } from "@interlay/monetary-js";
 
 import {
     Vault,
@@ -36,6 +36,7 @@ export interface WalletExt {
 
 export interface VaultExt extends Omit<Vault, "wallet"> {
     wallet: WalletExt;
+    backingCollateral: PolkadotAmount
 }
 
 function encodeWallet(wallet: Wallet, network: Network): WalletExt {
@@ -50,16 +51,6 @@ function encodeWallet(wallet: Wallet, network: Network): WalletExt {
         publicKey: public_key.toString(),
         addresses: btcAddresses,
     };
-}
-
-export function encodeVault(vault: Vault, network: Network): VaultExt {
-    const { wallet, ...obj } = vault;
-    return Object.assign(
-        {
-            wallet: encodeWallet(wallet, network),
-        },
-        obj
-    ) as VaultExt;
 }
 
 /**
@@ -323,7 +314,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async list(): Promise<VaultExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(head);
-        return vaultsMap.map((v) => encodeVault(v[1], this.btcNetwork));
+        return Promise.all(vaultsMap.map((v) => this.encodeVault(v[1], this.btcNetwork)));
     }
 
     async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, Issue>> {
@@ -370,7 +361,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         if (!vaultId.eq(vault.id)) {
             throw new Error(`No vault registered with id ${vaultId}`);
         }
-        return encodeVault(vault, this.btcNetwork);
+        return this.encodeVault(vault, this.btcNetwork);
     }
 
     async getCollateral<C extends CollateralUnit = PolkadotUnit>(
@@ -679,5 +670,17 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     private unwrapCurrency(wrappedBalance: BalanceWrapper): Balance {
         return this.api.createType("Balance", wrappedBalance.amount.toString());
+    }
+
+    async encodeVault(vault: Vault, network: Network): Promise<VaultExt> {
+        const { wallet, ...obj } = vault;
+        const backingCollateral = await this.getBackingCollateral(vault.id, Polkadot);
+        return Object.assign(
+            {
+                wallet: encodeWallet(wallet, network),
+                backingCollateral
+            },
+            obj
+        ) as VaultExt;
     }
 }
