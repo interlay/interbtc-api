@@ -21,6 +21,7 @@ import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultIndexAPI, IndexAPI } from "./external/interbtc-index";
 import { INDEX_LOCAL_URL } from "./utils/constants";
 import { Configuration as IndexConfiguration } from "@interlay/interbtc-index-client";
+import { DefaultPoolsAPI, PoolsAPI } from "./parachain/pools";
 
 export * from "./factory";
 export * from "./parachain/transaction";
@@ -52,6 +53,7 @@ export interface InterBTCAPI {
     readonly replace: ReplaceAPI;
     readonly fee: FeeAPI;
     readonly nomination: NominationAPI;
+    readonly pools: PoolsAPI;
     readonly index: IndexAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
@@ -77,6 +79,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly replace: ReplaceAPI;
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
+    public readonly pools: PoolsAPI;
     public readonly index: IndexAPI;
 
     constructor(readonly api: ApiPromise, network: BitcoinNetwork = "mainnet", private _account?: AddressOrPair,
@@ -97,6 +100,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
         this.nomination = new DefaultNominationAPI(api, btcNetwork, this.electrsAPI, _account);
         this.index = DefaultIndexAPI(new IndexConfiguration({ basePath: indexEndpoint }));
+        this.pools = new DefaultPoolsAPI(api);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {
