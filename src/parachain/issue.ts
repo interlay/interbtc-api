@@ -28,9 +28,16 @@ import { CollateralUnit, Issue, IssueStatus } from "../types";
 
 export type IssueLimits = { singleVaultMaxIssuable: BTCAmount; totalMaxIssuable: BTCAmount };
 
-export function encodeIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
+export async function encodeIssueRequest(
+    req: IssueRequest,
+    network: Network,
+    id: H256 | string,
+    api: ApiPromise
+): Promise<Issue> {
     const amountBTC = satToBTC(req.amount);
     const fee = satToBTC(req.fee);
+    const header = await api.rpc.chain.getBlockHash(req.opentime);
+    const timestamp = await api.query.timestamp.now.at(header);
     const status = req.status.isCompleted
         ? IssueStatus.Completed
         : req.status.isCancelled
@@ -39,6 +46,7 @@ export function encodeIssueRequest(req: IssueRequest, network: Network, id: H256
     return {
         id: stripHexPrefix(id.toString()),
         creationBlock: req.opentime.toNumber(),
+        creationTimestamp: timestamp.toNumber(),
         vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
         vaultDOTAddress: req.vault.toString(),
         userDOTAddress: req.requester.toString(),
@@ -287,18 +295,22 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     async list(): Promise<Issue[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const issueRequests = await this.api.query.issue.issueRequests.entriesAt(head);
-        return issueRequests.map(([id, req]) => encodeIssueRequest(req, this.btcNetwork, storageKeyToNthInner(id)));
+        return await Promise.all(
+            issueRequests.map(
+                async ([id, req]) => await encodeIssueRequest(req, this.btcNetwork, storageKeyToNthInner(id), this.api)
+            )
+        );
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, Issue>> {
         const issueRequestPairs: [H256, IssueRequest][] = await this.api.rpc.issue.getIssueRequests(account);
         const mapForUser: Map<H256, Issue> = new Map<H256, Issue>();
-        issueRequestPairs.forEach((issueRequestPair) =>
+        await Promise.all(issueRequestPairs.map(async (issueRequestPair) =>
             mapForUser.set(
                 issueRequestPair[0],
-                encodeIssueRequest(issueRequestPair[1], this.btcNetwork, issueRequestPair[0])
+                await encodeIssueRequest(issueRequestPair[1], this.btcNetwork, issueRequestPair[0], this.api)
             )
-        );
+        ));
         return mapForUser;
     }
 
@@ -332,10 +344,11 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return Promise.all(
             issueIds.map(async (issueId) =>
-                encodeIssueRequest(
+                await encodeIssueRequest(
                     await this.api.query.issue.issueRequests.at(head, ensureHashEncoded(this.api, issueId)),
                     this.btcNetwork,
-                    issueId
+                    issueId,
+                    this.api
                 )
             )
         );
