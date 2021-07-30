@@ -173,6 +173,17 @@ Then, update the metadata by building the library:
 yarn build
 ```
 
+### Usage as script
+This library can be used as a script for initializing a local interBTC setup (the services ran using docker-compose), to allow for manual testing of the UI.
+```bash
+yarn install
+yarn initialize
+```
+By default, every flag is enabled. To get more information about the flags and disable some of them, run
+```bash
+yarn initialize --help
+```
+
 ## Help
 
 ### Bitcoin Regtest

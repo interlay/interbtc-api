@@ -29,22 +29,14 @@ export interface PoolsAPI {
      * @param nominatorId The account ID of the staking pool nominator
      * @returns The stake, as a Big object
      */
-    getStakingPoolStake(
-        currencyId: CurrencyIdLiteral,
-        nomineeId: string,
-        nominatorId: string
-    ): Promise<Big>;
+    getStakingPoolStake(currencyId: CurrencyIdLiteral, nomineeId: string, nominatorId: string): Promise<Big>;
     /**
      * @param currencyId The staked currency
      * @param nomineeId The account ID of the staking pool nominee
      * @param nominatorId The account ID of the staking pool nominator
      * @returns The reward tally, as a Big object
      */
-    getStakingPoolRewardTally(
-        currencyId: CurrencyIdLiteral,
-        nomineeId: string,
-        nominatorId: string
-    ): Promise<Big>;
+    getStakingPoolRewardTally(currencyId: CurrencyIdLiteral, nomineeId: string, nominatorId: string): Promise<Big>;
     /**
      * @param currencyId The staked currency
      * @param nomineeId The account ID of the staking pool nominee
@@ -154,7 +146,9 @@ export class DefaultPoolsAPI implements PoolsAPI {
             nonce = await this.getStakingPoolNonce(currencyId, nomineeId);
         }
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return decodeFixedPointType(await this.api.query.staking.stake.at(head, currencyId, [nonce, nomineeId, nominatorId]));
+        return decodeFixedPointType(
+            await this.api.query.staking.stake.at(head, currencyId, [nonce, nomineeId, nominatorId])
+        );
     }
 
     async getStakingPoolRewardTally(
@@ -177,7 +171,9 @@ export class DefaultPoolsAPI implements PoolsAPI {
             nonce = await this.getStakingPoolNonce(currencyId, nomineeId);
         }
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return decodeFixedPointType(await this.api.query.staking.rewardPerToken.at(head, currencyId, [nonce, nomineeId]));
+        return decodeFixedPointType(
+            await this.api.query.staking.rewardPerToken.at(head, currencyId, [nonce, nomineeId])
+        );
     }
 
     async computeCollateralInStakingPool<C extends CurrencyUnit>(
@@ -198,7 +194,9 @@ export class DefaultPoolsAPI implements PoolsAPI {
             nonce = await this.getStakingPoolNonce(currencyId, nomineeId);
         }
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return decodeFixedPointType(await this.api.query.staking.slashPerToken.at(head, currencyId, [nonce, nomineeId]));
+        return decodeFixedPointType(
+            await this.api.query.staking.slashPerToken.at(head, currencyId, [nonce, nomineeId])
+        );
     }
 
     async getStakingPoolSlashTally(

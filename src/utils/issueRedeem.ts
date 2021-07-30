@@ -6,12 +6,13 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 import { Bitcoin, BTCAmount, BTCUnit, MonetaryAmount, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
-import { getBitcoinNetwork, newAccountId } from "..";
+import { newAccountId } from "../utils/types";
+import { getBitcoinNetwork } from "../interbtc-api";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTokensAPI } from "../parachain/tokens";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
-import { stripHexPrefix } from "..";
+import { stripHexPrefix } from "../utils/encoding";
 import { DefaultRedeemAPI } from "../parachain";
 import { Issue, IssueStatus, Redeem, RedeemStatus } from "../types";
 import { BitcoinNetwork } from "../types/bitcoinTypes";
