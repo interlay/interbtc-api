@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "../../../../src/parachain/staked-relayer";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultElectrsAPI, ElectrsAPI, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";

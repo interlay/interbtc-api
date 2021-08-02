@@ -20,15 +20,16 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 
-export const DEFAULT_PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
-export const DEFAULT_FAUCET_ENDPOINT = "http://0.0.0.0:3036";
-export const DEFAULT_BITCOIN_CORE_NETWORK = "regtest";
-export const DEFAULT_BITCOIN_CORE_HOST = "0.0.0.0";
-export const DEFAULT_BITCOIN_CORE_USERNAME = "rpcuser";
-export const DEFAULT_BITCOIN_CORE_PASSWORD = "rpcpassword";
-export const DEFAULT_BITCOIN_CORE_PORT = "18443";
-export const DEFAULT_BITCOIN_CORE_WALLET = "Alice";
-export const DEFAULT_REDEEM_ADDRESS = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
+import {
+    DEFAULT_BITCOIN_CORE_HOST,
+    DEFAULT_BITCOIN_CORE_NETWORK,
+    DEFAULT_BITCOIN_CORE_PASSWORD,
+    DEFAULT_BITCOIN_CORE_PORT,
+    DEFAULT_BITCOIN_CORE_USERNAME,
+    DEFAULT_BITCOIN_CORE_WALLET,
+    DEFAULT_PARACHAIN_ENDPOINT,
+    DEFAULT_REDEEM_ADDRESS,
+} from "../../test/config";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");

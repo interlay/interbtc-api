@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createPolkadotAPI } from "../../../../src/factory";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultFeeAPI, FeeAPI } from "../../../../src";
 import { assert } from "chai";
 

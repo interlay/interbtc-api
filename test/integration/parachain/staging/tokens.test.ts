@@ -5,7 +5,7 @@ import { Bitcoin, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { CurrencyUnit } from "../../../../src";
 
 describe("TokensAPI", () => {

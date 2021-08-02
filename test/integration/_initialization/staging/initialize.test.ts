@@ -25,7 +25,13 @@ import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { DefaultOracleAPI } from "../../../../src/parachain/oracle";
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
-import { 
+import {
+    initializeVaultNomination,
+    initializeExchangeRate,
+    initializeStableConfirmations,
+    initializeIssue
+} from "../../../../src/utils/setup";
+import {
     DEFAULT_BITCOIN_CORE_HOST,
     DEFAULT_BITCOIN_CORE_NETWORK,
     DEFAULT_BITCOIN_CORE_PASSWORD,
@@ -33,11 +39,7 @@ import {
     DEFAULT_BITCOIN_CORE_USERNAME,
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_PARACHAIN_ENDPOINT,
-    initializeVaultNomination,
-    initializeExchangeRate,
-    initializeStableConfirmations,
-    initializeIssue
-} from "../../../../src/utils/setup";
+} from "../../../config";
 import { DefaultTokensAPI } from "../../../../src/parachain/tokens";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 

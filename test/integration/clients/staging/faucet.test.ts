@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { FaucetClient } from "../../../../src/clients";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { DEFAULT_PARACHAIN_ENDPOINT, DEFAULT_FAUCET_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_PARACHAIN_ENDPOINT, DEFAULT_FAUCET_ENDPOINT } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { assert } from "../../../chai";
 import { DefaultTokensAPI, TokensAPI } from "../../../../src";

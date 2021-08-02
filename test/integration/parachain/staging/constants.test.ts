@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { ConstantsAPI, DefaultConstantsAPI } from "../../../../src/parachain/constants";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("Constants", function () {
     this.timeout(10000); // API can be slightly slow

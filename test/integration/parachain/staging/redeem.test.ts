@@ -15,7 +15,7 @@ import {
     DEFAULT_PARACHAIN_ENDPOINT,
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_BITCOIN_CORE_PORT
-} from "../../../../src/utils/setup";
+} from "../../../config";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";

@@ -6,7 +6,7 @@ import { TypeRegistry } from "@polkadot/types";
 
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
 import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";

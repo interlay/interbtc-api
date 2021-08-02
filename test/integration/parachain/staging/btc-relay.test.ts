@@ -4,7 +4,7 @@ import { BTCRelayAPI } from "../../../../src/parachain";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultBTCRelayAPI } from "../../../../src/parachain/btc-relay";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("BTCRelay", function () {
     this.timeout(10000); // API can be slightly slow

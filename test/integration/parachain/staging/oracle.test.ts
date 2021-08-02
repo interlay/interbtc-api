@@ -4,7 +4,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { DefaultOracleAPI, OracleAPI } from "../../../../src/parachain/oracle";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../../src/utils/setup";
+import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import Big from "big.js";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
