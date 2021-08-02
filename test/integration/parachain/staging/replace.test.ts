@@ -13,7 +13,7 @@ import {
     DEFAULT_BITCOIN_CORE_USERNAME,
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_PARACHAIN_ENDPOINT
-} from "../../../config";
+} from "../../../../src/utils/setup";
 import { assert } from "../../../chai";
 import { issueSingle, sleep } from "../../../../src/utils/issueRedeem";
 import { DefaultReplaceAPI, REGTEST_ESPLORA_BASE_PATH, ReplaceAPI } from "../../../../src";

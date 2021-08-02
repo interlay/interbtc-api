@@ -1,11 +1,10 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { FaucetClient } from "../../../../src/clients";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { DEFAULT_PARACHAIN_ENDPOINT, DEFAULT_FAUCET_ENDPOINT } from "../../../config";
+import { DEFAULT_PARACHAIN_ENDPOINT, DEFAULT_FAUCET_ENDPOINT } from "../../../../src/utils/setup";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { assert } from "../../../chai";
-import Big from "big.js";
-import { CurrencyIdLiteral, DefaultTokensAPI, TokensAPI } from "../../../../src";
+import { DefaultTokensAPI, TokensAPI } from "../../../../src";
 import { Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 
 describe("Faucet", function () {

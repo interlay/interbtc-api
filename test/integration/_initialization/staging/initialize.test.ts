@@ -87,7 +87,7 @@ describe("Initialize parachain state", () => {
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         // Sleep for 2 min to wait for vaults to register
-        await sleep(2 * 60 * 1000);
+        // await sleep(2 * 60 * 1000);
     });
 
     after(async () => {

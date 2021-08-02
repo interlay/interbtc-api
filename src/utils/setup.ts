@@ -166,7 +166,11 @@ export async function initializeIssue(
     await issueSingle(api, electrsAPI, bitcoinCoreClient, issuingAccount, amountToIssue, vaultAddress);
 }
 
-export async function initializeRedeem(redeemAPI: RedeemAPI, amountToRedeem: BTCAmount, redeemBTCAddress: string): Promise<void> {
+export async function initializeRedeem(
+    redeemAPI: RedeemAPI,
+    amountToRedeem: BTCAmount,
+    redeemBTCAddress: string
+): Promise<void> {
     console.log("Initializing an interBTC redeem...");
     await redeemAPI.request(amountToRedeem, redeemBTCAddress);
 }
