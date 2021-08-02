@@ -34,6 +34,11 @@ export const DEFAULT_REDEEM_ADDRESS = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const argv = yargs(hideBin(process.argv))
+    .option("initialize", {
+        type: "boolean",
+        description: "Flag that decides whether this script should be run or not",
+        default: false,
+    })
     .option("set-stable-confirmations", {
         type: "boolean",
         description: "Set the required bitcoin and parachain confirmations to zero",
@@ -83,6 +88,7 @@ export interface InitializeRedeem {
 }
 
 export interface InitializationParams {
+    initialize?: boolean;
     setStableConfirmations?: true | ChainConfirmations;
     setExchangeRate?: true | ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>;
     enableNomination?: boolean;
@@ -176,7 +182,11 @@ export async function initializeRedeem(
 }
 
 async function main(params: InitializationParams): Promise<void> {
+    if (!params.initialize) {
+        return Promise.resolve();
+    }
     await cryptoWaitReady();
+    console.log("Running initialization script...");
     const keyring = new Keyring({ type: "sr25519" });
     const charlieStash = keyring.addFromUri("//Charlie//stash");
     const defaultInitializationParams = getDefaultInitializationParams(keyring, charlieStash.address);
