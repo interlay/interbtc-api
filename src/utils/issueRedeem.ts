@@ -6,7 +6,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import Big from "big.js";
 import { Bitcoin, BTCAmount, BTCUnit, MonetaryAmount, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
-import { newAccountId } from "../utils/types";
+import { newAccountId } from "../utils";
 import { getBitcoinNetwork } from "../interbtc-api";
 import { ElectrsAPI } from "../external/electrs";
 import { DefaultIssueAPI } from "../parachain/issue";

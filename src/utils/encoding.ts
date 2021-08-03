@@ -1,12 +1,26 @@
-import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
-import { SignedFixedPoint, UnsignedFixedPoint, BtcAddress } from "../interfaces";
-import { H256 } from "@polkadot/types/interfaces";
+import { AccountId, H256 } from "@polkadot/types/interfaces";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Codec } from "@polkadot/types/types";
+import { BTCAmount, PolkadotAmount } from "@interlay/monetary-js";
+import * as interbtcIndex from "@interlay/interbtc-index-client";
+
+import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
+import { WalletExt, SystemVaultExt, ParsedVaultData } from "../types/vault";
+import { Issue, IssueStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
+import {
+    SignedFixedPoint,
+    UnsignedFixedPoint,
+    BtcAddress,
+    SystemVault,
+    Wallet,
+    RefundRequest,
+    ReplaceRequest,
+    IssueRequest,
+} from "../interfaces";
 
 /**
  * Converts endianness of a Uint8Array
@@ -106,12 +120,92 @@ export interface DecodedRequestExt extends Omit<DecodedRequest, "btc_address"> {
     btc_address: string;
 }
 
-export function encodeParachainRequest<T extends DecodedRequest, K extends DecodedRequestExt>(
-    req: T,
-    network: Network
-): K {
+export function parseWallet(wallet: Wallet, network: Network): WalletExt {
+    const { addresses, public_key } = wallet;
+
+    const btcAddresses: Array<string> = [];
+    for (const value of addresses.values()) {
+        btcAddresses.push(encodeBtcAddress(value, network));
+    }
+
     return {
-        ...req,
-        btc_address: encodeBtcAddress(req.btc_address, network),
-    } as unknown as K;
+        publicKey: public_key.toString(),
+        addresses: btcAddresses,
+    };
 }
+
+export function parseSystemVault(vault: SystemVault): SystemVaultExt {
+    return {
+        toBeIssuedTokens: BTCAmount.from.Satoshi(vault.to_be_issued_tokens.toString()),
+        issuedTokens: BTCAmount.from.Satoshi(vault.issued_tokens.toString()),
+        toBeRedeemedTokens: BTCAmount.from.Satoshi(vault.to_be_redeemed_tokens.toString()),
+    };
+}
+
+export function newAccountId(api: ApiPromise, accountId: string): AccountId {
+    return api.createType("AccountId", accountId);
+}
+
+export function parseRefundRequest(req: RefundRequest, network: Network): RefundRequestExt {
+    return {
+        vaultId: req.vault,
+        amountIssuing: BTCAmount.from.Satoshi(req.amount_issuing.toString()),
+        fee: BTCAmount.from.Satoshi(req.fee.toString()),
+        amountBtc: BTCAmount.from.Satoshi(req.amount_btc.toString()),
+        issuer: req.issuer,
+        btcAddress: encodeBtcAddress(req.btc_address, network),
+        issueId: stripHexPrefix(req.issue_id.toString()),
+        completed: req.completed.isTrue,
+    };
+}
+
+export function parseReplaceRequest(req: ReplaceRequest, network: Network): ReplaceRequestExt {
+    return {
+        btcAddress: encodeBtcAddress(req.btc_address, network),
+        newVault: req.new_vault,
+        oldVault: req.old_vault,
+        amount: BTCAmount.from.Satoshi(req.amount.toString()),
+        griefingCollateral: PolkadotAmount.from.Planck(req.griefing_collateral.toString()),
+        collateral: PolkadotAmount.from.Planck(req.collateral.toString()),
+        acceptTime: req.accept_time.toNumber(),
+        period: req.period.toNumber(),
+        btcHeight: req.btc_height.toNumber(),
+        status: req.status,
+    };
+}
+
+// TODO: Use once explicit wrapped for interbtc-index are added
+// export function parseIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
+//     const status = req.status.isCompleted
+//         ? IssueStatus.Completed
+//         : req.status.isCancelled
+//             ? IssueStatus.Cancelled
+//             : IssueStatus.PendingWithBtcTxNotFound;
+//     return {
+//         id: stripHexPrefix(id.toString()),
+//         creationBlock: req.opentime.toNumber(),
+//         vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
+//         vaultDOTAddress: req.vault.toString(),
+//         userDOTAddress: req.requester.toString(),
+//         vaultWalletPubkey: req.btc_public_key.toString(),
+//         bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()),
+//         amountInterBTC: BTCAmount.from.Satoshi(req.amount.toString()),
+//         griefingCollateral: PolkadotAmount.from.Planck(req.griefing_collateral.toString()),
+//         status,
+//     };
+// }
+
+// TODO: Use once explicit wrapped for interbtc-index are added
+// export function parseVaultData(vaultData: interbtcIndex.VaultData): ParsedVaultData  {
+//     return {
+
+//         ...vaultData,
+//         collateral: PolkadotAmount.from.
+//         lockedBTC: BTCAmount;
+//         pendingBTC: BTCAmount;
+//         collateralization: Big;
+//         pendingCollateralization: Big;
+//         capacity: BTCAmount;
+//     }
+// }
+
