@@ -82,8 +82,12 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly pools: PoolsAPI;
     public readonly index: IndexAPI;
 
-    constructor(readonly api: ApiPromise, network: BitcoinNetwork = "mainnet", private _account?: AddressOrPair,
-        indexEndpoint = INDEX_LOCAL_URL) {
+    constructor(
+        readonly api: ApiPromise,
+        network: BitcoinNetwork = "mainnet",
+        private _account?: AddressOrPair,
+        indexEndpoint = INDEX_LOCAL_URL
+    ) {
         const btcNetwork = getBitcoinNetwork(network);
         this.electrsAPI = new DefaultElectrsAPI(network);
         this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, _account);

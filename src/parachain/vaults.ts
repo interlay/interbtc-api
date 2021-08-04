@@ -4,7 +4,15 @@ import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
 import { Network } from "bitcoinjs-lib";
-import { Bitcoin, BTCAmount, Polkadot, PolkadotUnit, MonetaryAmount, Currency, PolkadotAmount } from "@interlay/monetary-js";
+import {
+    Bitcoin,
+    BTCAmount,
+    Polkadot,
+    PolkadotUnit,
+    MonetaryAmount,
+    Currency,
+    PolkadotAmount,
+} from "@interlay/monetary-js";
 
 import {
     Vault,
@@ -36,7 +44,7 @@ export interface WalletExt {
 
 export interface VaultExt extends Omit<Vault, "wallet"> {
     wallet: WalletExt;
-    backingCollateral: PolkadotAmount
+    backingCollateral: PolkadotAmount;
 }
 
 function encodeWallet(wallet: Wallet, network: Network): WalletExt {
@@ -678,7 +686,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return Object.assign(
             {
                 wallet: encodeWallet(wallet, network),
-                backingCollateral
+                backingCollateral,
             },
             obj
         ) as VaultExt;

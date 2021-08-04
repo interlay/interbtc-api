@@ -3,7 +3,6 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { assert } from "chai";
 import Big from "big.js";
-import BN from "bn.js";
 
 import {
     IssueAPI,
@@ -15,7 +14,6 @@ import {
     TokensAPI,
     BTCRelayAPI,
     DefaultBTCRelayAPI,
-    setNumericStorage,
     NominationAPI,
     DefaultNominationAPI,
     VaultsAPI,
@@ -23,19 +21,24 @@ import {
     newAccountId,
     REGTEST_ESPLORA_BASE_PATH,
 } from "../../../../src";
-import { issueSingle } from "../../../../src/utils/";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
 import { DefaultOracleAPI } from "../../../../src/parachain/oracle";
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
-import { 
+import {
+    initializeVaultNomination,
+    initializeExchangeRate,
+    initializeStableConfirmations,
+    initializeIssue
+} from "../../../../src/utils/setup";
+import {
     DEFAULT_BITCOIN_CORE_HOST,
     DEFAULT_BITCOIN_CORE_NETWORK,
     DEFAULT_BITCOIN_CORE_PASSWORD,
     DEFAULT_BITCOIN_CORE_PORT,
     DEFAULT_BITCOIN_CORE_USERNAME,
     DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_PARACHAIN_ENDPOINT
+    DEFAULT_PARACHAIN_ENDPOINT,
 } from "../../../config";
 import { DefaultTokensAPI } from "../../../../src/parachain/tokens";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
@@ -97,26 +100,31 @@ describe("Initialize parachain state", () => {
         // Speed up the process by only requiring 0 parachain and 0 bitcoin confirmations
         const stableBitcoinConfirmationsToSet = 0;
         const stableParachainConfirmationsToSet = 0;
-        await setNumericStorage(api, "BTCRelay", "StableBitcoinConfirmations", new BN(stableBitcoinConfirmationsToSet), issueAPI);
-        await setNumericStorage(api, "BTCRelay", "StableParachainConfirmations", new BN(stableParachainConfirmationsToSet), issueAPI);
+        await initializeStableConfirmations(
+            api,
+            {
+                bitcoinConfirmations: stableBitcoinConfirmationsToSet,
+                parachainConfirmations: stableParachainConfirmationsToSet
+            },
+            issueAPI,
+            bitcoinCoreClient
+        );
         const stableBitcoinConfirmations = await btcRelayAPI.getStableBitcoinConfirmations();
-        assert.equal(stableBitcoinConfirmationsToSet, stableBitcoinConfirmations, "Setting the Bitcoin confirmations failed");
         const stableParachainConfirmations = await btcRelayAPI.getStableParachainConfirmations();
+        assert.equal(stableBitcoinConfirmationsToSet, stableBitcoinConfirmations, "Setting the Bitcoin confirmations failed");
         assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
-
-        await bitcoinCoreClient.mineBlocks(3);
     });
 
     it("should set the exchange rate", async () => {
         const exchangeRateValue = new Big("3855.23187");
         const exchangeRateToSet = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
-        await oracleAPI.setExchangeRate(exchangeRateToSet);
+        await initializeExchangeRate(exchangeRateToSet, oracleAPI);
         const exchangeRate = await oracleAPI.getExchangeRate(Polkadot);
         assert.equal(exchangeRateToSet.toString(undefined, 5, 0), exchangeRate.toString(undefined, 5, 0));
     });
 
     it("should enable vault nomination", async () => {
-        await nominationAPI.setNominationEnabled(true);
+        await initializeVaultNomination(true, nominationAPI);
         const isNominationEnabled = await nominationAPI.isNominationEnabled();
         assert.isTrue(isNominationEnabled);
     });
@@ -127,7 +135,7 @@ describe("Initialize parachain state", () => {
         const aliceAccountId = api.createType("AccountId", alice.address);
         const aliceInterBTCBefore = await tokensAPI.balance(Bitcoin, aliceAccountId);
 
-        await issueSingle(api, electrsAPI, bitcoinCoreClient, alice, interBtcToIssue, charlie_stash.address);
+        await initializeIssue(api, electrsAPI, bitcoinCoreClient, alice, interBtcToIssue, charlie_stash.address);
         const aliceInterBTCAfter = await tokensAPI.balance(Bitcoin, aliceAccountId);
         assert.equal(
             aliceInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
