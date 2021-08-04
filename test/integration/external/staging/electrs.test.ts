@@ -9,7 +9,8 @@ import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { BTCAmount } from "@interlay/monetary-js";
 
-describe("ElectrsAPI testnet", function () {
+// TODO: Unskip tests when the electrs instance is fixed
+describe.skip("ElectrsAPI testnet", function () {
     const txid = "0af83672b9f80f2ad53218a8f67899ea07d7da4f07a16ba2c954030895a91d9a";
 
     let api: ApiPromise;
