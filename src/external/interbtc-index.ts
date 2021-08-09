@@ -28,12 +28,6 @@ export const DefaultIndexAPI: (configuration: interbtcIndex.Configuration) => In
         //     index.getVaults()
         // }
     };
-    // getVaults(
-    //     @Query() page = 0,
-    //     @Query() perPage = defaultPerPage,
-    //     @Query() sortBy: VaultColumns = "block_number",
-    //     @Query() sortAsc = false
-    // )
 
     const excludeFromThinWrappers = (key: string) =>
         Object.keys(explicitWrappers).includes(key) ||

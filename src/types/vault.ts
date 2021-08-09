@@ -8,7 +8,6 @@ import Big from "big.js";
 export interface WalletExt {
     // network encoded btc addresses
     publicKey: string;
-    btcAddress?: string;
     addresses: Array<string>;
 }
 

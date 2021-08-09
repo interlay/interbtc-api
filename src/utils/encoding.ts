@@ -173,39 +173,3 @@ export function parseReplaceRequest(req: ReplaceRequest, network: Network): Repl
         status: req.status,
     };
 }
-
-// TODO: Use once explicit wrapped for interbtc-index are added
-// export function parseIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
-//     const status = req.status.isCompleted
-//         ? IssueStatus.Completed
-//         : req.status.isCancelled
-//             ? IssueStatus.Cancelled
-//             : IssueStatus.PendingWithBtcTxNotFound;
-//     return {
-//         id: stripHexPrefix(id.toString()),
-//         creationBlock: req.opentime.toNumber(),
-//         vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
-//         vaultDOTAddress: req.vault.toString(),
-//         userDOTAddress: req.requester.toString(),
-//         vaultWalletPubkey: req.btc_public_key.toString(),
-//         bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()),
-//         amountInterBTC: BTCAmount.from.Satoshi(req.amount.toString()),
-//         griefingCollateral: PolkadotAmount.from.Planck(req.griefing_collateral.toString()),
-//         status,
-//     };
-// }
-
-// TODO: Use once explicit wrapped for interbtc-index are added
-// export function parseVaultData(vaultData: interbtcIndex.VaultData): ParsedVaultData  {
-//     return {
-
-//         ...vaultData,
-//         collateral: PolkadotAmount.from.
-//         lockedBTC: BTCAmount;
-//         pendingBTC: BTCAmount;
-//         collateralization: Big;
-//         pendingCollateralization: Big;
-//         capacity: BTCAmount;
-//     }
-// }
-
