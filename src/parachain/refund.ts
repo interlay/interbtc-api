@@ -5,18 +5,10 @@ import { Bytes } from "@polkadot/types";
 import { AddressOrPair } from "@polkadot/api/types";
 
 import { RefundRequest } from "../interfaces";
-import { encodeParachainRequest, ensureHashEncoded, getTxProof } from "../utils";
+import { ensureHashEncoded, getTxProof, parseRefundRequest } from "../utils";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-
-export interface RefundRequestExt extends Omit<RefundRequest, "btc_address"> {
-    // network encoded btc address
-    btc_address: string;
-}
-
-export function encodeRefundRequest(req: RefundRequest, network: Network): RefundRequestExt {
-    return encodeParachainRequest<RefundRequest, RefundRequestExt>(req, network);
-}
+import { RefundRequestExt } from "../types/requestTypes";
 
 /**
  * @category InterBTC Bridge
@@ -73,21 +65,21 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
     async list(): Promise<RefundRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const refundRequests = await this.api.query.refund.refundRequests.entriesAt(head);
-        return refundRequests.map((v) => encodeRefundRequest(v[1], this.btcNetwork));
+        return refundRequests.map((v) => parseRefundRequest(v[1], this.btcNetwork));
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, RefundRequestExt>> {
         const refundPairs: [H256, RefundRequest][] = await this.api.rpc.refund.getRefundRequests(account);
         const mapForUser: Map<H256, RefundRequestExt> = new Map<H256, RefundRequestExt>();
         refundPairs.forEach((refundPair) =>
-            mapForUser.set(refundPair[0], encodeRefundRequest(refundPair[1], this.btcNetwork))
+            mapForUser.set(refundPair[0], parseRefundRequest(refundPair[1], this.btcNetwork))
         );
         return mapForUser;
     }
 
     async getRequestById(refundId: H256): Promise<RefundRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return encodeRefundRequest(await this.api.query.refund.refundRequests.at(head, refundId), this.btcNetwork);
+        return parseRefundRequest(await this.api.query.refund.refundRequests.at(head, refundId), this.btcNetwork);
     }
 
     async getRequestIdByIssueId(issueId: H256 | string): Promise<H256> {
@@ -104,7 +96,7 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
         try {
             const id = ensureHashEncoded(this.api, issueId);
             const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(id);
-            return encodeRefundRequest(keyValuePair[1], this.btcNetwork);
+            return parseRefundRequest(keyValuePair[1], this.btcNetwork);
         } catch (error) {
             return Promise.reject(new Error(`Error fetching refund request by issue id: ${error}`));
         }

@@ -7,6 +7,7 @@ type GeneratedMiddlewareFns = typeof GeneratedMiddlewareFns[number];
 // has a 'fooRaw() => <Promise<ApiResponse<T>>' counterpart. These must be filtered out
 type RawApiResponse = Promise<interbtcIndex.ApiResponse<any>>;
 
+
 export type IndexAPI = Pick<
     interbtcIndex.IndexApi,
     {
@@ -23,6 +24,9 @@ export const DefaultIndexAPI: (configuration: interbtcIndex.Configuration) => In
 
     const explicitWrappers = {
         // TODO: when Monetary is added to stats, add wrappers decoding here
+        // "getVaults": () => {
+        //     index.getVaults()
+        // }
     };
 
     const excludeFromThinWrappers = (key: string) =>

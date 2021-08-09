@@ -1,5 +1,4 @@
 import { ApiPromise } from "@polkadot/api";
-import { u32 } from "@polkadot/types/primitive";
 
 import { ElectrsAPI } from "../external/electrs";
 import { H256Le } from "../interfaces/default";
@@ -27,7 +26,7 @@ export interface BTCRelayAPI {
     /**
      * @returns The height of the latest Bitcoin block that was rekayed by the BTC-Relay
      */
-    getLatestBlockHeight(): Promise<u32>;
+    getLatestBlockHeight(): Promise<number>;
     /**
      * Verifies the inclusion of a transaction with `txid` in the Bitcoin blockchain
      *
@@ -55,9 +54,9 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
         return await this.api.query.btcRelay.bestBlock.at(head);
     }
 
-    async getLatestBlockHeight(): Promise<u32> {
+    async getLatestBlockHeight(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.btcRelay.bestBlockHeight.at(head);
+        return (await this.api.query.btcRelay.bestBlockHeight.at(head)).toNumber();
     }
 
     async verifyTransactionInclusion(

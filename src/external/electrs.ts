@@ -105,7 +105,7 @@ export interface ElectrsAPI {
      *
      * @returns A Bitcoin transaction ID
      */
-    getTxIdByRecipientAddress(recipientAddress: string, amount?: BTCAmount): Promise<string>;
+    getUtxoTxIdByRecipientAddress(recipientAddress: string, amount?: BTCAmount): Promise<string>;
     /**
      * Fetch the Bitcoin transaction that matches the given TxId
      *
@@ -217,7 +217,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return amount;
     }
 
-    async getTxIdByRecipientAddress(recipientAddress: string, amount?: BTCAmount): Promise<string> {
+    async getUtxoTxIdByRecipientAddress(recipientAddress: string, amount?: BTCAmount): Promise<string> {
         try {
             const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
             for (const utxo of utxos.reverse()) {
