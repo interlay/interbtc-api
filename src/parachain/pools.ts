@@ -1,15 +1,19 @@
-import { Bitcoin, BTCAmount, Currency, MonetaryAmount, PolkadotUnit } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
+import { Network } from "bitcoinjs-lib";
 import {
     CollateralUnit,
     computeLazyDistribution,
     CurrencyIdLiteral,
     CurrencyUnit,
     decodeFixedPointType,
+    DefaultVaultsAPI,
+    ElectrsAPI,
     newMonetaryAmount,
     tickerToCurrencyIdLiteral,
 } from "../";
+import { newAccountId } from "../utils";
 
 export interface PoolsAPI {
     /**
@@ -89,33 +93,27 @@ export interface PoolsAPI {
     /**
      * Compute the total reward, including the staking (local) pool and the rewards (global) pool
      * @param currency The currency specification, a `Monetary.js` object
+     * @param collateralCurrency The collateral currency specification, a `Monetary.js` object
      * @param nomineeId The account ID of the staking pool nominee
      * @param nominatorId The account ID of the staking pool nominator
      * @returns A Monetary.js amount object, representing the total reward in the given currency
      */
-    computeReward<C extends CurrencyUnit>(
-        currency: Currency<C>,
+    computeReward<C1 extends CurrencyUnit, C2 extends CollateralUnit>(
+        currency: Currency<C1>,
+        collateralCurrency: Currency<C2>,
         nomineeId: string,
         nominatorId: string
-    ): Promise<MonetaryAmount<Currency<C>, C>>;
+    ): Promise<MonetaryAmount<Currency<C1>, C1>>;
     /**
      * @param vaultId The vault account ID
+     * @param collateralCurrency The collateral currency specification, a `Monetary.js` object
      * @returns The total InterBTC reward collected by the vault
      */
-    getFeesWrapped(vaultId: string): Promise<BTCAmount>;
-    /**
-     * @param vaultId The vault account ID
-     * @param currency The currency specification, a `Monetary.js` object
-     * @returns The total DOT reward collected by the vault
-     */
-    getFeesCollateral<C extends CollateralUnit>(
-        vaultId: string,
-        currency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>>;
+    getFeesWrapped<C extends CollateralUnit>(vaultId: string, collateralCurrency: Currency<C>): Promise<BTCAmount>;
 }
 
 export class DefaultPoolsAPI implements PoolsAPI {
-    constructor(public api: ApiPromise) {}
+    constructor(public api: ApiPromise, private btcNetwork: Network, private electrsAPI: ElectrsAPI) {}
 
     async computeRewardInStakingPool<C extends CurrencyUnit>(
         currency: Currency<C>,
@@ -241,24 +239,43 @@ export class DefaultPoolsAPI implements PoolsAPI {
         return decodeFixedPointType(await this.api.query.rewards.rewardPerToken.at(head, currencyId));
     }
 
-    async computeReward<C extends CurrencyUnit>(
-        currency: Currency<C>,
+    async backingCollateralProportion<C1 extends CurrencyUnit, C2 extends CollateralUnit>(
+        currency: Currency<C1>,
+        collateralCurrency: Currency<C2>,
         nomineeId: string,
         nominatorId: string
-    ): Promise<MonetaryAmount<Currency<C>, C>> {
-        const globalReward = await this.computeRewardInRewardsPool(currency, nomineeId);
+    ): Promise<Big> {
+        const vaultsAPI = new DefaultVaultsAPI(this.api, this.btcNetwork, this.electrsAPI);
+        const backingCollateral = await vaultsAPI.getBackingCollateral(
+            newAccountId(this.api, nomineeId),
+            collateralCurrency
+        );
+        const nominatorCollateral = await this.computeCollateralInStakingPool(currency, nomineeId, nominatorId);
+        return nominatorCollateral.toBig().div(backingCollateral.toBig());
+    }
+
+    async computeReward<C1 extends CurrencyUnit, C2 extends CollateralUnit>(
+        currency: Currency<C1>,
+        collateralCurrency: Currency<C2>,
+        nomineeId: string,
+        nominatorId: string
+    ): Promise<MonetaryAmount<Currency<C1>, C1>> {
+        const totalGlobalReward = await this.computeRewardInRewardsPool(currency, nomineeId);
+        const globalRewardShare = await this.backingCollateralProportion(
+            currency,
+            collateralCurrency,
+            nomineeId,
+            nominatorId
+        );
+        const ownGlobalReward = totalGlobalReward.mul(globalRewardShare);
         const localReward = await this.computeRewardInStakingPool(currency, nomineeId, nominatorId);
-        return globalReward.add(localReward);
+        return ownGlobalReward.add(localReward);
     }
 
-    async getFeesWrapped(vaultId: string): Promise<BTCAmount> {
-        return await this.computeReward(Bitcoin, vaultId, vaultId);
-    }
-
-    async getFeesCollateral<C extends CollateralUnit = PolkadotUnit>(
+    async getFeesWrapped<C extends CollateralUnit>(
         vaultId: string,
-        currency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>> {
-        return await this.computeReward(currency, vaultId, vaultId);
+        collateralCurrency: Currency<C>
+    ): Promise<BTCAmount> {
+        return await this.computeReward(Bitcoin, collateralCurrency, vaultId, vaultId);
     }
 }

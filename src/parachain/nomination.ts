@@ -2,7 +2,7 @@ import { Network } from "bitcoinjs-lib";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Index } from "@polkadot/types/interfaces";
-import { Bitcoin, Currency, BTCAmount, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, Currency, BTCAmount, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 import { CurrencyId, UnsignedFixedPoint } from "../interfaces";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
@@ -102,12 +102,24 @@ export interface NominationAPI extends TransactionAPI {
      *
      * @param nominatorId Id of user who nominated to one or more vaults
      * @param currency The currency of the nominations
-     * @returns The rewards (in InterBTC a nominator has accumulated)
+     * @returns The rewards a currently active nominator has accumulated
      */
-    getNominatorRewards<C extends CurrencyUnit>(
+    getActiveNominatorRewards<C extends CurrencyUnit>(
         nominatorId: string,
         currency: Currency<C>
     ): Promise<[[string, string], BTCAmount][]>;
+    /**
+     *
+     * @param nominatorId Id of user who nominated to one or more vaults
+     * @param vaultId Id of nominated vault
+     * @param currency The currency of the nominations
+     * @returns The rewards a (possibly inactive) nominator has accumulated
+     */
+    getNominatorReward<C extends CurrencyUnit>(
+        nominatorId: string,
+        vaultId: string,
+        currency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      *
      * @param currency The currency of the reward pool
@@ -123,7 +135,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
     constructor(api: ApiPromise, btcNetwork: Network, electrsAPI: ElectrsAPI, account?: AddressOrPair) {
         super(api, account);
         this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI);
-        this.poolsAPI = new DefaultPoolsAPI(api);
+        this.poolsAPI = new DefaultPoolsAPI(api, btcNetwork, electrsAPI);
     }
 
     async depositCollateral<C extends CollateralUnit>(
@@ -234,13 +246,13 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         return await Promise.all(
             rawList.map(async (v): Promise<[[string, string], BTCAmount]> => {
                 const [, [, vaultId, nominatorId]] = v[0];
-                const reward = await this.poolsAPI.computeReward(Bitcoin, vaultId, nominatorId);
+                const reward = await this.poolsAPI.computeReward(Bitcoin, Polkadot, vaultId, nominatorId);
                 return [[nominatorId, vaultId], reward];
             })
         );
     }
 
-    async getNominatorRewards<C extends CurrencyUnit>(
+    async getActiveNominatorRewards<C extends CurrencyUnit>(
         nominatorId: string,
         collateralCurrency: Currency<C>
     ): Promise<[[string, string], BTCAmount][]> {
@@ -249,6 +261,14 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
             const [nominator] = v[0];
             return nominator === nominatorId;
         });
+    }
+
+    async getNominatorReward<C extends CurrencyUnit>(
+        nominatorId: string,
+        vaultId: string,
+        currency: Currency<C>
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
+        return await this.poolsAPI.computeReward(currency, Polkadot, vaultId, nominatorId);
     }
 
     async getFilteredNominations<C extends CollateralUnit>(

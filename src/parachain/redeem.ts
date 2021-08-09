@@ -6,17 +6,23 @@ import { Bytes } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import BN from "bn.js";
-import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
+import {
+    Bitcoin,
+    BTCAmount,
+    BTCUnit,
+    ExchangeRate,
+    Polkadot,
+    PolkadotAmount,
+    PolkadotUnit,
+} from "@interlay/monetary-js";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
     decodeFixedPointType,
-    satToBTC,
     getTxProof,
     stripHexPrefix,
     encodeBtcAddress,
-    planckToDOT,
     storageKeyToNthInner,
     newAccountId,
     ensureHashEncoded,

@@ -278,7 +278,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         this.tokensAPI = new DefaultTokensAPI(api);
         this.oracleAPI = new DefaultOracleAPI(api);
         this.feeAPI = new DefaultFeeAPI(api);
-        this.poolsAPI = new DefaultPoolsAPI(api);
+        this.poolsAPI = new DefaultPoolsAPI(api, btcNetwork, electrsAPI);
     }
 
     async register(planckCollateral: BN, publicKey: string): Promise<void> {
@@ -610,12 +610,11 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getAPY(vaultId: AccountId): Promise<Big> {
         // TODO: Fetch data for all collateral currencies
-        const [feesWrapped, feesCollateral, lockedCollateral] = await Promise.all([
-            await this.poolsAPI.getFeesWrapped(vaultId.toString()),
-            await this.poolsAPI.getFeesCollateral(vaultId.toString(), Polkadot),
+        const [feesWrapped, lockedCollateral] = await Promise.all([
+            await this.poolsAPI.getFeesWrapped(vaultId.toString(), Polkadot),
             await this.tokensAPI.balanceLocked(Polkadot, vaultId),
         ]);
-        return this.feeAPI.calculateAPY(feesWrapped, feesCollateral, lockedCollateral);
+        return this.feeAPI.calculateAPY(feesWrapped, lockedCollateral);
     }
 
     async getSLA(vaultId: AccountId): Promise<number> {

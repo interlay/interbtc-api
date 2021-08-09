@@ -36,7 +36,6 @@ describe("redeem", () => {
     // alice is the root account
     let alice: KeyringPair;
     let alice_stash: KeyringPair;
-    let charlie_stash: KeyringPair;
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
@@ -46,7 +45,6 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
         alice_stash = keyring.addFromUri("//Alice//stash");
-        charlie_stash = keyring.addFromUri("//Charlie//stash");
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);

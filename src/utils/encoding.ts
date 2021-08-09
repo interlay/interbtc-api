@@ -6,11 +6,10 @@ import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Codec } from "@polkadot/types/types";
 import { BTCAmount, PolkadotAmount } from "@interlay/monetary-js";
-import * as interbtcIndex from "@interlay/interbtc-index-client";
 
 import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
-import { WalletExt, SystemVaultExt, ParsedVaultData } from "../types/vault";
-import { Issue, IssueStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
+import { WalletExt, SystemVaultExt } from "../types/vault";
+import { RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
 import {
     SignedFixedPoint,
     UnsignedFixedPoint,
@@ -19,7 +18,6 @@ import {
     Wallet,
     RefundRequest,
     ReplaceRequest,
-    IssueRequest,
 } from "../interfaces";
 
 /**

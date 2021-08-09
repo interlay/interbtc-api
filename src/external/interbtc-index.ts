@@ -7,7 +7,6 @@ type GeneratedMiddlewareFns = typeof GeneratedMiddlewareFns[number];
 // has a 'fooRaw() => <Promise<ApiResponse<T>>' counterpart. These must be filtered out
 type RawApiResponse = Promise<interbtcIndex.ApiResponse<any>>;
 
-
 export type IndexAPI = Pick<
     interbtcIndex.IndexApi,
     {
