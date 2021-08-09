@@ -1,4 +1,4 @@
-export * from "./issueTypes";
-export * from "./redeemTypes";
+export * from "./requestTypes";
 export * from "./bitcoinTypes";
 export * from "./currency";
+export * from "./vault";

@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AccountId, H256, Balance, BlockHash } from "@polkadot/types/interfaces";
+import { AccountId, H256, Balance, BlockNumber, BlockHash } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
@@ -14,52 +14,32 @@ import {
     PolkadotAmount,
 } from "@interlay/monetary-js";
 
+import { Vault, IssueRequest, RedeemRequest, ReplaceRequest, BalanceWrapper } from "../interfaces/default";
 import {
-    Vault,
-    IssueRequest,
-    RedeemRequest,
-    ReplaceRequest,
-    Wallet,
-    SystemVault,
-    BalanceWrapper,
-} from "../interfaces/default";
-import { FIXEDI128_SCALING_FACTOR, decodeFixedPointType, encodeBtcAddress, newMonetaryAmount } from "../utils";
+    FIXEDI128_SCALING_FACTOR,
+    decodeFixedPointType,
+    newMonetaryAmount,
+    parseReplaceRequest,
+    parseWallet,
+    parseSystemVault,
+} from "../utils";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import { ReplaceRequestExt, encodeReplaceRequest } from "./replace";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
 import { DefaultIssueAPI, encodeIssueRequest } from "./issue";
 import { encodeRedeemRequest } from "./redeem";
-import { Issue, Redeem, CollateralUnit, tickerToCurrencyIdLiteral } from "../types";
+import {
+    Issue,
+    Redeem,
+    CollateralUnit,
+    tickerToCurrencyIdLiteral,
+    ReplaceRequestExt,
+    VaultExt,
+    SystemVaultExt,
+} from "../types";
 import { DefaultPoolsAPI, PoolsAPI } from "./pools";
-
-export interface WalletExt {
-    // network encoded btc addresses
-    publicKey: string;
-    btcAddress?: string;
-    addresses: Array<string>;
-}
-
-export interface VaultExt extends Omit<Vault, "wallet"> {
-    wallet: WalletExt;
-    backingCollateral: PolkadotAmount;
-}
-
-function encodeWallet(wallet: Wallet, network: Network): WalletExt {
-    const { addresses, public_key } = wallet;
-
-    const btcAddresses: Array<string> = [];
-    for (const value of addresses.values()) {
-        btcAddresses.push(encodeBtcAddress(value, network));
-    }
-
-    return {
-        publicKey: public_key.toString(),
-        addresses: btcAddresses,
-    };
-}
 
 /**
  * @category InterBTC Bridge
@@ -250,7 +230,7 @@ export interface VaultsAPI extends TransactionAPI {
     /**
      * @returns A vault object representing the liquidation vault
      */
-    getLiquidationVault(): Promise<SystemVault>;
+    getLiquidationVault(): Promise<SystemVaultExt>;
     /**
      * @param vaultId account id
      * @param currency The collateral currency specification, a `Monetary.js` object
@@ -322,7 +302,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async list(atBlock?: BlockHash): Promise<VaultExt[]> {
         const block = atBlock || await this.api.rpc.chain.getFinalizedHead();
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(block);
-        return Promise.all(vaultsMap.map((v) => this.encodeVault(v[1], this.btcNetwork)));
+        return Promise.all(vaultsMap.map((v) => this.parseVault(v[1], this.btcNetwork)));
     }
 
     async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, Issue>> {
@@ -350,12 +330,12 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             const oldVaultReplaceRequests: [H256, ReplaceRequest][] =
                 await this.api.rpc.replace.getOldVaultReplaceRequests(vaultId);
             const oldVaultReplaceRequestsExt = oldVaultReplaceRequests.map(
-                ([id, req]) => [id, encodeReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
+                ([id, req]) => [id, parseReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
             );
             const newVaultReplaceRequests: [H256, ReplaceRequest][] =
                 await this.api.rpc.replace.getNewVaultReplaceRequests(vaultId);
             const newVaultReplaceRequestsExt = newVaultReplaceRequests.map(
-                ([id, req]) => [id, encodeReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
+                ([id, req]) => [id, parseReplaceRequest(req, this.btcNetwork)] as [H256, ReplaceRequestExt]
             );
             return new Map([...oldVaultReplaceRequestsExt, ...newVaultReplaceRequestsExt]);
         } catch (err) {
@@ -369,7 +349,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         if (!vaultId.eq(vault.id)) {
             throw new Error(`No vault registered with id ${vaultId}`);
         }
-        return this.encodeVault(vault, this.btcNetwork);
+        return this.parseVault(vault, this.btcNetwork);
     }
 
     async getCollateral<C extends CollateralUnit = PolkadotUnit>(
@@ -419,10 +399,10 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return liquidationVaultId.toString();
     }
 
-    async getLiquidationVault(): Promise<SystemVault> {
+    async getLiquidationVault(): Promise<SystemVaultExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const liquidationVault = await this.api.query.vaultRegistry.liquidationVault.at(head);
-        return liquidationVault;
+        return parseSystemVault(liquidationVault);
     }
 
     private isNoTokensIssuedError(e: Error): boolean {
@@ -503,7 +483,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async getIssuedAmount(vaultId: AccountId): Promise<BTCAmount> {
         const vault = await this.get(vaultId);
-        return BTCAmount.from.Satoshi(vault.issued_tokens.toString());
+        return vault.issuedTokens;
     }
 
     async getIssuableAmount(vaultId: AccountId): Promise<BTCAmount> {
@@ -512,18 +492,11 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             this.getBackingCollateral(vaultId, Polkadot),
         ]);
         const interBtcCapacity = await this.calculateCapacity(backingCollateral);
-        const backedTokens = vault.issued_tokens.add(vault.to_be_issued_tokens);
-        const issuedAmountBtc = BTCAmount.from.Satoshi(backedTokens.toString());
+        const issuedAmountBtc = vault.issuedTokens.add(vault.toBeIssuedTokens);
         const issuableAmountExcludingFees = interBtcCapacity.sub(issuedAmountBtc);
         const issueAPI = new DefaultIssueAPI(this.api, this.btcNetwork, this.electrsAPI);
         const fees = await issueAPI.getFeesToPay(issuableAmountExcludingFees);
         return issuableAmountExcludingFees.sub(fees);
-    }
-
-    private async getIssuedAmounts(): Promise<BTCAmount[]> {
-        const vaults: VaultExt[] = await this.list();
-        const issuedTokens: BTCAmount[] = vaults.map((v) => BTCAmount.from.Satoshi(v.issued_tokens.toString()));
-        return issuedTokens;
     }
 
     async getTotalIssuedAmount(): Promise<BTCAmount> {
@@ -680,15 +653,20 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return this.api.createType("Balance", wrappedBalance.amount.toString());
     }
 
-    async encodeVault(vault: Vault, network: Network): Promise<VaultExt> {
-        const { wallet, ...obj } = vault;
+    async parseVault(vault: Vault, network: Network): Promise<VaultExt> {
         const backingCollateral = await this.getBackingCollateral(vault.id, Polkadot);
-        return Object.assign(
-            {
-                wallet: encodeWallet(wallet, network),
-                backingCollateral,
-            },
-            obj
-        ) as VaultExt;
+        return {
+            wallet: parseWallet(vault.wallet, network),
+            backingCollateral,
+            id: vault.id,
+            status: vault.status,
+            bannedUntil: vault.banned_until.isSome ? (vault.banned_until.value as BlockNumber).toNumber() : undefined,
+            toBeIssuedTokens: BTCAmount.from.Satoshi(vault.to_be_issued_tokens.toString()),
+            issuedTokens: BTCAmount.from.Satoshi(vault.issued_tokens.toString()),
+            toBeRedeemedTokens: BTCAmount.from.Satoshi(vault.to_be_redeemed_tokens.toString()),
+            toBeReplacedTokens: BTCAmount.from.Satoshi(vault.to_be_replaced_tokens.toString()),
+            replaceCollateral: PolkadotAmount.from.Planck(vault.replace_collateral.toString()),
+            liquidatedCollateral: PolkadotAmount.from.Planck(vault.liquidated_collateral.toString()),
+        };
     }
 }

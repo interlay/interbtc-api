@@ -56,7 +56,7 @@ describe("refund", () => {
         const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
         // The parachain returns an Option<> refund request if none was found,
         // which is deserialized as a refund request with blank/default fields
-        assert.equal(refund.amount_btc.toString(), "0");
+        assert.equal(refund.amountBtc.toString(), "0");
     }).timeout(1000000);
 
     it("should generate a refund request", async () => {
@@ -73,8 +73,8 @@ describe("refund", () => {
         const refund = await refundAPI.getRequestByIssueId(issueResult.request.id);
         const refundId = await refundAPI.getRequestIdByIssueId(issueResult.request.id);
         const refundClone = await refundAPI.getRequestById(refundId);
-        assert.notEqual(refund.amount_btc.toString(), "0");
-        assert.equal(refund.amount_btc.toString(), refundClone.amount_btc.toString());
+        assert.notEqual(refund.amountBtc.toString(), "0");
+        assert.equal(refund.amountBtc.toString(), refundClone.amountBtc.toString());
     }).timeout(1000000);
 
     it("should list a single refund request", async () => {

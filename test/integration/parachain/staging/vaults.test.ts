@@ -213,7 +213,7 @@ describe("vaultsAPI", () => {
         const eveStashId = api.createType("AccountId", eve_stash.address);
         const replaceRequests = await vaultsAPI.mapReplaceRequests(eveStashId);
         replaceRequests.forEach((request) => {
-            assert.deepEqual(request.old_vault, eveStashId);
+            assert.deepEqual(request.oldVault, eveStashId);
         });
     });
 

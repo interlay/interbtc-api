@@ -1,6 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { BTCAmount, Polkadot } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
@@ -17,7 +18,6 @@ import {
 import { assert } from "../../../chai";
 import { issueSingle, sleep } from "../../../../src/utils/issueRedeem";
 import { DefaultReplaceAPI, REGTEST_ESPLORA_BASE_PATH, ReplaceAPI } from "../../../../src";
-import { BTCAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -93,8 +93,8 @@ describe("replace", () => {
         const firstMapEntry = requestsMap.values().next();
         // `deepEqual` fails with: Cannot convert 'Pending' via asCancelled
         // Need to manually compare some fields
-        assert.equal(requestsList[0].btc_address, firstMapEntry.value.btc_address);
+        assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
         assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
-        assert.equal(requestsList[0].btc_height.toString(), firstMapEntry.value.btc_height.toString());
+        assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
     }).timeout(50000);
 });

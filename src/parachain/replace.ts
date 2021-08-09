@@ -8,29 +8,11 @@ import { Network } from "bitcoinjs-lib";
 import { Bytes } from "@polkadot/types";
 import { BTCAmount, Currency, MonetaryAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 
-import { ReplaceRequest } from "../interfaces/default";
-import { encodeBtcAddress, storageKeyToNthInner } from "../utils";
+import { storageKeyToNthInner, getTxProof, parseReplaceRequest } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CollateralUnit, ElectrsAPI, getTxProof } from "..";
-
-export interface ReplaceRequestExt extends Omit<ReplaceRequest, "btc_address" | "new_vault"> {
-    // network encoded btc address
-    btc_address: string;
-    new_vault: string;
-}
-
-export function encodeReplaceRequest(req: ReplaceRequest, network: Network): ReplaceRequestExt {
-    let displayedBtcAddress = "Pending...";
-    let displayedNewVaultAddress = "Pending...";
-    displayedBtcAddress = encodeBtcAddress(req.btc_address, network);
-    displayedNewVaultAddress = req.new_vault.toHuman();
-    return {
-        ...req,
-        btc_address: displayedBtcAddress,
-        new_vault: displayedNewVaultAddress,
-    } as unknown as ReplaceRequestExt;
-}
+import { ElectrsAPI } from "../external";
+import { CollateralUnit, ReplaceRequestExt } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -183,7 +165,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
     async list(): Promise<ReplaceRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const replaceRequests = await this.api.query.replace.replaceRequests.entriesAt(head);
-        return replaceRequests.map((v) => encodeReplaceRequest(v[1], this.btcNetwork));
+        return replaceRequests.map((v) => parseReplaceRequest(v[1], this.btcNetwork));
     }
 
     async map(): Promise<Map<H256, ReplaceRequestExt>> {
@@ -191,7 +173,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         const redeemRequests = await this.api.query.replace.replaceRequests.entriesAt(head);
         const redeemRequestMap = new Map<H256, ReplaceRequestExt>();
         redeemRequests.forEach((v) => {
-            redeemRequestMap.set(storageKeyToNthInner(v[0]), encodeReplaceRequest(v[1], this.btcNetwork));
+            redeemRequestMap.set(storageKeyToNthInner(v[0]), parseReplaceRequest(v[1], this.btcNetwork));
         });
         return redeemRequestMap;
     }

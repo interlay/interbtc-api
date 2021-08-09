@@ -6,7 +6,7 @@ import { Bytes } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import BN from "bn.js";
-import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
@@ -21,7 +21,6 @@ import {
     newAccountId,
     ensureHashEncoded,
     addHexPrefix,
-    bnToBig,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
@@ -42,10 +41,10 @@ export function encodeRedeemRequest(req: RedeemRequest, network: Network, id: H2
     return {
         id: stripHexPrefix(id.toString()),
         userDOTAddress: req.redeemer.toString(),
-        amountBTC: satToBTC(req.amount_btc).toString(),
-        dotPremium: planckToDOT(req.premium).toString(),
-        bridgeFee: satToBTC(req.fee).toString(),
-        btcTransferFee: satToBTC(req.transfer_fee_btc).toString(),
+        amountBTC: BTCAmount.from.Satoshi(req.amount_btc.toString()).str.BTC(),
+        dotPremium: PolkadotAmount.from.Planck(req.premium.toString()).str.Planck(),
+        bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()).str.BTC(),
+        btcTransferFee: BTCAmount.from.Satoshi(req.transfer_fee_btc.toString()).str.BTC(),
         creationBlock: req.opentime.toNumber(),
         vaultDOTAddress: req.vault.toString(),
         userBTCAddress: encodeBtcAddress(req.btc_address, network),
@@ -306,20 +305,19 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async getMaxBurnableTokens(): Promise<BTCAmount> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault();
-        return BTCAmount.from.Satoshi(liquidationVault.issued_tokens.toString());
+        return liquidationVault.issuedTokens;
     }
 
     async getBurnExchangeRate(): Promise<ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault();
-        const wrappedSatoshi = liquidationVault.issued_tokens.add(liquidationVault.to_be_issued_tokens);
-        if (wrappedSatoshi.isZero()) {
+        const issuedAmount = liquidationVault.issuedTokens.add(liquidationVault.toBeIssuedTokens);
+        if (issuedAmount.isZero()) {
             return Promise.reject(new Error("There are no burnable tokens. The burn exchange rate is undefined"));
         }
-        const wrappedSatoshiBig = bnToBig(wrappedSatoshi);
         const liquidationVaultId = await this.vaultsAPI.getLiquidationVaultId();
         // TODO: Compute burn exchange rate for various currencies
         const collateralDot = await this.tokensAPI.balanceLocked(Polkadot, newAccountId(this.api, liquidationVaultId));
-        const exchangeRate = collateralDot.toBig().div(wrappedSatoshiBig);
+        const exchangeRate = collateralDot.toBig().div(issuedAmount.toBig());
         return new ExchangeRate<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>(
             Polkadot,
             Bitcoin,
