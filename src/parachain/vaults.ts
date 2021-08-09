@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AccountId, H256, Balance } from "@polkadot/types/interfaces";
+import { AccountId, H256, Balance, BlockHash } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
@@ -68,7 +68,7 @@ export interface VaultsAPI extends TransactionAPI {
     /**
      * @returns An array containing the vaults with non-zero backing collateral
      */
-    list(): Promise<VaultExt[]>;
+    list(atBlock?: BlockHash): Promise<VaultExt[]>;
     /**
      * Fetch the issue requests associated with a vault
      *
@@ -319,9 +319,9 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         await this.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
     }
 
-    async list(): Promise<VaultExt[]> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(head);
+    async list(atBlock?: BlockHash): Promise<VaultExt[]> {
+        const block = atBlock || await this.api.rpc.chain.getFinalizedHead();
+        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(block);
         return Promise.all(vaultsMap.map((v) => this.encodeVault(v[1], this.btcNetwork)));
     }
 

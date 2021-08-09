@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { Header } from "@polkadot/types/interfaces";
+import { Header, BlockHash } from "@polkadot/types/interfaces";
 
 /**
  * @category InterBTC Bridge
@@ -12,7 +12,7 @@ export interface SystemAPI {
     /**
      * @returns The current active block number being processed.
      */
-    getCurrentActiveBlockNumber(): Promise<number>;
+    getCurrentActiveBlockNumber(atBlock?: BlockHash): Promise<number>;
 
     /**
      * On every new parachain block, call the callback function with the new block header
@@ -29,9 +29,9 @@ export class DefaultSystemAPI implements SystemAPI {
         return (await this.api.query.system.number.at(head)).toNumber();
     }
 
-    async getCurrentActiveBlockNumber(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return (await this.api.query.security.activeBlockCount.at(head)).toNumber();
+    async getCurrentActiveBlockNumber(atBlock?: BlockHash): Promise<number> {
+        const block = atBlock || await this.api.rpc.chain.getFinalizedHead();
+        return (await this.api.query.security.activeBlockCount.at(block)).toNumber();
     }
 
     async subscribeToNewBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void> {

@@ -18,7 +18,7 @@ import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
-import { DefaultIndexAPI, IndexAPI } from "./external/interbtc-index";
+import { DefaultIndexAPI, WrappedIndexAPI } from "./external/interbtc-index";
 import { INDEX_LOCAL_URL } from "./utils/constants";
 import { Configuration as IndexConfiguration } from "@interlay/interbtc-index-client";
 import { DefaultPoolsAPI, PoolsAPI } from "./parachain/pools";
@@ -54,7 +54,7 @@ export interface InterBTCAPI {
     readonly fee: FeeAPI;
     readonly nomination: NominationAPI;
     readonly pools: PoolsAPI;
-    readonly index: IndexAPI;
+    readonly index: WrappedIndexAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
@@ -80,7 +80,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
     public readonly pools: PoolsAPI;
-    public readonly index: IndexAPI;
+    public readonly index: WrappedIndexAPI;
 
     constructor(
         readonly api: ApiPromise,
