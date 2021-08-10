@@ -10,13 +10,11 @@ describe("fee", () => {
     let api: ApiPromise;
     let feeAPI: FeeAPI;
     let keyring: Keyring;
-    let alice: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         feeAPI = new DefaultFeeAPI(api);
-        alice = keyring.addFromUri("//Alice");
     });
 
     after(async () => {

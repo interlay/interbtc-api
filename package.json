@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc",
-  "version": "0.21.3",
+  "version": "0.21.4",
   "description": "JavaScript library to interact with InterBTC",
   "main": "build/index.js",
   "typings": "build/index.d.ts",

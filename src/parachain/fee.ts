@@ -40,7 +40,6 @@ export interface FeeAPI {
      */
     calculateAPY(
         feesWrapped: BTCAmount,
-        feesCollateral: PolkadotAmount,
         lockedCollateral: PolkadotAmount,
         exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>
     ): Promise<Big>;
@@ -94,7 +93,6 @@ export class DefaultFeeAPI implements FeeAPI {
 
     async calculateAPY<C extends CollateralUnit>(
         feesWrapped: BTCAmount,
-        feesCollateral: MonetaryAmount<Currency<C>, C>,
         lockedCollateral: MonetaryAmount<Currency<C>, C>,
         exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
     ): Promise<Big> {
@@ -102,13 +100,12 @@ export class DefaultFeeAPI implements FeeAPI {
             return new Big(0);
         }
         if (exchangeRate === undefined) {
-            exchangeRate = await this.oracleAPI.getExchangeRate(feesCollateral.currency);
+            exchangeRate = await this.oracleAPI.getExchangeRate(lockedCollateral.currency);
         }
 
-        const feesWrappedAsCollateral = exchangeRate.toCounter(feesWrapped);
-        const totalFees = feesCollateral.add(feesWrappedAsCollateral).toBig();
+        const feesWrappedAsCollateral = exchangeRate.toCounter(feesWrapped).toBig();
 
         // convert to percentage
-        return totalFees.div(lockedCollateral.toBig()).mul(100);
+        return feesWrappedAsCollateral.div(lockedCollateral.toBig()).mul(100);
     }
 }

@@ -11,13 +11,11 @@ describe("stakedRelayerAPI", () => {
     let api: ApiPromise;
     let stakedRelayerAPI: StakedRelayerAPI;
     let keyring: Keyring;
-    let alice_stash: KeyringPair;
     let electrsAPI: ElectrsAPI;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        alice_stash = keyring.addFromUri("//Alice//stash");
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoinjs.networks.regtest, electrsAPI);
     });

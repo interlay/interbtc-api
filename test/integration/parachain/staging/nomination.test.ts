@@ -1,11 +1,10 @@
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
 
-import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultTokensAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, setNumericStorage, TokensAPI, VaultsAPI } from "../../../../src";
+import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, setNumericStorage, VaultsAPI } from "../../../../src";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
@@ -15,7 +14,6 @@ describe("NominationAPI", () => {
     let alice: KeyringPair;
     let bob: KeyringPair;
     let nominationAPI: NominationAPI;
-    let tokensAPI: TokensAPI;
     let vaultsAPI: VaultsAPI;
     let feeAPI: FeeAPI;
     let charlie_stash: KeyringPair;
@@ -30,7 +28,6 @@ describe("NominationAPI", () => {
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, bob);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
-        tokensAPI = new DefaultTokensAPI(api);
         feeAPI = new DefaultFeeAPI(api);
 
         // The account of a vault from docker-compose
@@ -94,9 +91,8 @@ describe("NominationAPI", () => {
 
         const interBtcToIssue = BTCAmount.from.BTC(1);
         await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
-        const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorRewards(bob.address, Bitcoin)).map(v => v[1].str.BTC());
-        assert.equal(1, wrappedRewardsBeforeWithdrawal.length);
-        assert.isTrue(new Big(wrappedRewardsBeforeWithdrawal[0]).gt(0.1), "Nominator should receive at least 0.1 interBTC");
+        const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, Bitcoin)).toBig();
+        assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0.1), "Nominator should receive at least 0.1 interBTC");
 
         // Withdraw
         await nominationAPI.withdrawCollateral(charlie_stash.address, nominatorDeposit);
@@ -105,13 +101,12 @@ describe("NominationAPI", () => {
         const nominatorCollateral = await nominationAPI.getTotalNomination(Polkadot, bob.address);
         assert.equal("0", nominatorCollateral.toString());
 
-        const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorRewards(bob.address, Bitcoin)).map(v => v[1].str.BTC());
-        // TODO: Re-enable once the parachain issue is fixed
-        // assert.equal(
-        //     new Big(wrappedRewardsBeforeWithdrawal[0]).round(5, 0).toString(),
-        //     new Big(wrappedRewardsAfterWithdrawal[0]).round(5, 0).toString(),
-        //     "Reward amount has been affected by the withdrawal"
-        // );
+        const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, Bitcoin)).toBig();
+        assert.equal(
+            wrappedRewardsBeforeWithdrawal.round(5, 0).toString(),
+            wrappedRewardsAfterWithdrawal.round(5, 0).toString(),
+            "Reward amount has been affected by the withdrawal"
+        );
         await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
         await optOutAndPreserveAPIAccount(charlie_stash);
     });

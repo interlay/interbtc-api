@@ -10,5 +10,6 @@ export { SystemAPI, DefaultSystemAPI } from "./system";
 export { ConstantsAPI, DefaultConstantsAPI } from "./constants";
 export { ReplaceAPI, DefaultReplaceAPI } from "./replace";
 export { FeeAPI, DefaultFeeAPI } from "./fee";
+export { PoolsAPI, DefaultPoolsAPI } from "./pools";
 export { NominationAPI, DefaultNominationAPI } from "./nomination";
 export * from "./transaction";

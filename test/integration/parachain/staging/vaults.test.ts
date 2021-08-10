@@ -39,7 +39,7 @@ describe("vaultsAPI", () => {
         ferdie = keyring.addFromUri("//Ferdie");
         // Bob is the authorized oracle
         oracleAPI = new DefaultOracleAPI(api, bob);
-        poolsAPI = new DefaultPoolsAPI(api);
+        poolsAPI = new DefaultPoolsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
@@ -239,10 +239,8 @@ describe("vaultsAPI", () => {
     });
 
     it("should getFees", async () => {
-        const feesWrapped = await poolsAPI.getFeesWrapped(charlie_stash.address);
-        const feesDOT = await poolsAPI.getFeesCollateral(charlie_stash.address, Polkadot);
+        const feesWrapped = await poolsAPI.getFeesWrapped(charlie_stash.address, Polkadot);
         assert.isTrue(feesWrapped.gte(BTCAmount.zero));
-        assert.isTrue(feesDOT.gte(PolkadotAmount.zero));
     });
 
     it("should getAPY", async () => {
