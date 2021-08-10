@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc",
-  "version": "0.21.4",
+  "version": "0.22.0",
   "description": "JavaScript library to interact with InterBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
@@ -45,7 +45,6 @@
     "@interlay/monetary-js": "0.2.1",
     "@polkadot/api": "5.3.2",
     "@polkadot/keyring": "6.6.2-6",
-    "@polkadot/typegen": "5.3.2",
     "@types/big.js": "6.1.1",
     "big.js": "6.1.1",
     "bitcoin-core": "^3.0.0",
@@ -57,7 +56,7 @@
     "ts-mock-imports": "^1.3.0"
   },
   "devDependencies": {
-    "@polkadot/util": "^6.3.1",
+    "@polkadot/typegen": "5.3.2",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
     "@types/mocha": "^8.0.3",

@@ -2,7 +2,6 @@ export { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 export { IssueAPI, DefaultIssueAPI } from "./issue";
 export { RedeemAPI, DefaultRedeemAPI } from "./redeem";
 export { RefundAPI, DefaultRefundAPI } from "./refund";
-export { StakedRelayerAPI, DefaultStakedRelayerAPI } from "./staked-relayer";
 export { OracleAPI, DefaultOracleAPI } from "./oracle";
 export { BTCRelayAPI, DefaultBTCRelayAPI } from "./btc-relay";
 export { TokensAPI, DefaultTokensAPI } from "./tokens";

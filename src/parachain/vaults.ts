@@ -14,6 +14,7 @@ import {
     PolkadotAmount,
 } from "@interlay/monetary-js";
 
+import { Bytes } from "@polkadot/types";
 import { Vault, IssueRequest, RedeemRequest, ReplaceRequest, BalanceWrapper, VaultStatus } from "../interfaces/default";
 import {
     FIXEDI128_SCALING_FACTOR,
@@ -22,6 +23,8 @@ import {
     parseReplaceRequest,
     parseWallet,
     parseSystemVault,
+    newAccountId,
+    getTxProof,
 } from "../utils";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -263,6 +266,17 @@ export interface VaultsAPI extends TransactionAPI {
         vaultId: AccountId,
         currency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
+    /**
+     * A relayer may report Vault misbehavior by providing a fraud proof
+     * (malicious Bitcoin transaction and transaction inclusion proof).
+     * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
+     *
+     * @param vault_id The account of the vault to check.
+     * @param tx_id The hash of the transaction
+     * @param merkle_proof The proof of tx inclusion.
+     * @param raw_tx The raw Bitcoin transaction.
+     */
+    reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
 }
 
 export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI {
@@ -682,5 +696,12 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             replaceCollateral: PolkadotAmount.from.Planck(vault.replace_collateral.toString()),
             liquidatedCollateral: PolkadotAmount.from.Planck(vault.liquidated_collateral.toString()),
         };
+    }
+
+    async reportVaultTheft(vaultId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+        const parsedVaultId = newAccountId(this.api, vaultId);
+        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
+        const tx = this.api.tx.relay.reportVaultTheft(parsedVaultId, merkleProof, rawTx);
+        await this.sendLogged(tx, this.api.events.relay.VaultTheft);
     }
 }
