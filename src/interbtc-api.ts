@@ -104,7 +104,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
         this.nomination = new DefaultNominationAPI(api, btcNetwork, this.electrsAPI, _account);
         this.index = DefaultIndexAPI(new IndexConfiguration({ basePath: indexEndpoint }));
-        this.pools = new DefaultPoolsAPI(api);
+        this.pools = new DefaultPoolsAPI(api, btcNetwork, this.electrsAPI);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {
