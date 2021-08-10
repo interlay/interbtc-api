@@ -7,7 +7,7 @@ import { DefaultRedeemAPI, RedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
 import { assert } from "../../../chai";
-import { 
+import {
     DEFAULT_BITCOIN_CORE_HOST,
     DEFAULT_BITCOIN_CORE_NETWORK,
     DEFAULT_BITCOIN_CORE_PASSWORD,
@@ -21,7 +21,7 @@ import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { DefaultStakedRelayerAPI, ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH, StakedRelayerAPI } from "../../../../src";
+import { ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -30,7 +30,6 @@ describe("redeem", () => {
     let redeemAPI: RedeemAPI;
     let issueAPI: IssueAPI;
     let tokensAPI: TokensAPI;
-    let stakedRelayerAPI: StakedRelayerAPI;
     let api: ApiPromise;
     let keyring: Keyring;
     // alice is the root account
@@ -49,7 +48,6 @@ describe("redeem", () => {
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         tokensAPI = new DefaultTokensAPI(api);
-        stakedRelayerAPI = new DefaultStakedRelayerAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice_stash);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
