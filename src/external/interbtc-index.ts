@@ -1,33 +1,61 @@
 import * as interbtcIndex from "@interlay/interbtc-index-client";
-import { IndexApi as RawIndexApi } from "@interlay/interbtc-index-client";
-import { Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { IndexApi as RawIndexApi, IndexVaultStatus } from "@interlay/interbtc-index-client";
+import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
+import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
+import { VaultExt, VaultStatusExt } from "../types";
 import { DOTBTCOracleStatus } from "../types/oracleTypes";
-import {newCollateralBTCExchangeRate} from "../utils/currency";
+import { newCollateralBTCExchangeRate } from "../utils/currency";
 
 /* Add wrappers here. Use keys matching the raw API call names to override those APIs with the wrappers. */
-const explicitWrappers = (index: RawIndexApi) => {
+const explicitWrappers = (index: RawIndexApi, api: ApiPromise) => {
     return {
         getLatestSubmissionForEachOracle: async (): Promise<DOTBTCOracleStatus[]> => {
             const oracleStatus = await index.getLatestSubmissionForEachOracle();
             return oracleStatus.map((rawStatus) => {
-                const exchangeRate = newCollateralBTCExchangeRate<PolkadotUnit>(new Big(rawStatus.exchangeRate),
-                    Polkadot);
+                const exchangeRate = newCollateralBTCExchangeRate<PolkadotUnit>(
+                    new Big(rawStatus.exchangeRate),
+                    Polkadot
+                );
                 return {
                     ...rawStatus,
-                    exchangeRate
+                    exchangeRate,
                 };
             });
         },
         getLatestSubmission: async (): Promise<DOTBTCOracleStatus> => {
             const submission = await index.getLatestSubmission();
-            const exchangeRate = newCollateralBTCExchangeRate<PolkadotUnit>(new Big(submission.exchangeRate),
-                Polkadot);
+            const exchangeRate = newCollateralBTCExchangeRate<PolkadotUnit>(new Big(submission.exchangeRate), Polkadot);
             return {
                 ...submission,
                 exchangeRate,
             };
-        }
+        },
+        currentVaultData: async (): Promise<VaultExt[]> => {
+            const indexCachedVaults = await index.currentVaultData();
+            return indexCachedVaults.map((indexVault) => {
+                const status = ((indexStatus) => {
+                    if (indexStatus === IndexVaultStatus.Active) return VaultStatusExt.Active;
+                    else if (indexStatus === IndexVaultStatus.Inactive) return VaultStatusExt.Inactive;
+                    else if (indexStatus === IndexVaultStatus.Liquidated) return VaultStatusExt.Liquidated;
+                    else if (indexStatus === IndexVaultStatus.CommittedTheft) return VaultStatusExt.CommittedTheft;
+                    else throw new Error("Unknown vault status from Index");
+                })(indexVault.status);
+                return {
+                    wallet: indexVault.wallet,
+                    backingCollateral: new PolkadotAmount(indexVault.backingCollateral),
+                    id: api.createType("AccountId", indexVault.id),
+                    status,
+                    bannedUntil: indexVault.bannedUntil === null ? undefined : indexVault.bannedUntil,
+                    toBeIssuedTokens: new BTCAmount(Bitcoin, indexVault.toBeIssuedTokens),
+                    issuedTokens: new BTCAmount(Bitcoin, indexVault.issuedTokens),
+                    toBeRedeemedTokens: new BTCAmount(Bitcoin, indexVault.toBeRedeemedTokens),
+                    toBeReplacedTokens: new BTCAmount(Bitcoin, indexVault.toBeReplacedTokens),
+                    replaceCollateral: new PolkadotAmount(indexVault.replaceCollateral),
+                    liquidatedCollateral: new PolkadotAmount(indexVault.liquidatedCollateral),
+                };
+            });
+        },
     };
 };
 
@@ -58,10 +86,13 @@ export type ThinWrappedIndexAPI = Pick<
 
 export type WrappedIndexAPI = ThinWrappedIndexAPI & ExplicitlyWrappedIndexAPI;
 
-export const DefaultIndexAPI: (configuration: interbtcIndex.Configuration) => WrappedIndexAPI = (configuration) => {
+export const DefaultIndexAPI: (configuration: interbtcIndex.Configuration, api: ApiPromise) => WrappedIndexAPI = (
+    configuration,
+    api
+) => {
     const index = new interbtcIndex.IndexApi(configuration);
 
-    const instantiatedExplicitWrappers = explicitWrappers(index);
+    const instantiatedExplicitWrappers = explicitWrappers(index, api);
 
     const excludeFromThinWrappers = (key: string) =>
         Object.keys(explicitWrappers).includes(key) ||

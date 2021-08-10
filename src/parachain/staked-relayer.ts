@@ -12,6 +12,7 @@ import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI, getTxProof, newAccountId } from "..";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import { VaultStatusExt } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -70,7 +71,7 @@ export class DefaultStakedRelayerAPI extends DefaultTransactionAPI implements St
         const vaults = await this.vaultsAPI.list();
         const collateralizationRates = await Promise.all(
             vaults
-                .filter((vault) => vault.status.isActive)
+                .filter((vault) => vault.status === VaultStatusExt.Active || vault.status === VaultStatusExt.Inactive)
                 .map<Promise<[AccountId, Big | undefined]>>(async (vault) => [
                     vault.id,
                     await this.vaultsAPI.getVaultCollateralization(vault.id),

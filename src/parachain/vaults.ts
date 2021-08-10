@@ -14,7 +14,7 @@ import {
     PolkadotAmount,
 } from "@interlay/monetary-js";
 
-import { Vault, IssueRequest, RedeemRequest, ReplaceRequest, BalanceWrapper } from "../interfaces/default";
+import { Vault, IssueRequest, RedeemRequest, ReplaceRequest, BalanceWrapper, VaultStatus } from "../interfaces/default";
 import {
     FIXEDI128_SCALING_FACTOR,
     decodeFixedPointType,
@@ -38,6 +38,7 @@ import {
     ReplaceRequestExt,
     VaultExt,
     SystemVaultExt,
+    VaultStatusExt,
 } from "../types";
 import { DefaultPoolsAPI, PoolsAPI } from "./pools";
 
@@ -652,13 +653,27 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return this.api.createType("Balance", wrappedBalance.amount.toString());
     }
 
+    private parseVaultStatus(status: VaultStatus): VaultStatusExt {
+        if (status.isActive) {
+            return status.asActive
+                ? VaultStatusExt.Active
+                : VaultStatusExt.Inactive;
+        } else if (status.isLiquidated) {
+            return VaultStatusExt.Liquidated;
+        } else if (status.isCommittedTheft) {
+            return VaultStatusExt.CommittedTheft;
+        } else {
+            throw new Error("Unknown vault status");
+        }
+    }
+
     async parseVault(vault: Vault, network: Network): Promise<VaultExt> {
         const backingCollateral = await this.getBackingCollateral(vault.id, Polkadot);
         return {
             wallet: parseWallet(vault.wallet, network),
             backingCollateral,
             id: vault.id,
-            status: vault.status,
+            status: this.parseVaultStatus(vault.status),
             bannedUntil: vault.banned_until.isSome ? (vault.banned_until.value as BlockNumber).toNumber() : undefined,
             toBeIssuedTokens: BTCAmount.from.Satoshi(vault.to_be_issued_tokens.toString()),
             issuedTokens: BTCAmount.from.Satoshi(vault.issued_tokens.toString()),

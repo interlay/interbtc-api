@@ -18,7 +18,7 @@ export interface SystemAPI {
      * On every new parachain block, call the callback function with the new block header
      * @param callback Function to be called with every new block header
      */
-    subscribeToNewBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
+    subscribeToFinalizedBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
 }
 
 export class DefaultSystemAPI implements SystemAPI {
@@ -34,7 +34,7 @@ export class DefaultSystemAPI implements SystemAPI {
         return (await this.api.query.security.activeBlockCount.at(block)).toNumber();
     }
 
-    async subscribeToNewBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void> {
+    async subscribeToFinalizedBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void> {
         const unsub = await this.api.rpc.chain.subscribeFinalizedHeads((head) => {
             callback(head);
         });
