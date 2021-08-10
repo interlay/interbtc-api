@@ -9,7 +9,6 @@ import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./parachain/redeem";
 import { DefaultRefundAPI, RefundAPI } from "./parachain/refund";
 import { DefaultFeeAPI, FeeAPI } from "./parachain/fee";
-import { DefaultStakedRelayerAPI, StakedRelayerAPI } from "./parachain/staked-relayer";
 import { DefaultVaultsAPI, VaultsAPI } from "./parachain/vaults";
 import { DefaultSystemAPI, SystemAPI } from "./parachain/system";
 import { DefaultTokensAPI, TokensAPI } from "./parachain/tokens";
@@ -43,7 +42,6 @@ export interface InterBTCAPI {
     readonly issue: IssueAPI;
     readonly redeem: RedeemAPI;
     readonly refund: RefundAPI;
-    readonly stakedRelayer: StakedRelayerAPI;
     readonly faucet: FaucetClient;
     readonly oracle: OracleAPI;
     readonly electrsAPI: ElectrsAPI;
@@ -69,7 +67,6 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
     public readonly refund: RefundAPI;
-    public readonly stakedRelayer: StakedRelayerAPI;
     public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
     public readonly electrsAPI: ElectrsAPI;
@@ -93,7 +90,6 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, _account);
         this.faucet = new FaucetClient("");
         this.oracle = new DefaultOracleAPI(api);
-        this.stakedRelayer = new DefaultStakedRelayerAPI(api, btcNetwork, this.electrsAPI, _account);
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, _account);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
         this.tokens = new DefaultTokensAPI(api, _account);
@@ -116,7 +112,6 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         }
         this._account = account;
         this.vaults.setAccount(account);
-        this.stakedRelayer.setAccount(account);
         this.refund.setAccount(account);
         this.tokens.setAccount(account);
         this.replace.setAccount(account);
