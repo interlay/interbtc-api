@@ -4,10 +4,10 @@ import { ReplaceRequestStatus } from "../interfaces";
 
 export interface Issue {
     id: string;
-    amountInterBTC: string;
+    amountInterBTC: BTCAmount;
     userDOTAddress: string;
-    bridgeFee: string;
-    griefingCollateral: string;
+    bridgeFee: BTCAmount;
+    griefingCollateral: PolkadotAmount;
     vaultWalletPubkey: string;
     creationBlock: number;
     creationTimestamp?: number;
@@ -19,8 +19,8 @@ export interface Issue {
     btcAmountSubmittedByUser?: string;
     status: IssueStatus;
     refundBtcAddress?: string;
-    refundAmountBTC?: string;
-    executedAmountBTC?: string;
+    refundAmountBTC?: BTCAmount;
+    executedAmountBTC?: BTCAmount;
 }
 
 export enum IssueStatus {
@@ -43,10 +43,10 @@ export enum NominationStatus {
 export interface Redeem {
     id: string;
     userDOTAddress: string;
-    amountBTC: string;
-    dotPremium: string;
-    bridgeFee: string;
-    btcTransferFee: string;
+    amountBTC: BTCAmount;
+    dotPremium: PolkadotAmount;
+    bridgeFee: BTCAmount;
+    btcTransferFee: BTCAmount;
     creationTimestamp?: number;
     creationBlock: number;
     vaultDOTAddress: string;

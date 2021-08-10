@@ -128,7 +128,7 @@ export async function issueSingle(
         }
         const issueRequest = rawRequestResult[0];
 
-        let amountAsBtc = BTCAmount.from.BTC(new Big(issueRequest.amountInterBTC).add(issueRequest.bridgeFee));
+        let amountAsBtc = issueRequest.amountInterBTC.add(issueRequest.bridgeFee);
         if (triggerRefund) {
             // Send 1 more Btc than needed
             amountAsBtc = amountAsBtc.add(BTCAmount.from.BTC(1));

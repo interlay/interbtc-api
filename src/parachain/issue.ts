@@ -4,7 +4,7 @@ import { Bytes } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { Bitcoin, BTCAmount, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, Currency, MonetaryAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 
 import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
@@ -13,13 +13,12 @@ import {
     getTxProof,
     allocateAmountsToVaults,
     getRequestIdsFromEvents,
-    satToBTC,
     stripHexPrefix,
-    planckToDOT,
     encodeBtcAddress,
     storageKeyToNthInner,
     ensureHashEncoded,
     addHexPrefix,
+    parseIssueRequest,
 } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
@@ -27,28 +26,6 @@ import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralUnit, Issue, IssueStatus } from "../types";
 
 export type IssueLimits = { singleVaultMaxIssuable: BTCAmount; totalMaxIssuable: BTCAmount };
-
-export function encodeIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
-    const amountBTC = satToBTC(req.amount);
-    const fee = satToBTC(req.fee);
-    const status = req.status.isCompleted
-        ? IssueStatus.Completed
-        : req.status.isCancelled
-            ? IssueStatus.Cancelled
-            : IssueStatus.PendingWithBtcTxNotFound;
-    return {
-        id: stripHexPrefix(id.toString()),
-        creationBlock: req.opentime.toNumber(),
-        vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
-        vaultDOTAddress: req.vault.toString(),
-        userDOTAddress: req.requester.toString(),
-        vaultWalletPubkey: req.btc_public_key.toString(),
-        bridgeFee: fee.toString(),
-        amountInterBTC: amountBTC.toString(),
-        griefingCollateral: planckToDOT(req.griefing_collateral).toString(),
-        status,
-    };
-}
 
 /**
  * @category InterBTC Bridge
@@ -212,7 +189,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
             const successfulSum = result.reduce(
-                (sum, req) => sum.add(BTCAmount.from.BTC(req.amountInterBTC)),
+                (sum, req) => sum.add(req.amountInterBTC),
                 BTCAmount.zero
             );
             const remainder = amount.sub(successfulSum);
@@ -287,7 +264,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     async list(): Promise<Issue[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const issueRequests = await this.api.query.issue.issueRequests.entriesAt(head);
-        return issueRequests.map(([id, req]) => encodeIssueRequest(req, this.btcNetwork, storageKeyToNthInner(id)));
+        return issueRequests.map(([id, req]) => parseIssueRequest(req, this.btcNetwork, storageKeyToNthInner(id)));
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, Issue>> {
@@ -296,7 +273,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         issueRequestPairs.forEach((issueRequestPair) =>
             mapForUser.set(
                 issueRequestPair[0],
-                encodeIssueRequest(issueRequestPair[1], this.btcNetwork, issueRequestPair[0])
+                parseIssueRequest(issueRequestPair[1], this.btcNetwork, issueRequestPair[0])
             )
         );
         return mapForUser;
@@ -332,7 +309,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return Promise.all(
             issueIds.map(async (issueId) =>
-                encodeIssueRequest(
+                parseIssueRequest(
                     await this.api.query.issue.issueRequests.at(head, ensureHashEncoded(this.api, issueId)),
                     this.btcNetwork,
                     issueId
