@@ -1,9 +1,5 @@
 import { PolkadotAmount, BTCAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
-import * as interbtcIndex from "@interlay/interbtc-index-client";
-
-import { VaultStatus } from "../interfaces";
-import Big from "big.js";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -11,11 +7,18 @@ export interface WalletExt {
     addresses: Array<string>;
 }
 
+export enum VaultStatusExt {
+    Active,
+    Inactive,
+    Liquidated,
+    CommittedTheft,
+}
+
 export interface VaultExt {
     wallet: WalletExt;
     backingCollateral: PolkadotAmount;
     id: AccountId;
-    status: VaultStatus;
+    status: VaultStatusExt;
     bannedUntil: number | undefined;
     toBeIssuedTokens: BTCAmount;
     issuedTokens: BTCAmount;
@@ -29,17 +32,4 @@ export interface SystemVaultExt {
     toBeIssuedTokens: BTCAmount;
     issuedTokens: BTCAmount;
     toBeRedeemedTokens: BTCAmount;
-}
-
-// TODO: Use once explicit wrapped for interbtc-index are added
-export interface ParsedVaultData {
-    id: string;
-    collateral: PolkadotAmount;
-    lockedBTC: BTCAmount;
-    pendingBTC: BTCAmount;
-    collateralization: Big;
-    pendingCollateralization: Big;
-    capacity: BTCAmount;
-    registeredAt: number;
-    status: interbtcIndex.VaultDataStatus;
 }

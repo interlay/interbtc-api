@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AccountId, H256, Balance, BlockNumber } from "@polkadot/types/interfaces";
+import { AccountId, H256, Balance, BlockNumber, BlockHash } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import BN from "bn.js";
@@ -13,8 +13,9 @@ import {
     Currency,
     PolkadotAmount,
 } from "@interlay/monetary-js";
+
 import { Bytes } from "@polkadot/types";
-import { Vault, IssueRequest, RedeemRequest, ReplaceRequest, BalanceWrapper } from "../interfaces/default";
+import { Vault, IssueRequest, RedeemRequest, ReplaceRequest, BalanceWrapper, VaultStatus } from "../interfaces/default";
 import {
     FIXEDI128_SCALING_FACTOR,
     decodeFixedPointType,
@@ -41,6 +42,7 @@ import {
     ReplaceRequestExt,
     VaultExt,
     SystemVaultExt,
+    VaultStatusExt,
 } from "../types";
 import { DefaultPoolsAPI, PoolsAPI } from "./pools";
 
@@ -51,7 +53,7 @@ export interface VaultsAPI extends TransactionAPI {
     /**
      * @returns An array containing the vaults with non-zero backing collateral
      */
-    list(): Promise<VaultExt[]>;
+    list(atBlock?: BlockHash): Promise<VaultExt[]>;
     /**
      * Fetch the issue requests associated with a vault
      *
@@ -313,9 +315,9 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         await this.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
     }
 
-    async list(): Promise<VaultExt[]> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(head);
+    async list(atBlock?: BlockHash): Promise<VaultExt[]> {
+        const block = atBlock || await this.api.rpc.chain.getFinalizedHead();
+        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(block);
         return Promise.all(vaultsMap.map((v) => this.parseVault(v[1], this.btcNetwork)));
     }
 
@@ -666,13 +668,27 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return this.api.createType("Balance", wrappedBalance.amount.toString());
     }
 
+    private parseVaultStatus(status: VaultStatus): VaultStatusExt {
+        if (status.isActive) {
+            return status.asActive
+                ? VaultStatusExt.Active
+                : VaultStatusExt.Inactive;
+        } else if (status.isLiquidated) {
+            return VaultStatusExt.Liquidated;
+        } else if (status.isCommittedTheft) {
+            return VaultStatusExt.CommittedTheft;
+        } else {
+            throw new Error("Unknown vault status");
+        }
+    }
+
     async parseVault(vault: Vault, network: Network): Promise<VaultExt> {
         const backingCollateral = await this.getBackingCollateral(vault.id, Polkadot);
         return {
             wallet: parseWallet(vault.wallet, network),
             backingCollateral,
             id: vault.id,
-            status: vault.status,
+            status: this.parseVaultStatus(vault.status),
             bannedUntil: vault.banned_until.isSome ? (vault.banned_until.value as BlockNumber).toNumber() : undefined,
             toBeIssuedTokens: BTCAmount.from.Satoshi(vault.to_be_issued_tokens.toString()),
             issuedTokens: BTCAmount.from.Satoshi(vault.issued_tokens.toString()),

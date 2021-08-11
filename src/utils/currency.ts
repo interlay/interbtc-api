@@ -1,6 +1,6 @@
 import Big, { BigSource } from "big.js";
 import BN from "bn.js";
-import { Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { CurrencyUnit } from "../types/currency";
 
 // set maximum exponents
@@ -19,13 +19,13 @@ export function roundTwoDecimals(input: string): string {
 export function roundUpBigToNearestInteger(x: Big): Big {
     /*
     Uses the round method, defined as follows:
-    
+
     Big.round(dp, rm) -> Big
     dp? : number : integer, -1e+6 to 1e+6 inclusive
     rm? : number : 0, 1, 2 or 3
-    Returns a Big number whose value is the value of this Big number 
-    rounded using rounding mode rm to a maximum of dp decimal places, 
-    or, if dp is negative, to an integer which is a multiple of 10**-dp. 
+    Returns a Big number whose value is the value of this Big number
+    rounded using rounding mode rm to a maximum of dp decimal places,
+    or, if dp is negative, to an integer which is a multiple of 10**-dp.
     */
     return x.round(0, 3);
 }
@@ -87,4 +87,21 @@ export function newMonetaryAmount<C extends CurrencyUnit>(
 ): MonetaryAmount<Currency<C>, C> {
     const unit = base ? currency.base : currency.rawBase;
     return new MonetaryAmount<Currency<C>, C>(currency, amount, unit);
+}
+
+export function newCollateralBTCExchangeRate<C extends CurrencyUnit>(
+    rate: Big,
+    baseCurrency: Currency<C>,
+    useBaseUnits = false
+): ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit> {
+    const [baseCurrencyUnit, counterCurrencyUnit] = useBaseUnits
+        ? [baseCurrency.base, Bitcoin.base]
+        : [baseCurrency.rawBase, Bitcoin.rawBase];
+    return new ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit>(
+        baseCurrency,
+        Bitcoin,
+        rate,
+        baseCurrencyUnit,
+        counterCurrencyUnit
+    );
 }
