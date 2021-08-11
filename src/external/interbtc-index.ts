@@ -1,11 +1,17 @@
 import * as interbtcIndex from "@interlay/interbtc-index-client";
-import { IndexApi as RawIndexApi, IndexVaultStatus } from "@interlay/interbtc-index-client";
+import { IndexApi as RawIndexApi, IndexVaultStatus, SatoshisTimeData } from "@interlay/interbtc-index-client";
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
-import { VaultExt, VaultStatusExt } from "../types";
+import { Issue, Redeem, VaultExt, VaultStatusExt } from "../types";
 import { DOTBTCOracleStatus } from "../types/oracleTypes";
 import { newCollateralBTCExchangeRate } from "../utils/currency";
+
+// TODO: export SatoshisTimeData from `interbtcIndex`
+export interface BTCTimeData {
+    date: Date;
+    btc: BTCAmount;
+}
 
 /* Add wrappers here. Use keys matching the raw API call names to override those APIs with the wrappers. */
 const explicitWrappers = (index: RawIndexApi, api: ApiPromise) => {
@@ -55,6 +61,74 @@ const explicitWrappers = (index: RawIndexApi, api: ApiPromise) => {
                     liquidatedCollateral: new PolkadotAmount(indexVault.liquidatedCollateral),
                 };
             });
+        },
+        getIssues: async (
+            page?: number,
+            perPage?: number,
+            sortBy?: interbtcIndex.IssueColumns,
+            sortAsc?: boolean,
+            network?: interbtcIndex.BitcoinNetwork
+        ): Promise<Issue[]> => {
+            const issues = await index.getIssues({ page, perPage, sortBy, sortAsc, network });
+            return issues.map(indexIssueToTypedIssue);
+        },
+        getRedeems: async (
+            page?: number,
+            perPage?: number,
+            sortBy?: interbtcIndex.RedeemColumns,
+            sortAsc?: boolean,
+            network?: interbtcIndex.BitcoinNetwork
+        ): Promise<Redeem[]> => {
+            const redeems = await index.getRedeems({ page, perPage, sortBy, sortAsc, network });
+            return redeems.map(indexRedeemToTypedRedeem);
+        },
+        getFilteredIssues: async (
+            page?: number,
+            perPage?: number,
+            sortBy?: interbtcIndex.IssueColumns,
+            sortAsc?: boolean,
+            network?: interbtcIndex.BitcoinNetwork,
+            filterIssueColumns?: Array<interbtcIndex.FilterIssueColumns>
+        ): Promise<Issue[]> => {
+            const issues = await index.getFilteredIssues({
+                page,
+                perPage,
+                sortBy,
+                sortAsc,
+                network,
+                filterIssueColumns,
+            });
+            return issues.map(indexIssueToTypedIssue);
+        },
+        getFilteredRedeems: async (
+            page?: number,
+            perPage?: number,
+            sortBy?: interbtcIndex.RedeemColumns,
+            sortAsc?: boolean,
+            network?: interbtcIndex.BitcoinNetwork,
+            filterRedeemColumns?: Array<interbtcIndex.FilterRedeemColumns>
+        ): Promise<Redeem[]> => {
+            const redeems = await index.getFilteredRedeems({
+                page,
+                perPage,
+                sortBy,
+                sortAsc,
+                network,
+                filterRedeemColumns,
+            });
+            return redeems.map(indexRedeemToTypedRedeem);
+        },
+        getRecentDailyIssues: async (daysBack?: number): Promise<BTCTimeData[]> => {
+            const issues = await index.getRecentDailyIssues({ daysBack });
+            return issues.map(satoshisToBtcTimeData);
+        },
+        getRecentDailyRedeems: async (daysBack?: number): Promise<BTCTimeData[]> => {
+            const redeems = await index.getRecentDailyRedeems({ daysBack });
+            return redeems.map(satoshisToBtcTimeData);
+        },
+        
+        getDustValue: async (): Promise<BTCAmount> => {
+            return BTCAmount.from.Satoshi(await index.getDustValue());
         },
     };
 };
@@ -121,3 +195,34 @@ export const DefaultIndexAPI: (configuration: interbtcIndex.Configuration, api: 
         ...thinWrappers,
     };
 };
+
+export function indexIssueToTypedIssue(issue: interbtcIndex.Issue): Issue {
+    return {
+        ...issue,
+        amountInterBTC: BTCAmount.from.Satoshi(issue.amountInterBTC),
+        bridgeFee: BTCAmount.from.Satoshi(issue.bridgeFee),
+        griefingCollateral: PolkadotAmount.from.Planck(issue.griefingCollateral),
+        btcAmountSubmittedByUser: issue.btcAmountSubmittedByUser
+            ? BTCAmount.from.Satoshi(issue.btcAmountSubmittedByUser)
+            : undefined,
+        refundAmountBTC: issue.refundAmountBTC ? BTCAmount.from.Satoshi(issue.refundAmountBTC) : undefined,
+        executedAmountBTC: issue.executedAmountBTC ? BTCAmount.from.Satoshi(issue.executedAmountBTC) : undefined,
+    };
+}
+
+export function indexRedeemToTypedRedeem(redeem: interbtcIndex.Redeem): Redeem {
+    return {
+        ...redeem,
+        amountBTC: BTCAmount.from.Satoshi(redeem.amountBTC),
+        dotPremium: PolkadotAmount.from.Planck(redeem.dotPremium),
+        bridgeFee: BTCAmount.from.Satoshi(redeem.bridgeFee),
+        btcTransferFee: BTCAmount.from.Satoshi(redeem.btcTransferFee),
+    };
+}
+
+export function satoshisToBtcTimeData(data: SatoshisTimeData): BTCTimeData {
+    return {
+        date: new Date(data.date),
+        btc: BTCAmount.from.Satoshi(data.sat),
+    };
+}

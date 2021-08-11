@@ -24,7 +24,6 @@ describe("redeem", () => {
     // alice is the root account
     let alice: KeyringPair;
     let ferdie: KeyringPair;
-    let charlie_stash: KeyringPair;
     let aliceBitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
@@ -32,7 +31,6 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
         ferdie = keyring.addFromUri("//Ferdie");
-        charlie_stash = keyring.addFromUri("//Charlie//stash");
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         aliceBitcoinCoreClient = new BitcoinCoreClient(
@@ -86,7 +84,7 @@ describe("redeem", () => {
         const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
         await redeemAPI.setRedeemPeriod(1);
         let redeemRequestExpiryCallback = false; 
-        const [_, redeemRequest] = await issueAndRedeem(api, electrsAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, undefined, ExecuteRedeem.False);
+        const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, undefined, ExecuteRedeem.False);
     
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");

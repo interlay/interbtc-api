@@ -29,7 +29,7 @@ export interface SystemAPI {
 }
 
 export class DefaultSystemAPI implements SystemAPI {
-    constructor(private api: ApiPromise) { }
+    constructor(private api: ApiPromise) {}
 
     async getCurrentBlockNumber(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -37,7 +37,7 @@ export class DefaultSystemAPI implements SystemAPI {
     }
 
     async getCurrentActiveBlockNumber(atBlock?: BlockHash): Promise<number> {
-        const block = atBlock || await this.api.rpc.chain.getFinalizedHead();
+        const block = atBlock || (await this.api.rpc.chain.getFinalizedHead());
         return (await this.api.query.security.activeBlockCount.at(block)).toNumber();
     }
 

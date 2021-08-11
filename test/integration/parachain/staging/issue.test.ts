@@ -1,7 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
-import Big from "big.js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
@@ -11,10 +10,12 @@ import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { IssueStatus } from "../../../../src";
+import { INDEX_LOCAL_URL, IssueStatus } from "../../../../src";
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
+import { Configuration as IndexConfiguration } from "@interlay/interbtc-index-client";
+import { DefaultIndexAPI, WrappedIndexAPI } from "../../../../src/external/interbtc-index";
 
-describe("issue", () => {
+describe.only("issue", () => {
     let api: ApiPromise;
     let issueAPI: IssueAPI;
     let electrsAPI: ElectrsAPI;
@@ -25,6 +26,7 @@ describe("issue", () => {
     let alice: KeyringPair;
     let charlie_stash: KeyringPair;
     let dave_stash: KeyringPair;
+    let indexAPI: WrappedIndexAPI;
 
     before(async function () {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
@@ -44,13 +46,14 @@ describe("issue", () => {
             DEFAULT_BITCOIN_CORE_WALLET
         );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
+        indexAPI = DefaultIndexAPI(new IndexConfiguration({ basePath: INDEX_LOCAL_URL }), api);
     });
 
     after(async () => {
         api.disconnect();
     });
 
-    it("should list existing requests", async () => {
+    it.only("should list existing requests", async () => {
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
 
@@ -60,6 +63,14 @@ describe("issue", () => {
             1,
             "Error in docker-compose setup. Should have at least 1 issue request"
         );
+
+        const cachedIssueRequests = await indexAPI.getIssues();
+        assert.isAtLeast(
+            cachedIssueRequests.length,
+            1,
+            "Error in docker-compose setup. Should have at least 1 issue request"
+        );
+        assert.equal(issueRequests[0].id, cachedIssueRequests[0].id, "Cached issue request ID does not exist");
     });
 
     it("should map existing requests", async () => {

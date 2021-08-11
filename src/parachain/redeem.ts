@@ -6,14 +6,7 @@ import { Bytes } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import BN from "bn.js";
-import {
-    Bitcoin,
-    BTCAmount,
-    BTCUnit,
-    ExchangeRate,
-    Polkadot,
-    PolkadotUnit,
-} from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
@@ -212,10 +205,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithRedeemableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
-            const successfulSum = result.reduce(
-                (sum, req) => sum.add(req.amountBTC),
-                BTCAmount.zero
-            );
+            const successfulSum = result.reduce((sum, req) => sum.add(req.amountBTC), BTCAmount.zero);
             const remainder = amount.sub(successfulSum);
             if (remainder.isZero() || retries === 0) return result;
             else {
@@ -423,11 +413,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return Promise.all(
             redeemIds.map(async (redeemId) => {
                 const id = ensureHashEncoded(this.api, redeemId);
-                return parseRedeemRequest(
-                    await this.api.query.redeem.redeemRequests.at(head, id),
-                    this.btcNetwork,
-                    id
-                );
+                return parseRedeemRequest(await this.api.query.redeem.redeemRequests.at(head, id), this.btcNetwork, id);
             })
         );
     }

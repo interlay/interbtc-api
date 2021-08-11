@@ -43,7 +43,7 @@ import {
 import { DefaultTokensAPI } from "../../../../src/parachain/tokens";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 
-describe("Initialize parachain state", () => {
+describe.only("Initialize parachain state", () => {
     let api: ApiPromise;
     let issueAPI: IssueAPI;
     let redeemAPI: RedeemAPI;
@@ -89,14 +89,14 @@ describe("Initialize parachain state", () => {
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         // Sleep for 2 min to wait for vaults to register
-        await sleep(2 * 60 * 1000);
+        // await sleep(2 * 60 * 1000);
     });
 
     after(async () => {
         api.disconnect();
     });
 
-    it("should set the stable confirmations and ready the Btc Relay", async () => {
+    it.only("should set the stable confirmations and ready the Btc Relay", async () => {
         // Speed up the process by only requiring 0 parachain and 0 bitcoin confirmations
         const stableBitcoinConfirmationsToSet = 0;
         const stableParachainConfirmationsToSet = 0;
@@ -129,7 +129,7 @@ describe("Initialize parachain state", () => {
         assert.isTrue(isNominationEnabled);
     });
 
-    it("should issue 0.1 InterBTC", async () => {
+    it.only("should issue 0.1 InterBTC", async () => {
         const interBtcToIssue = BTCAmount.from.BTC(0.1);
         const feesToPay = await issueAPI.getFeesToPay(interBtcToIssue);
         const aliceAccountId = api.createType("AccountId", alice.address);

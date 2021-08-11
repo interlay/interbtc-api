@@ -4,7 +4,7 @@ import { Bytes } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { Bitcoin, BTCAmount, Currency, MonetaryAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 import { IssueRequest } from "../interfaces/default";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
@@ -13,8 +13,6 @@ import {
     getTxProof,
     allocateAmountsToVaults,
     getRequestIdsFromEvents,
-    stripHexPrefix,
-    encodeBtcAddress,
     storageKeyToNthInner,
     ensureHashEncoded,
     addHexPrefix,
@@ -23,7 +21,7 @@ import {
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CollateralUnit, Issue, IssueStatus } from "../types";
+import { CollateralUnit, Issue } from "../types";
 
 export type IssueLimits = { singleVaultMaxIssuable: BTCAmount; totalMaxIssuable: BTCAmount };
 
@@ -188,10 +186,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
-            const successfulSum = result.reduce(
-                (sum, req) => sum.add(req.amountInterBTC),
-                BTCAmount.zero
-            );
+            const successfulSum = result.reduce((sum, req) => sum.add(req.amountInterBTC), BTCAmount.zero);
             const remainder = amount.sub(successfulSum);
             if (remainder.isZero() || retries === 0) return result;
             else {
