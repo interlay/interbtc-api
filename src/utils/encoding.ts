@@ -9,7 +9,7 @@ import { BTCAmount, PolkadotAmount } from "@interlay/monetary-js";
 
 import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
 import { WalletExt, SystemVaultExt } from "../types/vault";
-import { RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
+import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
 import {
     SignedFixedPoint,
     UnsignedFixedPoint,
@@ -18,6 +18,8 @@ import {
     Wallet,
     RefundRequest,
     ReplaceRequest,
+    IssueRequest,
+    RedeemRequest,
 } from "../interfaces";
 
 /**
@@ -169,5 +171,47 @@ export function parseReplaceRequest(req: ReplaceRequest, network: Network): Repl
         period: req.period.toNumber(),
         btcHeight: req.btc_height.toNumber(),
         status: req.status,
+    };
+}
+
+export function parseIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
+    const status = req.status.isCompleted
+        ? IssueStatus.Completed
+        : req.status.isCancelled
+            ? IssueStatus.Cancelled
+            : IssueStatus.PendingWithBtcTxNotFound;
+    return {
+        id: stripHexPrefix(id.toString()),
+        creationBlock: req.opentime.toNumber(),
+        vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
+        vaultDOTAddress: req.vault.toString(),
+        userDOTAddress: req.requester.toString(),
+        vaultWalletPubkey: req.btc_public_key.toString(),
+        bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()),
+        amountInterBTC: BTCAmount.from.Satoshi(req.amount.toString()),
+        griefingCollateral: PolkadotAmount.from.Planck(req.griefing_collateral.toString()),
+        status,
+    };
+}
+
+export function parseRedeemRequest(req: RedeemRequest, network: Network, id: H256): Redeem {
+    const status = req.status.isCompleted
+        ? RedeemStatus.Completed
+        : req.status.isRetried
+            ? RedeemStatus.Retried
+            : req.status.isReimbursed
+                ? RedeemStatus.Reimbursed
+                : RedeemStatus.PendingWithBtcTxNotFound;
+    return {
+        id: stripHexPrefix(id.toString()),
+        userDOTAddress: req.redeemer.toString(),
+        amountBTC: BTCAmount.from.Satoshi(req.amount_btc.toString()),
+        dotPremium: PolkadotAmount.from.Planck(req.premium.toString()),
+        bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()),
+        btcTransferFee: BTCAmount.from.Satoshi(req.transfer_fee_btc.toString()),
+        creationBlock: req.opentime.toNumber(),
+        vaultDOTAddress: req.vault.toString(),
+        userBTCAddress: encodeBtcAddress(req.btc_address, network),
+        status,
     };
 }

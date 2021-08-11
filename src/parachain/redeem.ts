@@ -12,7 +12,6 @@ import {
     BTCUnit,
     ExchangeRate,
     Polkadot,
-    PolkadotAmount,
     PolkadotUnit,
 } from "@interlay/monetary-js";
 
@@ -21,12 +20,11 @@ import {
     decodeBtcAddress,
     decodeFixedPointType,
     getTxProof,
-    stripHexPrefix,
-    encodeBtcAddress,
     storageKeyToNthInner,
     newAccountId,
     ensureHashEncoded,
     addHexPrefix,
+    parseRedeemRequest,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
@@ -35,28 +33,6 @@ import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RedeemRequest } from "../interfaces/default";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { Redeem, RedeemStatus } from "../types";
-
-export function encodeRedeemRequest(req: RedeemRequest, network: Network, id: H256): Redeem {
-    const status = req.status.isCompleted
-        ? RedeemStatus.Completed
-        : req.status.isRetried
-            ? RedeemStatus.Retried
-            : req.status.isReimbursed
-                ? RedeemStatus.Reimbursed
-                : RedeemStatus.PendingWithBtcTxNotFound;
-    return {
-        id: stripHexPrefix(id.toString()),
-        userDOTAddress: req.redeemer.toString(),
-        amountBTC: BTCAmount.from.Satoshi(req.amount_btc.toString()).str.BTC(),
-        dotPremium: PolkadotAmount.from.Planck(req.premium.toString()).str.Planck(),
-        bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()).str.BTC(),
-        btcTransferFee: BTCAmount.from.Satoshi(req.transfer_fee_btc.toString()).str.BTC(),
-        creationBlock: req.opentime.toNumber(),
-        vaultDOTAddress: req.vault.toString(),
-        userBTCAddress: encodeBtcAddress(req.btc_address, network),
-        status,
-    };
-}
 
 /**
  * @category InterBTC Bridge
@@ -237,7 +213,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             const successfulSum = result.reduce(
-                (sum, req) => sum.add(BTCAmount.from.BTC(req.amountBTC)),
+                (sum, req) => sum.add(req.amountBTC),
                 BTCAmount.zero
             );
             const remainder = amount.sub(successfulSum);
@@ -347,7 +323,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     async list(): Promise<Redeem[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemRequests = await this.api.query.redeem.redeemRequests.entriesAt(head);
-        return redeemRequests.map(([id, req]) => encodeRedeemRequest(req, this.btcNetwork, storageKeyToNthInner(id)));
+        return redeemRequests.map(([id, req]) => parseRedeemRequest(req, this.btcNetwork, storageKeyToNthInner(id)));
     }
 
     async mapForUser(account: AccountId): Promise<Map<H256, Redeem>> {
@@ -356,7 +332,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         redeemRequestPairs.forEach((redeemRequestPair) =>
             mapForUser.set(
                 redeemRequestPair[0],
-                encodeRedeemRequest(redeemRequestPair[1], this.btcNetwork, redeemRequestPair[0])
+                parseRedeemRequest(redeemRequestPair[1], this.btcNetwork, redeemRequestPair[0])
             )
         );
         return mapForUser;
@@ -447,7 +423,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return Promise.all(
             redeemIds.map(async (redeemId) => {
                 const id = ensureHashEncoded(this.api, redeemId);
-                return encodeRedeemRequest(
+                return parseRedeemRequest(
                     await this.api.query.redeem.redeemRequests.at(head, id),
                     this.btcNetwork,
                     id
