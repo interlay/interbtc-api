@@ -25,14 +25,15 @@ import {
     parseSystemVault,
     newAccountId,
     getTxProof,
+    parseIssueRequest,
+    parseRedeemRequest,
 } from "../utils";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
-import { DefaultIssueAPI, encodeIssueRequest } from "./issue";
-import { encodeRedeemRequest } from "./redeem";
+import { DefaultIssueAPI } from "./issue";
 import {
     Issue,
     Redeem,
@@ -323,7 +324,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async mapIssueRequests(vaultId: AccountId): Promise<Map<H256, Issue>> {
         try {
             const issueRequestPairs: [H256, IssueRequest][] = await this.api.rpc.issue.getVaultIssueRequests(vaultId);
-            return new Map(issueRequestPairs.map(([id, req]) => [id, encodeIssueRequest(req, this.btcNetwork, id)]));
+            return new Map(issueRequestPairs.map(([id, req]) => [id, parseIssueRequest(req, this.btcNetwork, id)]));
         } catch (err) {
             return Promise.reject(new Error(`Error during issue request retrieval: ${err}`));
         }
@@ -334,7 +335,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             const redeemRequestPairs: [H256, RedeemRequest][] = await this.api.rpc.redeem.getVaultRedeemRequests(
                 vaultId
             );
-            return new Map(redeemRequestPairs.map(([id, req]) => [id, encodeRedeemRequest(req, this.btcNetwork, id)]));
+            return new Map(redeemRequestPairs.map(([id, req]) => [id, parseRedeemRequest(req, this.btcNetwork, id)]));
         } catch (err) {
             return Promise.reject(new Error(`Error during redeem request retrieval: ${err}`));
         }

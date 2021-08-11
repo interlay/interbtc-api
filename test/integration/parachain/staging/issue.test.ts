@@ -93,7 +93,7 @@ describe("issue", () => {
         );
         const requestResult = requestResults[0];
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
-        assert.equal(issueRequest.amountInterBTC.toString(), amount.sub(feesToPay).str.BTC(), "Amount different than expected");
+        assert.equal(issueRequest.amountInterBTC.str.BTC(), amount.sub(feesToPay).str.BTC(), "Amount different than expected");
     });
 
     it("should batch request across several vaults", async () => {
@@ -109,12 +109,12 @@ describe("issue", () => {
             2,
             "Created wrong amount of requests, ensure vault collateral settings in docker are correct"
         );
-        const issuedAmount1 = new Big(issueRequests[0].amountInterBTC);
-        const issueFee1 = new Big(issueRequests[0].bridgeFee);
-        const issuedAmount2 = new Big(issueRequests[1].amountInterBTC);
-        const issueFee2 = new Big(issueRequests[1].bridgeFee);
+        const issuedAmount1 = issueRequests[0].amountInterBTC;
+        const issueFee1 = issueRequests[0].bridgeFee;
+        const issuedAmount2 = issueRequests[1].amountInterBTC;
+        const issueFee2 = issueRequests[1].bridgeFee;
         assert.equal(
-            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).round(5).toString(),
+            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(Bitcoin.units.BTC).round(5).toString(),
             amount.toBig(Bitcoin.units.BTC).round(5).toString(),
             "Issued amount is not equal to requested amount"
         );
