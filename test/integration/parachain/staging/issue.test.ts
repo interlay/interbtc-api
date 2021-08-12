@@ -12,10 +12,9 @@ import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { INDEX_LOCAL_URL, IssueStatus } from "../../../../src";
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
-import { Configuration as IndexConfiguration } from "@interlay/interbtc-index-client";
 import { DefaultIndexAPI, WrappedIndexAPI } from "../../../../src/external/interbtc-index";
 
-describe.only("issue", () => {
+describe("issue", () => {
     let api: ApiPromise;
     let issueAPI: IssueAPI;
     let electrsAPI: ElectrsAPI;
@@ -46,14 +45,14 @@ describe.only("issue", () => {
             DEFAULT_BITCOIN_CORE_WALLET
         );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
-        indexAPI = DefaultIndexAPI(new IndexConfiguration({ basePath: INDEX_LOCAL_URL }), api);
+        indexAPI = DefaultIndexAPI({ basePath: INDEX_LOCAL_URL }, api);
     });
 
     after(async () => {
         api.disconnect();
     });
 
-    it.only("should list existing requests", async () => {
+    it("should list existing requests", async () => {
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
 

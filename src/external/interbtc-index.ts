@@ -1,5 +1,5 @@
 import * as interbtcIndex from "@interlay/interbtc-index-client";
-import { IndexApi as RawIndexApi, IndexVaultStatus, SatoshisTimeData } from "@interlay/interbtc-index-client";
+import { FetchAPI, IndexApi as RawIndexApi, IndexVaultStatus, Middleware, SatoshisTimeData } from "@interlay/interbtc-index-client";
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
@@ -160,11 +160,18 @@ export type ThinWrappedIndexAPI = Pick<
 
 export type WrappedIndexAPI = ThinWrappedIndexAPI & ExplicitlyWrappedIndexAPI;
 
-export const DefaultIndexAPI: (configuration: interbtcIndex.Configuration, api: ApiPromise) => WrappedIndexAPI = (
+export const DefaultIndexAPI: (configurationParams: interbtcIndex.ConfigurationParameters, api: ApiPromise) => WrappedIndexAPI = (
     configuration,
     api
 ) => {
-    const index = new interbtcIndex.IndexApi(configuration);
+    const config = new interbtcIndex.Configuration({
+         ...configuration,
+        // use custom `fetchAPI`, that works both in browser and in node
+        fetchApi: require("isomorphic-fetch") as FetchAPI,
+        // there is a bug in the generator, where the middleware must at least be an empty array, instead of `undefined`
+        middleware: [] as Middleware[],
+    });
+    const index = new interbtcIndex.IndexApi(config);
 
     const instantiatedExplicitWrappers = explicitWrappers(index, api);
 
@@ -191,8 +198,8 @@ export const DefaultIndexAPI: (configuration: interbtcIndex.Configuration, api: 
     ) as ThinWrappedIndexAPI;
 
     return {
-        ...instantiatedExplicitWrappers,
         ...thinWrappers,
+        ...instantiatedExplicitWrappers,
     };
 };
 

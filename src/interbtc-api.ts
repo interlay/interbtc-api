@@ -19,7 +19,6 @@ import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultIndexAPI, WrappedIndexAPI } from "./external/interbtc-index";
 import { INDEX_LOCAL_URL } from "./utils/constants";
-import { Configuration as IndexConfiguration } from "@interlay/interbtc-index-client";
 import { DefaultPoolsAPI, PoolsAPI } from "./parachain/pools";
 
 export * from "./factory";
@@ -99,7 +98,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, _account);
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
         this.nomination = new DefaultNominationAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.index = DefaultIndexAPI(new IndexConfiguration({ basePath: indexEndpoint }), api);
+        this.index = DefaultIndexAPI({ basePath: indexEndpoint }, api);
         this.pools = new DefaultPoolsAPI(api, btcNetwork, this.electrsAPI);
     }
 
