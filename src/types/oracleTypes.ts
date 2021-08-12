@@ -14,4 +14,4 @@ export interface OracleStatus<
     online: boolean;
 }
 
-export type DOTBTCOracleStatus = OracleStatus<Polkadot, PolkadotUnit, Bitcoin, BTCUnit>;
+export type DOTBTCOracleStatus = OracleStatus<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>;

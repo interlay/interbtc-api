@@ -1,6 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
+import * as interbtcIndex from "@interlay/interbtc-index-client";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
@@ -13,6 +14,7 @@ import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { INDEX_LOCAL_URL, IssueStatus } from "../../../../src";
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 import { DefaultIndexAPI, WrappedIndexAPI } from "../../../../src/external/interbtc-index";
+import { assertRequestListsEqual } from "../../../utils/requests";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -57,19 +59,19 @@ describe("issue", () => {
         alice = keyring.addFromUri("//Alice");
 
         const issueRequests = await issueAPI.list();
-        assert.isAtLeast(
-            issueRequests.length,
-            1,
-            "Error in docker-compose setup. Should have at least 1 issue request"
-        );
-
-        const cachedIssueRequests = await indexAPI.getIssues();
-        assert.isAtLeast(
-            cachedIssueRequests.length,
-            1,
-            "Error in docker-compose setup. Should have at least 1 issue request"
-        );
-        assert.equal(issueRequests[0].id, cachedIssueRequests[0].id, "Cached issue request ID does not exist");
+        const cachedIssueRequests = await indexAPI.getIssues({});
+        assertRequestListsEqual(issueRequests, cachedIssueRequests);
+        const cachedFilteredIssueRequests = await indexAPI.getFilteredIssues({
+            page: 0,
+            perPage: 10,
+            network: "regtest" as interbtcIndex.BitcoinNetwork,
+            filterIssueColumns: [{ column: interbtcIndex.IssueColumns.VaultId, value: charlie_stash.address }]
+        });
+        assertRequestListsEqual(issueRequests, cachedFilteredIssueRequests);
+        const cachedRecentIssueRequests = await indexAPI.getRecentDailyIssues({
+            daysBack: 0
+        });
+        assert.equal(cachedRecentIssueRequests[0].btc.str.BTC(), issueRequests[0].amountInterBTC.add(issueRequests[0].bridgeFee).str.BTC(), "Wrong issued amount in getRecentDailyIssues");
     });
 
     it("should map existing requests", async () => {

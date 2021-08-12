@@ -9,10 +9,11 @@ import { Vault } from "../../../../src/interfaces/default";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { issueSingle, stripHexPrefix } from "../../../../src/utils";
-import { DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep } from "../../../../src";
+import { INDEX_LOCAL_URL, issueSingle, stripHexPrefix } from "../../../../src/utils";
+import { DefaultIssueAPI, DefaultTokensAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep, TokensAPI } from "../../../../src";
 import { assert } from "../../../chai";
-import { BTCAmount } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount } from "@interlay/monetary-js";
+import { WrappedIndexAPI, DefaultIndexAPI } from "../../../../src/external/interbtc-index";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -25,6 +26,10 @@ describe("redeem", () => {
     let alice: KeyringPair;
     let ferdie: KeyringPair;
     let aliceBitcoinCoreClient: BitcoinCoreClient;
+    let tokensAPI: TokensAPI;
+    let bitcoinCoreClient: BitcoinCoreClient;
+    let indexAPI: WrappedIndexAPI;
+    let issueAPI: IssueAPI;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
@@ -33,6 +38,7 @@ describe("redeem", () => {
         ferdie = keyring.addFromUri("//Ferdie");
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
+        tokensAPI = new DefaultTokensAPI(api);
         aliceBitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
@@ -41,6 +47,16 @@ describe("redeem", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        bitcoinCoreClient = new BitcoinCoreClient(
+            DEFAULT_BITCOIN_CORE_NETWORK,
+            DEFAULT_BITCOIN_CORE_HOST,
+            DEFAULT_BITCOIN_CORE_USERNAME,
+            DEFAULT_BITCOIN_CORE_PASSWORD,
+            DEFAULT_BITCOIN_CORE_PORT,
+            DEFAULT_BITCOIN_CORE_WALLET
+        );
+        indexAPI = DefaultIndexAPI({ basePath: INDEX_LOCAL_URL }, api);
     });
 
     after(() => {
@@ -105,4 +121,35 @@ describe("redeem", () => {
         // Set issue period back to its initial value to minimize side effects.
         await redeemAPI.setRedeemPeriod(initialRedeemPeriod);
     }).timeout(300000);
+
+    it("should issue and auto-execute redeem", async () => {
+        const initialBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
+        const issueAmount = BTCAmount.from.BTC(0.001);
+        const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
+        const redeemAmount = BTCAmount.from.BTC(0.0009);
+        await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount);
+
+        // check redeeming worked
+        const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
+        const finalBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
+        assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem), finalBalance);
+
+        const cachedRecentRedeemRequests = await indexAPI.getRecentDailyRedeems({
+            daysBack: 0
+        });
+        assert.equal(cachedRecentRedeemRequests[0].btc.str.BTC(), redeemAmount.str.BTC(), "Wrong issued amount in getRecentDailyIssues");
+    }).timeout(30 * 60 * 1000);
+
+    it("should issue and manually execute redeem", async () => {
+        const initialBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
+        const issueAmount = BTCAmount.from.BTC(0.001);
+        const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
+        const redeemAmount = BTCAmount.from.BTC(0.0009);
+        await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, undefined, ExecuteRedeem.Manually);
+
+        // check redeeming worked
+        const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
+        const finalBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
+        assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem), finalBalance);
+    }).timeout(30 * 60 * 1000);
 });
