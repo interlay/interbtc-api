@@ -17,7 +17,6 @@ import {
 import { Bytes } from "@polkadot/types";
 import { Vault, IssueRequest, RedeemRequest, ReplaceRequest, BalanceWrapper, VaultStatus } from "../interfaces/default";
 import {
-    FIXEDI128_SCALING_FACTOR,
     decodeFixedPointType,
     newMonetaryAmount,
     parseReplaceRequest,
@@ -204,15 +203,6 @@ export interface VaultsAPI extends TransactionAPI {
      * @returns the APY as a percentage string
      */
     getAPY(vaultId: AccountId): Promise<Big>;
-    /**
-     * @param vaultId The vault account ID
-     * @returns The SLA score of the given vault, an integer in the range [0, MaxSLA]
-     */
-    getSLA(vaultId: AccountId): Promise<number>;
-    /**
-     * @returns The maximum SLA score, a positive integer
-     */
-    getMaxSLA(): Promise<number>;
     /**
      * @returns Fee that a Vault has to pay, as a percentage, if it fails to execute
      * redeem or replace requests (for redeem, on top of the slashed BTC-in-DOT
@@ -631,20 +621,6 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             await this.tokensAPI.balanceLocked(Polkadot, vaultId),
         ]);
         return this.feeAPI.calculateAPY(feesWrapped, lockedCollateral);
-    }
-
-    async getSLA(vaultId: AccountId): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const sla = await this.api.query.sla.vaultSla.at(head, vaultId);
-        return decodeFixedPointType(sla).toNumber();
-    }
-
-    async getMaxSLA(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const maxSLA = await this.api.query.sla.vaultTargetSla.at(head);
-        const maxSlaBig = new Big(maxSLA.toString());
-        const divisor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-        return maxSlaBig.div(divisor).toNumber();
     }
 
     /**

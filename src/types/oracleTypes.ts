@@ -15,3 +15,5 @@ export interface OracleStatus<
 }
 
 export type DOTBTCOracleStatus = OracleStatus<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>;
+
+export type FeeEstimationType = "Fast" | "Half" | "Hour";
