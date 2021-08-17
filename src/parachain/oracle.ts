@@ -1,21 +1,30 @@
 import { ApiPromise } from "@polkadot/api";
-import { BTreeSet } from "@polkadot/types/codec";
+import { BTreeSet, Option } from "@polkadot/types/codec";
 import { Moment } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
-import { decodeFixedPointType, encodeUnsignedFixedPoint, storageKeyToNthInner } from "../utils";
-import { ErrorCode } from "../interfaces/default";
+import {
+    convertMoment,
+    createExchangeRateOracleKey,
+    createInclusionOracleKey,
+    decodeFixedPointType,
+    encodeUnsignedFixedPoint,
+    storageKeyToNthInner,
+    unwrapRawExchangeRate,
+} from "../utils";
+import { ErrorCode, UnsignedFixedPoint } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CollateralUnit } from "../types/currency";
+import { CollateralUnit, CurrencyUnit } from "../types/currency";
+import { FeeEstimationType } from "../types/oracleTypes";
 
 export const DEFAULT_FEED_NAME = "DOT/BTC";
 
 export type BtcTxFees = {
-    fast: number;
-    half: number;
-    hour: number;
+    fast?: Big;
+    half?: Big;
+    hour?: Big;
 };
 
 /**
@@ -39,7 +48,7 @@ export interface OracleAPI extends TransactionAPI {
     /**
      * @returns Last exchange rate time
      */
-    getLastExchangeRateTime(): Promise<Date>;
+    getValidUntil<C extends CurrencyUnit>(counterCurrency: Currency<C>): Promise<Date>;
     /**
      * @returns A map from the oracle's account id to its name
      */
@@ -63,6 +72,12 @@ export interface OracleAPI extends TransactionAPI {
      */
     setBtcTxFeesPerByte(fees: BtcTxFees): Promise<void>;
     /**
+     * Send a transaction to set a single type of btx tx fee ("Fast", "Half", or "Hour")
+     * @param fee The inclusion fee
+     * @param type The speed of tx inclusion
+     */
+    setBtcTxFeePerByte(fee: Big, type: FeeEstimationType): Promise<void>;
+    /**
      * @param amount The amount of wrapped tokens to convert
      * @param collateralCurrency A `Monetary.js` object
      * @returns Converted value
@@ -85,6 +100,11 @@ export interface OracleAPI extends TransactionAPI {
      * during which it is considered online
      */
     getOnlineTimeout(): Promise<number>;
+    /**
+     * @returns The highest available fees for BTC transactions, in satoshi/byte.
+     * If no fees available, rejects the Promise.
+     */
+    getFeesPerByteForFastestInclusion(): Promise<Big>;
 }
 
 export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI {
@@ -95,8 +115,14 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
     async getExchangeRate<C extends CollateralUnit>(
         collateralCurrency: Currency<C>
     ): Promise<ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>> {
+        const oracleKey = createExchangeRateOracleKey(this.api, collateralCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const encodedRawRate = await this.api.query.exchangeRateOracle.exchangeRate.at(head);
+        const encodedRawRate = unwrapRawExchangeRate(
+            await this.api.query.exchangeRateOracle.aggregate.at(head, oracleKey)
+        );
+        if (encodedRawRate === undefined) {
+            return Promise.reject("No exchange rate for given currency");
+        }
         const decodedRawRate = decodeFixedPointType(encodedRawRate);
         return new ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>(
             Bitcoin,
@@ -139,27 +165,74 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
                 counterUnit: exchangeRate.counter.rawBase,
             })
         );
-        const tx = this.api.tx.exchangeRateOracle.setExchangeRate(encodedExchangeRate);
+        const oracleKey = createExchangeRateOracleKey(this.api, exchangeRate.counter);
+        const tx = this.api.tx.exchangeRateOracle.feedValues([[oracleKey, encodedExchangeRate]]);
         await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetExchangeRate);
     }
 
     async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
+        const fast = createInclusionOracleKey(this.api, "Fast");
+        const half = createInclusionOracleKey(this.api, "Half");
+        const hour = createInclusionOracleKey(this.api, "Hour");
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.exchangeRateOracle.satoshiPerBytes.at(head);
-        return { fast: fees.fast.toNumber(), half: fees.half.toNumber(), hour: fees.hour.toNumber() };
+        const fees = await Promise.all([
+            this.api.query.exchangeRateOracle.aggregate.at(head, fast),
+            this.api.query.exchangeRateOracle.aggregate.at(head, half),
+            this.api.query.exchangeRateOracle.aggregate.at(head, hour),
+        ]);
+        const parsedFees = fees.map((fee) => {
+            const inner = unwrapRawExchangeRate(fee as Option<UnsignedFixedPoint>);
+            if (inner !== undefined) {
+                return decodeFixedPointType(inner);
+            }
+            return inner;
+        });
+        return {
+            fast: parsedFees[0],
+            half: parsedFees[1],
+            hour: parsedFees[2],
+        };
+    }
+
+    async getFeesPerByteForFastestInclusion(): Promise<Big> {
+        const fees = await this.getBtcTxFeesPerByte();
+        if (fees.fast) {
+            return fees.fast;
+        } else if (fees.half) {
+            return fees.half;
+        } else if (fees.hour) {
+            return fees.hour;
+        }
+        return Promise.reject("No fees per byte available");
     }
 
     async setBtcTxFeesPerByte({ fast, half, hour }: BtcTxFees): Promise<void> {
         [fast, half, hour].forEach((param) => {
-            const big = new Big(param);
-            if (!big.round().eq(big)) {
+            if (!param) {
+                return;
+            }
+            if (!param.round().eq(param)) {
                 throw new Error("tx fees must be an integer amount of satoshi");
             }
-            if (big.lt(0)) {
+            if (param.lt(0)) {
                 throw new Error("tx fees must be a positive amount of satoshi");
             }
         });
-        const tx = this.api.tx.exchangeRateOracle.setBtcTxFeesPerByte(fast, half, hour);
+        if (fast) {
+            await this.setBtcTxFeePerByte(fast, "Fast");
+        }
+        if (half) {
+            await this.setBtcTxFeePerByte(half, "Half");
+        }
+        if (hour) {
+            await this.setBtcTxFeePerByte(hour, "Hour");
+        }
+    }
+
+    async setBtcTxFeePerByte(fee: Big, type: FeeEstimationType): Promise<void> {
+        const oracleKey = createInclusionOracleKey(this.api, type);
+        const encodedFee = encodeUnsignedFixedPoint(this.api, fee);
+        const tx = this.api.tx.exchangeRateOracle.feedValues([[oracleKey, encodedFee]]);
         await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
     }
 
@@ -171,10 +244,11 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         return nameMap;
     }
 
-    async getLastExchangeRateTime(): Promise<Date> {
+    async getValidUntil<C extends CurrencyUnit>(counterCurrency: Currency<C>): Promise<Date> {
+        const oracleKey = createExchangeRateOracleKey(this.api, counterCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const moment = await this.api.query.exchangeRateOracle.lastExchangeRateTime.at(head);
-        return this.convertMoment(moment);
+        const validUntil = await this.api.query.exchangeRateOracle.validUntil.at(head, oracleKey);
+        return validUntil.isSome ? convertMoment(validUntil.value as Moment) : Promise.reject("No such oracle key");
     }
 
     async isOnline(): Promise<boolean> {
@@ -190,9 +264,5 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
             }
         }
         return false;
-    }
-
-    private convertMoment(moment: Moment): Date {
-        return new Date(moment.toNumber());
     }
 }

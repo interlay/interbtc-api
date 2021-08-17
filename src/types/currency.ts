@@ -27,7 +27,11 @@ export type CurrencyUnit = BTCUnit | PolkadotUnit | KusamaUnit;
 export function monetaryToCurrencyId<C extends CurrencyUnit>(
     monetary: MonetaryAmount<Currency<C>, C>
 ): CurrencyIdLiteral {
-    switch (monetary.currency.name) {
+    return currencyToCurrencyId(monetary.currency);
+}
+
+export function currencyToCurrencyId<C extends CurrencyUnit>(currency: Currency<C>): CurrencyIdLiteral {
+    switch (currency.name) {
         case Bitcoin.name: {
             return CurrencyIdLiteral.INTERBTC;
         }

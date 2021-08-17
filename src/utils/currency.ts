@@ -1,7 +1,10 @@
 import Big, { BigSource } from "big.js";
 import BN from "bn.js";
 import { Bitcoin, BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
-import { CurrencyUnit } from "../types/currency";
+import { currencyToCurrencyId, CurrencyUnit } from "../types/currency";
+import { OracleKey } from "../interfaces";
+import { ApiPromise } from "@polkadot/api";
+import { FeeEstimationType } from "../types/oracleTypes";
 
 // set maximum exponents
 Big.PE = 21;
@@ -104,4 +107,16 @@ export function newCollateralBTCExchangeRate<C extends CurrencyUnit>(
         baseCurrencyUnit,
         counterCurrencyUnit
     );
+}
+
+export function createInclusionOracleKey(api: ApiPromise, type: FeeEstimationType): OracleKey {
+    return api.createType("OracleKey", { FeeEstimation: type });
+}
+
+export function createExchangeRateOracleKey<C extends CurrencyUnit>(
+    api: ApiPromise,
+    collateralCurrency: Currency<C>
+): OracleKey {
+    const currencyId = api.createType("CurrencyId", currencyToCurrencyId(collateralCurrency));
+    return api.createType("OracleKey", { ExchangeRate: currencyId });
 }

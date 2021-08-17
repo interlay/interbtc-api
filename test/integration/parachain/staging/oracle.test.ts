@@ -66,10 +66,12 @@ describe("OracleAPI", () => {
 
     it("should set BTC tx fees", async () => {
         const prev = await oracle.getBtcTxFeesPerByte();
-        const fees = {fast: 505, half: 303, hour: 202};
+        const fees = {fast: new Big(505), half: new Big(303), hour: new Big(202)};
         await oracle.setBtcTxFeesPerByte(fees);
         const newTxFees = await oracle.getBtcTxFeesPerByte();
-        assert.deepEqual(fees, newTxFees);
+        assert.equal(fees.fast.toString(), newTxFees.fast?.toString());
+        assert.equal(fees.half.toString(), newTxFees.half?.toString());
+        assert.equal(fees.hour.toString(), newTxFees.hour?.toString());
 
         await oracle.setBtcTxFeesPerByte(prev);
     });
@@ -91,11 +93,11 @@ describe("OracleAPI", () => {
         assert.equal(onlineTimeout, expectedOnlineTimeout);
     });
 
-    it("should getLastExchangeRateTime", async () => {
-        const lastExchangeRateTime = await oracle.getLastExchangeRateTime();
-        const dateAnHourAgo = new Date();
-        dateAnHourAgo.setHours(dateAnHourAgo.getHours() - 1);
-        assert.isTrue(lastExchangeRateTime > dateAnHourAgo, "lastExchangeRateTime is older than one hour");
+    it("should getValidUntil", async () => {
+        const validUntil = await oracle.getValidUntil(Polkadot);
+        const dateAnHourFromNow = new Date();
+        dateAnHourFromNow.setMinutes(dateAnHourFromNow.getMinutes() + 30);
+        assert.isTrue(validUntil > dateAnHourFromNow, "lastExchangeRateTime is older than one hour");
     });
 
     it("should be online", async () => {

@@ -6,6 +6,8 @@ import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Codec } from "@polkadot/types/types";
 import { BTCAmount, PolkadotAmount } from "@interlay/monetary-js";
+import { Moment } from "@polkadot/types/interfaces";
+import { Option } from "@polkadot/types/codec";
 
 import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
 import { WalletExt, SystemVaultExt } from "../types/vault";
@@ -214,4 +216,12 @@ export function parseRedeemRequest(req: RedeemRequest, network: Network, id: H25
         userBTCAddress: encodeBtcAddress(req.btc_address, network),
         status,
     };
+}
+
+export function convertMoment(moment: Moment): Date {
+    return new Date(moment.toNumber());
+}
+
+export function unwrapRawExchangeRate(option: Option<UnsignedFixedPoint>): UnsignedFixedPoint | undefined {
+    return option.isSome ? (option.value as UnsignedFixedPoint) : undefined;
 }

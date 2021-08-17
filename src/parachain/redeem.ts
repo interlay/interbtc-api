@@ -303,10 +303,9 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const head = await this.api.rpc.chain.getFinalizedHead();
         const [size, satoshiFees] = await Promise.all([
             this.api.query.redeem.redeemTransactionSize.at(head),
-            this.oracleAPI.getBtcTxFeesPerByte(),
+            this.oracleAPI.getFeesPerByteForFastestInclusion(),
         ]);
-        BTCAmount.from.Satoshi(satoshiFees.fast);
-        const btcFees = BTCAmount.from.Satoshi(satoshiFees.fast);
+        const btcFees = BTCAmount.from.Satoshi(satoshiFees);
         return btcFees.mul(size.toString());
     }
 

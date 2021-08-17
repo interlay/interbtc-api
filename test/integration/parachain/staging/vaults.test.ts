@@ -231,16 +231,6 @@ describe("vaultsAPI", () => {
         assert.isTrue(issuableInterBtc.gt(BTCAmount.zero));
     });
 
-    it("should getMaxSLA", async () => {
-        const sla = await vaultsAPI.getMaxSLA();
-        assert.equal(sla, 100);
-    });
-
-    it("should get SLA", async () => {
-        const sla = await vaultsAPI.getSLA(registry.createType("AccountId", charlie_stash.address));
-        assert.isTrue(sla > 0);
-    });
-
     it("should getFees", async () => {
         const feesWrapped = await poolsAPI.getFeesWrapped(charlie_stash.address, Polkadot);
         assert.isTrue(feesWrapped.gte(BTCAmount.zero));

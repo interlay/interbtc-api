@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     interbtc:
-        image: "interlayhq/interbtc:interbtc-standalone-0.8.5"
+        image: "interlayhq/interbtc:interbtc-standalone-0.10.0"
         command:
             - interbtc-standalone
             - --rpc-external
@@ -57,7 +57,7 @@ services:
         ports:
             - "3002:3002"
     oracle:
-        image: "interlayhq/interbtc-clients:oracle-0-8-2"
+        image: "interlayhq/interbtc-clients:oracle-0-10-0"
         command:
             - /bin/sh
             - -c
@@ -68,7 +68,7 @@ services:
         environment:
             RUST_LOG: info
     faucet:
-        image: "interlayhq/interbtc-clients:faucet-0-8-2"
+        image: "interlayhq/interbtc-clients:faucet-0-10-0"
         command:
             - /bin/sh
             - -c
@@ -82,7 +82,7 @@ services:
         ports:
             - "3036:3036"
     vault_1:
-        image: "interlayhq/interbtc-clients:vault-0-8-2"
+        image: "interlayhq/interbtc-clients:vault-0-10-0"
         command:
             - /bin/sh
             - -c
@@ -99,7 +99,7 @@ services:
             BITCOIN_RPC_PASS: rpcpassword
             RUST_LOG: info
     vault_2:
-        image: "interlayhq/interbtc-clients:vault-0-8-2"
+        image: "interlayhq/interbtc-clients:vault-0-10-0"
         command:
             - /bin/sh
             - -c
@@ -113,7 +113,7 @@ services:
         environment:
             <<: *client-env
     vault_3:
-        image: "interlayhq/interbtc-clients:vault-0-8-2"
+        image: "interlayhq/interbtc-clients:vault-0-10-0"
         command:
             - /bin/sh
             - -c
@@ -127,7 +127,7 @@ services:
         environment:
             <<: *client-env
     vault_to_liquidate:
-        image: "interlayhq/interbtc-clients:vault-0-8-2"
+        image: "interlayhq/interbtc-clients:vault-0-10-0"
         command:
             - /bin/sh
             - -c
@@ -141,7 +141,7 @@ services:
         environment:
             <<: *client-env
     vault_to_ban:
-        image: "interlayhq/interbtc-clients:vault-0-8-2"
+        image: "interlayhq/interbtc-clients:vault-0-10-0"
         command:
             - /bin/sh
             - -c
