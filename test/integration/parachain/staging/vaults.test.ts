@@ -8,9 +8,10 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
-import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, INDEX_LOCAL_URL, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 import { DefaultPoolsAPI } from "../../../../src/parachain/pools";
+import { WrappedIndexAPI, DefaultIndexAPI } from "../../../../src/external/interbtc-index";
 
 describe("vaultsAPI", () => {
     let bob: KeyringPair;
@@ -25,6 +26,7 @@ describe("vaultsAPI", () => {
     let poolsAPI: DefaultPoolsAPI;
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
+    let indexAPI: WrappedIndexAPI;
 
     const registry = new TypeRegistry();
 
@@ -51,6 +53,7 @@ describe("vaultsAPI", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
+        indexAPI = DefaultIndexAPI({ basePath: INDEX_LOCAL_URL }, api);
     });
 
     after(() => {
@@ -253,5 +256,15 @@ describe("vaultsAPI", () => {
     it("should getPunishmentFee", async () => {
         const punishmentFee = await vaultsAPI.getPunishmentFee();
         assert.equal(punishmentFee.toString(), "0.1");
+    });
+
+    it("should get vault list", async () => {
+        const vaults = (await vaultsAPI.list()).map(vault => vault.id.toHuman());
+        const cachedVaults = (await indexAPI.currentVaultData()).map(vault => vault.id.toHuman());
+        assert.isAbove(vaults.length, 0, "Vault list should not be empty");
+        assert.equal(vaults.length, cachedVaults.length, "Cached vaults do not match actual number of vaults");
+        for (const vault of vaults) {
+            assert.isTrue(cachedVaults.includes(vault));
+        }
     });
 });

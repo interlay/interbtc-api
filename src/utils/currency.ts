@@ -91,15 +91,15 @@ export function newMonetaryAmount<C extends CurrencyUnit>(
 
 export function newCollateralBTCExchangeRate<C extends CurrencyUnit>(
     rate: Big,
-    baseCurrency: Currency<C>,
+    counterCurrency: Currency<C>,
     useBaseUnits = false
-): ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit> {
+): ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C> {
     const [baseCurrencyUnit, counterCurrencyUnit] = useBaseUnits
-        ? [baseCurrency.base, Bitcoin.base]
-        : [baseCurrency.rawBase, Bitcoin.rawBase];
-    return new ExchangeRate<Currency<C>, C, Bitcoin, BTCUnit>(
-        baseCurrency,
+        ? [Bitcoin.base, counterCurrency.base]
+        : [Bitcoin.rawBase, counterCurrency.rawBase];
+    return new ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>(
         Bitcoin,
+        counterCurrency,
         rate,
         baseCurrencyUnit,
         counterCurrencyUnit

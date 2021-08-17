@@ -16,7 +16,7 @@ export interface Issue {
     btcTxId?: string;
     confirmations?: number;
     btcBlockHeight?: number;
-    btcAmountSubmittedByUser?: string;
+    btcAmountSubmittedByUser?: BTCAmount;
     status: IssueStatus;
     refundBtcAddress?: string;
     refundAmountBTC?: BTCAmount;

@@ -7,18 +7,24 @@ import { assert } from "../../../chai";
 import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import Big from "big.js";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { INDEX_LOCAL_URL } from "../../../../src";
+import { WrappedIndexAPI, DefaultIndexAPI } from "../../../../src/external/interbtc-index";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
     let oracle: OracleAPI;
     let bob: KeyringPair;
+    let charlie: KeyringPair;
+    let indexAPI: WrappedIndexAPI;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri("//Bob");
+        charlie = keyring.addFromUri("//Charlie");
         oracle = new DefaultOracleAPI(api);
         oracle.setAccount(bob);
+        indexAPI = DefaultIndexAPI({ basePath: INDEX_LOCAL_URL }, api);
     });
 
     after(() => {
@@ -37,6 +43,15 @@ describe("OracleAPI", () => {
         await oracle.setExchangeRate(exchangeRateToSet);
         const exchangeRate = await oracle.getExchangeRate(Polkadot);
         assert.equal(exchangeRateToSet.toBig().round(8, 0).toString(), exchangeRate.toBig().round(8, 0).toString());
+
+        const cachedExchangeRate = await indexAPI.getLatestSubmission();
+        assert.equal(cachedExchangeRate.exchangeRate.toBig().round(8, 0).toString(), exchangeRate.toBig().round(8, 0).toString());
+
+        const cachedOracleSubmissions = await indexAPI.getLatestSubmissionForEachOracle();
+        assert.equal(cachedOracleSubmissions.length, 2);
+        assert.equal(cachedOracleSubmissions[0].id, bob.address);
+        assert.equal(cachedOracleSubmissions[1].id, charlie.address);
+        assert.equal(cachedOracleSubmissions[0].exchangeRate.toBig().round(8, 0).toString(), exchangeRate.toBig().round(8, 0).toString());
 
         // Revert the exchange rate to its initial value,
         // so that this test is idempotent

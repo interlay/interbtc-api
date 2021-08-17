@@ -316,7 +316,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async list(atBlock?: BlockHash): Promise<VaultExt[]> {
-        const block = atBlock || await this.api.rpc.chain.getFinalizedHead();
+        const block = atBlock || (await this.api.rpc.chain.getFinalizedHead());
         const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(block);
         return Promise.all(vaultsMap.map((v) => this.parseVault(v[1], this.btcNetwork)));
     }
@@ -670,9 +670,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     private parseVaultStatus(status: VaultStatus): VaultStatusExt {
         if (status.isActive) {
-            return status.asActive
-                ? VaultStatusExt.Active
-                : VaultStatusExt.Inactive;
+            return status.asActive ? VaultStatusExt.Active : VaultStatusExt.Inactive;
         } else if (status.isLiquidated) {
             return VaultStatusExt.Liquidated;
         } else if (status.isCommittedTheft) {
