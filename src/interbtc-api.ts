@@ -17,8 +17,6 @@ import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
-import { DefaultIndexAPI, WrappedIndexAPI } from "./external/interbtc-index";
-import { INDEX_LOCAL_URL } from "./utils/constants";
 import { DefaultPoolsAPI, PoolsAPI } from "./parachain/pools";
 
 export * from "./factory";
@@ -51,7 +49,6 @@ export interface InterBTCAPI {
     readonly fee: FeeAPI;
     readonly nomination: NominationAPI;
     readonly pools: PoolsAPI;
-    readonly index: WrappedIndexAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
@@ -76,13 +73,11 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
     public readonly pools: PoolsAPI;
-    public readonly index: WrappedIndexAPI;
 
     constructor(
         readonly api: ApiPromise,
         network: BitcoinNetwork = "mainnet",
         private _account?: AddressOrPair,
-        indexEndpoint = INDEX_LOCAL_URL
     ) {
         const btcNetwork = getBitcoinNetwork(network);
         this.electrsAPI = new DefaultElectrsAPI(network);
@@ -98,7 +93,6 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, _account);
         this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
         this.nomination = new DefaultNominationAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.index = DefaultIndexAPI({ basePath: indexEndpoint }, api);
         this.pools = new DefaultPoolsAPI(api, btcNetwork, this.electrsAPI);
     }
 

@@ -8,10 +8,9 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
-import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, INDEX_LOCAL_URL, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 import { DefaultPoolsAPI } from "../../../../src/parachain/pools";
-import { WrappedIndexAPI, DefaultIndexAPI } from "../../../../src/external/interbtc-index";
 
 describe("vaultsAPI", () => {
     let bob: KeyringPair;
@@ -26,7 +25,6 @@ describe("vaultsAPI", () => {
     let poolsAPI: DefaultPoolsAPI;
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
-    let indexAPI: WrappedIndexAPI;
 
     const registry = new TypeRegistry();
 
@@ -42,7 +40,7 @@ describe("vaultsAPI", () => {
         // Bob is the authorized oracle
         oracleAPI = new DefaultOracleAPI(api, bob);
         poolsAPI = new DefaultPoolsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
-        
+
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         bitcoinCoreClient = new BitcoinCoreClient(
@@ -53,7 +51,6 @@ describe("vaultsAPI", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        indexAPI = DefaultIndexAPI({ basePath: INDEX_LOCAL_URL }, api);
     });
 
     after(() => {
@@ -80,7 +77,7 @@ describe("vaultsAPI", () => {
         const collateralizationBeforeDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
         await vaultsAPI.depositCollateral(amount);
         const collateralizationAfterDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
-        if(collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
+        if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
             throw new Error("Collateralization is undefined");
         }
         assert.isTrue(
@@ -90,7 +87,7 @@ describe("vaultsAPI", () => {
 
         await vaultsAPI.withdrawCollateral(amount);
         const collateralizationAfterWithdrawal = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
-        if(collateralizationAfterWithdrawal === undefined) {
+        if (collateralizationAfterWithdrawal === undefined) {
             throw new Error("Collateralization is undefined");
         }
         assert.isTrue(
@@ -111,12 +108,12 @@ describe("vaultsAPI", () => {
     it("should getPremiumRedeemVaults after a price crash", async () => {
         const issuableAmount = await vaultsAPI.getIssuableAmount(newAccountId(api, eve_stash.address));
         await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, issuableAmount, eve_stash.address);
-        
+
         const currentVaultCollateralization = await vaultsAPI.getVaultCollateralization(newAccountId(api, eve_stash.address));
-        if(currentVaultCollateralization === undefined) {
+        if (currentVaultCollateralization === undefined) {
             throw new Error("Collateralization is undefined");
         }
-        
+
         // The factor to adjust the exchange rate by. Calculated such that the resulting collateralization
         // will be 90% of the premium redeem threshold. (e.g. 1.35 * 90% = 1.215)
         const premiumRedeemThreshold = await vaultsAPI.getPremiumRedeemThreshold();
@@ -131,8 +128,8 @@ describe("vaultsAPI", () => {
         const premiumRedeemVaults = await vaultsAPI.getPremiumRedeemVaults();
         assert.equal(premiumRedeemVaults.size, 1);
         assert.equal(
-            premiumRedeemVaults.keys().next().value.toString(), 
-            eve_stash.address, 
+            premiumRedeemVaults.keys().next().value.toString(),
+            eve_stash.address,
             "Premium redeem vault is not the expected one"
         );
 
@@ -250,11 +247,6 @@ describe("vaultsAPI", () => {
 
     it("should get vault list", async () => {
         const vaults = (await vaultsAPI.list()).map(vault => vault.id.toHuman());
-        const cachedVaults = (await indexAPI.currentVaultData()).map(vault => vault.id.toHuman());
         assert.isAbove(vaults.length, 0, "Vault list should not be empty");
-        assert.equal(vaults.length, cachedVaults.length, "Cached vaults do not match actual number of vaults");
-        for (const vault of vaults) {
-            assert.isTrue(cachedVaults.includes(vault));
-        }
     });
 });

@@ -9,11 +9,10 @@ import { Vault } from "../../../../src/interfaces/default";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { INDEX_LOCAL_URL, issueSingle, stripHexPrefix } from "../../../../src/utils";
+import { issueSingle, stripHexPrefix } from "../../../../src/utils";
 import { DefaultIssueAPI, DefaultTokensAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep, TokensAPI } from "../../../../src";
 import { assert } from "../../../chai";
 import { Bitcoin, BTCAmount } from "@interlay/monetary-js";
-import { WrappedIndexAPI, DefaultIndexAPI } from "../../../../src/external/interbtc-index";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -28,7 +27,6 @@ describe("redeem", () => {
     let aliceBitcoinCoreClient: BitcoinCoreClient;
     let tokensAPI: TokensAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
-    let indexAPI: WrappedIndexAPI;
     let issueAPI: IssueAPI;
 
     before(async () => {
@@ -56,7 +54,6 @@ describe("redeem", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        indexAPI = DefaultIndexAPI({ basePath: INDEX_LOCAL_URL }, api);
     });
 
     after(() => {
@@ -99,12 +96,12 @@ describe("redeem", () => {
         const redeemAmount = BTCAmount.from.BTC(0.009);
         const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
         await redeemAPI.setRedeemPeriod(1);
-        let redeemRequestExpiryCallback = false; 
+        let redeemRequestExpiryCallback = false;
         const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, undefined, ExecuteRedeem.False);
-    
+
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri("//Alice");
-        
+
         redeemAPI.subscribeToRedeemExpiry(newAccountId(api, alice.address), (requestId) => {
             if (stripHexPrefix(redeemRequest.id.toString()) === stripHexPrefix(requestId.toString())) {
                 redeemRequestExpiryCallback = true;
@@ -133,11 +130,6 @@ describe("redeem", () => {
         const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
         const finalBalance = await tokensAPI.balance(Bitcoin, api.createType("AccountId", alice.address));
         assert.equal(initialBalance.add(expectedBalanceDifferenceAfterRedeem), finalBalance);
-
-        const cachedRecentRedeemRequests = await indexAPI.getRecentDailyRedeems({
-            daysBack: 0
-        });
-        assert.equal(cachedRecentRedeemRequests[0].btc.str.BTC(), redeemAmount.str.BTC(), "Wrong issued amount in getRecentDailyIssues");
     }).timeout(30 * 60 * 1000);
 
     it("should issue and manually execute redeem", async () => {
