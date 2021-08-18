@@ -29,9 +29,9 @@ export function createPolkadotAPI(endpoint: string, autoConnect?: number | false
 export async function createInterbtcAPI(
     endpoint: string,
     network: BitcoinNetwork = "mainnet",
+    indexEndpoint?: string,
     account?: AddressOrPair,
-    autoConnect?: number | false | undefined,
-    indexEndpoint?: string
+    autoConnect?: number | false | undefined
 ): Promise<InterBTCAPI> {
     const api = await createPolkadotAPI(endpoint, autoConnect);
     return new DefaultInterBTCAPI(api, network, account, indexEndpoint);
