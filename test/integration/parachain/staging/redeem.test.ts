@@ -2,7 +2,6 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { BTCAmount } from "@interlay/monetary-js";
-import * as interbtcIndex from "@interlay/interbtc-index-client";
 
 import { DefaultRedeemAPI, RedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
@@ -17,13 +16,11 @@ import {
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_BITCOIN_CORE_PORT
 } from "../../../config";
-import { INDEX_LOCAL_URL, issueAndRedeem } from "../../../../src/utils";
+import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { assertRequestListsEqual } from "../../../utils/requests";
-import { DefaultIndexAPI, WrappedIndexAPI } from "../../../../src/external/interbtc-index";
 
 export type RequestResult = { hash: Hash; vault: Vault };
 
@@ -36,7 +33,6 @@ describe("redeem", () => {
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
-    let indexAPI: WrappedIndexAPI;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
@@ -52,7 +48,6 @@ describe("redeem", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        indexAPI = DefaultIndexAPI({ basePath: INDEX_LOCAL_URL }, api);
     });
 
     after(() => {
@@ -88,15 +83,11 @@ describe("redeem", () => {
         redeemAPI.setAccount(alice);
 
         const redeemRequests = await redeemAPI.list();
-        const cachedRedeemRequests = await indexAPI.getRedeems({});
-        assertRequestListsEqual(redeemRequests, cachedRedeemRequests);
-        const cachedFilteredRedeemRequests = await indexAPI.getFilteredRedeems({
-            page: 0,
-            perPage: 10,
-            network: "regtest" as interbtcIndex.BitcoinNetwork,
-            filterRedeemColumns: [{ column: interbtcIndex.RedeemColumns.Requester, value: alice.address }]
-        });
-        assertRequestListsEqual(redeemRequests, cachedFilteredRedeemRequests);
+        assert.isAtLeast(
+            redeemRequests.length,
+            1,
+            "Error in docker-compose setup. Should have at least 1 issue request"
+        );
     });
 
     it("should map existing requests", async () => {
@@ -135,9 +126,7 @@ describe("redeem", () => {
 
     it("should getDustValue", async () => {
         const dustValue = await redeemAPI.getDustValue();
-        const cachedDustValue = await indexAPI.getDustValue();
         assert.equal(dustValue.str.BTC(), "0.00001");
-        assert.equal(dustValue.str.BTC(), cachedDustValue.str.BTC());
     });
 
 });
