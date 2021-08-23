@@ -20,12 +20,7 @@ import { CollateralUnit, CurrencyUnit } from "../types/currency";
 import { FeeEstimationType } from "../types/oracleTypes";
 
 export const DEFAULT_FEED_NAME = "DOT/BTC";
-
-export type BtcTxFees = {
-    fast?: Big;
-    half?: Big;
-    hour?: Big;
-};
+export const DEFAULT_INCLUSION_TIME: FeeEstimationType = "Fast";
 
 /**
  * @category InterBTC Bridge
@@ -40,11 +35,9 @@ export interface OracleAPI extends TransactionAPI {
     ): Promise<ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>>;
     /**
      * Obtains the current fees for BTC transactions, in satoshi/byte.
-     * @returns An object with the values `fast` (estimated fee for inclusion
-     * in the next block - about 10 minutes), `half` (fee for the next 3 blocks or ~30 minutes)
-     * and `hour` (fee for inclusion in the next 6 blocks, or ~60 minutes).
+     * @returns Big value for the current inclusion fees.
      */
-    getBtcTxFeesPerByte(): Promise<BtcTxFees>;
+    getBitcoinFees(): Promise<Big>;
     /**
      * @returns Last exchange rate time
      */
@@ -65,18 +58,10 @@ export interface OracleAPI extends TransactionAPI {
         exchangeRate: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
     ): Promise<void>;
     /**
-     * Send a transaction to set the current fee rates for BTC transactions
-     * @param fees.fast Estimated Satoshis per bytes to get included in the next block (~10 min)
-     * @param fees.half Estimated Satoshis per bytes to get included in the next 3 blocks (~half hour)
-     * @param fees.hour Estimated Satoshis per bytes to get included in the next 6 blocks (~hour)
+     * Send a transaction to set the current fee estimate for BTC transactions
+     * @param fees Estimated Satoshis per bytes to get a transaction included
      */
-    setBtcTxFeesPerByte(fees: BtcTxFees): Promise<void>;
-    /**
-     * Send a transaction to set a single type of btx tx fee ("Fast", "Half", or "Hour")
-     * @param fee The inclusion fee
-     * @param type The speed of tx inclusion
-     */
-    setBtcTxFeePerByte(fee: Big, type: FeeEstimationType): Promise<void>;
+    setBitcoinFees(fees: Big): Promise<void>;
     /**
      * @param amount The amount of wrapped tokens to convert
      * @param collateralCurrency A `Monetary.js` object
@@ -100,11 +85,6 @@ export interface OracleAPI extends TransactionAPI {
      * during which it is considered online
      */
     getOnlineTimeout(): Promise<number>;
-    /**
-     * @returns The highest available fees for BTC transactions, in satoshi/byte.
-     * If no fees available, rejects the Promise.
-     */
-    getFeesPerByteForFastestInclusion(): Promise<Big>;
 }
 
 export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI {
@@ -167,73 +147,36 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         );
         const oracleKey = createExchangeRateOracleKey(this.api, exchangeRate.counter);
         const tx = this.api.tx.exchangeRateOracle.feedValues([[oracleKey, encodedExchangeRate]]);
-        await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetExchangeRate);
+        await this.sendLogged(tx, this.api.events.exchangeRateOracle.FeedValues);
     }
 
-    async getBtcTxFeesPerByte(): Promise<BtcTxFees> {
-        const fast = createInclusionOracleKey(this.api, "Fast");
-        const half = createInclusionOracleKey(this.api, "Half");
-        const hour = createInclusionOracleKey(this.api, "Hour");
+    async getBitcoinFees(): Promise<Big> {
+        const fast = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await Promise.all([
-            this.api.query.exchangeRateOracle.aggregate.at(head, fast),
-            this.api.query.exchangeRateOracle.aggregate.at(head, half),
-            this.api.query.exchangeRateOracle.aggregate.at(head, hour),
-        ]);
-        const parsedFees = fees.map((fee) => {
-            const inner = unwrapRawExchangeRate(fee as Option<UnsignedFixedPoint>);
+        const fees = await this.api.query.exchangeRateOracle.aggregate.at(head, fast);
+
+        const parseFees = (fee: Option<UnsignedFixedPoint>): Big => {
+            const inner = unwrapRawExchangeRate(fee);
             if (inner !== undefined) {
                 return decodeFixedPointType(inner);
             }
-            return inner;
-        });
-        return {
-            fast: parsedFees[0],
-            half: parsedFees[1],
-            hour: parsedFees[2],
+            throw new Error("Bitcoin fee estimate not set");
         };
+
+        return parseFees(fees);
     }
 
-    async getFeesPerByteForFastestInclusion(): Promise<Big> {
-        const fees = await this.getBtcTxFeesPerByte();
-        if (fees.fast) {
-            return fees.fast;
-        } else if (fees.half) {
-            return fees.half;
-        } else if (fees.hour) {
-            return fees.hour;
+    async setBitcoinFees(fees: Big): Promise<void> {
+        if (!fees.round().eq(fees)) {
+            throw new Error("tx fees must be an integer amount of satoshi");
+        } else if (fees.lt(0)) {
+            throw new Error("tx fees must be a positive amount of satoshi");
         }
-        return Promise.reject("No fees per byte available");
-    }
 
-    async setBtcTxFeesPerByte({ fast, half, hour }: BtcTxFees): Promise<void> {
-        [fast, half, hour].forEach((param) => {
-            if (!param) {
-                return;
-            }
-            if (!param.round().eq(param)) {
-                throw new Error("tx fees must be an integer amount of satoshi");
-            }
-            if (param.lt(0)) {
-                throw new Error("tx fees must be a positive amount of satoshi");
-            }
-        });
-        if (fast) {
-            await this.setBtcTxFeePerByte(fast, "Fast");
-        }
-        if (half) {
-            await this.setBtcTxFeePerByte(half, "Half");
-        }
-        if (hour) {
-            await this.setBtcTxFeePerByte(hour, "Hour");
-        }
-    }
-
-    async setBtcTxFeePerByte(fee: Big, type: FeeEstimationType): Promise<void> {
-        const oracleKey = createInclusionOracleKey(this.api, type);
-        const encodedFee = encodeUnsignedFixedPoint(this.api, fee);
+        const oracleKey = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
+        const encodedFee = encodeUnsignedFixedPoint(this.api, fees);
         const tx = this.api.tx.exchangeRateOracle.feedValues([[oracleKey, encodedFee]]);
-        await this.sendLogged(tx, this.api.events.exchangeRateOracle.SetBtcTxFeesPerByte);
+        await this.sendLogged(tx, this.api.events.exchangeRateOracle.FeedValues);
     }
 
     async getSourcesById(): Promise<Map<string, string>> {

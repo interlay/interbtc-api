@@ -1,24 +1,25 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-
-import { DefaultOracleAPI, OracleAPI } from "../../../../src/parachain/oracle";
+import { DefaultOracleAPI, DEFAULT_INCLUSION_TIME, OracleAPI } from "../../../../src/parachain/oracle";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { BOB_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import Big from "big.js";
-import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { CollateralUnit, createExchangeRateOracleKey, createInclusionOracleKey } from "../../../../src";
+import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
+import { OracleKey } from "../../../../src/interfaces";
+import { Option, Bool } from '@polkadot/types';
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
     let oracle: OracleAPI;
     let bob: KeyringPair;
-    let charlie: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        bob = keyring.addFromUri("//Bob");
-        charlie = keyring.addFromUri("//Charlie");
+        bob = keyring.addFromUri(BOB_URI);
         oracle = new DefaultOracleAPI(api);
         oracle.setAccount(bob);
     });
@@ -27,40 +28,57 @@ describe("OracleAPI", () => {
         return api.disconnect();
     });
 
-    it("initial setup should have set a rate of 3855.23187", async () => {
+    it("exchange rate should be set", async () => {
+        // just check that this is set, don't hardcode anything
+        // as the oracle client may change the exchange rate
         const exchangeRate = await oracle.getExchangeRate(Polkadot);
-        assert.equal(exchangeRate.toString(undefined, 5, 0), "3855.23187");
+        assert.isDefined(exchangeRate);
     });
 
-    it("should set exchange rate", async () => {
-        const previousExchangeRate = await oracle.getExchangeRate(Polkadot);
-        const exchangeRateValue = new Big("3913.7424920372646687827621");
-        const exchangeRateToSet = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
-        await oracle.setExchangeRate(exchangeRateToSet);
-        const exchangeRate = await oracle.getExchangeRate(Polkadot);
-        assert.equal(exchangeRateToSet.toBig().round(8, 0).toString(), exchangeRate.toBig().round(8, 0).toString());
+    async function getRawValuesUpdated(key: OracleKey): Promise<boolean> {
+        const head = await api.rpc.chain.getFinalizedHead();
+        const isSet = await api.query.exchangeRateOracle.rawValuesUpdated.at<Option<Bool>>(head, key);
+        return isSet.unwrap().isTrue;
+    }
 
-        // Revert the exchange rate to its initial value,
-        // so that this test is idempotent
-        await oracle.setExchangeRate(previousExchangeRate);
+    async function waitForExchangeRateUpdate<C extends CollateralUnit>(exchangeRate: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>) {
+        const key = createExchangeRateOracleKey(api, exchangeRate.counter);
+        while (await getRawValuesUpdated(key)) {
+            sleep(SLEEP_TIME_MS)
+        }
+    }
+
+    it("should set exchange rate", async () => {
+        const exchangeRateValue = new Big("3913.7424920372646687827621");
+        const newExchangeRate = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
+        await oracle.setExchangeRate(newExchangeRate);
+        await waitForExchangeRateUpdate(newExchangeRate);
     });
 
     it("should convert satoshi to planck", async () => {
-        const wrappedAmount = BTCAmount.from.BTC(100);
-        const collateralAmount = await oracle.convertWrappedToCollateral(wrappedAmount, Polkadot);
-        assert.equal(collateralAmount.toBig(Polkadot.units.DOT).round(0, 0).toString(), "385523");
+        const bitcoinAmount = BTCAmount.from.BTC(100);
+        const exchangeRate = await oracle.getExchangeRate(Polkadot);
+        const expectedCollateral = exchangeRate.toBig(undefined).mul(bitcoinAmount.toBig(Bitcoin.units.BTC)).round(0, 0);
+
+        const collateralAmount = await oracle.convertWrappedToCollateral(bitcoinAmount, Polkadot);
+        assert.equal(collateralAmount.toBig(Polkadot.units.DOT).round(0, 0).toString(), expectedCollateral.toString());
     });
 
-    it("should set BTC tx fees", async () => {
-        const prev = await oracle.getBtcTxFeesPerByte();
-        const fees = { fast: new Big(505), half: new Big(303), hour: new Big(202) };
-        await oracle.setBtcTxFeesPerByte(fees);
-        const newTxFees = await oracle.getBtcTxFeesPerByte();
-        assert.equal(fees.fast.toString(), newTxFees.fast?.toString());
-        assert.equal(fees.half.toString(), newTxFees.half?.toString());
-        assert.equal(fees.hour.toString(), newTxFees.hour?.toString());
+    async function waitForFeeEstimateUpdate() {
+        const key = createInclusionOracleKey(api, DEFAULT_INCLUSION_TIME);
+        while (await getRawValuesUpdated(key)) {
+            sleep(SLEEP_TIME_MS)
+        }
+    }
 
-        await oracle.setBtcTxFeesPerByte(prev);
+    it("should set BTC tx fees", async () => {
+        const setFeeEstimate = new Big(1);
+        await oracle.setBitcoinFees(setFeeEstimate);
+        await waitForFeeEstimateUpdate();
+
+        // just check that this is set since we medianize results
+        const getFeeEstimate = await oracle.getBitcoinFees();
+        assert.isDefined(getFeeEstimate);
     });
 
     it("should get names by id", async () => {

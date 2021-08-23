@@ -3,11 +3,12 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
-
-import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, issueSingle, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, setNumericStorage, VaultsAPI } from "../../../../src";
+import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, VaultsAPI } from "../../../../src";
+import { setNumericStorage, issueSingle } from "../../../../src/utils";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { ALICE_URI, BOB_URI, CHARLIE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
     let api: ApiPromise;
@@ -23,15 +24,20 @@ describe("NominationAPI", () => {
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
-        bob = keyring.addFromUri("//Bob");
+        alice = keyring.addFromUri(ALICE_URI);
+        bob = keyring.addFromUri(BOB_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, bob);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         feeAPI = new DefaultFeeAPI(api);
 
+        if (!(await nominationAPI.isNominationEnabled())) {
+            console.log("Enabling nomination...")
+            await sudo(nominationAPI, (api) => api.setNominationEnabled(true));
+        }
+
         // The account of a vault from docker-compose
-        charlie_stash = keyring.addFromUri("//Charlie//stash");
+        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
@@ -47,11 +53,11 @@ describe("NominationAPI", () => {
     });
 
     it("Should opt a vault in and out of nomination", async () => {
-        await optInAndPreserveAPIAccount(charlie_stash);
+        await optInWithAccount(charlie_stash);
         const nominationVaults = await nominationAPI.listVaults();
         assert.equal(1, nominationVaults.length);
         assert.equal(charlie_stash.address, nominationVaults.map(v => v.toString())[0]);
-        await optOutAndPreserveAPIAccount(charlie_stash);
+        await optOutWithAccount(charlie_stash);
         assert.equal(0, (await nominationAPI.listVaults()).length);
     });
 
@@ -59,13 +65,13 @@ describe("NominationAPI", () => {
         const previousAccount = nominationAPI.getAccount();
         nominationAPI.setAccount(alice);
         await setNumericStorage(api, "Fee", "IssueFee", x, nominationAPI, 128);
-        if(previousAccount) {
+        if (previousAccount) {
             nominationAPI.setAccount(previousAccount);
         }
     }
 
     it("Should nominate to and withdraw from a vault", async () => {
-        await optInAndPreserveAPIAccount(charlie_stash);
+        await optInWithAccount(charlie_stash);
 
         const issueFee = await feeAPI.getIssueFee();
         const nominatorDeposit = PolkadotAmount.from.DOT(100);
@@ -80,14 +86,16 @@ describe("NominationAPI", () => {
             stakingCapacityAfterNomination.toString(),
             "Nomination failed to decrease staking capacity"
         );
-        const nominations = await nominationAPI.listNominationPairs(Bitcoin);
-        assert.equal(2, nominations.length, "There should be one nomination pair in the system, besides the vault to itself");
-        const nomination = nominations[1];
-        // `nomination` is of type `[vaultId, nominatorId]`.
-        const nominatorId = nomination[1].toString();
-        const vaultId = nomination[0].toString();
-        assert.equal(bob.address, nominatorId);
-        assert.equal(charlie_stash.address, vaultId);
+        const nominationPairs = await nominationAPI.listNominationPairs(Bitcoin);
+        assert.equal(2, nominationPairs.length, "There should be one nomination pair in the system, besides the vault to itself");
+
+        const bobAddress = bob.address;
+        const charlieStashAddress = charlie_stash.address;
+
+        const [vaultId, nominatorId] = nominationPairs.find(([_, nominatorId]) => bobAddress == nominatorId)!;
+
+        assert.equal(bobAddress, nominatorId);
+        assert.equal(charlieStashAddress, vaultId);
 
         const interBtcToIssue = BTCAmount.from.BTC(1);
         await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
@@ -108,25 +116,16 @@ describe("NominationAPI", () => {
             "Reward amount has been affected by the withdrawal"
         );
         await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
-        await optOutAndPreserveAPIAccount(charlie_stash);
+        await optOutWithAccount(charlie_stash);
     });
 
-    async function optInAndPreserveAPIAccount(vaultAccount: KeyringPair) {
-        const initialNominationAPIAccount = nominationAPI.getAccount();
-        nominationAPI.setAccount(vaultAccount);
-        await nominationAPI.optIn();
-        if(initialNominationAPIAccount) {
-            nominationAPI.setAccount(initialNominationAPIAccount);
-        }
+    async function optInWithAccount(vaultAccount: KeyringPair) {
+        // will fail if vault is already opted in
+        await callWith(nominationAPI, vaultAccount, api => api.optIn());
     }
 
-    async function optOutAndPreserveAPIAccount(vaultAccount: KeyringPair) {
-        const initialNominationAPIAccount = nominationAPI.getAccount();
-        nominationAPI.setAccount(vaultAccount);
-        await nominationAPI.optOut();
-        if(initialNominationAPIAccount) {
-            nominationAPI.setAccount(initialNominationAPIAccount);
-        }
+    async function optOutWithAccount(vaultAccount: KeyringPair) {
+        await callWith(nominationAPI, vaultAccount, api => api.optOut());
     }
 
 });

@@ -6,7 +6,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
-import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { ALICE_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT, FERDIE_STASH_URI, FERDIE_URI } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle, stripHexPrefix } from "../../../../src/utils";
@@ -32,8 +32,8 @@ describe("redeem", () => {
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
-        ferdie = keyring.addFromUri("//Ferdie");
+        alice = keyring.addFromUri(ALICE_URI);
+        ferdie = keyring.addFromUri(FERDIE_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         tokensAPI = new DefaultTokensAPI(api);
@@ -61,7 +61,7 @@ describe("redeem", () => {
     });
 
     it("should liquidate a vault that committed theft", async () => {
-        const vaultToLiquidate = keyring.addFromUri("//Ferdie//stash");
+        const vaultToLiquidate = keyring.addFromUri(FERDIE_STASH_URI);
         await issueSingle(api, electrsAPI, aliceBitcoinCoreClient, alice, BTCAmount.from.BTC(0.0001), vaultToLiquidate.address, true, false);
         const vaultBitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
@@ -97,10 +97,7 @@ describe("redeem", () => {
         const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
         await redeemAPI.setRedeemPeriod(1);
         let redeemRequestExpiryCallback = false;
-        const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, undefined, ExecuteRedeem.False);
-
-        keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
+        const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
 
         redeemAPI.subscribeToRedeemExpiry(newAccountId(api, alice.address), (requestId) => {
             if (stripHexPrefix(redeemRequest.id.toString()) === stripHexPrefix(requestId.toString())) {
@@ -124,7 +121,7 @@ describe("redeem", () => {
         const issueAmount = BTCAmount.from.BTC(0.001);
         const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
         const redeemAmount = BTCAmount.from.BTC(0.0009);
-        await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount);
+        await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false);
 
         // check redeeming worked
         const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);
@@ -137,7 +134,7 @@ describe("redeem", () => {
         const issueAmount = BTCAmount.from.BTC(0.001);
         const issueFeesToPay = await issueAPI.getFeesToPay(issueAmount);
         const redeemAmount = BTCAmount.from.BTC(0.0009);
-        await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, undefined, ExecuteRedeem.Manually);
+        await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false, ExecuteRedeem.Manually);
 
         // check redeeming worked
         const expectedBalanceDifferenceAfterRedeem = issueAmount.sub(issueFeesToPay).sub(redeemAmount);

@@ -48,41 +48,47 @@ services:
     electrs:
         image: "interlayhq/electrs:latest"
         command:
-            - /bin/sh
-            - -c
-            - |
-                echo "Sleeping..."
-                sleep 5
-                electrs -vvvv --network regtest --jsonrpc-import --cors "*" --cookie "rpcuser:rpcpassword" --daemon-rpc-addr bitcoind:18443 --http-addr "[::0]:3002" --index-unspendables
+            - electrs
+            - -vvvv
+            - --network
+            - regtest
+            - --jsonrpc-import
+            - --cors
+            - "*"
+            - --cookie
+            - "rpcuser:rpcpassword"
+            - --daemon-rpc-addr
+            - "bitcoind:18443"
+            - --http-addr
+            - "[::0]:3002"
+            - --index-unspendables
         ports:
             - "3002:3002"
+        restart: always
     oracle:
-        image: "interlayhq/interbtc-clients:oracle-0-10-0"
+        image: "interlayhq/interbtc-clients:oracle-0-10-1"
         command:
-            - /bin/sh
-            - -c
-            - |
-                echo "Sleeping..."
-                sleep 5
-                oracle --keyring=charlie --btc-parachain-url 'ws://interbtc:9944'
+            - oracle
+            - --keyring
+            - charlie
+            - --btc-parachain-url
+            - 'ws://interbtc:9944'
         environment:
             RUST_LOG: info
     faucet:
-        image: "interlayhq/interbtc-clients:faucet-0-10-0"
+        image: "interlayhq/interbtc-clients:faucet-0-10-1"
         command:
             - /bin/sh
             - -c
             - |
                 echo '{"bob_stash": "0x1a7d114100653850c65edecda8a9b2b4dd65d900edef8e70b1a6ecdcda967056"}' > keyfile.json
-                echo "Sleeping..."
-                sleep 5
                 faucet --keyfile="keyfile.json" --keyname=bob_stash --btc-parachain-url 'ws://interbtc:9944' --user-allowance 1 --vault-allowance 500 --http-addr '[::0]:3036'
         environment:
             RUST_LOG: info
         ports:
             - "3036:3036"
     vault_1:
-        image: "interlayhq/interbtc-clients:vault-0-10-0"
+        image: "interlayhq/interbtc-clients:vault-0-10-1"
         command:
             - /bin/sh
             - -c
@@ -99,7 +105,7 @@ services:
             BITCOIN_RPC_PASS: rpcpassword
             RUST_LOG: info
     vault_2:
-        image: "interlayhq/interbtc-clients:vault-0-10-0"
+        image: "interlayhq/interbtc-clients:vault-0-10-1"
         command:
             - /bin/sh
             - -c
@@ -113,7 +119,7 @@ services:
         environment:
             <<: *client-env
     vault_3:
-        image: "interlayhq/interbtc-clients:vault-0-10-0"
+        image: "interlayhq/interbtc-clients:vault-0-10-1"
         command:
             - /bin/sh
             - -c
@@ -127,7 +133,7 @@ services:
         environment:
             <<: *client-env
     vault_to_liquidate:
-        image: "interlayhq/interbtc-clients:vault-0-10-0"
+        image: "interlayhq/interbtc-clients:vault-0-10-1"
         command:
             - /bin/sh
             - -c
@@ -141,7 +147,7 @@ services:
         environment:
             <<: *client-env
     vault_to_ban:
-        image: "interlayhq/interbtc-clients:vault-0-10-0"
+        image: "interlayhq/interbtc-clients:vault-0-10-1"
         command:
             - /bin/sh
             - -c

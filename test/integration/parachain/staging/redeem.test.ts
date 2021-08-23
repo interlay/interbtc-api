@@ -14,12 +14,14 @@ import {
     DEFAULT_BITCOIN_CORE_USERNAME,
     DEFAULT_PARACHAIN_ENDPOINT,
     DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_BITCOIN_CORE_PORT
+    DEFAULT_BITCOIN_CORE_PORT,
+    ALICE_URI
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { ElectrsAPI, ExecuteRedeem, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { ElectrsAPI, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -37,7 +39,7 @@ describe("redeem", () => {
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
+        alice = keyring.addFromUri(ALICE_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         bitcoinCoreClient = new BitcoinCoreClient(
@@ -71,15 +73,13 @@ describe("redeem", () => {
                 undefined,
                 issueAmount,
                 redeemAmount,
-                undefined,
+                false,
                 ExecuteRedeem.False
             );
         }).timeout(300000);
     });
 
     it("should load existing redeem requests", async () => {
-        keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
         redeemAPI.setAccount(alice);
 
         const redeemRequests = await redeemAPI.list();
@@ -91,9 +91,8 @@ describe("redeem", () => {
     });
 
     it("should map existing requests", async () => {
-        keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
         redeemAPI.setAccount(alice);
+
         const aliceAccountId = api.createType("AccountId", alice.address);
         const redeemRequests = await redeemAPI.mapForUser(aliceAccountId);
         assert.isAtLeast(
@@ -121,7 +120,7 @@ describe("redeem", () => {
 
     it("should getCurrentInclusionFee", async () => {
         const currentInclusionFee = await redeemAPI.getCurrentInclusionFee();
-        assert.equal(currentInclusionFee.toString(), "0");
+        assert.isTrue(!currentInclusionFee.isZero());
     });
 
     it("should getDustValue", async () => {

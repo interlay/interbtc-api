@@ -32,6 +32,10 @@ import {
     initializeIssue
 } from "../../../../src/utils/setup";
 import {
+    ALICE_URI,
+    BOB_URI,
+    CHARLIE_STASH_URI,
+    DAVE_STASH_URI,
     DEFAULT_BITCOIN_CORE_HOST,
     DEFAULT_BITCOIN_CORE_NETWORK,
     DEFAULT_BITCOIN_CORE_PASSWORD,
@@ -39,9 +43,14 @@ import {
     DEFAULT_BITCOIN_CORE_USERNAME,
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_PARACHAIN_ENDPOINT,
+    EVE_STASH_URI,
+    FERDIE_STASH_URI,
+    FERDIE_URI,
 } from "../../../config";
 import { DefaultTokensAPI } from "../../../../src/parachain/tokens";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
+import { AccountId } from "@polkadot/types/interfaces";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -58,19 +67,44 @@ describe("Initialize parachain state", () => {
 
     let alice: KeyringPair;
     let bob: KeyringPair;
-    let charlie_stash: KeyringPair;
 
-    function sleep(ms: number): Promise<void> {
-        return new Promise((resolve) => setTimeout(resolve, ms));
+    // vault_1
+    let charlie_stash: KeyringPair;
+    // vault_2
+    let dave_stash: KeyringPair;
+    // vault_3
+    let eve_stash: KeyringPair;
+    // vault_to_ban
+    let ferdie_stash: KeyringPair;
+    // vault_to_liquidate
+    let ferdie: KeyringPair;
+
+    function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
+        return api.createType("AccountId", keyPair.address);
+    }
+
+    async function waitForRegister(api: VaultsAPI, accountId: AccountId) {
+        while (true) {
+            try {
+                await api.get(accountId);
+                return;
+            } catch (_) { }
+            await sleep(SLEEP_TIME_MS);
+        }
     }
 
     before(async function () {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         // Alice is also the root account
-        alice = keyring.addFromUri("//Alice");
-        bob = keyring.addFromUri("//Bob");
-        charlie_stash = keyring.addFromUri("//Charlie//stash");
+        alice = keyring.addFromUri(ALICE_URI);
+        bob = keyring.addFromUri(BOB_URI);
+        // Vaults in docker-compose
+        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
+        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
+        eve_stash = keyring.addFromUri(EVE_STASH_URI);
+        ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
+        ferdie = keyring.addFromUri(FERDIE_URI);
 
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
@@ -88,15 +122,20 @@ describe("Initialize parachain state", () => {
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        // Sleep for 2 min to wait for vaults to register
-        await sleep(2 * 60 * 1000);
+
+        // wait for all vaults to register
+        await Promise.all(
+            [charlie_stash, dave_stash, eve_stash, ferdie_stash, ferdie]
+                .map(accountIdFromKeyring)
+                .map((accountId) => waitForRegister(vaultsAPI, accountId))
+        );
     });
 
     after(async () => {
         api.disconnect();
     });
 
-    it("should set the stable confirmations and ready the Btc Relay", async () => {
+    it("should set the stable confirmations and ready the BTC-Relay", async () => {
         // Speed up the process by only requiring 0 parachain and 0 bitcoin confirmations
         const stableBitcoinConfirmationsToSet = 0;
         const stableParachainConfirmationsToSet = 0;
@@ -117,10 +156,9 @@ describe("Initialize parachain state", () => {
 
     it("should set the exchange rate", async () => {
         const exchangeRateValue = new Big("3855.23187");
-        const exchangeRateToSet = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
-        await initializeExchangeRate(exchangeRateToSet, oracleAPI);
-        const exchangeRate = await oracleAPI.getExchangeRate(Polkadot);
-        assert.equal(exchangeRateToSet.toString(undefined, 5, 0), exchangeRate.toString(undefined, 5, 0));
+        const exchangeRate = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
+        // result will be medianized
+        await initializeExchangeRate(exchangeRate, oracleAPI);
     });
 
     it("should enable vault nomination", async () => {

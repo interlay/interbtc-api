@@ -221,11 +221,11 @@ async function main(params: InitializationParams): Promise<void> {
         const exchangeRateToSet =
             params.setExchangeRate === true
                 ? (defaultInitializationParams.setExchangeRate as ExchangeRate<
-                      Bitcoin,
-                      BTCUnit,
-                      Polkadot,
-                      PolkadotUnit
-                  >)
+                    Bitcoin,
+                    BTCUnit,
+                    Polkadot,
+                    PolkadotUnit
+                >)
                 : params.setExchangeRate;
         await initializeExchangeRate(exchangeRateToSet, oracleAPI);
     }

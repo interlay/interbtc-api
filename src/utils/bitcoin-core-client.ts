@@ -83,17 +83,9 @@ export class BitcoinCoreClient {
         };
     }
 
-    async mineBlocksWithoutDelay(n: number): Promise<void> {
+    async mineBlocks(n: number): Promise<void> {
         const newWalletAddress = await this.client.command("getnewaddress");
         await this.client.command("generatetoaddress", n, newWalletAddress);
-    }
-
-    async mineBlocks(n: number): Promise<void> {
-        await this.mineBlocksWithoutDelay(n);
-        // A block is relayed every 6000ms by the staked-relayer.
-        // Wait an additional 100ms to be sure
-        const relayPeriodWithBuffer = 6100;
-        await delay(n * relayPeriodWithBuffer);
     }
 
     async getBalance(): Promise<string> {
@@ -105,11 +97,19 @@ export class BitcoinCoreClient {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async getMempoolInfo(): Promise<any> {
-        return await this.client.command("getmempoolinfo");
+    getMempoolInfo(): Promise<any> {
+        return this.client.command("getmempoolinfo");
     }
-}
 
-function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    getBestBlockHash(): Promise<string> {
+        return this.client.command("getbestblockhash");
+    }
+
+    createWallet(name: string): Promise<void> {
+        return this.client.command("createwallet", name);
+    }
+
+    loadWallet(name: string): Promise<void> {
+        return this.client.command("loadwallet", name);
+    }
 }
