@@ -1,7 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
-
 import { ElectrsAPI } from "../external/electrs";
-import { H256Le } from "../interfaces/default";
+import { H256Le, RichBlockHeader } from "../interfaces/default";
 
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 
@@ -34,10 +33,14 @@ export interface BTCRelayAPI {
      * @param confirmations The number of block confirmations needed to accept the inclusion proof.
      */
     verifyTransactionInclusion(txid: string, confirmations?: number): Promise<void>;
+    /**
+     * @returns True if the block is in the relay, false otherwise.
+     */
+    isBlockInRelay(blockHash: string): Promise<boolean>;
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {
-    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) {}
+    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) { }
 
     async getStableBitcoinConfirmations(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -67,5 +70,11 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
         const confirmationsU32 = this.api.createType("u32", confirmations);
         // TODO: change this to RPC call
         this.api.tx.btcRelay.verifyTransactionInclusion(txid, merkleProof, confirmationsU32);
+    }
+
+    async isBlockInRelay(blockHash: string): Promise<boolean> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const value = await this.api.query.btcRelay.blockHeaders.at<RichBlockHeader>(head, blockHash);
+        return !value.isEmpty;
     }
 }

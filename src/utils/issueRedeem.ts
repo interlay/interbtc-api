@@ -11,10 +11,12 @@ import { ElectrsAPI } from "../external/electrs";
 import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTokensAPI } from "../parachain/tokens";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
-import { stripHexPrefix } from "../utils/encoding";
-import { DefaultRedeemAPI } from "../parachain";
+import { addHexPrefix, reverseEndiannessHex, stripHexPrefix } from "../utils/encoding";
+import { DefaultBTCRelayAPI, DefaultRedeemAPI } from "../parachain";
 import { Issue, IssueStatus, Redeem, RedeemStatus } from "../types";
 import { BitcoinNetwork } from "../types/bitcoinTypes";
+
+const SLEEP_TIME_MS = 1000;
 
 export interface IssueResult {
     request: Issue;
@@ -112,6 +114,7 @@ export async function issueSingle(
     try {
         const bitcoinjsNetwork = getBitcoinNetwork(network);
         const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, electrsAPI);
+        const btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         const tokensAPI = new DefaultTokensAPI(api);
 
         const vaultId = vaultAddress !== undefined ? newAccountId(api, vaultAddress) : vaultAddress;
@@ -147,12 +150,22 @@ export async function issueSingle(
         const txData = await bitcoinCoreClient.sendBtcTxAndMine(vaultBtcAddress, amountAsBtc, blocksToMine);
 
         if (autoExecute === false) {
+            console.log("Manually executing, waiting for relay to catchup");
+            const bestBlockHash = addHexPrefix(reverseEndiannessHex(await bitcoinCoreClient.getBestBlockHash()));
+
+            // wait for block to be relayed
+            while (!(await btcRelayAPI.isBlockInRelay(bestBlockHash))) {
+                console.log("block not found");
+                await sleep(SLEEP_TIME_MS);
+            }
+
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
             await issueAPI.execute(issueRequest.id, txData.txid);
         } else {
+            console.log("Auto-executing, waiting for vault to submit proof");
             // wait for vault to execute issue
             while ((await issueAPI.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
-                await sleep(1000);
+                await sleep(SLEEP_TIME_MS);
             }
         }
 
@@ -172,6 +185,7 @@ export async function issueSingle(
         return Promise.reject(new Error(`Issuing failed: ${e}`));
     }
 }
+
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -213,7 +227,7 @@ export async function redeem(
         case ExecuteRedeem.Auto: {
             // wait for vault to execute issue
             while ((await redeemAPI.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
-                await sleep(1000);
+                await sleep(SLEEP_TIME_MS);
             }
             break;
         }

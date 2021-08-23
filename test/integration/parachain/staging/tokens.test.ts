@@ -5,7 +5,7 @@ import { Bitcoin, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { ALICE_URI, BOB_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { CurrencyUnit } from "../../../../src";
 
 describe("TokensAPI", () => {
@@ -17,8 +17,8 @@ describe("TokensAPI", () => {
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri("//Alice");
-        bob = keyring.addFromUri("//Bob");
+        alice = keyring.addFromUri(ALICE_URI);
+        bob = keyring.addFromUri(BOB_URI);
         tokens = new DefaultTokensAPI(api, alice);
     });
 
@@ -43,7 +43,7 @@ describe("TokensAPI", () => {
             updatedAccount = account;
         }
         const amountToUpdateBobsAccountBy = new MonetaryAmount<Currency<C>, C>(currency, 0.00000001);
-        const bobBalanceBeforeTransfer = 
+        const bobBalanceBeforeTransfer =
             await tokens.balance<typeof currency.units>(currency, api.createType("AccountId", bob.address));
         const unsubscribe = await tokens.subscribeToBalance(currency, bob.address, balanceUpdateCallback);
 
@@ -58,7 +58,7 @@ describe("TokensAPI", () => {
         assert.equal(updatedAccount, bob.address);
         const expectedBobBalanceAfterSecondTransfer = expectedBobBalanceAfterFirstTransfer.add(amountToUpdateBobsAccountBy);
         assert.equal(updatedBalance.toString(), expectedBobBalanceAfterSecondTransfer.toString());
-        
+
         unsubscribe();
     }
 

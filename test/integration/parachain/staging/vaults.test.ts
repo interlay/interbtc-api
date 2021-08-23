@@ -3,12 +3,11 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 import { TypeRegistry } from "@polkadot/types";
-
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
-import { DefaultVaultsAPI } from "../../../../src/parachain/vaults";
-import { BitcoinCoreClient, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, issueSingle, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { BOB_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT, EVE_STASH_URI, FERDIE_STASH_URI, FERDIE_URI } from "../../../config";
+import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src/";
+import { issueSingle } from "../../../../src/utils";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 import { DefaultPoolsAPI } from "../../../../src/parachain/pools";
 
@@ -31,12 +30,12 @@ describe("vaultsAPI", () => {
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        bob = keyring.addFromUri("//Bob");
-        charlie_stash = keyring.addFromUri("//Charlie//stash");
-        dave_stash = keyring.addFromUri("//Dave//stash");
-        eve_stash = keyring.addFromUri("//Eve//stash");
-        ferdie_stash = keyring.addFromUri("//Ferdie//stash");
-        ferdie = keyring.addFromUri("//Ferdie");
+        bob = keyring.addFromUri(BOB_URI);
+        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
+        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
+        eve_stash = keyring.addFromUri(EVE_STASH_URI);
+        ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
+        ferdie = keyring.addFromUri(FERDIE_URI);
         // Bob is the authorized oracle
         oracleAPI = new DefaultOracleAPI(api, bob);
         poolsAPI = new DefaultPoolsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
@@ -71,6 +70,7 @@ describe("vaultsAPI", () => {
         assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
+    // WARNING: this test is not idempotent
     it("should deposit and withdraw collateral", async () => {
         vaultsAPI.setAccount(charlie_stash);
         const amount = PolkadotAmount.from.DOT(100);

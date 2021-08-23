@@ -8,7 +8,7 @@ import { Network } from "bitcoinjs-lib";
 import { Bytes } from "@polkadot/types";
 import { BTCAmount, Currency, MonetaryAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 
-import { storageKeyToNthInner, getTxProof, parseReplaceRequest } from "../utils";
+import { storageKeyToNthInner, getTxProof, parseReplaceRequest, ensureHashEncoded } from "../utils";
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
@@ -37,6 +37,11 @@ export interface ReplaceAPI extends TransactionAPI {
      * @returns A mapping from the replace request ID to the replace request object
      */
     map(): Promise<Map<H256, ReplaceRequestExt>>;
+    /**
+     * @param replaceId The ID of the replace request to fetch
+     * @returns A replace request object
+     */
+    getRequestById(replaceId: H256 | string): Promise<ReplaceRequestExt>;
     /**
      * @param amount Amount issued, denoted in Bitcoin, to have replaced by another vault
      * @returns The request id
@@ -176,5 +181,13 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
             redeemRequestMap.set(storageKeyToNthInner(v[0]), parseReplaceRequest(v[1], this.btcNetwork));
         });
         return redeemRequestMap;
+    }
+
+    async getRequestById(replaceId: H256 | string): Promise<ReplaceRequestExt> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        return parseReplaceRequest(
+            await this.api.query.replace.replaceRequests.at(head, ensureHashEncoded(this.api, replaceId)),
+            this.btcNetwork,
+        );
     }
 }
