@@ -21,6 +21,7 @@ export type TxStatus = {
     confirmed: boolean;
     confirmations: number;
     blockHeight?: number;
+    blockHash?: string;
 };
 
 export type TxOutput = {
@@ -154,6 +155,12 @@ export interface ElectrsAPI {
      * @returns The Bitcoin txid
      */
     waitForOpreturn(data: string, timeoutMs: number, retryIntervalMs: number): Promise<string>;
+    /**
+     * @param txid The ID of a Bitcoin transaction
+     * @returns A TxStatus object, containing the confirmation status and number of confirmations, plus block height if
+     * the tx is included in the blockchain
+     */
+    waitForTxInclusion(txid: string, timeoutMs: number, retryIntervalMs: number): Promise<TxStatus>;
 }
 
 export class DefaultElectrsAPI implements ElectrsAPI {
@@ -297,6 +304,27 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         });
     }
 
+    async waitForTxInclusion(txid: string, timeoutMs: number, retryIntervalMs: number): Promise<TxStatus> {
+        return new Promise<TxStatus>((resolve, reject) => {
+            this.getTransactionStatus(txid).then((txStatus) => {
+                if (txStatus.blockHeight !== undefined) {
+                    resolve(txStatus);
+                } else {
+                    setTimeout(() => {
+                        console.log(`Tx ${txid} not yet included in a block...`);
+                        if (timeoutMs < retryIntervalMs) {
+                            reject(new Error("Timeout elapsed"));
+                        } else {
+                            this.waitForTxInclusion(txid, timeoutMs - retryIntervalMs, retryIntervalMs)
+                                .then(resolve)
+                                .catch(reject);
+                        }
+                    }, retryIntervalMs);
+                }
+            });
+        });
+    }
+
     /**
      * Check if a given UTXO sends at least `amountAsBTC` to a certain `recipientAddress`
      *
@@ -340,6 +368,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
             // use Bitoin Core definition of confirmations (= block depth)
             status.confirmations = latest_block_height - txStatus.block_height + 1;
             status.blockHeight = txStatus.block_height;
+            status.blockHash = txStatus.block_hash;
             // note that block_height will only be set if confirmed == true, i.e. block
             // depth is at least 1. So confirmations 0 will only be returned while unconfirmed.
             // This is correct.

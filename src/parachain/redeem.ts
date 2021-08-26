@@ -18,7 +18,6 @@ import {
     storageKeyToNthInner,
     newAccountId,
     ensureHashEncoded,
-    addHexPrefix,
     parseRedeemRequest,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
@@ -31,8 +30,6 @@ import { Redeem, RedeemStatus } from "../types";
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface RedeemAPI extends TransactionAPI {
     /**

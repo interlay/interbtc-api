@@ -6,7 +6,7 @@ import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOI
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { BTCAmount } from "@interlay/monetary-js";
-import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, wait_success } from "../../../utils/helpers";
+import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, wait_success as waitSuccess } from "../../../utils/helpers";
 
 describe("ElectrsAPI regtest", function () {
     this.timeout(100000);
@@ -38,7 +38,7 @@ describe("ElectrsAPI regtest", function () {
             const amount = BTCAmount.from.BTC(0.00022244);
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
-            const txid = await wait_success(() => electrsAPI.getUtxoTxIdByRecipientAddress(recipientAddress, amount));
+            const txid = await waitSuccess(() => electrsAPI.getUtxoTxIdByRecipientAddress(recipientAddress, amount));
             assert.strictEqual(txid, txData.txid);
         });
     });
@@ -50,7 +50,7 @@ describe("ElectrsAPI regtest", function () {
             const amount = BTCAmount.from.BTC(0.00029);
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
-            const txid = await wait_success(() => electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount));
+            const txid = await waitSuccess(() => electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount));
             assert.strictEqual(txid, txData.txid);
         });
     });
@@ -67,13 +67,13 @@ describe("ElectrsAPI regtest", function () {
             assert.strictEqual(status.confirmations, 0);
     
             // transaction in the latest block
-            await wait_success(async () => {
+            await waitSuccess(async () => {
                 status = await electrsAPI.getTransactionStatus(txData.txid);
                 assert.strictEqual(status.confirmations, 1);
             });
     
             // transaction in the parent of the latest block
-            await wait_success(async () => {
+            await waitSuccess(async () => {
                 status = await electrsAPI.getTransactionStatus(txData.txid);
                 assert.strictEqual(status.confirmations, 2);
             });

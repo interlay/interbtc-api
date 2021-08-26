@@ -10,7 +10,7 @@ import { ALICE_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEF
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle, stripHexPrefix } from "../../../../src/utils";
-import { DefaultIssueAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep, TokensAPI } from "../../../../src";
+import { DefaultBTCRelayAPI, DefaultIssueAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep, TokensAPI, waitForBlockFinalization } from "../../../../src";
 import { assert, expect } from "../../../chai";
 import { BTCAmount } from "@interlay/monetary-js";
 import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
@@ -21,6 +21,7 @@ export type RequestResult = { hash: Hash; vault: Vault };
 describe("redeem", () => {
     let redeemAPI: DefaultRedeemAPI;
     let electrsAPI: DefaultElectrsAPI;
+    let btcRelayAPI: DefaultBTCRelayAPI;
     let api: ApiPromise;
     let keyring: Keyring;
     // alice is the root account
@@ -36,6 +37,7 @@ describe("redeem", () => {
         alice = keyring.addFromUri(ALICE_URI);
         ferdie = keyring.addFromUri(FERDIE_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
         aliceBitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
@@ -82,7 +84,7 @@ describe("redeem", () => {
             await DefaultTransactionAPI.waitForEvent(api, api.events.relay.VaultTheft, 17 * 60000);
 
             // Sleep for 15s because maxBurnableTokens and burnExchangeRate don't get updated immediately
-            await sleep(15 * 1000);
+            await waitForBlockFinalization(electrsAPI, btcRelayAPI);
             const maxBurnableTokens = await redeemAPI.getMaxBurnableTokens();
             assert.equal(maxBurnableTokens.str.BTC(), "0.0001");
             const burnExchangeRate = await redeemAPI.getBurnExchangeRate();
@@ -98,22 +100,19 @@ describe("redeem", () => {
             const redeemAmount = BTCAmount.from.BTC(0.0009);
             const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
             await redeemAPI.setRedeemPeriod(1);
-            let redeemRequestExpiryCallback = false;
-            const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
+            const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, btcRelayAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
     
-            redeemAPI.subscribeToRedeemExpiry(newAccountId(api, alice.address), (requestId) => {
-                if (stripHexPrefix(redeemRequest.id.toString()) === stripHexPrefix(requestId.toString())) {
-                    redeemRequestExpiryCallback = true;
-                }
+            // Wait for redeem expiry callback
+            await new Promise<void>((resolve, _) => {
+                redeemAPI.subscribeToRedeemExpiry(newAccountId(api, alice.address), (requestId) => {
+                    if (stripHexPrefix(redeemRequest.id.toString()) === stripHexPrefix(requestId.toString())) {
+                        resolve();
+                    }
+                });
             });
-            // Wait for the redeem expiry callback to be called.
-            await sleep(15 * 1000);
             await redeemAPI.cancel(redeemRequest.id.toString(), true);
-    
             const redeemRequestAfterCancellation = await redeemAPI.getRequestById(redeemRequest.id);
-    
             assert.isTrue(redeemRequestAfterCancellation.status === RedeemStatus.Reimbursed, "Failed to cancel issue request");
-            assert.isTrue(redeemRequestExpiryCallback, "Callback was not called when the redeem request expired.");
             // Set issue period back to its initial value to minimize side effects.
             await redeemAPI.setRedeemPeriod(initialRedeemPeriod);
         });
@@ -123,7 +122,7 @@ describe("redeem", () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const issueAmount = BTCAmount.from.BTC(0.001);
             const redeemAmount = BTCAmount.from.BTC(0.0009);
-            await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false);
+            await issueAndRedeem(api, electrsAPI, btcRelayAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false);
         });
         // The `ExecuteRedeem` event has been emitted at this point.
         // Do not check balances as this is already checked in the parachain integration tests.
@@ -133,8 +132,7 @@ describe("redeem", () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const issueAmount = BTCAmount.from.BTC(0.001);
             const redeemAmount = BTCAmount.from.BTC(0.0009);
-            // await redeemAPI.execute("48eac9b7c5b901b76035141d4e5dc81dfe9bcef4779a4d00030b2031d426ad7d", `f6283acc483a4dc0c4da5fabbc802b392128fb528e6e62ba5a13f4611033bd89`);
-            await issueAndRedeem(api, electrsAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false, ExecuteRedeem.Manually);
+            await issueAndRedeem(api, electrsAPI, btcRelayAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false, ExecuteRedeem.Manually);
         });
         // The `ExecuteRedeem` event has been emitted at this point.
         // Do not check balances as this is already checked in the parachain integration tests.

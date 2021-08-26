@@ -20,7 +20,7 @@ import {
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { ElectrsAPI, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { BTCRelayAPI, DefaultBTCRelayAPI, ElectrsAPI, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
@@ -34,6 +34,7 @@ describe("redeem", () => {
     let alice: KeyringPair;
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let electrsAPI: ElectrsAPI;
+    let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
@@ -41,6 +42,7 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         alice = keyring.addFromUri(ALICE_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
@@ -68,6 +70,7 @@ describe("redeem", () => {
             await issueAndRedeem(
                 api,
                 electrsAPI,
+                btcRelayAPI,
                 bitcoinCoreClient,
                 alice,
                 undefined,

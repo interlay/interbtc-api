@@ -55,8 +55,6 @@ export interface InterBTCAPI {
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly vaults: VaultsAPI;
@@ -74,11 +72,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly nomination: NominationAPI;
     public readonly pools: PoolsAPI;
 
-    constructor(
-        readonly api: ApiPromise,
-        network: BitcoinNetwork = "mainnet",
-        private _account?: AddressOrPair,
-    ) {
+    constructor(readonly api: ApiPromise, network: BitcoinNetwork = "mainnet", private _account?: AddressOrPair) {
         const btcNetwork = getBitcoinNetwork(network);
         this.electrsAPI = new DefaultElectrsAPI(network);
         this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, _account);

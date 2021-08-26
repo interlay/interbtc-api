@@ -20,8 +20,6 @@ import { DefaultPoolsAPI, PoolsAPI } from "./pools";
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface NominationAPI extends TransactionAPI {
     /**
