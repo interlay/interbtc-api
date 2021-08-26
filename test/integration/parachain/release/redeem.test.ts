@@ -83,8 +83,7 @@ describe("redeem", () => {
             // it takes about 15 mins for the theft to be reported
             await DefaultTransactionAPI.waitForEvent(api, api.events.relay.VaultTheft, 17 * 60000);
 
-            // Sleep for 15s because maxBurnableTokens and burnExchangeRate don't get updated immediately
-            await waitForBlockFinalization(electrsAPI, btcRelayAPI);
+            await waitForBlockFinalization(bitcoinCoreClient, btcRelayAPI);
             const maxBurnableTokens = await redeemAPI.getMaxBurnableTokens();
             assert.equal(maxBurnableTokens.str.BTC(), "0.0001");
             const burnExchangeRate = await redeemAPI.getBurnExchangeRate();

@@ -477,9 +477,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     ): Promise<MonetaryAmount<Currency<C>, C>> {
         try {
             const wrapped = this.api.createType("BalanceWrapper", amount.str.Satoshi());
-            const amountWrapper: BalanceWrapper = await this.api.rpc.vaultRegistry.getRequiredCollateralForWrapped(
-                wrapped
-            );
+            const amountWrapper: BalanceWrapper = await this.api.rpc.vaultRegistry.getRequiredCollateralForWrapped(wrapped);
             const amountUnwrapped = this.unwrapCurrency(amountWrapper);
             return newMonetaryAmount(amountUnwrapped.toString(), currency);
         } catch (e) {

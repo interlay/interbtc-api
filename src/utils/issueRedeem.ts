@@ -7,7 +7,7 @@ import { Bitcoin, BTCAmount, BTCUnit, MonetaryAmount, Polkadot, PolkadotUnit } f
 
 import { newAccountId } from "../utils";
 import { getBitcoinNetwork } from "../interbtc-api";
-import { ElectrsAPI } from "../external/electrs";
+import { DefaultElectrsAPI, ElectrsAPI } from "../external/electrs";
 import { DefaultIssueAPI } from "../parachain/issue";
 import { DefaultTokensAPI } from "../parachain/tokens";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
@@ -15,7 +15,7 @@ import { stripHexPrefix } from "../utils/encoding";
 import { BTCRelayAPI, DefaultBTCRelayAPI, DefaultRedeemAPI } from "../parachain";
 import { Issue, IssueStatus, Redeem, RedeemStatus } from "../types";
 import { BitcoinNetwork } from "../types/bitcoinTypes";
-import { waitForBlockFinalization } from "..";
+import { REGTEST_ESPLORA_BASE_PATH, waitForBlockFinalization } from "..";
 
 export const SLEEP_TIME_MS = 1000;
 
@@ -114,7 +114,7 @@ export async function issueSingle(
 ): Promise<IssueResult> {
     try {
         const bitcoinjsNetwork = getBitcoinNetwork(network);
-        const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, electrsAPI);
+        const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH));
         const btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         const tokensAPI = new DefaultTokensAPI(api);
 
@@ -152,8 +152,7 @@ export async function issueSingle(
 
         if (autoExecute === false) {
             console.log("Manually executing, waiting for relay to catchup");
-            await waitForBlockFinalization(electrsAPI, btcRelayAPI);
-
+            await waitForBlockFinalization(bitcoinCoreClient, btcRelayAPI);
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
             await issueAPI.execute(issueRequest.id, txData.txid);
         } else {
@@ -188,6 +187,7 @@ export function sleep(ms: number): Promise<void> {
 export async function redeem(
     api: ApiPromise,
     electrsAPI: ElectrsAPI,
+    bitcoinCoreClient: BitcoinCoreClient,
     btcRelayAPI: BTCRelayAPI,
     redeemingAccount: KeyringPair,
     amount: BTCAmount,
@@ -217,7 +217,7 @@ export async function redeem(
                 throw new Error("Redeem request was not executed, timeout expired");
             });
             // Even if the tx was found, the block needs to be relayed to the parachain before `execute` can be called.
-            await waitForBlockFinalization(electrsAPI, btcRelayAPI);
+            await waitForBlockFinalization(bitcoinCoreClient, btcRelayAPI);
 
             // manually execute issue
             await redeemAPI.execute(redeemRequest.id.toString(), btcTxId);
@@ -265,6 +265,7 @@ export async function issueAndRedeem(
     const redeemRequest = await redeem(
         api,
         electrsAPI,
+        bitcoinCoreClient,
         btcRelayAPI,
         account,
         redeemAmount,

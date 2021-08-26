@@ -8,7 +8,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { BtcAddress } from "../interfaces/default";
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
-import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS } from "..";
+import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "..";
 
 export function encodeBtcAddress(address: BtcAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
@@ -107,8 +107,8 @@ export async function waitForBlockRelaying(
     }
 }
 
-export async function waitForBlockFinalization(electrsAPI: ElectrsAPI, btcRelayAPI: BTCRelayAPI) {
-    const bestBlockHash = addHexPrefix(reverseEndiannessHex(await electrsAPI.getLatestBlock()));
+export async function waitForBlockFinalization(bitcoinCoreClient: BitcoinCoreClient, btcRelayAPI: BTCRelayAPI): Promise<void> {
+    const bestBlockHash = addHexPrefix(reverseEndiannessHex(await bitcoinCoreClient.getBestBlockHash()));
     // wait for block to be relayed
     await waitForBlockRelaying(btcRelayAPI, bestBlockHash);
 }
