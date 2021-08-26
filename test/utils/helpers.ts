@@ -2,10 +2,14 @@ import { Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from '@polkadot/util-crypto';
 import * as bitcoinjs from "bitcoinjs-lib";
+import { BitcoinCoreClient } from "../../src";
 import { TransactionAPI } from "../../src/parachain/transaction";
 import { SUDO_URI } from "../config";
 
 export const SLEEP_TIME_MS = 1000;
+
+// On Bitcoin mainnet, block time is ~10 mins. Speed it up to 10s during the tests.
+export const BITCOIN_BLOCK_TIME_IN_SECONDS = 10;
 
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,4 +49,19 @@ export function makeRandomBitcoinAddress(): string {
 export function makeRandomPolkadotKeyPair(keyring: Keyring): KeyringPair {
     const mnemonic = mnemonicGenerate(12);
     return keyring.addFromUri(mnemonic);
+}
+
+export async function runWhileMiningBTCBlocks(bitcoinCoreClient: BitcoinCoreClient, fn: () => Promise<void>): Promise<void> {
+    function generateBlocks() {
+        bitcoinCoreClient.mineBlocks(1);
+    }
+    
+    const intervalId = setInterval(generateBlocks, BITCOIN_BLOCK_TIME_IN_SECONDS * 1000);
+    try {
+        await fn();
+    } catch (error) {
+        throw error;
+    } finally {
+        clearInterval(intervalId);
+    }
 }

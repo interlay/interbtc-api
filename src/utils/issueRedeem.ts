@@ -220,6 +220,8 @@ export async function redeem(
             const btcTxId = await electrsAPI.waitForOpreturn(opreturnData, timeout, 5000).catch((_) => {
                 throw new Error("Redeem request was not executed, timeout expired");
             });
+            // Even if the tx was found, the block needs to be relayed to the parachain before `execute` can be called.
+            await sleep(15 * 1000);
             // manually execute issue
             await redeemAPI.execute(redeemRequest.id.toString(), btcTxId);
             break;
