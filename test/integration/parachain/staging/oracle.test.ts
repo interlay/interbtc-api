@@ -9,7 +9,7 @@ import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, Polkadot, Polkadot
 import { CollateralUnit, createExchangeRateOracleKey, createInclusionOracleKey } from "../../../../src";
 import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
 import { OracleKey } from "../../../../src/interfaces";
-import { Option, Bool } from '@polkadot/types';
+import { Option, Bool } from "@polkadot/types";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
@@ -44,7 +44,7 @@ describe("OracleAPI", () => {
     async function waitForExchangeRateUpdate<C extends CollateralUnit>(exchangeRate: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>) {
         const key = createExchangeRateOracleKey(api, exchangeRate.counter);
         while (await getRawValuesUpdated(key)) {
-            sleep(SLEEP_TIME_MS)
+            sleep(SLEEP_TIME_MS);
         }
     }
 
@@ -67,7 +67,7 @@ describe("OracleAPI", () => {
     async function waitForFeeEstimateUpdate() {
         const key = createInclusionOracleKey(api, DEFAULT_INCLUSION_TIME);
         while (await getRawValuesUpdated(key)) {
-            sleep(SLEEP_TIME_MS)
+            sleep(SLEEP_TIME_MS);
         }
     }
 

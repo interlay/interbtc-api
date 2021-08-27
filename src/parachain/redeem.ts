@@ -7,6 +7,8 @@ import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import BN from "bn.js";
 import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
+import type { AnyTuple } from "@polkadot/types/types";
 
 import { VaultsAPI, DefaultVaultsAPI } from "./vaults";
 import {
@@ -16,7 +18,6 @@ import {
     storageKeyToNthInner,
     newAccountId,
     ensureHashEncoded,
-    addHexPrefix,
     parseRedeemRequest,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
@@ -29,8 +30,6 @@ import { Redeem, RedeemStatus } from "../types";
 
 /**
  * @category InterBTC Bridge
- * The type Big represents DOT or InterBTC denominations,
- * while the type BN represents Planck or Satoshi denominations.
  */
 export interface RedeemAPI extends TransactionAPI {
     /**
@@ -183,8 +182,8 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         this.oracleAPI = new DefaultOracleAPI(api, account);
     }
 
-    private getRedeemIdsFromEvents(events: EventRecord[]): Hash[] {
-        return getRequestIdsFromEvents(events, this.api.events.redeem.RequestRedeem, this.api);
+    private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
+        return getRequestIdsFromEvents(events, event, this.api);
     }
 
     async request(
@@ -233,7 +232,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         try {
             const result = await this.sendLogged(batch, this.api.events.issue.RequestRedeem);
-            const ids = this.getRedeemIdsFromEvents(result.events);
+            const ids = this.getRedeemIdsFromEvents(result.events, this.api.events.redeem.RequestRedeem);
             const redeemRequests = await this.getRequestsById(ids);
             return redeemRequests;
         } catch (e) {
@@ -242,18 +241,18 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", requestId);
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
         [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
         const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
-        const ids = this.getRedeemIdsFromEvents(result.events);
+        const ids = this.getRedeemIdsFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
         if (ids.length > 1) {
             return Promise.reject(new Error("Unexpected multiple redeem events from single execute transaction!"));
         }
     }
 
     async cancel(requestId: string, reimburse = false): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
         await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }

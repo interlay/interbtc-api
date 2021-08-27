@@ -412,7 +412,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     private isNoTokensIssuedError(e: Error): boolean {
-        return e.message.includes("NoTokensIssued");
+        return e.message !== undefined && e.message.includes("NoTokensIssued");
     }
 
     async getVaultCollateralization<C extends CollateralUnit = PolkadotUnit>(
@@ -433,7 +433,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
                 collateralization = await this.api.rpc.vaultRegistry.getCollateralizationFromVault(vaultId, onlyIssued);
             }
         } catch (e) {
-            if (this.isNoTokensIssuedError(e)) {
+            if (this.isNoTokensIssuedError(e as Error)) {
                 return Promise.resolve(undefined);
             }
             return Promise.reject(new Error(`Error during collateralization computation: ${(e as Error).message}`));
@@ -449,7 +449,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             const collateralization = await this.api.rpc.vaultRegistry.getTotalCollateralization();
             return decodeFixedPointType(collateralization);
         } catch (e) {
-            if (this.isNoTokensIssuedError(e)) {
+            if (this.isNoTokensIssuedError(e as Error)) {
                 return Promise.resolve(undefined);
             }
             return Promise.reject(new Error("Error during collateralization computation"));
@@ -477,9 +477,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     ): Promise<MonetaryAmount<Currency<C>, C>> {
         try {
             const wrapped = this.api.createType("BalanceWrapper", amount.str.Satoshi());
-            const amountWrapper: BalanceWrapper = await this.api.rpc.vaultRegistry.getRequiredCollateralForWrapped(
-                wrapped
-            );
+            const amountWrapper: BalanceWrapper = await this.api.rpc.vaultRegistry.getRequiredCollateralForWrapped(wrapped);
             const amountUnwrapped = this.unwrapCurrency(amountWrapper);
             return newMonetaryAmount(amountUnwrapped.toString(), currency);
         } catch (e) {

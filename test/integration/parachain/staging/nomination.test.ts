@@ -32,7 +32,7 @@ describe("NominationAPI", () => {
         feeAPI = new DefaultFeeAPI(api);
 
         if (!(await nominationAPI.isNominationEnabled())) {
-            console.log("Enabling nomination...")
+            console.log("Enabling nomination...");
             await sudo(nominationAPI, (api) => api.setNominationEnabled(true));
         }
 

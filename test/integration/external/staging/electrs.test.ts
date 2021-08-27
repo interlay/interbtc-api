@@ -6,7 +6,7 @@ import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOI
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { BTCAmount } from "@interlay/monetary-js";
-import { makeRandomBitcoinAddress, wait_success } from "../../../utils/helpers";
+import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, wait_success as waitSuccess } from "../../../utils/helpers";
 
 describe("ElectrsAPI regtest", function () {
     this.timeout(100000);
@@ -33,46 +33,50 @@ describe("ElectrsAPI regtest", function () {
     });
 
     it("should getTxIdByRecipientAddress", async () => {
-        const recipientAddress = makeRandomBitcoinAddress();
-        const amount = BTCAmount.from.BTC(0.00022244);
+        await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
+            const recipientAddress = makeRandomBitcoinAddress();
+            const amount = BTCAmount.from.BTC(0.00022244);
 
-        const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amount, 6);
-        const txid = await wait_success(() => electrsAPI.getUtxoTxIdByRecipientAddress(recipientAddress, amount));
-        assert.strictEqual(txid, txData.txid);
+            const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
+            const txid = await waitSuccess(() => electrsAPI.getUtxoTxIdByRecipientAddress(recipientAddress, amount));
+            assert.strictEqual(txid, txData.txid);
+        });
     });
 
     it("should getTxByOpreturn", async () => {
-        const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
-        const recipientAddress = makeRandomBitcoinAddress();
-        const amount = BTCAmount.from.BTC(0.00029);
+        await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
+            const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
+            const recipientAddress = makeRandomBitcoinAddress();
+            const amount = BTCAmount.from.BTC(0.00029);
 
-        const txData = await bitcoinCoreClient.sendBtcTxAndMine(recipientAddress, amount, 6, opReturnValue);
-        const txid = await wait_success(() => electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount));
-        assert.strictEqual(txid, txData.txid);
+            const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
+            const txid = await waitSuccess(() => electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount));
+            assert.strictEqual(txid, txData.txid);
+        });
     });
 
     it("should use getTxStatus to return correct confirmations", async () => {
-        const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
-        const recipientAddress = makeRandomBitcoinAddress();
-        const amount = BTCAmount.from.BTC(0.00029);
-
-        const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
-        // transaction in mempool
-        let status = await electrsAPI.getTransactionStatus(txData.txid);
-        assert.strictEqual(status.confirmations, 0);
-
-        // transaction in the latest block
-        await bitcoinCoreClient.mineBlocks(1);
-        await wait_success(async () => {
-            status = await electrsAPI.getTransactionStatus(txData.txid);
-            assert.strictEqual(status.confirmations, 1);
-        });
-
-        // transaction in the parent of the latest block
-        await bitcoinCoreClient.mineBlocks(1);
-        await wait_success(async () => {
-            status = await electrsAPI.getTransactionStatus(txData.txid);
-            assert.strictEqual(status.confirmations, 2);
+        await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
+            const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
+            const recipientAddress = makeRandomBitcoinAddress();
+            const amount = BTCAmount.from.BTC(0.00029);
+    
+            const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
+            // transaction in mempool
+            let status = await electrsAPI.getTransactionStatus(txData.txid);
+            assert.strictEqual(status.confirmations, 0);
+    
+            // transaction in the latest block
+            await waitSuccess(async () => {
+                status = await electrsAPI.getTransactionStatus(txData.txid);
+                assert.strictEqual(status.confirmations, 1);
+            });
+    
+            // transaction in the parent of the latest block
+            await waitSuccess(async () => {
+                status = await electrsAPI.getTransactionStatus(txData.txid);
+                assert.strictEqual(status.confirmations, 2);
+            });
         });
     });
 });

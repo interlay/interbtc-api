@@ -187,7 +187,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         const head = await this.api.rpc.chain.getFinalizedHead();
         return parseReplaceRequest(
             await this.api.query.replace.replaceRequests.at(head, ensureHashEncoded(this.api, replaceId)),
-            this.btcNetwork,
+            this.btcNetwork
         );
     }
 }

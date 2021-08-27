@@ -1,6 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { ElectrsAPI } from "../external/electrs";
 import { H256Le, RichBlockHeader } from "../interfaces/default";
+import { addHexPrefix } from "../utils";
 
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 
@@ -40,7 +41,7 @@ export interface BTCRelayAPI {
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {
-    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) { }
+    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) {}
 
     async getStableBitcoinConfirmations(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -74,7 +75,7 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
 
     async isBlockInRelay(blockHash: string): Promise<boolean> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const value = await this.api.query.btcRelay.blockHeaders.at<RichBlockHeader>(head, blockHash);
+        const value = await this.api.query.btcRelay.blockHeaders.at<RichBlockHeader>(head, addHexPrefix(blockHash));
         return !value.isEmpty;
     }
 }

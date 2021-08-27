@@ -41,7 +41,6 @@ export class BitcoinCoreClient {
         txid: string;
         rawTx: string;
     }> {
-        console.log(`Broadcasting tx: ${amount.toString(Bitcoin.base)} BTC`);
         const tx = await this.broadcastTx(recipient, amount, data);
         await this.mineBlocks(blocksToMine);
         return tx;
@@ -67,7 +66,7 @@ export class BitcoinCoreClient {
         if (!this.client) {
             throw new Error("Client needs to be initialized before usage");
         }
-
+        console.log(`Broadcasting tx: ${amount.toString(Bitcoin.base)} BTC`);
         const raw = await this.client.command(
             "createrawtransaction",
             [],
@@ -84,6 +83,7 @@ export class BitcoinCoreClient {
     }
 
     async mineBlocks(n: number): Promise<void> {
+        console.log(`Mining ${n} Bitcoin block(s)`);
         const newWalletAddress = await this.client.command("getnewaddress");
         await this.client.command("generatetoaddress", n, newWalletAddress);
     }

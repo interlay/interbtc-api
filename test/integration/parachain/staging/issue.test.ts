@@ -9,8 +9,9 @@ import { assert } from "../../../chai";
 import { ALICE_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { IssueStatus } from "../../../../src";
+import { IssueStatus, stripHexPrefix } from "../../../../src";
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
+import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -202,30 +203,39 @@ describe("issue", () => {
     });
 
     // This test should be kept at the end of the file as it will ban the vault used for issuing
-    it("should cancel a request issue", async () => {
-        const initialIssuePeriod = await issueAPI.getIssuePeriod();
-        await issueAPI.setIssuePeriod(1);
-        try {
-            // request issue
-            const amount = BTCAmount.from.BTC(0.0000121);
-            const requestResults = await issueAPI.request(amount, newAccountId(api, dave_stash.address));
-            assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
-            const requestResult = requestResults[0];
+    it("should cancel an issue request", async () => {
+        await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
+            const initialIssuePeriod = await issueAPI.getIssuePeriod();
+            await issueAPI.setIssuePeriod(1);
+            try {
+                // request issue
+                const amount = BTCAmount.from.BTC(0.0000121);
+                const requestResults = await issueAPI.request(amount, newAccountId(api, dave_stash.address));
+                assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
+                const requestResult = requestResults[0];
 
-            await bitcoinCoreClient.mineBlocks(4);
-            await issueAPI.cancel(requestResult.id);
-
-            const issueRequest = await issueAPI.getRequestById(requestResult.id);
-            assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
-
-            // Set issue period back to its initial value to minimize side effects.
-            await issueAPI.setIssuePeriod(initialIssuePeriod);
-        } catch (e) {
-            // Set issue period back to its initial value to minimize side effects.
-            await issueAPI.setIssuePeriod(initialIssuePeriod);
-            throw e;
-        }
-
+                // Wait for issue expiry callback
+                await new Promise<void>((resolve, _) => {
+                    issueAPI.subscribeToIssueExpiry(newAccountId(api, alice.address), (requestId) => {
+                        if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
+                            resolve();
+                        }
+                    });
+                });
+    
+                await issueAPI.cancel(requestResult.id);
+    
+                const issueRequest = await issueAPI.getRequestById(requestResult.id);
+                assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
+    
+                // Set issue period back to its initial value to minimize side effects.
+                await issueAPI.setIssuePeriod(initialIssuePeriod);
+            } catch (e) {
+                // Set issue period back to its initial value to minimize side effects.
+                await issueAPI.setIssuePeriod(initialIssuePeriod);
+                throw e;
+            }
+        });
     }).timeout(100000);
 
 });
