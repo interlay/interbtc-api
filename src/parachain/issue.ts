@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Bytes } from "@polkadot/types";
-import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
+import { AccountId, H256, Hash, EventRecord, Header } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { Bitcoin, BTCAmount, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
@@ -21,7 +21,8 @@ import {
 import { DefaultFeeAPI, FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { CollateralUnit, Issue } from "../types";
+import { CollateralUnit, Issue, IssueStatus } from "../types";
+import BN from "bn.js";
 
 export type IssueLimits = { singleVaultMaxIssuable: BTCAmount; totalMaxIssuable: BTCAmount };
 
@@ -135,6 +136,14 @@ export interface IssueAPI extends TransactionAPI {
         amount: BTCAmount,
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
+    /**
+     * Whenever an issue request associated with `account` expires, call the callback function with the
+     * ID of the expired request. Already expired requests are stored in memory, so as not to call back
+     * twice for the same request.
+     * @param account The ID of the account whose issue requests are to be checked for expiry
+     * @param callback Function to be called whenever an issue request expires
+     */
+    subscribeToIssueExpiry(account: AccountId, callback: (requestIssueId: H256) => void): Promise<() => void>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
@@ -311,5 +320,41 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
                 )
             )
         );
+    }
+
+    async subscribeToIssueExpiry(account: AccountId, callback: (requestIssueId: H256) => void): Promise<() => void> {
+        const issuePeriod = await this.getIssuePeriod();
+        const unsubscribe = this.onIssue(
+            account,
+            (seen: Set<H256>, request: Issue, id: H256, currentBlockNumber: BN) => {
+                if (
+                    currentBlockNumber.gtn(request.creationBlock + issuePeriod) &&
+                    !seen.has(id) &&
+                    request.status === IssueStatus.PendingWithBtcTxNotFound
+                ) {
+                    seen.add(id);
+                    callback(id);
+                }
+            }
+        );
+        return unsubscribe;
+    }
+
+    async onIssue(
+        account: AccountId,
+        fn: (set: Set<H256>, request: Issue, id: H256, blockNumber: BN) => void
+    ): Promise<() => void> {
+        const seen = new Set<H256>();
+        try {
+            const unsubscribe = await this.api.rpc.chain.subscribeFinalizedHeads(async (header: Header) => {
+                const issueRequests = await this.mapForUser(account);
+                issueRequests.forEach((request, id) => {
+                    fn(seen, request, id, header.number.toBn());
+                });
+            });
+            return unsubscribe;
+        } catch (error) {
+            return Promise.reject(new Error(`Error onIssue: ${error}`));
+        }
     }
 }

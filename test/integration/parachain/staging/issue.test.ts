@@ -9,7 +9,7 @@ import { assert } from "../../../chai";
 import { ALICE_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { IssueStatus } from "../../../../src";
+import { IssueStatus, stripHexPrefix } from "../../../../src";
 import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
 
@@ -213,6 +213,15 @@ describe("issue", () => {
                 const requestResults = await issueAPI.request(amount, newAccountId(api, dave_stash.address));
                 assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                 const requestResult = requestResults[0];
+
+                // Wait for issue expiry callback
+                await new Promise<void>((resolve, _) => {
+                    issueAPI.subscribeToIssueExpiry(newAccountId(api, alice.address), (requestId) => {
+                        if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
+                            resolve();
+                        }
+                    });
+                });
     
                 await issueAPI.cancel(requestResult.id);
     
