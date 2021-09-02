@@ -10,7 +10,7 @@ import { ALICE_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { IssueStatus, stripHexPrefix } from "../../../../src";
-import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
+import { BTCAmount, BTCUnit, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
 
 describe("issue", () => {
@@ -104,8 +104,8 @@ describe("issue", () => {
         const issuedAmount2 = issueRequests[1].amountInterBTC;
         const issueFee2 = issueRequests[1].bridgeFee;
         assert.equal(
-            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(Bitcoin.units.BTC).round(5).toString(),
-            amount.toBig(Bitcoin.units.BTC).round(5).toString(),
+            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BTCUnit.BTC).round(5).toString(),
+            amount.toBig(BTCUnit.BTC).round(5).toString(),
             "Issued amount is not equal to requested amount"
         );
     });
@@ -118,7 +118,7 @@ describe("issue", () => {
     it("should fail to request a value finer than 1 Satoshi", async () => {
         const amount = BTCAmount.from.BTC("0.00000121");
         await assert.isRejected(
-            issueSingle(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie_stash.address, true, false)
+            issueSingle(api, electrsAPI, bitcoinCoreClient, alice, amount, Polkadot, charlie_stash.address, true, false)
         );
     });
 
@@ -134,6 +134,7 @@ describe("issue", () => {
             bitcoinCoreClient,
             alice,
             amount,
+            Polkadot,
             charlie_stash.address,
             true,
             false
@@ -160,6 +161,7 @@ describe("issue", () => {
             bitcoinCoreClient,
             alice,
             amount,
+            Polkadot,
             dave_stash.address,
             false,
             false
@@ -206,7 +208,7 @@ describe("issue", () => {
     it("should cancel an issue request", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const initialIssuePeriod = await issueAPI.getIssuePeriod();
-            await issueAPI.setIssuePeriod(1);
+            await issueAPI.setIssuePeriod(0);
             try {
                 // request issue
                 const amount = BTCAmount.from.BTC(0.0000121);

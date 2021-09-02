@@ -26,7 +26,7 @@ import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RedeemRequest } from "../interfaces/default";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import { Redeem, RedeemStatus } from "../types";
+import { Redeem, RedeemStatus, tickerToCurrencyIdLiteral, WrappedCurrency } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -150,8 +150,9 @@ export interface RedeemAPI extends TransactionAPI {
     /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of InterBTC to burn
+     * @param wrappedCurrency Currency denoting the wrapped token (e.g. InterBTC or KBTC).
      */
-    burn(amount: BTCAmount): Promise<void>;
+    burn(amount: BTCAmount, wrappedCurrency: WrappedCurrency): Promise<void>;
     /**
      * @returns The maximum amount of tokens that can be burned through a liquidation redeem
      */
@@ -257,9 +258,10 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
-    async burn(amount: BTCAmount): Promise<void> {
+    async burn(amount: BTCAmount, wrappedCurrency: WrappedCurrency): Promise<void> {
         const amountSat = this.api.createType("Balance", amount.str.Satoshi());
-        const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat);
+        const currencyIdLiteral = tickerToCurrencyIdLiteral(wrappedCurrency.ticker);
+        const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat, currencyIdLiteral);
         await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
     }
 

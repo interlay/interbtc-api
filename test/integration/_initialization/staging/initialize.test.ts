@@ -20,6 +20,7 @@ import {
     DefaultVaultsAPI,
     newAccountId,
     REGTEST_ESPLORA_BASE_PATH,
+    CollateralUnit,
 } from "../../../../src";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI } from "../../../../src/parachain/issue";
@@ -48,7 +49,7 @@ import {
     FERDIE_URI,
 } from "../../../config";
 import { DefaultTokensAPI } from "../../../../src/parachain/tokens";
-import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, Currency, ExchangeRate, InterBTC, Kusama, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
 import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
 import { AccountId } from "@polkadot/types/interfaces";
 
@@ -155,10 +156,14 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the exchange rate", async () => {
+        async function setCollateralExchangeRate<C extends CollateralUnit>(value: Big, currency: Currency<C>) {
+            const exchangeRate = new ExchangeRate<Bitcoin, BTCUnit, typeof currency, typeof currency.units>(Bitcoin, currency, value);
+            // result will be medianized
+            await initializeExchangeRate(exchangeRate, oracleAPI);
+        }
         const exchangeRateValue = new Big("3855.23187");
-        const exchangeRate = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
-        // result will be medianized
-        await initializeExchangeRate(exchangeRate, oracleAPI);
+        await setCollateralExchangeRate(exchangeRateValue, Polkadot);
+        await setCollateralExchangeRate(exchangeRateValue, Kusama);
     });
 
     it("should enable vault nomination", async () => {
@@ -171,16 +176,16 @@ describe("Initialize parachain state", () => {
         const interBtcToIssue = BTCAmount.from.BTC(0.1);
         const feesToPay = await issueAPI.getFeesToPay(interBtcToIssue);
         const aliceAccountId = api.createType("AccountId", alice.address);
-        const aliceInterBTCBefore = await tokensAPI.balance(Bitcoin, aliceAccountId);
+        const aliceInterBTCBefore = await tokensAPI.balance(InterBTC, aliceAccountId);
 
         await initializeIssue(api, electrsAPI, bitcoinCoreClient, alice, interBtcToIssue, charlie_stash.address);
-        const aliceInterBTCAfter = await tokensAPI.balance(Bitcoin, aliceAccountId);
+        const aliceInterBTCAfter = await tokensAPI.balance(InterBTC, aliceAccountId);
         assert.equal(
             aliceInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
             aliceInterBTCAfter.toString(),
             "Issued amount is different from the requested amount"
         );
-        const totalIssuance = await tokensAPI.total(Bitcoin);
+        const totalIssuance = await tokensAPI.total(InterBTC);
         assert.equal(totalIssuance.toString(), interBtcToIssue.toString());
         const vaultIssuedAmount = await vaultsAPI.getIssuedAmount(newAccountId(api, charlie_stash.address));
         assert.equal(vaultIssuedAmount.toString(), interBtcToIssue.toString());

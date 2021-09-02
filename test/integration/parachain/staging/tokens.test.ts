@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, Currency, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+import { Currency, InterBTC, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
@@ -31,7 +31,7 @@ describe("TokensAPI", () => {
     });
 
     it("should subscribe to INTERBTC balance updates", async () => {
-        testBalanceSubscription(Bitcoin);
+        testBalanceSubscription(InterBTC);
     });
 
     async function testBalanceSubscription<C extends CurrencyUnit>(currency: Currency<C>): Promise<void> {

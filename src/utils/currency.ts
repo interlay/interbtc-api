@@ -1,7 +1,7 @@
 import Big, { BigSource } from "big.js";
 import BN from "bn.js";
 import { Bitcoin, BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
-import { currencyToCurrencyId, CurrencyUnit } from "../types/currency";
+import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types/currency";
 import { OracleKey } from "../interfaces";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
@@ -117,6 +117,6 @@ export function createExchangeRateOracleKey<C extends CurrencyUnit>(
     api: ApiPromise,
     collateralCurrency: Currency<C>
 ): OracleKey {
-    const currencyId = api.createType("CurrencyId", currencyToCurrencyId(collateralCurrency));
+    const currencyId = api.createType("CurrencyId", tickerToCurrencyIdLiteral(collateralCurrency.ticker));
     return api.createType("OracleKey", { ExchangeRate: currencyId });
 }

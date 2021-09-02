@@ -12,7 +12,7 @@ import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle, stripHexPrefix } from "../../../../src/utils";
 import { DefaultBTCRelayAPI, DefaultIssueAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, sleep, TokensAPI, waitForBlockFinalization } from "../../../../src";
 import { assert, expect } from "../../../chai";
-import { BTCAmount } from "@interlay/monetary-js";
+import { BTCAmount, Polkadot, InterBTC } from "@interlay/monetary-js";
 import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
 import Big from "big.js";
 
@@ -67,7 +67,7 @@ describe("redeem", () => {
             // There should be no burnable tokens
             await expect(redeemAPI.getBurnExchangeRate()).to.be.rejected;
             const vaultToLiquidate = keyring.addFromUri(FERDIE_STASH_URI);
-            await issueSingle(api, electrsAPI, aliceBitcoinCoreClient, alice, BTCAmount.from.BTC(0.0001), vaultToLiquidate.address, true, false);
+            await issueSingle(api, electrsAPI, aliceBitcoinCoreClient, alice, BTCAmount.from.BTC(0.0001), Polkadot, vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
                 DEFAULT_BITCOIN_CORE_NETWORK,
                 DEFAULT_BITCOIN_CORE_HOST,
@@ -89,7 +89,7 @@ describe("redeem", () => {
             const burnExchangeRate = await redeemAPI.getBurnExchangeRate();
             assert.isTrue(burnExchangeRate.toBig().gt(new Big(1)), "Burn exchange rate should be above one");
             // Burn InterBTC for a premium, to restore peg
-            await redeemAPI.burn(amount);
+            await redeemAPI.burn(amount, InterBTC);
         });
     }).timeout(18 * 60000);
 
@@ -99,7 +99,7 @@ describe("redeem", () => {
             const redeemAmount = BTCAmount.from.BTC(0.0009);
             const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
             await redeemAPI.setRedeemPeriod(1);
-            const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, btcRelayAPI, aliceBitcoinCoreClient, alice, ferdie.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
+            const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, btcRelayAPI, aliceBitcoinCoreClient, alice, Polkadot, ferdie.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
     
             // Wait for redeem expiry callback
             await new Promise<void>((resolve, _) => {
@@ -121,7 +121,7 @@ describe("redeem", () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const issueAmount = BTCAmount.from.BTC(0.001);
             const redeemAmount = BTCAmount.from.BTC(0.0009);
-            await issueAndRedeem(api, electrsAPI, btcRelayAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false);
+            await issueAndRedeem(api, electrsAPI, btcRelayAPI, bitcoinCoreClient, alice, Polkadot, undefined, issueAmount, redeemAmount, false);
         });
         // The `ExecuteRedeem` event has been emitted at this point.
         // Do not check balances as this is already checked in the parachain integration tests.
@@ -131,7 +131,7 @@ describe("redeem", () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const issueAmount = BTCAmount.from.BTC(0.001);
             const redeemAmount = BTCAmount.from.BTC(0.0009);
-            await issueAndRedeem(api, electrsAPI, btcRelayAPI, bitcoinCoreClient, alice, undefined, issueAmount, redeemAmount, false, ExecuteRedeem.Manually);
+            await issueAndRedeem(api, electrsAPI, btcRelayAPI, bitcoinCoreClient, alice, Polkadot, undefined, issueAmount, redeemAmount, false, ExecuteRedeem.Manually);
         });
         // The `ExecuteRedeem` event has been emitted at this point.
         // Do not check balances as this is already checked in the parachain integration tests.

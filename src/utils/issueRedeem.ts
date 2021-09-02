@@ -3,7 +3,7 @@ import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, BTCAmount, BTCUnit, MonetaryAmount, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { Bitcoin, BTCAmount, BTCUnit, Currency, InterBTC, MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId } from "../utils";
 import { getBitcoinNetwork } from "../interbtc-api";
@@ -13,16 +13,16 @@ import { DefaultTokensAPI } from "../parachain/tokens";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
 import { BTCRelayAPI, DefaultBTCRelayAPI, DefaultRedeemAPI } from "../parachain";
-import { Issue, IssueStatus, Redeem, RedeemStatus } from "../types";
+import { CollateralUnit, Issue, IssueStatus, Redeem, RedeemStatus } from "../types";
 import { BitcoinNetwork } from "../types/bitcoinTypes";
 import { REGTEST_ESPLORA_BASE_PATH, waitForBlockFinalization } from "..";
 
 export const SLEEP_TIME_MS = 1000;
 
-export interface IssueResult {
+export interface IssueResult<C extends CollateralUnit> {
     request: Issue;
-    initialDotBalance: MonetaryAmount<Polkadot, PolkadotUnit>;
-    finalDotBalance: MonetaryAmount<Polkadot, PolkadotUnit>;
+    initialDotBalance: MonetaryAmount<Currency<C>, C>;
+    finalDotBalance: MonetaryAmount<Currency<C>, C>;
     initialInterBtcBalance: MonetaryAmount<Bitcoin, BTCUnit>;
     finalInterBtcBalance: MonetaryAmount<Bitcoin, BTCUnit>;
 }
@@ -96,22 +96,22 @@ export function allocateAmountsToVaults(
         allocations.set(vault, amount);
         amountToAllocate = amountToAllocate.sub(amount);
     }
-
     return allocations;
 }
 
-export async function issueSingle(
+export async function issueSingle<C extends CollateralUnit>(
     api: ApiPromise,
     electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amount: BTCAmount,
+    collateralCurrency: Currency<C>,
     vaultAddress?: string,
     autoExecute = true,
     triggerRefund = false,
     network: BitcoinNetwork = "regtest",
     atomic = true
-): Promise<IssueResult> {
+): Promise<IssueResult<C>> {
     try {
         const bitcoinjsNetwork = getBitcoinNetwork(network);
         const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH));
@@ -121,8 +121,8 @@ export async function issueSingle(
         const vaultId = vaultAddress !== undefined ? newAccountId(api, vaultAddress) : vaultAddress;
         issueAPI.setAccount(issuingAccount);
         const requesterAccountId = api.createType("AccountId", issuingAccount.address);
-        const initialBalanceDOT = await tokensAPI.balance(Polkadot, requesterAccountId);
-        const initialBalanceInterBTC = await tokensAPI.balance(Bitcoin, requesterAccountId);
+        const initialBalanceDOT = await tokensAPI.balance(collateralCurrency, requesterAccountId);
+        const initialBalanceInterBTC = await tokensAPI.balance(InterBTC, requesterAccountId);
         const blocksToMine = 3;
 
         const rawRequestResult = await issueAPI.request(amount, vaultId, atomic);
@@ -164,8 +164,8 @@ export async function issueSingle(
         }
 
         const [finalBalanceInterBTC, finalBalanceDOT] = await Promise.all([
-            tokensAPI.balance(Bitcoin, requesterAccountId),
-            tokensAPI.balance(Polkadot, requesterAccountId),
+            tokensAPI.balance(InterBTC, requesterAccountId),
+            tokensAPI.balance(collateralCurrency, requesterAccountId),
         ]);
         return {
             request: issueRequest,
@@ -234,12 +234,13 @@ export async function redeem(
     return redeemRequest;
 }
 
-export async function issueAndRedeem(
+export async function issueAndRedeem<C extends CollateralUnit>(
     api: ApiPromise,
     electrsAPI: ElectrsAPI,
     btcRelayAPI: BTCRelayAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     account: KeyringPair,
+    collateralCurrency: Currency<C>,
     vaultAddress?: string,
     issueAmount = BTCAmount.from.BTC(0.1),
     redeemAmount = BTCAmount.from.BTC(0.009),
@@ -255,6 +256,7 @@ export async function issueAndRedeem(
         bitcoinCoreClient,
         account,
         issueAmount,
+        collateralCurrency,
         vaultAddress,
         autoExecuteIssue,
         triggerRefund,

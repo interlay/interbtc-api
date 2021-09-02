@@ -1,5 +1,6 @@
-import { PolkadotAmount, BTCAmount } from "@interlay/monetary-js";
+import { BTCAmount, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
+import { CollateralUnit, WrappedCurrency } from "./currency";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -16,7 +17,7 @@ export enum VaultStatusExt {
 
 export interface VaultExt {
     wallet: WalletExt;
-    backingCollateral: PolkadotAmount;
+    backingCollateral: Map<WrappedCurrency, MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>;
     id: AccountId;
     status: VaultStatusExt;
     bannedUntil: number | undefined;
@@ -24,8 +25,9 @@ export interface VaultExt {
     issuedTokens: BTCAmount;
     toBeRedeemedTokens: BTCAmount;
     toBeReplacedTokens: BTCAmount;
-    replaceCollateral: PolkadotAmount;
-    liquidatedCollateral: PolkadotAmount;
+    replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    collateralCurrency: Currency<CollateralUnit>;
 }
 
 export interface SystemVaultExt {

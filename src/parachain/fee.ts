@@ -8,9 +8,6 @@ import {
     Currency,
     ExchangeRate,
     MonetaryAmount,
-    Polkadot,
-    PolkadotAmount,
-    PolkadotUnit,
 } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "..";
@@ -33,15 +30,14 @@ export interface FeeAPI {
     ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
-     * @param feesCollateral Collateral fees accrued, in collateral token (e.g. DOT)
      * @param lockedCollateral Collateral value representing the value locked to gain yield.
      * @param exchangeRate (Optional) Conversion rate, as a `Monetary.js` object
      * @returns The APY, given the parameters
      */
-    calculateAPY(
+    calculateAPY<C extends CollateralUnit>(
         feesWrapped: BTCAmount,
-        lockedCollateral: PolkadotAmount,
-        exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>
+        lockedCollateral: MonetaryAmount<Currency<C>, C>,
+        exchangeRate?: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>
     ): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC

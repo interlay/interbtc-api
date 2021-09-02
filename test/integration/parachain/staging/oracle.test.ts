@@ -37,7 +37,7 @@ describe("OracleAPI", () => {
 
     async function getRawValuesUpdated(key: OracleKey): Promise<boolean> {
         const head = await api.rpc.chain.getFinalizedHead();
-        const isSet = await api.query.exchangeRateOracle.rawValuesUpdated.at<Option<Bool>>(head, key);
+        const isSet = await api.query.oracle.rawValuesUpdated.at<Option<Bool>>(head, key);
         return isSet.unwrap().isTrue;
     }
 
@@ -58,7 +58,7 @@ describe("OracleAPI", () => {
     it("should convert satoshi to planck", async () => {
         const bitcoinAmount = BTCAmount.from.BTC(100);
         const exchangeRate = await oracle.getExchangeRate(Polkadot);
-        const expectedCollateral = exchangeRate.toBig(undefined).mul(bitcoinAmount.toBig(Bitcoin.units.BTC)).round(0, 0);
+        const expectedCollateral = exchangeRate.toBig(undefined).mul(bitcoinAmount.toBig(BTCUnit.BTC)).round(0, 0);
 
         const collateralAmount = await oracle.convertWrappedToCollateral(bitcoinAmount, Polkadot);
         assert.equal(collateralAmount.toBig(Polkadot.units.DOT).round(0, 0).toString(), expectedCollateral.toString());

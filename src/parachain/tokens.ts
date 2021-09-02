@@ -5,7 +5,7 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId, newMonetaryAmount } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { monetaryToCurrencyId, CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
+import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -103,7 +103,7 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
 
     async transfer<C extends CurrencyUnit>(destination: string, amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
         const amountSmallDenomination = this.api.createType("Balance", amount.toString());
-        const currencyId = monetaryToCurrencyId(amount);
+        const currencyId = tickerToCurrencyIdLiteral(amount.currency.ticker);
         const transferTransaction = this.api.tx.tokens.transfer(destination, currencyId, amountSmallDenomination);
         await this.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
     }

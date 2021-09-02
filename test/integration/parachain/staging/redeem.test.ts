@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import { BTCAmount } from "@interlay/monetary-js";
+import { BTCAmount, Polkadot } from "@interlay/monetary-js";
 
 import { DefaultRedeemAPI, RedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
@@ -73,6 +73,7 @@ describe("redeem", () => {
                 btcRelayAPI,
                 bitcoinCoreClient,
                 alice,
+                Polkadot,
                 undefined,
                 issueAmount,
                 redeemAmount,

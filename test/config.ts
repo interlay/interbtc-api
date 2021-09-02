@@ -1,4 +1,5 @@
 export const DEFAULT_PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
+export const ROCOCO_LOCAL_PARACHAIN_ENDPOINT = "ws://127.0.0.1:9999";
 export const DEFAULT_FAUCET_ENDPOINT = "http://0.0.0.0:3036";
 export const DEFAULT_BITCOIN_CORE_NETWORK = "regtest";
 export const DEFAULT_BITCOIN_CORE_HOST = "0.0.0.0";

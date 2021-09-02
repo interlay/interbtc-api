@@ -63,6 +63,7 @@ describe("replace", () => {
                 bitcoinCoreClient,
                 alice,
                 issueAmount,
+                Polkadot,
                 eve_stash.address
             );
             // Eve//stash is the vault that requests replacement

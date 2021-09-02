@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { ExchangeRate, Bitcoin, BTCUnit, Polkadot, PolkadotUnit, BTCAmount } from "@interlay/monetary-js";
+import { ExchangeRate, Bitcoin, BTCUnit, Polkadot, PolkadotUnit, BTCAmount, Currency } from "@interlay/monetary-js";
 import { Big } from "big.js";
 import BN from "bn.js";
 import { createPolkadotAPI } from "../factory";
@@ -30,6 +30,7 @@ import {
     DEFAULT_PARACHAIN_ENDPOINT,
     DEFAULT_REDEEM_ADDRESS,
 } from "../../test/config";
+import { CollateralUnit } from "../types";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -148,8 +149,8 @@ export async function initializeStableConfirmations(
     await bitcoinCoreClient.mineBlocks(3);
 }
 
-export async function initializeExchangeRate(
-    exchangeRateToSet: ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>,
+export async function initializeExchangeRate<C extends CollateralUnit>(
+    exchangeRateToSet: ExchangeRate<Bitcoin, BTCUnit, Currency<C>, C>,
     oracleAPI: OracleAPI
 ): Promise<void> {
     console.log("Initializing the exchange rate...");
@@ -170,7 +171,7 @@ export async function initializeIssue(
     vaultAddress: string
 ): Promise<void> {
     console.log("Initializing an interBTC issue...");
-    await issueSingle(api, electrsAPI, bitcoinCoreClient, issuingAccount, amountToIssue, vaultAddress);
+    await issueSingle(api, electrsAPI, bitcoinCoreClient, issuingAccount, amountToIssue, Polkadot, vaultAddress);
 }
 
 export async function initializeRedeem(
