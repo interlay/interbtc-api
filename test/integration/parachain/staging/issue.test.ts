@@ -6,11 +6,11 @@ import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src/utils";
 import { assert } from "../../../chai";
-import { ALICE_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { ALICE_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT, FERDIE_STASH_URI } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { IssueStatus, stripHexPrefix } from "../../../../src";
-import { BTCAmount, BTCUnit, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
+import { interBTCAmount, BTCUnit, Polkadot, interBTC } from "@interlay/monetary-js";
 import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
 
 describe("issue", () => {
@@ -24,6 +24,7 @@ describe("issue", () => {
     let alice: KeyringPair;
     let charlie_stash: KeyringPair;
     let dave_stash: KeyringPair;
+    let ferdie_stash: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
@@ -32,6 +33,7 @@ describe("issue", () => {
         alice = keyring.addFromUri(ALICE_URI);
         charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
         dave_stash = keyring.addFromUri(DAVE_STASH_URI);
+        ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
 
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
@@ -42,7 +44,7 @@ describe("issue", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC, alice);
     });
 
     after(async () => {
@@ -51,7 +53,7 @@ describe("issue", () => {
 
     it("should request one issue", async () => {
         // may fail if the relay isn't fully initialized
-        const amount = BTCAmount.from.BTC(0.0001);
+        const amount = interBTCAmount.from.BTC(0.0001);
         const feesToPay = await issueAPI.getFeesToPay(amount);
         const requestResults = await issueAPI.request(amount);
         assert.equal(
@@ -61,7 +63,7 @@ describe("issue", () => {
         );
         const requestResult = requestResults[0];
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
-        assert.equal(issueRequest.amountInterBTC.str.BTC(), amount.sub(feesToPay).str.BTC(), "Amount different than expected");
+        assert.equal(issueRequest.wrappedAmont.str.BTC(), amount.sub(feesToPay).str.BTC(), "Amount different than expected");
     });
 
     it("should list existing requests", async () => {
@@ -84,8 +86,8 @@ describe("issue", () => {
     });
 
     it("request should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
-        const amount = BTCAmount.from.BTC(0.0000001);
+        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
+        const amount = interBTCAmount.from.BTC(0.0000001);
         await assert.isRejected(tmpIssueAPI.request(amount));
     });
 
@@ -99,9 +101,9 @@ describe("issue", () => {
             2,
             "Created wrong amount of requests, vaults have insufficient collateral"
         );
-        const issuedAmount1 = issueRequests[0].amountInterBTC;
+        const issuedAmount1 = issueRequests[0].wrappedAmont;
         const issueFee1 = issueRequests[0].bridgeFee;
-        const issuedAmount2 = issueRequests[1].amountInterBTC;
+        const issuedAmount2 = issueRequests[1].wrappedAmont;
         const issueFee2 = issueRequests[1].bridgeFee;
         assert.equal(
             issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BTCUnit.BTC).round(5).toString(),
@@ -111,21 +113,21 @@ describe("issue", () => {
     });
 
     it("execute should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
         await assert.isRejected(tmpIssueAPI.execute("", ""));
     });
 
     it("should fail to request a value finer than 1 Satoshi", async () => {
-        const amount = BTCAmount.from.BTC("0.00000121");
+        const amount = interBTCAmount.from.BTC("0.00000121");
         await assert.isRejected(
-            issueSingle(api, electrsAPI, bitcoinCoreClient, alice, amount, Polkadot, charlie_stash.address, true, false)
+            issueSingle(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie_stash.address, true, false)
         );
     });
 
     // auto-execution tests may stall indefinitely, due to vault client inaction.
     // This will cause the testing pipeline to time out.
     it("should request and auto-execute issue", async () => {
-        const amount = BTCAmount.from.BTC(0.00121);
+        const amount = interBTCAmount.from.BTC(0.00121);
 
         const feesToPay = await issueAPI.getFeesToPay(amount);
         const issueResult = await issueSingle(
@@ -134,52 +136,42 @@ describe("issue", () => {
             bitcoinCoreClient,
             alice,
             amount,
-            Polkadot,
             charlie_stash.address,
             true,
             false
         );
         assert.equal(
-            issueResult.finalInterBtcBalance.sub(issueResult.initialInterBtcBalance).toString(),
+            issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).toString(),
             amount.sub(feesToPay).toString(),
             "Final balance was not increased by the exact amount specified"
-        );
-
-        assert.isTrue(
-            issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(PolkadotAmount.from.DOT(1)),
-            "Issue-Redeem were more expensive than 1 DOT"
         );
     }).timeout(500000);
 
     it("should request and manually execute issue", async () => {
-        const amount = BTCAmount.from.BTC(0.001);
+        // Unlike the other `issue` tests that involve DOT, this one locks KSM
+        // covering the multi-collateral feature
+        const amount = interBTCAmount.from.BTC(0.001);
         const feesToPay = await issueAPI.getFeesToPay(amount);
-        const oneSatoshi = BTCAmount.from.Satoshi(1);
+        const oneSatoshi = interBTCAmount.from.Satoshi(1);
         const issueResult = await issueSingle(
             api,
             electrsAPI,
             bitcoinCoreClient,
             alice,
             amount,
-            Polkadot,
             dave_stash.address,
             false,
             false
         );
         assert.equal(
-            issueResult.finalInterBtcBalance.sub(issueResult.initialInterBtcBalance).toString(),
+            issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).toString(),
             amount.sub(feesToPay).sub(oneSatoshi).toString(),
             "Final balance was not increased by the exact amount specified"
-        );
-
-        assert.isTrue(
-            issueResult.finalDotBalance.sub(issueResult.initialDotBalance).lt(PolkadotAmount.from.DOT(1)),
-            "Issue-Redeem were more expensive than 1 DOT"
         );
     }).timeout(500000);
 
     it("should getFeesToPay", async () => {
-        const amount = BTCAmount.from.BTC(2);
+        const amount = interBTCAmount.from.BTC(2);
         const feesToPay = await issueAPI.getFeesToPay(amount);
         assert.equal(feesToPay.str.BTC(), "0.01");
     });
@@ -190,14 +182,14 @@ describe("issue", () => {
     });
 
     it("should getGriefingCollateral", async () => {
-        const amountBtc = BTCAmount.from.BTC(0.001);
+        const amountBtc = interBTCAmount.from.BTC(0.001);
         const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc, Polkadot);
         assert.equal(griefingCollateral.toBig(Polkadot.units.DOT).round(5, 0).toString(), "0.00019");
     });
 
     it("should getRequestLimits", async () => {
         const requestLimits = await issueAPI.getRequestLimits();
-        assert.isTrue(requestLimits.singleVaultMaxIssuable.gt(BTCAmount.from.BTC(10000)), "singleVaultMaxIssuable is not greater than 10000");
+        assert.isTrue(requestLimits.singleVaultMaxIssuable.gt(interBTCAmount.from.BTC(100)), "singleVaultMaxIssuable is not greater than 100");
         assert.isTrue(
             requestLimits.totalMaxIssuable.gt(requestLimits.singleVaultMaxIssuable),
             "totalMaxIssuable is not greater than singleVaultMaxIssuable"
@@ -211,7 +203,7 @@ describe("issue", () => {
             await issueAPI.setIssuePeriod(0);
             try {
                 // request issue
-                const amount = BTCAmount.from.BTC(0.0000121);
+                const amount = interBTCAmount.from.BTC(0.0000121);
                 const requestResults = await issueAPI.request(amount, newAccountId(api, dave_stash.address));
                 assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                 const requestResult = requestResults[0];
@@ -239,5 +231,14 @@ describe("issue", () => {
             }
         });
     }).timeout(100000);
+
+    it("should list issue request by a vault", async () => {
+        const bobAddress = ferdie_stash.address;
+        const bobId = api.createType("AccountId", bobAddress);
+        const issueRequests = await issueAPI.mapIssueRequests(bobId);
+        issueRequests.forEach((request) => {
+            assert.deepEqual(request.vaultParachainAddress, bobAddress);
+        });
+    });
 
 });

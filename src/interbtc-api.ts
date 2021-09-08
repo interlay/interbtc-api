@@ -2,6 +2,8 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { interBTC } from "@interlay/monetary-js";
+
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
 import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
@@ -17,7 +19,8 @@ import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
-import { DefaultPoolsAPI, PoolsAPI } from "./parachain/pools";
+import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
+import { WrappedCurrency } from ".";
 
 export * from "./factory";
 export * from "./parachain/transaction";
@@ -48,7 +51,7 @@ export interface InterBTCAPI {
     readonly replace: ReplaceAPI;
     readonly fee: FeeAPI;
     readonly nomination: NominationAPI;
-    readonly pools: PoolsAPI;
+    readonly pools: RewardsAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
@@ -70,24 +73,29 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly replace: ReplaceAPI;
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
-    public readonly pools: PoolsAPI;
+    public readonly pools: RewardsAPI;
 
-    constructor(readonly api: ApiPromise, network: BitcoinNetwork = "mainnet", private _account?: AddressOrPair) {
+    constructor(
+        readonly api: ApiPromise,
+        network: BitcoinNetwork = "mainnet",
+        wrappedCurrency: WrappedCurrency = interBTC,
+        private _account?: AddressOrPair
+    ) {
         const btcNetwork = getBitcoinNetwork(network);
         this.electrsAPI = new DefaultElectrsAPI(network);
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, _account);
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
         this.faucet = new FaucetClient("");
-        this.oracle = new DefaultOracleAPI(api);
-        this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, _account);
+        this.oracle = new DefaultOracleAPI(api, wrappedCurrency);
+        this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
         this.tokens = new DefaultTokensAPI(api, _account);
         this.system = new DefaultSystemAPI(api);
-        this.replace = new DefaultReplaceAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.fee = new DefaultFeeAPI(api);
-        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.nomination = new DefaultNominationAPI(api, btcNetwork, this.electrsAPI, _account);
-        this.pools = new DefaultPoolsAPI(api, btcNetwork, this.electrsAPI);
+        this.replace = new DefaultReplaceAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
+        this.fee = new DefaultFeeAPI(api, wrappedCurrency);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
+        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
+        this.nomination = new DefaultNominationAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
+        this.pools = new DefaultRewardsAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

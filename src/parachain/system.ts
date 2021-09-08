@@ -29,6 +29,7 @@ export interface SystemAPI extends TransactionAPI {
      */
     getStatusCode(): Promise<StatusCode>;
     /**
+     * @remarks Upgrades runtime using `sudoUncheckedWeight`
      * @param code Hex-encoded wasm bob
      */
     setCode(code: string): Promise<void>;

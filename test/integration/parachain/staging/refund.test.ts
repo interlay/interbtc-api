@@ -10,7 +10,7 @@ import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
-import { BTCAmount, Polkadot } from "@interlay/monetary-js";
+import { interBTC, interBTCAmount } from "@interlay/monetary-js";
 
 describe("refund", () => {
     let api: ApiPromise;
@@ -33,7 +33,7 @@ describe("refund", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
         alice = keyring.addFromUri(ALICE_URI);
         eve_stash = keyring.addFromUri(EVE_STASH_URI);
     });
@@ -48,8 +48,7 @@ describe("refund", () => {
             electrsAPI,
             bitcoinCoreClient,
             alice,
-            BTCAmount.from.BTC(0.001),
-            Polkadot,
+            interBTCAmount.from.BTC(0.001),
             eve_stash.address,
             false,
             false
@@ -66,8 +65,7 @@ describe("refund", () => {
             electrsAPI,
             bitcoinCoreClient,
             alice,
-            BTCAmount.from.BTC(0.001),
-            Polkadot,
+            interBTCAmount.from.BTC(0.001),
             eve_stash.address,
             true,
             true

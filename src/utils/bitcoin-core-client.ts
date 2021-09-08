@@ -1,7 +1,8 @@
 // disabling linting as `bitcoin-core` has no types, causing the import to fail
 
+import { BTCUnit, Bitcoin, MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { Bitcoin, BTCAmount } from "@interlay/monetary-js";
+import { WrappedCurrency } from "..";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
@@ -33,7 +34,7 @@ export class BitcoinCoreClient {
 
     async sendBtcTxAndMine(
         recipient: string,
-        amount: BTCAmount,
+        amount: MonetaryAmount<WrappedCurrency, BTCUnit>,
         blocksToMine: number,
         data?: string
     ): Promise<{
@@ -57,7 +58,7 @@ export class BitcoinCoreClient {
 
     async broadcastTx(
         recipient: string,
-        amount: BTCAmount,
+        amount: MonetaryAmount<WrappedCurrency, BTCUnit>,
         data?: string
     ): Promise<{
         txid: string;
@@ -92,7 +93,7 @@ export class BitcoinCoreClient {
         return await this.client.command("getbalance");
     }
 
-    async sendToAddress(address: string, amount: BTCAmount): Promise<void> {
+    async sendToAddress(address: string, amount: MonetaryAmount<WrappedCurrency, BTCUnit>): Promise<void> {
         return await this.client.command("sendtoaddress", address, amount.toString(Bitcoin.units.BTC));
     }
 

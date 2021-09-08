@@ -1,8 +1,8 @@
-# interbtc-js
+# interbtc-api
 
 ## About
 
-The interbtc TypeScript library connects the Polkadot ecosystem with Bitcoin. It allows the creation of interBTC, a fungible token that represents Bitcoin in the Polkadot ecosystem. InterBTC is backed by Bitcoin 1:1 and allows redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
+The interbtc TypeScript library connects the Polkadot and Kusama ecosystems with Bitcoin. It allows the creation of interBTC on Polkadot and kBTC on Kusama, fungible "wrapped" tokens that represent Bitcoin. Wrapped tokens are backed by Bitcoin 1:1 and allow redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
 In comparison to other bridge constructions (like tBTC, wBTC, or RenVM) _anyone_ can become an intermediary by depositing collateral making interBTC the only truly open system.
 
 The bridge itself follows the detailed specification: <a href="https://interlay.gitlab.io/interbtc-spec/" target="_blank"><strong>Explore the specification »</strong></a>
@@ -77,7 +77,7 @@ At this point, you will need to send BTC using your favorite BTC wallet.
 
 ```ts
 import { BTCAmount } from "@interlay/monetary-js";
-// the amount interBTC to burn
+// the amount wrapped tokens to redeem
 // NOTE: the bridge fees will be deducted from this 
 const amount = BTCAmount.from.BTC(0.001);
 // your BTC address

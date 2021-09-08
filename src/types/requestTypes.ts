@@ -1,26 +1,28 @@
-import { BTCAmount, PolkadotAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
+import { CollateralUnit, WrappedCurrency } from ".";
 import { ReplaceRequestStatus } from "../interfaces";
+import { BTCUnit, Currency } from "@interlay/monetary-js";
 
 export interface Issue {
     id: string;
-    amountInterBTC: BTCAmount;
-    userDOTAddress: string;
-    bridgeFee: BTCAmount;
-    griefingCollateral: PolkadotAmount;
+    wrappedAmont: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    userParachainAddress: string;
+    bridgeFee: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    griefingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     vaultWalletPubkey: string;
     creationBlock: number;
     creationTimestamp?: number;
     vaultBTCAddress: string;
-    vaultDOTAddress: string;
+    vaultParachainAddress: string;
     btcTxId?: string;
     confirmations?: number;
     btcBlockHeight?: number;
-    btcAmountSubmittedByUser?: BTCAmount;
+    btcAmountSubmittedByUser?: MonetaryAmount<WrappedCurrency, BTCUnit>;
     status: IssueStatus;
     refundBtcAddress?: string;
-    refundAmountBTC?: BTCAmount;
-    executedAmountBTC?: BTCAmount;
+    refundAmountBTC?: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    executedAmountBTC?: MonetaryAmount<WrappedCurrency, BTCUnit>;
 }
 
 export enum IssueStatus {
@@ -42,14 +44,14 @@ export enum NominationStatus {
 
 export interface Redeem {
     id: string;
-    userDOTAddress: string;
-    amountBTC: BTCAmount;
-    dotPremium: PolkadotAmount;
-    bridgeFee: BTCAmount;
-    btcTransferFee: BTCAmount;
+    userParachainAddress: string;
+    amountBTC: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    collateralPremium: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    bridgeFee: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    btcTransferFee: MonetaryAmount<WrappedCurrency, BTCUnit>;
     creationTimestamp?: number;
     creationBlock: number;
-    vaultDOTAddress: string;
+    vaultParachainAddress: string;
     userBTCAddress: string;
     btcTxId?: string;
     confirmations?: number;
@@ -70,9 +72,9 @@ export enum RedeemStatus {
 
 export interface RefundRequestExt {
     vaultId: AccountId;
-    amountIssuing: BTCAmount;
-    fee: BTCAmount;
-    amountBtc: BTCAmount;
+    amountIssuing: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    fee: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    amountBtc: MonetaryAmount<WrappedCurrency, BTCUnit>;
     issuer: AccountId;
     btcAddress: string;
     issueId: string;
@@ -83,9 +85,9 @@ export interface ReplaceRequestExt {
     btcAddress: string;
     newVault: AccountId;
     oldVault: AccountId;
-    amount: BTCAmount;
-    griefingCollateral: PolkadotAmount;
-    collateral: PolkadotAmount;
+    amount: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    griefingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    collateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     acceptTime: number;
     period: number;
     btcHeight: number;

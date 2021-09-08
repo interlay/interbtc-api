@@ -1,20 +1,20 @@
 import {
-    PolkadotAmount,
-    KusamaAmount,
+    DOTAmount,
+    KSMAmount,
     Polkadot,
     Kusama,
     BTCUnit,
-    KusamaUnit,
-    PolkadotUnit,
+    KSMUnit,
+    DOTUnit,
     Currency,
-    InterBTC,
-    KBTC,
-    Kintsugi,
-    Interlay,
-    KintsugiUnit,
-    InterlayUnit,
-    InterBTCAmount,
-    KBTCAmount,
+    KINTUnit,
+    INTRUnit,
+    interBTC,
+    kBTC,
+    interBTCAmount,
+    kBTCAmount,
+    KINT,
+    INTR,
 } from "@interlay/monetary-js";
 import { CurrencyId } from "../interfaces";
 
@@ -27,23 +27,23 @@ export enum CurrencyIdLiteral {
     INTR = "INTR",
 }
 
-export const COLLTERAL_AMOUNT_VALUES = [PolkadotAmount, KusamaAmount];
-export type CollateralAmount = typeof COLLTERAL_AMOUNT_VALUES[number];
+export const CollateralAmount = [DOTAmount, KSMAmount];
+export type CollateralAmount = typeof CollateralAmount[number];
 
-export const COLLATERAL_CURRENCIES = [Polkadot, Kusama] as const;
-export type CollateralCurrency = typeof COLLATERAL_CURRENCIES[number];
+export const CollateralCurrency = [Polkadot, Kusama] as const;
+export type CollateralCurrency = typeof CollateralCurrency[number];
 
-export const COLLATERAL_UNITS = [PolkadotUnit, KusamaUnit];
-export type CollateralUnit = typeof COLLATERAL_UNITS[number];
+export const CollateralUnit = [DOTUnit, KSMUnit];
+export type CollateralUnit = typeof CollateralUnit[number];
 
-export const CURRENCY_UNITS = [BTCUnit, PolkadotUnit, KusamaUnit, KintsugiUnit, InterlayUnit];
-export type CurrencyUnit = typeof CURRENCY_UNITS[number];
+export const CurrencyUnit = [BTCUnit, DOTUnit, KSMUnit, KINTUnit, INTRUnit];
+export type CurrencyUnit = typeof CurrencyUnit[number];
 
-export const WRAPPED_CURRENCIES = [InterBTC, KBTC];
-export type WrappedCurrency = typeof WRAPPED_CURRENCIES[number];
+export const WrappedCurrency = [interBTC, kBTC];
+export type WrappedCurrency = typeof WrappedCurrency[number];
 
-export const WRAPPED_AMONUT_VALUES = [InterBTCAmount, KBTCAmount];
-export type WrappedAmount = typeof WRAPPED_AMONUT_VALUES[number];
+export const WrappedAmount = [interBTCAmount, kBTCAmount];
+export type WrappedAmount = typeof WrappedAmount[number];
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     switch (ticker) {
@@ -53,35 +53,35 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
         case Kusama.ticker: {
             return CurrencyIdLiteral.KSM;
         }
-        case KBTC.ticker: {
+        case kBTC.ticker: {
             return CurrencyIdLiteral.KBTC;
         }
-        case InterBTC.ticker: {
+        case interBTC.ticker: {
             return CurrencyIdLiteral.INTERBTC;
         }
-        case Kintsugi.ticker: {
+        case KINT.ticker: {
             return CurrencyIdLiteral.KINT;
         }
-        case Interlay.ticker: {
+        case INTR.ticker: {
             return CurrencyIdLiteral.INTR;
         }
     }
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
-export function currencyIdToMonetaryCurrency<C extends CurrencyUnit>(currencyId: CurrencyId): Currency<C> {
+export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: CurrencyId): Currency<U> {
     if (currencyId.isInterbtc) {
-        return InterBTC as unknown as Currency<C>;
+        return interBTC as unknown as Currency<U>;
     } else if (currencyId.isDot) {
-        return Polkadot as unknown as Currency<C>;
+        return Polkadot as unknown as Currency<U>;
     } else if (currencyId.isKsm) {
-        return Kusama as unknown as Currency<C>;
+        return Kusama as unknown as Currency<U>;
     } else if (currencyId.isKbtc) {
-        return KBTC as unknown as Currency<C>;
+        return kBTC as unknown as Currency<U>;
     } else if (currencyId.isKint) {
-        return Kintsugi as unknown as Currency<C>;
+        return KINT as unknown as Currency<U>;
     } else if (currencyId.isIntr) {
-        return Interlay as unknown as Currency<C>;
+        return INTR as unknown as Currency<U>;
     }
     throw new Error("No CurrencyId entry for provided ticker");
 }

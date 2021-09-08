@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import { BTCAmount, Polkadot } from "@interlay/monetary-js";
+import { interBTC, interBTCAmount } from "@interlay/monetary-js";
 
 import { DefaultRedeemAPI, RedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
@@ -15,7 +15,10 @@ import {
     DEFAULT_PARACHAIN_ENDPOINT,
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_BITCOIN_CORE_PORT,
-    ALICE_URI
+    ALICE_URI,
+    FERDIE_STASH_URI,
+    CHARLIE_STASH_URI,
+    DAVE_STASH_URI
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
@@ -36,14 +39,20 @@ describe("redeem", () => {
     let electrsAPI: ElectrsAPI;
     let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
+    let ferdie_stash: KeyringPair;
+    let charlie_stash: KeyringPair;
+    let dave_stash: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
+        ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
+        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
+        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
         alice = keyring.addFromUri(ALICE_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
@@ -60,21 +69,35 @@ describe("redeem", () => {
 
     describe("request", () => {
         it("should fail if no account is set", () => {
-            const amount = BTCAmount.from.BTC(10);
+            const amount = interBTCAmount.from.BTC(10);
             assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
         });
 
         it("should issue and request redeem", async () => {
-            const issueAmount = BTCAmount.from.BTC(0.001);
-            const redeemAmount = BTCAmount.from.BTC(0.0009);
+            const issueAmount = interBTCAmount.from.BTC(0.001);
+            const redeemAmount = interBTCAmount.from.BTC(0.0009);
+            // DOT collateral
             await issueAndRedeem(
                 api,
                 electrsAPI,
                 btcRelayAPI,
                 bitcoinCoreClient,
                 alice,
-                Polkadot,
-                undefined,
+                charlie_stash.address,
+                issueAmount,
+                redeemAmount,
+                false,
+                ExecuteRedeem.False
+            );
+
+            // KSM collateral
+            await issueAndRedeem(
+                api,
+                electrsAPI,
+                btcRelayAPI,
+                bitcoinCoreClient,
+                alice,
+                dave_stash.address,
                 issueAmount,
                 redeemAmount,
                 false,
@@ -90,7 +113,7 @@ describe("redeem", () => {
         assert.isAtLeast(
             redeemRequests.length,
             1,
-            "Error in docker-compose setup. Should have at least 1 issue request"
+            "Error in initialization setup. Should have at least 1 issue request"
         );
     });
 
@@ -102,12 +125,12 @@ describe("redeem", () => {
         assert.isAtLeast(
             redeemRequests.size,
             1,
-            "Error in docker-compose setup. Should have at least 1 issue request"
+            "Error in initialization setup. Should have at least 1 issue request"
         );
     });
 
     it("should getFeesToPay", async () => {
-        const amount = BTCAmount.from.BTC(2);
+        const amount = interBTCAmount.from.BTC(2);
         const feesToPay = await redeemAPI.getFeesToPay(amount);
         assert.equal(feesToPay.str.BTC(), "0.01");
     });
@@ -130,6 +153,15 @@ describe("redeem", () => {
     it("should getDustValue", async () => {
         const dustValue = await redeemAPI.getDustValue();
         assert.equal(dustValue.str.BTC(), "0.00001");
+    });
+
+    it("should list redeem request by a vault", async () => {
+        const bobAddress = ferdie_stash.address;
+        const bobId = api.createType("AccountId", bobAddress);
+        const redeemRequests = await redeemAPI.mapRedeemRequests(bobId);
+        redeemRequests.forEach((request) => {
+            assert.deepEqual(request.vaultParachainAddress, bobAddress);
+        });
     });
 
 });

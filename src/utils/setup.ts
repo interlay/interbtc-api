@@ -1,5 +1,15 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { ExchangeRate, Bitcoin, BTCUnit, Polkadot, PolkadotUnit, BTCAmount, Currency } from "@interlay/monetary-js";
+import {
+    ExchangeRate,
+    Bitcoin,
+    BTCUnit,
+    Polkadot,
+    DOTUnit,
+    Currency,
+    MonetaryAmount,
+    interBTCAmount,
+    interBTC,
+} from "@interlay/monetary-js";
 import { Big } from "big.js";
 import BN from "bn.js";
 import { createPolkadotAPI } from "../factory";
@@ -30,7 +40,7 @@ import {
     DEFAULT_PARACHAIN_ENDPOINT,
     DEFAULT_REDEEM_ADDRESS,
 } from "../../test/config";
-import { CollateralUnit } from "../types";
+import { CollateralUnit, WrappedCurrency } from "../types";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -78,13 +88,13 @@ export interface ChainConfirmations {
 }
 
 export interface InitializeIssue {
-    amount: BTCAmount;
+    amount: MonetaryAmount<WrappedCurrency, BTCUnit>;
     issuingAccount: KeyringPair;
     vaultAddress: string;
 }
 
 export interface InitializeRedeem {
-    amount: BTCAmount;
+    amount: MonetaryAmount<WrappedCurrency, BTCUnit>;
     redeemingAccount: KeyringPair;
     redeemingBTCAddress: string;
 }
@@ -92,7 +102,8 @@ export interface InitializeRedeem {
 export interface InitializationParams {
     initialize?: boolean;
     setStableConfirmations?: true | ChainConfirmations;
-    setExchangeRate?: true | ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>;
+    setExchangeRate?: true | ExchangeRate<Bitcoin, BTCUnit, Polkadot, DOTUnit>;
+    btcTxFees?: true | Big;
     enableNomination?: boolean;
     issue?: true | InitializeIssue;
     redeem?: true | InitializeRedeem;
@@ -105,19 +116,20 @@ function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string):
             bitcoinConfirmations: 0,
             parachainConfirmations: 0,
         },
-        setExchangeRate: new ExchangeRate<Bitcoin, BTCUnit, Polkadot, PolkadotUnit>(
+        setExchangeRate: new ExchangeRate<Bitcoin, BTCUnit, Polkadot, DOTUnit>(
             Bitcoin,
             Polkadot,
             new Big("3855.23187")
         ),
+        btcTxFees: new Big(1),
         enableNomination: true,
         issue: {
-            amount: BTCAmount.from.BTC(0.1),
+            amount: interBTCAmount.from.BTC(0.1),
             issuingAccount: keyring.addFromUri("//Alice"),
             vaultAddress,
         },
         redeem: {
-            amount: BTCAmount.from.BTC(0.05),
+            amount: interBTCAmount.from.BTC(0.05),
             redeemingAccount: keyring.addFromUri("//Alice"),
             redeemingBTCAddress: DEFAULT_REDEEM_ADDRESS,
         },
@@ -157,6 +169,12 @@ export async function initializeExchangeRate<C extends CollateralUnit>(
     await oracleAPI.setExchangeRate(exchangeRateToSet);
 }
 
+export async function initializeBtcTxFees(fees: Big, oracleAPI: OracleAPI): Promise<void> {
+    console.log("Initializing BTC tx fees...");
+    await oracleAPI.setBitcoinFees(fees);
+    await oracleAPI.waitForFeeEstimateUpdate();
+}
+
 export async function initializeVaultNomination(enabled: boolean, nominationAPI: NominationAPI): Promise<void> {
     console.log("Initializing vault nomination...");
     await nominationAPI.setNominationEnabled(enabled);
@@ -167,19 +185,19 @@ export async function initializeIssue(
     electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
-    amountToIssue: BTCAmount,
+    amountToIssue: MonetaryAmount<WrappedCurrency, BTCUnit>,
     vaultAddress: string
 ): Promise<void> {
-    console.log("Initializing an interBTC issue...");
-    await issueSingle(api, electrsAPI, bitcoinCoreClient, issuingAccount, amountToIssue, Polkadot, vaultAddress);
+    console.log("Initializing an issue...");
+    await issueSingle(api, electrsAPI, bitcoinCoreClient, issuingAccount, amountToIssue, vaultAddress);
 }
 
 export async function initializeRedeem(
     redeemAPI: RedeemAPI,
-    amountToRedeem: BTCAmount,
+    amountToRedeem: MonetaryAmount<WrappedCurrency, BTCUnit>,
     redeemBTCAddress: string
 ): Promise<void> {
-    console.log("Initializing an interBTC redeem...");
+    console.log("Initializing a redeem...");
     await redeemAPI.request(amountToRedeem, redeemBTCAddress);
 }
 
@@ -206,9 +224,9 @@ async function main(params: InitializationParams): Promise<void> {
         DEFAULT_BITCOIN_CORE_PORT,
         DEFAULT_BITCOIN_CORE_WALLET
     );
-    const oracleAPI = new DefaultOracleAPI(api, bob);
+    const oracleAPI = new DefaultOracleAPI(api, interBTC, bob);
     // initialize the nomination API with Alice in order to make sudo calls
-    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, alice);
+    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC, alice);
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
@@ -221,14 +239,14 @@ async function main(params: InitializationParams): Promise<void> {
     if (params.setExchangeRate !== undefined) {
         const exchangeRateToSet =
             params.setExchangeRate === true
-                ? (defaultInitializationParams.setExchangeRate as ExchangeRate<
-                      Bitcoin,
-                      BTCUnit,
-                      Polkadot,
-                      PolkadotUnit
-                  >)
+                ? (defaultInitializationParams.setExchangeRate as ExchangeRate<Bitcoin, BTCUnit, Polkadot, DOTUnit>)
                 : params.setExchangeRate;
         await initializeExchangeRate(exchangeRateToSet, oracleAPI);
+    }
+
+    if (params.btcTxFees !== undefined) {
+        const btcTxFees = params.btcTxFees === true ? (defaultInitializationParams.btcTxFees as Big) : params.btcTxFees;
+        await initializeBtcTxFees(btcTxFees, oracleAPI);
     }
 
     if (params.enableNomination === true) {
@@ -259,6 +277,7 @@ async function main(params: InitializationParams): Promise<void> {
             api,
             bitcoinjs.networks.regtest,
             electrsAPI,
+            interBTC,
             redeemParams.redeemingAccount
         );
 
