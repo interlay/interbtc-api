@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import { interBTC, interBTCAmount } from "@interlay/monetary-js";
+import { InterBtc, InterBtcAmount } from "@interlay/monetary-js";
 
 import { DefaultRedeemAPI, RedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
@@ -52,7 +52,7 @@ describe("redeem", () => {
         alice = keyring.addFromUri(ALICE_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
@@ -69,13 +69,13 @@ describe("redeem", () => {
 
     describe("request", () => {
         it("should fail if no account is set", () => {
-            const amount = interBTCAmount.from.BTC(10);
+            const amount = InterBtcAmount.from.BTC(10);
             assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
         });
 
         it("should issue and request redeem", async () => {
-            const issueAmount = interBTCAmount.from.BTC(0.001);
-            const redeemAmount = interBTCAmount.from.BTC(0.0009);
+            const issueAmount = InterBtcAmount.from.BTC(0.001);
+            const redeemAmount = InterBtcAmount.from.BTC(0.0009);
             // DOT collateral
             await issueAndRedeem(
                 api,
@@ -130,7 +130,7 @@ describe("redeem", () => {
     });
 
     it("should getFeesToPay", async () => {
-        const amount = interBTCAmount.from.BTC(2);
+        const amount = InterBtcAmount.from.BTC(2);
         const feesToPay = await redeemAPI.getFeesToPay(amount);
         assert.equal(feesToPay.str.BTC(), "0.01");
     });

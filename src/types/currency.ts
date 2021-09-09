@@ -1,20 +1,20 @@
 import {
-    DOTAmount,
-    KSMAmount,
     Polkadot,
     Kusama,
-    BTCUnit,
-    KSMUnit,
-    DOTUnit,
     Currency,
-    KINTUnit,
-    INTRUnit,
-    interBTC,
-    kBTC,
-    interBTCAmount,
-    kBTCAmount,
-    KINT,
-    INTR,
+    PolkadotAmount,
+    KusamaAmount,
+    PolkadotUnit,
+    KusamaUnit,
+    BitcoinUnit,
+    KintsugiUnit,
+    InterlayUnit,
+    InterBtc,
+    KBtc,
+    InterBtcAmount,
+    KBtcAmount,
+    Kintsugi,
+    Interlay,
 } from "@interlay/monetary-js";
 import { CurrencyId } from "../interfaces";
 
@@ -27,22 +27,22 @@ export enum CurrencyIdLiteral {
     INTR = "INTR",
 }
 
-export const CollateralAmount = [DOTAmount, KSMAmount];
+export const CollateralAmount = [PolkadotAmount, KusamaAmount];
 export type CollateralAmount = typeof CollateralAmount[number];
 
 export const CollateralCurrency = [Polkadot, Kusama] as const;
 export type CollateralCurrency = typeof CollateralCurrency[number];
 
-export const CollateralUnit = [DOTUnit, KSMUnit];
+export const CollateralUnit = [PolkadotUnit, KusamaUnit];
 export type CollateralUnit = typeof CollateralUnit[number];
 
-export const CurrencyUnit = [BTCUnit, DOTUnit, KSMUnit, KINTUnit, INTRUnit];
+export const CurrencyUnit = [BitcoinUnit, PolkadotUnit, KusamaUnit, KintsugiUnit, InterlayUnit];
 export type CurrencyUnit = typeof CurrencyUnit[number];
 
-export const WrappedCurrency = [interBTC, kBTC];
+export const WrappedCurrency = [InterBtc, KBtc];
 export type WrappedCurrency = typeof WrappedCurrency[number];
 
-export const WrappedAmount = [interBTCAmount, kBTCAmount];
+export const WrappedAmount = [InterBtcAmount, KBtcAmount];
 export type WrappedAmount = typeof WrappedAmount[number];
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
@@ -53,16 +53,16 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
         case Kusama.ticker: {
             return CurrencyIdLiteral.KSM;
         }
-        case kBTC.ticker: {
+        case KBtc.ticker: {
             return CurrencyIdLiteral.KBTC;
         }
-        case interBTC.ticker: {
+        case InterBtc.ticker: {
             return CurrencyIdLiteral.INTERBTC;
         }
-        case KINT.ticker: {
+        case Kintsugi.ticker: {
             return CurrencyIdLiteral.KINT;
         }
-        case INTR.ticker: {
+        case Interlay.ticker: {
             return CurrencyIdLiteral.INTR;
         }
     }
@@ -71,17 +71,17 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
 
 export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: CurrencyId): Currency<U> {
     if (currencyId.isInterbtc) {
-        return interBTC as unknown as Currency<U>;
+        return InterBtc as unknown as Currency<U>;
     } else if (currencyId.isDot) {
         return Polkadot as unknown as Currency<U>;
     } else if (currencyId.isKsm) {
         return Kusama as unknown as Currency<U>;
     } else if (currencyId.isKbtc) {
-        return kBTC as unknown as Currency<U>;
+        return KBtc as unknown as Currency<U>;
     } else if (currencyId.isKint) {
-        return KINT as unknown as Currency<U>;
+        return Kintsugi as unknown as Currency<U>;
     } else if (currencyId.isIntr) {
-        return INTR as unknown as Currency<U>;
+        return Interlay as unknown as Currency<U>;
     }
     throw new Error("No CurrencyId entry for provided ticker");
 }

@@ -1,6 +1,6 @@
 import Big, { BigSource } from "big.js";
 import BN from "bn.js";
-import { Bitcoin, BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types/currency";
 import { OracleKey } from "../interfaces";
 import { ApiPromise } from "@polkadot/api";
@@ -46,11 +46,11 @@ export function newCollateralBTCExchangeRate<U extends CurrencyUnit>(
     rate: Big,
     counterCurrency: Currency<U>,
     useBaseUnits = false
-): ExchangeRate<Bitcoin, BTCUnit, Currency<U>, U> {
+): ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U> {
     const [baseCurrencyUnit, counterCurrencyUnit] = useBaseUnits
         ? [Bitcoin.base, counterCurrency.base]
         : [Bitcoin.rawBase, counterCurrency.rawBase];
-    return new ExchangeRate<Bitcoin, BTCUnit, Currency<U>, U>(
+    return new ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U>(
         Bitcoin,
         counterCurrency,
         rate,

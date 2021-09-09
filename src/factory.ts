@@ -5,7 +5,7 @@ import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { TypeRegistry } from "@polkadot/types";
 import { RegistryTypes } from "@polkadot/types/types";
 import { DefinitionRpc, DefinitionRpcSub } from "@polkadot/types/types";
-import { interBTC } from "@interlay/monetary-js";
+import { InterBtc } from "@interlay/monetary-js";
 
 import * as definitions from "./interfaces/definitions";
 import { InterBTCAPI, DefaultInterBTCAPI } from "./interbtc-api";
@@ -31,7 +31,7 @@ export function createPolkadotAPI(endpoint: string, autoConnect?: number | false
 export async function createInterbtcAPI(
     endpoint: string,
     network: BitcoinNetwork = "mainnet",
-    wrappedCurrency: WrappedCurrency = interBTC,
+    wrappedCurrency: WrappedCurrency = InterBtc,
     account?: AddressOrPair,
     autoConnect?: number | false | undefined
 ): Promise<InterBTCAPI> {

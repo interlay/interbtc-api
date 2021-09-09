@@ -2,13 +2,13 @@ import { MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 import { CollateralUnit, WrappedCurrency } from ".";
 import { ReplaceRequestStatus } from "../interfaces";
-import { BTCUnit, Currency } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 
 export interface Issue {
     id: string;
-    wrappedAmont: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    wrappedAmont: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     userParachainAddress: string;
-    bridgeFee: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    bridgeFee: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     griefingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     vaultWalletPubkey: string;
     creationBlock: number;
@@ -18,11 +18,11 @@ export interface Issue {
     btcTxId?: string;
     confirmations?: number;
     btcBlockHeight?: number;
-    btcAmountSubmittedByUser?: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    btcAmountSubmittedByUser?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     status: IssueStatus;
     refundBtcAddress?: string;
-    refundAmountBTC?: MonetaryAmount<WrappedCurrency, BTCUnit>;
-    executedAmountBTC?: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    refundAmountBTC?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    executedAmountBTC?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
 }
 
 export enum IssueStatus {
@@ -45,10 +45,10 @@ export enum NominationStatus {
 export interface Redeem {
     id: string;
     userParachainAddress: string;
-    amountBTC: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    amountBTC: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     collateralPremium: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
-    bridgeFee: MonetaryAmount<WrappedCurrency, BTCUnit>;
-    btcTransferFee: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    bridgeFee: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    btcTransferFee: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     creationTimestamp?: number;
     creationBlock: number;
     vaultParachainAddress: string;
@@ -72,9 +72,9 @@ export enum RedeemStatus {
 
 export interface RefundRequestExt {
     vaultId: AccountId;
-    amountIssuing: MonetaryAmount<WrappedCurrency, BTCUnit>;
-    fee: MonetaryAmount<WrappedCurrency, BTCUnit>;
-    amountBtc: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    amountIssuing: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    fee: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    amountBtc: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     issuer: AccountId;
     btcAddress: string;
     issueId: string;
@@ -85,7 +85,7 @@ export interface ReplaceRequestExt {
     btcAddress: string;
     newVault: AccountId;
     oldVault: AccountId;
-    amount: MonetaryAmount<WrappedCurrency, BTCUnit>;
+    amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     griefingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     collateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     acceptTime: number;

@@ -5,7 +5,7 @@ import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Codec } from "@polkadot/types/types";
-import { BTCUnit } from "@interlay/monetary-js";
+import { BitcoinUnit } from "@interlay/monetary-js";
 import { Moment } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types/codec";
 
@@ -137,7 +137,7 @@ export function parseWallet(wallet: Wallet, network: Network): WalletExt {
     };
 }
 
-export function parseSystemVault(vault: SystemVault, wrappedCurrency: WrappedCurrency): SystemVaultExt<BTCUnit> {
+export function parseSystemVault(vault: SystemVault, wrappedCurrency: WrappedCurrency): SystemVaultExt<BitcoinUnit> {
     return {
         toBeIssuedTokens: newMonetaryAmount(vault.to_be_issued_tokens.toString(), wrappedCurrency),
         issuedTokens: newMonetaryAmount(vault.issued_tokens.toString(), wrappedCurrency),

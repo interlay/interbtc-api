@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, interBTCAmount, BTCUnit, ExchangeRate, interBTC, Polkadot, DOTAmount, DOTUnit } from "@interlay/monetary-js";
+import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit } from "@interlay/monetary-js";
 import { TypeRegistry } from "@polkadot/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
@@ -38,11 +38,11 @@ describe("vaultsAPI", () => {
         ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
         ferdie = keyring.addFromUri(FERDIE_URI);
         // Bob is the authorized oracle
-        oracleAPI = new DefaultOracleAPI(api, interBTC, bob);
-        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
+        oracleAPI = new DefaultOracleAPI(api, InterBtc, bob);
+        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
 
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
@@ -67,14 +67,14 @@ describe("vaultsAPI", () => {
 
     it("should get issuable", async () => {
         const issuableInterBTC = await vaultsAPI.getTotalIssuableAmount();
-        const minExpectedIssuableInterBTC = interBTCAmount.from.BTC(1);
+        const minExpectedIssuableInterBTC = InterBtcAmount.from.BTC(1);
         assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
     // WARNING: this test is not idempotent
     it("should deposit and withdraw collateral", async () => {
         vaultsAPI.setAccount(charlie_stash);
-        const amount = DOTAmount.from.DOT(100);
+        const amount = PolkadotAmount.from.DOT(100);
         const collateralizationBeforeDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
         await vaultsAPI.depositCollateral(amount);
         const collateralizationAfterDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
@@ -123,7 +123,7 @@ describe("vaultsAPI", () => {
         const initialExchangeRate = await oracleAPI.getExchangeRate(Polkadot);
         // crash the exchange rate so that the vault falls below the premium redeem threshold
         const exchangeRateValue = initialExchangeRate.toBig().div(modifyExchangeRateBy);
-        const exchangeRateToSet = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, DOTUnit>(Bitcoin, Polkadot, exchangeRateValue);
+        const exchangeRateToSet = new ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
         await oracleAPI.setExchangeRate(exchangeRateToSet);
 
         const premiumRedeemVaults = await vaultsAPI.getPremiumRedeemVaults();
@@ -134,7 +134,7 @@ describe("vaultsAPI", () => {
             "Premium redeem vault is not the expected one"
         );
 
-        const premiumRedeemAmount = premiumRedeemVaults.values().next().value as interBTCAmount;
+        const premiumRedeemAmount = premiumRedeemVaults.values().next().value as InterBtcAmount;
         assert.isTrue(
             premiumRedeemAmount.gte(issuableAmount),
             "Amount available for premium redeem should be higher"
@@ -156,22 +156,22 @@ describe("vaultsAPI", () => {
     });
 
     it("should select random vault for issue", async () => {
-        const randomVault = await vaultsAPI.selectRandomVaultIssue(interBTCAmount.zero);
+        const randomVault = await vaultsAPI.selectRandomVaultIssue(InterBtcAmount.zero);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for issuing is found", async () => {
-        assert.isRejected(vaultsAPI.selectRandomVaultIssue(interBTCAmount.from.BTC(9000000)));
+        assert.isRejected(vaultsAPI.selectRandomVaultIssue(InterBtcAmount.from.BTC(9000000)));
     });
 
     it("should select random vault for redeem", async () => {
-        const randomVault = await vaultsAPI.selectRandomVaultRedeem(interBTCAmount.zero);
+        const randomVault = await vaultsAPI.selectRandomVaultRedeem(InterBtcAmount.zero);
         assert.isTrue(vaultIsATestVault(randomVault.toHuman()));
     });
 
     it("should fail if no vault for redeeming is found", async () => {
-        const interBTC = interBTCAmount.from.BTC(9000000);
-        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(interBTC));
+        const InterBtc = InterBtcAmount.from.BTC(9000000);
+        assert.isRejected(vaultsAPI.selectRandomVaultRedeem(InterBtc));
     });
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {
@@ -189,20 +189,20 @@ describe("vaultsAPI", () => {
         assert.isTrue(flaggedForTheft);
     });
 
-    it("should get the issuable interBTC for a vault", async () => {
+    it("should get the issuable InterBtc for a vault", async () => {
         const charlieId = api.createType("AccountId", charlie_stash.address);
         const issuableInterBtc = await vaultsAPI.getIssuableAmount(charlieId);
-        assert.isTrue(issuableInterBtc.gt(interBTCAmount.zero));
+        assert.isTrue(issuableInterBtc.gt(InterBtcAmount.zero));
     });
 
-    it("should get the issuable interBTC", async () => {
+    it("should get the issuable InterBtc", async () => {
         const issuableInterBtc = await vaultsAPI.getTotalIssuableAmount();
-        assert.isTrue(issuableInterBtc.gt(interBTCAmount.zero));
+        assert.isTrue(issuableInterBtc.gt(InterBtcAmount.zero));
     });
 
     it("should getFees", async () => {
         const feesWrapped = await rewardsAPI.getFeesWrapped(charlie_stash.address);
-        assert.isTrue(feesWrapped.gte(interBTCAmount.zero));
+        assert.isTrue(feesWrapped.gte(InterBtcAmount.zero));
     });
 
     it("should getAPY", async () => {

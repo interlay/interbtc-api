@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { interBTC, interBTCAmount, Polkadot } from "@interlay/monetary-js";
+import { InterBtc, InterBtcAmount, Polkadot } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
@@ -45,7 +45,7 @@ describe("replace", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
+        replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         alice = keyring.addFromUri(ALICE_URI);
         eve_stash = keyring.addFromUri(EVE_STASH_URI);
         dave_stash = keyring.addFromUri(DAVE_STASH_URI);
@@ -59,8 +59,8 @@ describe("replace", () => {
         let replaceId: string;
 
         it("should request vault replacement", async () => {
-            const issueAmount = interBTCAmount.from.BTC(0.001);
-            const replaceAmount = interBTCAmount.from.BTC(0.0005);
+            const issueAmount = InterBtcAmount.from.BTC(0.001);
+            const replaceAmount = InterBtcAmount.from.BTC(0.0005);
             await issueSingle(
                 api,
                 electrsAPI,
@@ -106,7 +106,7 @@ describe("replace", () => {
     }).timeout(500);
 
     it("should getGriefingCollateral", async () => {
-        const amountToReplace = interBTCAmount.from.BTC(0.728);
+        const amountToReplace = InterBtcAmount.from.BTC(0.728);
         const griefingCollateral = await replaceAPI.getGriefingCollateral(amountToReplace, Polkadot);
         assert.equal(griefingCollateral.str.DOT(), "284.9204534203");
     }).timeout(500);

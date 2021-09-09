@@ -2,7 +2,7 @@ import { Network } from "bitcoinjs-lib";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Index } from "@polkadot/types/interfaces";
-import { Currency, MonetaryAmount, BTCUnit } from "@interlay/monetary-js";
+import { Currency, MonetaryAmount, BitcoinUnit } from "@interlay/monetary-js";
 
 import { CurrencyId, UnsignedFixedPoint } from "../interfaces";
 import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
@@ -66,7 +66,7 @@ export interface NominationAPI extends TransactionAPI {
      */
     listNominatorRewards<C extends CollateralUnit>(
         currency: Currency<C>
-    ): Promise<[[string, string], MonetaryAmount<WrappedCurrency, BTCUnit>][]>;
+    ): Promise<[[string, string], MonetaryAmount<WrappedCurrency, BitcoinUnit>][]>;
     /**
      * @returns A list of all vaults that opted in to the nomination feature.
      */
@@ -106,7 +106,7 @@ export interface NominationAPI extends TransactionAPI {
      */
     getActiveNominatorRewards(
         nominatorId: string
-    ): Promise<[[string, string], MonetaryAmount<WrappedCurrency, BTCUnit>][]>;
+    ): Promise<[[string, string], MonetaryAmount<WrappedCurrency, BitcoinUnit>][]>;
     /**
      *
      * @param nominatorId Id of user who nominated to one or more vaults
@@ -118,7 +118,7 @@ export interface NominationAPI extends TransactionAPI {
         nominatorId: string,
         vaultId: string,
         currency: WrappedCurrency
-    ): Promise<MonetaryAmount<WrappedCurrency, BTCUnit>>;
+    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
     /**
      *
      * @param currency The currency of the reward pool
@@ -247,10 +247,10 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         });
     }
 
-    async listNominatorRewards(): Promise<[[string, string], MonetaryAmount<Currency<BTCUnit>, BTCUnit>][]> {
+    async listNominatorRewards(): Promise<[[string, string], MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>][]> {
         const rawList = await this.listAllNominations();
         return await Promise.all(
-            rawList.map(async (v): Promise<[[string, string], MonetaryAmount<Currency<BTCUnit>, BTCUnit>]> => {
+            rawList.map(async (v): Promise<[[string, string], MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>]> => {
                 const [, [, vaultId, nominatorId]] = v[0];
                 const reward = await this.rewardsAPI.computeReward(vaultId, nominatorId);
                 return [[nominatorId, vaultId], reward];
@@ -260,7 +260,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
 
     async getActiveNominatorRewards(
         nominatorId: string
-    ): Promise<[[string, string], MonetaryAmount<Currency<BTCUnit>, BTCUnit>][]> {
+    ): Promise<[[string, string], MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>][]> {
         const nominatorRewards = await this.listNominatorRewards();
         return nominatorRewards.filter((v) => {
             const [nominator] = v[0];
@@ -268,7 +268,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         });
     }
 
-    async getNominatorReward(nominatorId: string, vaultId: string): Promise<MonetaryAmount<WrappedCurrency, BTCUnit>> {
+    async getNominatorReward(nominatorId: string, vaultId: string): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
         return await this.rewardsAPI.computeReward(vaultId, nominatorId);
     }
 

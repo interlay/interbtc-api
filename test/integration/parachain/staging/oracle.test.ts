@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, BTCAmount, BTCUnit, ExchangeRate, Polkadot, DOTUnit, interBTC } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinAmount, BitcoinUnit, ExchangeRate, Polkadot, PolkadotUnit, InterBtc } from "@interlay/monetary-js";
 
 import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "../../../../src/parachain/oracle";
@@ -17,7 +17,7 @@ describe("OracleAPI", () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         bob = keyring.addFromUri(BOB_URI);
-        oracleAPI = new DefaultOracleAPI(api, interBTC);
+        oracleAPI = new DefaultOracleAPI(api, InterBtc);
         oracleAPI.setAccount(bob);
     });
 
@@ -34,15 +34,15 @@ describe("OracleAPI", () => {
 
     it("should set exchange rate", async () => {
         const exchangeRateValue = new Big("3913.7424920372646687827621");
-        const newExchangeRate = new ExchangeRate<Bitcoin, BTCUnit, Polkadot, DOTUnit>(Bitcoin, Polkadot, exchangeRateValue);
+        const newExchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
         await oracleAPI.setExchangeRate(newExchangeRate);
         await oracleAPI.waitForExchangeRateUpdate(newExchangeRate);
     });
 
     it("should convert satoshi to planck", async () => {
-        const bitcoinAmount = BTCAmount.from.BTC(100);
+        const bitcoinAmount = BitcoinAmount.from.BTC(100);
         const exchangeRate = await oracleAPI.getExchangeRate(Polkadot);
-        const expectedCollateral = exchangeRate.toBig(undefined).mul(bitcoinAmount.toBig(BTCUnit.BTC)).round(0, 0);
+        const expectedCollateral = exchangeRate.toBig(undefined).mul(bitcoinAmount.toBig(BitcoinUnit.BTC)).round(0, 0);
 
         const collateralAmount = await oracleAPI.convertWrappedToCollateral(bitcoinAmount, Polkadot);
         assert.equal(collateralAmount.toBig(Polkadot.units.DOT).round(0, 0).toString(), expectedCollateral.toString());

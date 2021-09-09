@@ -10,7 +10,7 @@ import { ALICE_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { IssueStatus, stripHexPrefix } from "../../../../src";
-import { interBTCAmount, BTCUnit, Polkadot, interBTC } from "@interlay/monetary-js";
+import { InterBtcAmount, BitcoinUnit, Polkadot, InterBtc } from "@interlay/monetary-js";
 import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
 
 describe("issue", () => {
@@ -44,7 +44,7 @@ describe("issue", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC, alice);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, alice);
     });
 
     after(async () => {
@@ -53,7 +53,7 @@ describe("issue", () => {
 
     it("should request one issue", async () => {
         // may fail if the relay isn't fully initialized
-        const amount = interBTCAmount.from.BTC(0.0001);
+        const amount = InterBtcAmount.from.BTC(0.0001);
         const feesToPay = await issueAPI.getFeesToPay(amount);
         const requestResults = await issueAPI.request(amount);
         assert.equal(
@@ -86,8 +86,8 @@ describe("issue", () => {
     });
 
     it("request should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
-        const amount = interBTCAmount.from.BTC(0.0000001);
+        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
+        const amount = InterBtcAmount.from.BTC(0.0000001);
         await assert.isRejected(tmpIssueAPI.request(amount));
     });
 
@@ -106,19 +106,19 @@ describe("issue", () => {
         const issuedAmount2 = issueRequests[1].wrappedAmont;
         const issueFee2 = issueRequests[1].bridgeFee;
         assert.equal(
-            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BTCUnit.BTC).round(5).toString(),
-            amount.toBig(BTCUnit.BTC).round(5).toString(),
+            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BitcoinUnit.BTC).round(5).toString(),
+            amount.toBig(BitcoinUnit.BTC).round(5).toString(),
             "Issued amount is not equal to requested amount"
         );
     });
 
     it("execute should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
+        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         await assert.isRejected(tmpIssueAPI.execute("", ""));
     });
 
     it("should fail to request a value finer than 1 Satoshi", async () => {
-        const amount = interBTCAmount.from.BTC("0.00000121");
+        const amount = InterBtcAmount.from.BTC("0.00000121");
         await assert.isRejected(
             issueSingle(api, electrsAPI, bitcoinCoreClient, alice, amount, charlie_stash.address, true, false)
         );
@@ -127,7 +127,7 @@ describe("issue", () => {
     // auto-execution tests may stall indefinitely, due to vault client inaction.
     // This will cause the testing pipeline to time out.
     it("should request and auto-execute issue", async () => {
-        const amount = interBTCAmount.from.BTC(0.00121);
+        const amount = InterBtcAmount.from.BTC(0.00121);
 
         const feesToPay = await issueAPI.getFeesToPay(amount);
         const issueResult = await issueSingle(
@@ -150,9 +150,9 @@ describe("issue", () => {
     it("should request and manually execute issue", async () => {
         // Unlike the other `issue` tests that involve DOT, this one locks KSM
         // covering the multi-collateral feature
-        const amount = interBTCAmount.from.BTC(0.001);
+        const amount = InterBtcAmount.from.BTC(0.001);
         const feesToPay = await issueAPI.getFeesToPay(amount);
-        const oneSatoshi = interBTCAmount.from.Satoshi(1);
+        const oneSatoshi = InterBtcAmount.from.Satoshi(1);
         const issueResult = await issueSingle(
             api,
             electrsAPI,
@@ -171,7 +171,7 @@ describe("issue", () => {
     }).timeout(500000);
 
     it("should getFeesToPay", async () => {
-        const amount = interBTCAmount.from.BTC(2);
+        const amount = InterBtcAmount.from.BTC(2);
         const feesToPay = await issueAPI.getFeesToPay(amount);
         assert.equal(feesToPay.str.BTC(), "0.01");
     });
@@ -182,14 +182,14 @@ describe("issue", () => {
     });
 
     it("should getGriefingCollateral", async () => {
-        const amountBtc = interBTCAmount.from.BTC(0.001);
+        const amountBtc = InterBtcAmount.from.BTC(0.001);
         const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc, Polkadot);
         assert.equal(griefingCollateral.toBig(Polkadot.units.DOT).round(5, 0).toString(), "0.00019");
     });
 
     it("should getRequestLimits", async () => {
         const requestLimits = await issueAPI.getRequestLimits();
-        assert.isTrue(requestLimits.singleVaultMaxIssuable.gt(interBTCAmount.from.BTC(100)), "singleVaultMaxIssuable is not greater than 100");
+        assert.isTrue(requestLimits.singleVaultMaxIssuable.gt(InterBtcAmount.from.BTC(100)), "singleVaultMaxIssuable is not greater than 100");
         assert.isTrue(
             requestLimits.totalMaxIssuable.gt(requestLimits.singleVaultMaxIssuable),
             "totalMaxIssuable is not greater than singleVaultMaxIssuable"
@@ -203,7 +203,7 @@ describe("issue", () => {
             await issueAPI.setIssuePeriod(0);
             try {
                 // request issue
-                const amount = interBTCAmount.from.BTC(0.0000121);
+                const amount = InterBtcAmount.from.BTC(0.0000121);
                 const requestResults = await issueAPI.request(amount, newAccountId(api, dave_stash.address));
                 assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                 const requestResult = requestResults[0];

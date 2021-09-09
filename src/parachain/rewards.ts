@@ -1,4 +1,4 @@
-import { BTCUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
@@ -24,7 +24,7 @@ export interface RewardsAPI {
     computeRewardInStakingPool(
         vaultId: string,
         nominatorId: string
-    ): Promise<MonetaryAmount<Currency<BTCUnit>, BTCUnit>>;
+    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
     /**
      * @param currencyId The staked currency
      * @param vaultId The account ID of the staking pool nominee
@@ -56,7 +56,7 @@ export interface RewardsAPI {
      * @param accountId The account ID whose reward to compute
      * @returns A Monetary.js amount object, representing the reward in the given currency
      */
-    computeRewardInRewardsPool(accountId: string): Promise<MonetaryAmount<Currency<BTCUnit>, BTCUnit>>;
+    computeRewardInRewardsPool(accountId: string): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
     /**
      * @param vaultId The account ID of the staking pool nominee
      * @param nominatorId The account ID of the staking pool nominator
@@ -89,12 +89,12 @@ export interface RewardsAPI {
      * @param nominatorId The account ID of the staking pool nominator
      * @returns A Monetary.js amount object, representing the total reward in the given currency
      */
-    computeReward(vaultId: string, nominatorId: string): Promise<MonetaryAmount<Currency<BTCUnit>, BTCUnit>>;
+    computeReward(vaultId: string, nominatorId: string): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
     /**
      * @param vaultId The vault account ID
      * @returns The total wrapped token reward collected by the vault
      */
-    getFeesWrapped(vaultId: string): Promise<MonetaryAmount<WrappedCurrency, BTCUnit>>;
+    getFeesWrapped(vaultId: string): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
 }
 
 export class DefaultRewardsAPI implements RewardsAPI {
@@ -108,7 +108,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
     async computeRewardInStakingPool(
         vaultId: string,
         nominatorId: string
-    ): Promise<MonetaryAmount<Currency<BTCUnit>, BTCUnit>> {
+    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const currencyId = tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker);
         const [stake, rewardPerToken, rewardTally] = await Promise.all([
             this.getStakingPoolStake(currencyId, vaultId, nominatorId),
@@ -202,7 +202,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         );
     }
 
-    async computeRewardInRewardsPool(accountId: string): Promise<MonetaryAmount<Currency<BTCUnit>, BTCUnit>> {
+    async computeRewardInRewardsPool(accountId: string): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const currencyId = tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker);
         const stake = await this.getRewardsPoolStake(currencyId, accountId);
         const rewardPerToken = await this.getRewardsPoolRewardPerToken(currencyId);
@@ -233,7 +233,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         return nominatorCollateral.toBig().div(vault.backingCollateral.toBig());
     }
 
-    async computeReward(vaultId: string, nominatorId: string): Promise<MonetaryAmount<Currency<BTCUnit>, BTCUnit>> {
+    async computeReward(vaultId: string, nominatorId: string): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const [totalGlobalReward, globalRewardShare] = await Promise.all([
             this.computeRewardInRewardsPool(vaultId),
             this.backingCollateralProportion(vaultId, nominatorId),
@@ -243,7 +243,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         return ownGlobalReward.add(localReward);
     }
 
-    async getFeesWrapped(vaultId: string): Promise<MonetaryAmount<Currency<BTCUnit>, BTCUnit>> {
+    async getFeesWrapped(vaultId: string): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         return await this.computeReward(vaultId, vaultId);
     }
 }

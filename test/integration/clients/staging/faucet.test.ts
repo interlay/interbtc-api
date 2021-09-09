@@ -5,7 +5,7 @@ import { DEFAULT_PARACHAIN_ENDPOINT, DEFAULT_FAUCET_ENDPOINT } from "../../../co
 import { KeyringPair } from "@polkadot/keyring/types";
 import { assert } from "../../../chai";
 import { DefaultTokensAPI, TokensAPI } from "../../../../src";
-import { Polkadot, DOTAmount } from "@interlay/monetary-js";
+import { Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 import { makeRandomPolkadotKeyPair } from "../../../utils/helpers";
 
 describe("Faucet", function () {
@@ -33,7 +33,7 @@ describe("Faucet", function () {
     describe("Funding", () => {
         it("should get funds from faucet", async () => {
             const accountId = api.createType("AccountId", account.address);
-            const expectedAllowance = DOTAmount.from.DOT(1);
+            const expectedAllowance = PolkadotAmount.from.DOT(1);
             const balanceBeforeFunding = await tokensAPI.balance(Polkadot, accountId);
             await faucet.fundAccount(accountId);
             const balanceAfterFunding = await tokensAPI.balance(Polkadot, accountId);

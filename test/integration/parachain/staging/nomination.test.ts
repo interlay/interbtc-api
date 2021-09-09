@@ -1,4 +1,4 @@
-import { interBTCAmount, interBTC, Polkadot } from "@interlay/monetary-js";
+import { InterBtcAmount, InterBtc, Polkadot } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
@@ -27,9 +27,9 @@ describe("NominationAPI", () => {
         alice = keyring.addFromUri(ALICE_URI);
         bob = keyring.addFromUri(BOB_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
-        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC, bob);
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, interBTC);
-        feeAPI = new DefaultFeeAPI(api, interBTC);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, bob);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
+        feeAPI = new DefaultFeeAPI(api, InterBtc);
 
         if (!(await nominationAPI.isNominationEnabled())) {
             console.log("Enabling nomination...");
@@ -98,10 +98,10 @@ describe("NominationAPI", () => {
             assert.equal(bobAddress, nominatorId);
             assert.equal(charlieStashAddress, vaultId);
 
-            const interBtcToIssue = interBTCAmount.from.BTC(0.1);
+            const interBtcToIssue = InterBtcAmount.from.BTC(0.1);
             await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
-            const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, interBTC)).toBig();
-            assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0.1), "Nominator should receive at least 0.1 interBTC");
+            const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, InterBtc)).toBig();
+            assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0.1), "Nominator should receive at least 0.1 InterBtc");
 
             // Withdraw
             await nominationAPI.withdrawCollateral(charlie_stash.address, nominatorDeposit);
@@ -110,7 +110,7 @@ describe("NominationAPI", () => {
             assert.equal(1, nominatorsAfterWithdrawal.length);
             await expect(nominationAPI.getTotalNomination(Polkadot, bob.address)).to.be.rejected;
             console.log("successfully rejected");
-            const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, interBTC)).toBig();
+            const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, InterBtc)).toBig();
             assert.equal(
                 wrappedRewardsBeforeWithdrawal.round(5, 0).toString(),
                 wrappedRewardsAfterWithdrawal.round(5, 0).toString(),

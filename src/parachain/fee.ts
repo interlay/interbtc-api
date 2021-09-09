@@ -1,7 +1,7 @@
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
-import { BTCUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "..";
 import { CollateralUnit, WrappedCurrency } from "../types";
@@ -17,7 +17,7 @@ export interface FeeAPI {
      * @returns The griefing collateral
      */
     getGriefingCollateral<C extends CollateralUnit>(
-        amount: MonetaryAmount<Currency<BTCUnit>, BTCUnit>,
+        amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
         griefingCollateralRate: Big,
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
@@ -28,9 +28,9 @@ export interface FeeAPI {
      * @returns The APY, given the parameters
      */
     calculateAPY<C extends CollateralUnit>(
-        feesWrapped: MonetaryAmount<Currency<BTCUnit>, BTCUnit>,
+        feesWrapped: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
         lockedCollateral: MonetaryAmount<Currency<C>, C>,
-        exchangeRate?: ExchangeRate<Currency<BTCUnit>, BTCUnit, Currency<C>, C>
+        exchangeRate?: ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>
     ): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
@@ -54,7 +54,7 @@ export class DefaultFeeAPI implements FeeAPI {
     }
 
     async getGriefingCollateral<C extends CollateralUnit>(
-        amount: MonetaryAmount<Currency<BTCUnit>, BTCUnit>,
+        amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
         griefingCollateralRate: Big,
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>> {
@@ -81,9 +81,9 @@ export class DefaultFeeAPI implements FeeAPI {
     }
 
     async calculateAPY<C extends CollateralUnit>(
-        feesWrapped: MonetaryAmount<Currency<BTCUnit>, BTCUnit>,
+        feesWrapped: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
         lockedCollateral: MonetaryAmount<Currency<C>, C>,
-        exchangeRate?: ExchangeRate<Currency<BTCUnit>, BTCUnit, Currency<C>, C>
+        exchangeRate?: ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>
     ): Promise<Big> {
         if (lockedCollateral.isZero()) {
             return new Big(0);

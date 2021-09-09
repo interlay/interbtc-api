@@ -60,10 +60,10 @@ The different functionalities are then exposed through the `InterBTCAPI` instanc
 From the account you set, you can then start requesting to issue interBTC.
 
 ```ts
-import { BTCAmount } from "@interlay/monetary-js";
+import { BitcoinAmount } from "@interlay/monetary-js";
 // amount of BTC to convert to interBTC
 // NOTE: the bridge fees will be deducted from this. For example, if you request 1 BTC, you will receive about 0.995 interBTC
-const amount = BTCAmount.from.BTC(0.001);
+const amount = BitcoinAmount.from.BTC(0.001);
 // request to issue interBTC
 const requestResults = await interBTC.issue.request(amount);
 // the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)
@@ -76,10 +76,10 @@ At this point, you will need to send BTC using your favorite BTC wallet.
 ### Redeeming interBTC
 
 ```ts
-import { BTCAmount } from "@interlay/monetary-js";
+import { BitcoinAmount } from "@interlay/monetary-js";
 // the amount wrapped tokens to redeem
 // NOTE: the bridge fees will be deducted from this 
-const amount = BTCAmount.from.BTC(0.001);
+const amount = BitcoinAmount.from.BTC(0.001);
 // your BTC address
 const btcAddress = "tb123....";
 // the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)

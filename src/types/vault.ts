@@ -1,4 +1,4 @@
-import { BTCUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 import { CollateralUnit } from "./currency";
 
@@ -15,7 +15,7 @@ export enum VaultStatusExt {
     CommittedTheft,
 }
 
-export interface VaultExt<U extends BTCUnit> {
+export interface VaultExt<U extends BitcoinUnit> {
     wallet: WalletExt;
     backingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     id: AccountId;
@@ -30,7 +30,7 @@ export interface VaultExt<U extends BTCUnit> {
     collateralCurrency: Currency<CollateralUnit>;
 }
 
-export interface SystemVaultExt<U extends BTCUnit> {
+export interface SystemVaultExt<U extends BitcoinUnit> {
     toBeIssuedTokens: MonetaryAmount<Currency<U>, U>;
     issuedTokens: MonetaryAmount<Currency<U>, U>;
     toBeRedeemedTokens: MonetaryAmount<Currency<U>, U>;

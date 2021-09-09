@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { interBTC } from "@interlay/monetary-js";
+import { InterBtc } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
@@ -78,7 +78,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     constructor(
         readonly api: ApiPromise,
         network: BitcoinNetwork = "mainnet",
-        wrappedCurrency: WrappedCurrency = interBTC,
+        wrappedCurrency: WrappedCurrency = InterBtc,
         private _account?: AddressOrPair
     ) {
         const btcNetwork = getBitcoinNetwork(network);
