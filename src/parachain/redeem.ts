@@ -151,8 +151,12 @@ export interface RedeemAPI extends TransactionAPI {
     /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of wrapped tokens to burn
+     * @param collateralCurrency Liquidated collateral currency to use when burning wrapped tokens
      */
-    burn(amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<void>;
+     burn<C extends CollateralUnit>(
+        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+        collateralCurrency: Currency<C>
+    ): Promise<void>;
     /**
      * @param collateralCurrency Liquidated collateral currency to use when burning wrapped tokens
      * @returns The maximum amount of tokens that can be burned through a liquidation redeem
@@ -282,9 +286,12 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
-    async burn(amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<void> {
+    async burn<C extends CollateralUnit>(
+        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+        collateralCurrency: Currency<C>
+    ): Promise<void> {
         const amountSat = this.api.createType("Balance", amount.str.Satoshi());
-        const currencyIdLiteral = tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker);
+        const currencyIdLiteral = tickerToCurrencyIdLiteral(collateralCurrency.ticker);
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(amountSat, currencyIdLiteral);
         await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
     }
