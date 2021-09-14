@@ -207,7 +207,7 @@ export async function parseIssueRequest(
         userParachainAddress: req.requester.toString(),
         vaultWalletPubkey: req.btc_public_key.toString(),
         bridgeFee: newMonetaryAmount(req.fee.toString(), vaultsAPI.getWrappedCurrency()),
-        wrappedAmont: newMonetaryAmount(req.amount.toString(), vaultsAPI.getWrappedCurrency()),
+        wrappedAmount: newMonetaryAmount(req.amount.toString(), vaultsAPI.getWrappedCurrency()),
         griefingCollateral: newMonetaryAmount(req.griefing_collateral.toString(), vault.collateralCurrency),
         status,
     };

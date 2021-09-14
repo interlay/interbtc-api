@@ -63,7 +63,7 @@ describe("issue", () => {
         );
         const requestResult = requestResults[0];
         const issueRequest = await issueAPI.getRequestById(requestResult.id);
-        assert.equal(issueRequest.wrappedAmont.str.BTC(), amount.sub(feesToPay).str.BTC(), "Amount different than expected");
+        assert.equal(issueRequest.wrappedAmount.str.BTC(), amount.sub(feesToPay).str.BTC(), "Amount different than expected");
     });
 
     it("should list existing requests", async () => {
@@ -101,9 +101,9 @@ describe("issue", () => {
             2,
             "Created wrong amount of requests, vaults have insufficient collateral"
         );
-        const issuedAmount1 = issueRequests[0].wrappedAmont;
+        const issuedAmount1 = issueRequests[0].wrappedAmount;
         const issueFee1 = issueRequests[0].bridgeFee;
-        const issuedAmount2 = issueRequests[1].wrappedAmont;
+        const issuedAmount2 = issueRequests[1].wrappedAmount;
         const issueFee2 = issueRequests[1].bridgeFee;
         assert.equal(
             issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BitcoinUnit.BTC).round(5).toString(),

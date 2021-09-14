@@ -6,7 +6,7 @@ import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 
 export interface Issue {
     id: string;
-    wrappedAmont: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    wrappedAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     userParachainAddress: string;
     bridgeFee: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     griefingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;

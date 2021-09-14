@@ -15,23 +15,23 @@ export enum VaultStatusExt {
     CommittedTheft,
 }
 
-export interface VaultExt<U extends BitcoinUnit> {
+export interface VaultExt<WrappedUnit extends BitcoinUnit> {
     wallet: WalletExt;
     backingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     id: AccountId;
     status: VaultStatusExt;
     bannedUntil: number | undefined;
-    toBeIssuedTokens: MonetaryAmount<Currency<U>, U>;
-    issuedTokens: MonetaryAmount<Currency<U>, U>;
-    toBeRedeemedTokens: MonetaryAmount<Currency<U>, U>;
-    toBeReplacedTokens: MonetaryAmount<Currency<U>, U>;
+    toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
     replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     collateralCurrency: Currency<CollateralUnit>;
 }
 
-export interface SystemVaultExt<U extends BitcoinUnit> {
-    toBeIssuedTokens: MonetaryAmount<Currency<U>, U>;
-    issuedTokens: MonetaryAmount<Currency<U>, U>;
-    toBeRedeemedTokens: MonetaryAmount<Currency<U>, U>;
+export interface SystemVaultExt<WrappedUnit extends BitcoinUnit> {
+    toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
 }

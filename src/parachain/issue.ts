@@ -221,7 +221,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
             const result = await this.requestAdvanced(amountsPerVault, atomic);
             const successfulSum = result.reduce(
-                (sum, req) => sum.add(req.wrappedAmont),
+                (sum, req) => sum.add(req.wrappedAmount),
                 newMonetaryAmount(0, this.wrappedCurrency)
             );
             const remainder = amount.sub(successfulSum);

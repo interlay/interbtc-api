@@ -94,7 +94,16 @@ export interface OracleAPI extends TransactionAPI {
      * @returns Whether the oracle entr for the given key has been updated
      */
     getRawValuesUpdated(key: OracleKey): Promise<boolean>;
-    waitForFeeEstimateUpdate(): Promise<void>;
+    /**
+     * @param type The fee estimate type whose update is awaited
+     * @remark Awaits an oracle update to the BTC inclusion fee
+     */
+    waitForFeeEstimateUpdate(type?: FeeEstimationType): Promise<void>;
+    /**
+     * @param exchangeRate The exchange rate whose counter currency to await an update for 
+     * (with respect to BTC)
+     * @remark Awaits an oracle update to the exchange rate
+     */
     waitForExchangeRateUpdate<C extends CollateralUnit, U extends BitcoinUnit>(
         exchangeRate: ExchangeRate<Currency<U>, U, Currency<C>, C>
     ): Promise<void>;
@@ -216,8 +225,8 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         return isSet.unwrap().isTrue;
     }
 
-    async waitForFeeEstimateUpdate(): Promise<void> {
-        const key = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
+    async waitForFeeEstimateUpdate(type: FeeEstimationType = DEFAULT_INCLUSION_TIME): Promise<void> {
+        const key = createInclusionOracleKey(this.api, type);
         while (await this.getRawValuesUpdated(key)) {
             sleep(SLEEP_TIME_MS);
         }
