@@ -4,6 +4,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultFeeAPI, FeeAPI } from "../../../../src";
 import { assert } from "chai";
+import { InterBtc } from "@interlay/monetary-js";
 
 describe("fee", () => {
     let api: ApiPromise;
@@ -11,7 +12,7 @@ describe("fee", () => {
 
     before(async function () {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
-        feeAPI = new DefaultFeeAPI(api);
+        feeAPI = new DefaultFeeAPI(api, InterBtc);
     });
 
     after(async () => {

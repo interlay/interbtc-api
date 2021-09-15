@@ -71,9 +71,8 @@ export class DefaultTransactionAPI {
             .forEach((eventData) => {
                 if (DefaultTransactionAPI.isDispatchError(eventData)) {
                     try {
-                        const decoded = api.registry.findMetaError(eventData.asModule);
-                        const { docs, name, section } = decoded;
-                        if (docs && docs.length > 0) {
+                        const { docs, name, section } = api.registry.findMetaError(eventData.asModule);
+                        if (docs?.length > 0) {
                             errorMessage = `${section}.${name}: ${docs.join(" ")}`;
                         } else {
                             errorMessage = `${section}.${name}`;

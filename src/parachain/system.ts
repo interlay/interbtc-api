@@ -1,11 +1,13 @@
 import { ApiPromise } from "@polkadot/api";
+import { AddressOrPair } from "@polkadot/api/types";
 import { Header, BlockHash } from "@polkadot/types/interfaces";
 import { StatusCode } from "../interfaces/default";
+import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
  * @category InterBTC Bridge
  */
-export interface SystemAPI {
+export interface SystemAPI extends TransactionAPI {
     /**
      * @returns The current block number being processed.
      */
@@ -26,10 +28,17 @@ export interface SystemAPI {
      * @returns The parachain status code object.
      */
     getStatusCode(): Promise<StatusCode>;
+    /**
+     * @remarks Upgrades runtime using `sudoUncheckedWeight`
+     * @param code Hex-encoded wasm bob
+     */
+    setCode(code: string): Promise<void>;
 }
 
-export class DefaultSystemAPI implements SystemAPI {
-    constructor(private api: ApiPromise) {}
+export class DefaultSystemAPI extends DefaultTransactionAPI implements SystemAPI {
+    constructor(api: ApiPromise, account?: AddressOrPair) {
+        super(api, account);
+    }
 
     async getCurrentBlockNumber(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -51,5 +60,10 @@ export class DefaultSystemAPI implements SystemAPI {
     async getStatusCode(): Promise<StatusCode> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return await this.api.query.security.parachainStatus.at(head);
+    }
+
+    async setCode(code: string): Promise<void> {
+        const tx = this.api.tx.sudo.sudoUncheckedWeight(this.api.tx.system.setCode(code), 0);
+        await this.sendLogged(tx, this.api.events.system.CodeUpdated);
     }
 }

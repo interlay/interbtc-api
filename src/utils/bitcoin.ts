@@ -107,7 +107,10 @@ export async function waitForBlockRelaying(
     }
 }
 
-export async function waitForBlockFinalization(bitcoinCoreClient: BitcoinCoreClient, btcRelayAPI: BTCRelayAPI): Promise<void> {
+export async function waitForBlockFinalization(
+    bitcoinCoreClient: BitcoinCoreClient,
+    btcRelayAPI: BTCRelayAPI
+): Promise<void> {
     const bestBlockHash = addHexPrefix(reverseEndiannessHex(await bitcoinCoreClient.getBestBlockHash()));
     // wait for block to be relayed
     await waitForBlockRelaying(btcRelayAPI, bestBlockHash);

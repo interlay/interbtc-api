@@ -1,8 +1,8 @@
-# interbtc-js
+# interbtc-api
 
 ## About
 
-The interbtc TypeScript library connects the Polkadot ecosystem with Bitcoin. It allows the creation of interBTC, a fungible token that represents Bitcoin in the Polkadot ecosystem. InterBTC is backed by Bitcoin 1:1 and allows redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
+The interbtc TypeScript library connects the Polkadot and Kusama ecosystems with Bitcoin. It allows the creation of interBTC on Polkadot and kBTC on Kusama, fungible "wrapped" tokens that represent Bitcoin. Wrapped tokens are backed by Bitcoin 1:1 and allow redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
 In comparison to other bridge constructions (like tBTC, wBTC, or RenVM) _anyone_ can become an intermediary by depositing collateral making interBTC the only truly open system.
 
 The bridge itself follows the detailed specification: <a href="https://interlay.gitlab.io/interbtc-spec/" target="_blank"><strong>Explore the specification »</strong></a>
@@ -60,10 +60,10 @@ The different functionalities are then exposed through the `InterBTCAPI` instanc
 From the account you set, you can then start requesting to issue interBTC.
 
 ```ts
-import { BTCAmount } from "@interlay/monetary-js";
+import { BitcoinAmount } from "@interlay/monetary-js";
 // amount of BTC to convert to interBTC
 // NOTE: the bridge fees will be deducted from this. For example, if you request 1 BTC, you will receive about 0.995 interBTC
-const amount = BTCAmount.from.BTC(0.001);
+const amount = BitcoinAmount.from.BTC(0.001);
 // request to issue interBTC
 const requestResults = await interBTC.issue.request(amount);
 // the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)
@@ -76,10 +76,10 @@ At this point, you will need to send BTC using your favorite BTC wallet.
 ### Redeeming interBTC
 
 ```ts
-import { BTCAmount } from "@interlay/monetary-js";
-// the amount interBTC to burn
+import { BitcoinAmount } from "@interlay/monetary-js";
+// the amount wrapped tokens to redeem
 // NOTE: the bridge fees will be deducted from this 
-const amount = BTCAmount.from.BTC(0.001);
+const amount = BitcoinAmount.from.BTC(0.001);
 // your BTC address
 const btcAddress = "tb123....";
 // the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)

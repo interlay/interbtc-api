@@ -1,14 +1,20 @@
 import {
-    PolkadotAmount,
-    KusamaAmount,
     Polkadot,
     Kusama,
-    Bitcoin,
-    BTCUnit,
-    KusamaUnit,
-    PolkadotUnit,
-    MonetaryAmount,
     Currency,
+    PolkadotAmount,
+    KusamaAmount,
+    PolkadotUnit,
+    KusamaUnit,
+    BitcoinUnit,
+    KintsugiUnit,
+    InterlayUnit,
+    InterBtc,
+    KBtc,
+    InterBtcAmount,
+    KBtcAmount,
+    Kintsugi,
+    Interlay,
 } from "@interlay/monetary-js";
 import { CurrencyId } from "../interfaces";
 
@@ -16,58 +22,66 @@ export enum CurrencyIdLiteral {
     DOT = "DOT",
     KSM = "KSM",
     INTERBTC = "INTERBTC",
+    KBTC = "KBTC",
+    KINT = "KINT",
+    INTR = "INTR",
 }
 
-export type CollateralAmount = PolkadotAmount | KusamaAmount;
-export type CollateralCurrency = Polkadot | Kusama;
-export type MonetaryCurrency = Bitcoin | Polkadot | Kusama;
-export type CollateralUnit = PolkadotUnit | KusamaUnit;
-export type CurrencyUnit = BTCUnit | PolkadotUnit | KusamaUnit;
+export const CollateralAmount = [PolkadotAmount, KusamaAmount];
+export type CollateralAmount = typeof CollateralAmount[number];
 
-export function monetaryToCurrencyId<C extends CurrencyUnit>(
-    monetary: MonetaryAmount<Currency<C>, C>
-): CurrencyIdLiteral {
-    return currencyToCurrencyId(monetary.currency);
-}
+export const CollateralCurrency = [Polkadot, Kusama] as const;
+export type CollateralCurrency = typeof CollateralCurrency[number];
 
-export function currencyToCurrencyId<C extends CurrencyUnit>(currency: Currency<C>): CurrencyIdLiteral {
-    switch (currency.name) {
-        case Bitcoin.name: {
-            return CurrencyIdLiteral.INTERBTC;
-        }
-        case Polkadot.name: {
-            return CurrencyIdLiteral.DOT;
-        }
-        case Kusama.name: {
-            return CurrencyIdLiteral.KSM;
-        }
-        // TODO: Add `Ethereum` currency?
-    }
-    throw new Error("No CurrencyId entry for provided Monetary");
-}
+export const CollateralUnit = [PolkadotUnit, KusamaUnit];
+export type CollateralUnit = typeof CollateralUnit[number];
+
+export const CurrencyUnit = [BitcoinUnit, PolkadotUnit, KusamaUnit, KintsugiUnit, InterlayUnit];
+export type CurrencyUnit = typeof CurrencyUnit[number];
+
+export const WrappedCurrency = [InterBtc, KBtc];
+export type WrappedCurrency = typeof WrappedCurrency[number];
+
+export const WrappedAmount = [InterBtcAmount, KBtcAmount];
+export type WrappedAmount = typeof WrappedAmount[number];
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     switch (ticker) {
-        case Bitcoin.ticker: {
-            return CurrencyIdLiteral.INTERBTC;
-        }
         case Polkadot.ticker: {
             return CurrencyIdLiteral.DOT;
         }
         case Kusama.ticker: {
             return CurrencyIdLiteral.KSM;
         }
+        case KBtc.ticker: {
+            return CurrencyIdLiteral.KBTC;
+        }
+        case InterBtc.ticker: {
+            return CurrencyIdLiteral.INTERBTC;
+        }
+        case Kintsugi.ticker: {
+            return CurrencyIdLiteral.KINT;
+        }
+        case Interlay.ticker: {
+            return CurrencyIdLiteral.INTR;
+        }
     }
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
-export function currencyIdToMonetaryCurrency<C extends CurrencyUnit>(currencyId: CurrencyId): Currency<C> {
+export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: CurrencyId): Currency<U> {
     if (currencyId.isInterbtc) {
-        return Bitcoin as unknown as Currency<C>;
+        return InterBtc as unknown as Currency<U>;
     } else if (currencyId.isDot) {
-        return Polkadot as unknown as Currency<C>;
+        return Polkadot as unknown as Currency<U>;
     } else if (currencyId.isKsm) {
-        return Kusama as unknown as Currency<C>;
+        return Kusama as unknown as Currency<U>;
+    } else if (currencyId.isKbtc) {
+        return KBtc as unknown as Currency<U>;
+    } else if (currencyId.isKint) {
+        return Kintsugi as unknown as Currency<U>;
+    } else if (currencyId.isIntr) {
+        return Interlay as unknown as Currency<U>;
     }
     throw new Error("No CurrencyId entry for provided ticker");
 }

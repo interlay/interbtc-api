@@ -5,7 +5,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
-import { BTCAmount } from "@interlay/monetary-js";
+import { BitcoinAmount } from "@interlay/monetary-js";
 import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, wait_success as waitSuccess } from "../../../utils/helpers";
 
 describe("ElectrsAPI regtest", function () {
@@ -35,7 +35,7 @@ describe("ElectrsAPI regtest", function () {
     it("should getTxIdByRecipientAddress", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const recipientAddress = makeRandomBitcoinAddress();
-            const amount = BTCAmount.from.BTC(0.00022244);
+            const amount = BitcoinAmount.from.BTC(0.00022244);
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
             const txid = await waitSuccess(() => electrsAPI.getUtxoTxIdByRecipientAddress(recipientAddress, amount));
@@ -47,7 +47,7 @@ describe("ElectrsAPI regtest", function () {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = makeRandomBitcoinAddress();
-            const amount = BTCAmount.from.BTC(0.00029);
+            const amount = BitcoinAmount.from.BTC(0.00029);
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
             const txid = await waitSuccess(() => electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount));
@@ -59,7 +59,7 @@ describe("ElectrsAPI regtest", function () {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = makeRandomBitcoinAddress();
-            const amount = BTCAmount.from.BTC(0.00029);
+            const amount = BitcoinAmount.from.BTC(0.00029);
     
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
             // transaction in mempool

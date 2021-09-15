@@ -1,7 +1,7 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "0.27.1",
-  "description": "JavaScript library to interact with InterBTC",
+  "version": "1.0.0",
+  "description": "JavaScript library to interact with interBTC and kBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
   "repository": "https://github.com/interlay/interbtc-js",
@@ -9,7 +9,9 @@
   "keywords": [
     "Polkadot",
     "Bitcoin",
-    "InterBTC"
+    "interBTC",
+    "Kusama",
+    "kBTC"
   ],
   "scripts": {
     "build": "run-s generate:* build:*",
@@ -40,12 +42,12 @@
   "engineStrict": true,
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
-    "@interlay/interbtc-types": "0.10.2",
-    "@interlay/monetary-js": "0.2.2",
+    "@interlay/interbtc-types": "0.12.5",
+    "@interlay/monetary-js": "0.4.0",
     "@polkadot/api": "5.3.2",
     "@polkadot/keyring": "6.6.2-6",
-    "@types/big.js": "6.1.1",
     "big.js": "6.1.1",
+    "@types/big.js": "6.1.2",
     "bitcoin-core": "^3.0.0",
     "bitcoinjs-lib": "^5.2.0",
     "bn.js": "^5.2.0",

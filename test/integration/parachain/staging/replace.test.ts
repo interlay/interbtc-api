@@ -1,12 +1,14 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BTCAmount, Polkadot } from "@interlay/monetary-js";
+import { InterBtc, InterBtcAmount, Polkadot } from "@interlay/monetary-js";
+
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
 import {
     ALICE_URI,
+    DAVE_STASH_URI,
     DEFAULT_BITCOIN_CORE_HOST,
     DEFAULT_BITCOIN_CORE_NETWORK,
     DEFAULT_BITCOIN_CORE_PASSWORD,
@@ -29,6 +31,7 @@ describe("replace", () => {
     let keyring: Keyring;
     let alice: KeyringPair;
     let eve_stash: KeyringPair;
+    let dave_stash: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
@@ -42,9 +45,10 @@ describe("replace", () => {
             DEFAULT_BITCOIN_CORE_PORT,
             DEFAULT_BITCOIN_CORE_WALLET
         );
-        replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI);
+        replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         alice = keyring.addFromUri(ALICE_URI);
         eve_stash = keyring.addFromUri(EVE_STASH_URI);
+        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
     });
 
     after(async () => {
@@ -55,8 +59,8 @@ describe("replace", () => {
         let replaceId: string;
 
         it("should request vault replacement", async () => {
-            const issueAmount = BTCAmount.from.BTC(0.001);
-            const replaceAmount = BTCAmount.from.BTC(0.0005);
+            const issueAmount = InterBtcAmount.from.BTC(0.001);
+            const replaceAmount = InterBtcAmount.from.BTC(0.0005);
             await issueSingle(
                 api,
                 electrsAPI,
@@ -65,8 +69,12 @@ describe("replace", () => {
                 issueAmount,
                 eve_stash.address
             );
-            // Eve//stash is the vault that requests replacement
+            // Eve//stash is a DOT vault that requests replacement
             replaceAPI.setAccount(eve_stash);
+            replaceId = await replaceAPI.request(replaceAmount);
+
+            // Dave//stash is a KSM vault that requests replacement
+            replaceAPI.setAccount(dave_stash);
             replaceId = await replaceAPI.request(replaceAmount);
         }).timeout(200000);
 
@@ -98,7 +106,7 @@ describe("replace", () => {
     }).timeout(500);
 
     it("should getGriefingCollateral", async () => {
-        const amountToReplace = BTCAmount.from.BTC(0.728);
+        const amountToReplace = InterBtcAmount.from.BTC(0.728);
         const griefingCollateral = await replaceAPI.getGriefingCollateral(amountToReplace, Polkadot);
         assert.equal(griefingCollateral.str.DOT(), "284.9204534203");
     }).timeout(500);
@@ -107,5 +115,13 @@ describe("replace", () => {
         const replacePeriod = await replaceAPI.getReplacePeriod();
         assert.equal(replacePeriod.toString(), "14400");
     }).timeout(500);
+
+    it("should list replace request by a vault", async () => {
+        const eveStashId = api.createType("AccountId", eve_stash.address);
+        const replaceRequests = await replaceAPI.mapReplaceRequests(eveStashId);
+        replaceRequests.forEach((request) => {
+            assert.deepEqual(request.oldVault, eveStashId);
+        });
+    });
 
 });

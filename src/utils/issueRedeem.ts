@@ -3,7 +3,7 @@ import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, BTCAmount, BTCUnit, MonetaryAmount, Polkadot, PolkadotUnit } from "@interlay/monetary-js";
+import { BitcoinAmount, BitcoinUnit, Currency, InterBtcAmount, MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId } from "../utils";
 import { getBitcoinNetwork } from "../interbtc-api";
@@ -13,18 +13,16 @@ import { DefaultTokensAPI } from "../parachain/tokens";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
 import { BTCRelayAPI, DefaultBTCRelayAPI, DefaultRedeemAPI } from "../parachain";
-import { Issue, IssueStatus, Redeem, RedeemStatus } from "../types";
+import { Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
 import { BitcoinNetwork } from "../types/bitcoinTypes";
-import { REGTEST_ESPLORA_BASE_PATH, waitForBlockFinalization } from "..";
+import { newMonetaryAmount, REGTEST_ESPLORA_BASE_PATH, waitForBlockFinalization } from "..";
 
 export const SLEEP_TIME_MS = 1000;
 
-export interface IssueResult {
+export interface IssueResult<U extends BitcoinUnit> {
     request: Issue;
-    initialDotBalance: MonetaryAmount<Polkadot, PolkadotUnit>;
-    finalDotBalance: MonetaryAmount<Polkadot, PolkadotUnit>;
-    initialInterBtcBalance: MonetaryAmount<Bitcoin, BTCUnit>;
-    finalInterBtcBalance: MonetaryAmount<Bitcoin, BTCUnit>;
+    initialWrappedTokenBalance: MonetaryAmount<Currency<U>, U>;
+    finalWrappedTokenBalance: MonetaryAmount<Currency<U>, U>;
 }
 
 export enum ExecuteRedeem {
@@ -65,17 +63,20 @@ export function getRequestIdsFromEvents(
  * with highest available amount and tries again for the remainder. If at leaast
  * one vault can fulfil a request alone, a random one among them is selected.
  **/
-export function allocateAmountsToVaults(
-    vaultsWithAvailableAmounts: Map<AccountId, BTCAmount>,
-    amountToAllocate: BTCAmount
-): Map<AccountId, BTCAmount> {
+export function allocateAmountsToVaults<U extends BitcoinUnit>(
+    vaultsWithAvailableAmounts: Map<AccountId, MonetaryAmount<Currency<U>, U>>,
+    amountToAllocate: MonetaryAmount<Currency<U>, U>
+): Map<AccountId, MonetaryAmount<Currency<U>, U>> {
     const maxReservationPercent = 95; // don't reserve more than 95% of a vault's collateral
-    const allocations = new Map<AccountId, BTCAmount>();
+    const allocations = new Map<AccountId, MonetaryAmount<Currency<U>, U>>();
     // iterable array in ascending order of issuing capacity:
     const vaultsArray = [...vaultsWithAvailableAmounts.entries()]
         .reverse()
-        .map((entry) => [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [AccountId, BTCAmount]);
-    while (amountToAllocate.gt(BTCAmount.zero)) {
+        .map(
+            (entry) =>
+                [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [AccountId, MonetaryAmount<Currency<U>, U>]
+        );
+    while (amountToAllocate.gt(newMonetaryAmount(0, amountToAllocate.currency))) {
         // find first vault that can fulfil request (or undefined if none)
         const firstSuitable = vaultsArray.findIndex(([_, available]) => available.gte(amountToAllocate));
         let vault, amount;
@@ -96,7 +97,6 @@ export function allocateAmountsToVaults(
         allocations.set(vault, amount);
         amountToAllocate = amountToAllocate.sub(amount);
     }
-
     return allocations;
 }
 
@@ -105,24 +105,28 @@ export async function issueSingle(
     electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
-    amount: BTCAmount,
+    amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
     vaultAddress?: string,
     autoExecute = true,
     triggerRefund = false,
     network: BitcoinNetwork = "regtest",
     atomic = true
-): Promise<IssueResult> {
+): Promise<IssueResult<BitcoinUnit>> {
     try {
         const bitcoinjsNetwork = getBitcoinNetwork(network);
-        const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH));
+        const issueAPI = new DefaultIssueAPI(
+            api,
+            bitcoinjsNetwork,
+            new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH),
+            amount.currency
+        );
         const btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         const tokensAPI = new DefaultTokensAPI(api);
 
         const vaultId = vaultAddress !== undefined ? newAccountId(api, vaultAddress) : vaultAddress;
         issueAPI.setAccount(issuingAccount);
         const requesterAccountId = api.createType("AccountId", issuingAccount.address);
-        const initialBalanceDOT = await tokensAPI.balance(Polkadot, requesterAccountId);
-        const initialBalanceInterBTC = await tokensAPI.balance(Bitcoin, requesterAccountId);
+        const initialWrappedTokenBalance = await tokensAPI.balance(amount.currency, requesterAccountId);
         const blocksToMine = 3;
 
         const rawRequestResult = await issueAPI.request(amount, vaultId, atomic);
@@ -131,14 +135,14 @@ export async function issueSingle(
         }
         const issueRequest = rawRequestResult[0];
 
-        let amountAsBtc = issueRequest.amountInterBTC.add(issueRequest.bridgeFee);
+        let amountAsBtc = issueRequest.wrappedAmount.add(issueRequest.bridgeFee);
         if (triggerRefund) {
             // Send 1 more Btc than needed
-            amountAsBtc = amountAsBtc.add(BTCAmount.from.BTC(1));
+            amountAsBtc = amountAsBtc.add(BitcoinAmount.from.BTC(1));
         } else if (autoExecute === false) {
             // Send 1 less Satoshi than requested
             // to trigger the user failsafe and disable auto-execution.
-            const oneSatoshi = BTCAmount.from.Satoshi(1);
+            const oneSatoshi = BitcoinAmount.from.Satoshi(1);
             amountAsBtc = amountAsBtc.sub(oneSatoshi);
         }
 
@@ -163,16 +167,11 @@ export async function issueSingle(
             }
         }
 
-        const [finalBalanceInterBTC, finalBalanceDOT] = await Promise.all([
-            tokensAPI.balance(Bitcoin, requesterAccountId),
-            tokensAPI.balance(Polkadot, requesterAccountId),
-        ]);
+        const finalWrappedTokenBalance = await tokensAPI.balance(amount.currency, requesterAccountId);
         return {
             request: issueRequest,
-            initialDotBalance: initialBalanceDOT,
-            finalDotBalance: finalBalanceDOT,
-            initialInterBtcBalance: initialBalanceInterBTC,
-            finalInterBtcBalance: finalBalanceInterBTC,
+            initialWrappedTokenBalance,
+            finalWrappedTokenBalance,
         };
     } catch (e) {
         // IssueCompleted errors occur when multiple vaults attempt to execute the same request
@@ -190,7 +189,7 @@ export async function redeem(
     bitcoinCoreClient: BitcoinCoreClient,
     btcRelayAPI: BTCRelayAPI,
     redeemingAccount: KeyringPair,
-    amount: BTCAmount,
+    amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
     vaultAddress?: string,
     autoExecute = ExecuteRedeem.Auto,
     network: BitcoinNetwork = "regtest",
@@ -198,7 +197,7 @@ export async function redeem(
     timeout = 5 * 60 * 1000
 ): Promise<Redeem> {
     const bitcoinjsNetwork = getBitcoinNetwork(network);
-    const redeemAPI = new DefaultRedeemAPI(api, bitcoinjsNetwork, electrsAPI);
+    const redeemAPI = new DefaultRedeemAPI(api, bitcoinjsNetwork, electrsAPI, amount.currency);
     redeemAPI.setAccount(redeemingAccount);
 
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
@@ -241,8 +240,8 @@ export async function issueAndRedeem(
     bitcoinCoreClient: BitcoinCoreClient,
     account: KeyringPair,
     vaultAddress?: string,
-    issueAmount = BTCAmount.from.BTC(0.1),
-    redeemAmount = BTCAmount.from.BTC(0.009),
+    issueAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.1),
+    redeemAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.009),
     autoExecuteIssue = true,
     autoExecuteRedeem = ExecuteRedeem.Auto,
     triggerRefund = false,
@@ -269,7 +268,7 @@ export async function issueAndRedeem(
         btcRelayAPI,
         account,
         redeemAmount,
-        issueResult.request.vaultDOTAddress,
+        issueResult.request.vaultParachainAddress,
         autoExecuteRedeem,
         network,
         atomic

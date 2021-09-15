@@ -1,5 +1,6 @@
-import { PolkadotAmount, BTCAmount } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
+import { CollateralUnit } from "./currency";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -14,22 +15,23 @@ export enum VaultStatusExt {
     CommittedTheft,
 }
 
-export interface VaultExt {
+export interface VaultExt<WrappedUnit extends BitcoinUnit> {
     wallet: WalletExt;
-    backingCollateral: PolkadotAmount;
+    backingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     id: AccountId;
     status: VaultStatusExt;
     bannedUntil: number | undefined;
-    toBeIssuedTokens: BTCAmount;
-    issuedTokens: BTCAmount;
-    toBeRedeemedTokens: BTCAmount;
-    toBeReplacedTokens: BTCAmount;
-    replaceCollateral: PolkadotAmount;
-    liquidatedCollateral: PolkadotAmount;
+    toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    collateralCurrency: Currency<CollateralUnit>;
 }
 
-export interface SystemVaultExt {
-    toBeIssuedTokens: BTCAmount;
-    issuedTokens: BTCAmount;
-    toBeRedeemedTokens: BTCAmount;
+export interface SystemVaultExt<WrappedUnit extends BitcoinUnit> {
+    toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
 }

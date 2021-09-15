@@ -5,7 +5,7 @@ import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
 import { Codec } from "@polkadot/types/types";
-import { BTCAmount, PolkadotAmount } from "@interlay/monetary-js";
+import { BitcoinUnit } from "@interlay/monetary-js";
 import { Moment } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types/codec";
 
@@ -23,6 +23,7 @@ import {
     IssueRequest,
     RedeemRequest,
 } from "../interfaces";
+import { newMonetaryAmount, VaultsAPI, WrappedCurrency } from "..";
 
 /**
  * Converts endianness of a Uint8Array
@@ -136,11 +137,11 @@ export function parseWallet(wallet: Wallet, network: Network): WalletExt {
     };
 }
 
-export function parseSystemVault(vault: SystemVault): SystemVaultExt {
+export function parseSystemVault(vault: SystemVault, wrappedCurrency: WrappedCurrency): SystemVaultExt<BitcoinUnit> {
     return {
-        toBeIssuedTokens: BTCAmount.from.Satoshi(vault.to_be_issued_tokens.toString()),
-        issuedTokens: BTCAmount.from.Satoshi(vault.issued_tokens.toString()),
-        toBeRedeemedTokens: BTCAmount.from.Satoshi(vault.to_be_redeemed_tokens.toString()),
+        toBeIssuedTokens: newMonetaryAmount(vault.to_be_issued_tokens.toString(), wrappedCurrency),
+        issuedTokens: newMonetaryAmount(vault.issued_tokens.toString(), wrappedCurrency),
+        toBeRedeemedTokens: newMonetaryAmount(vault.to_be_redeemed_tokens.toString(), wrappedCurrency),
     };
 }
 
@@ -148,12 +149,16 @@ export function newAccountId(api: ApiPromise, accountId: string): AccountId {
     return api.createType("AccountId", accountId);
 }
 
-export function parseRefundRequest(req: RefundRequest, network: Network): RefundRequestExt {
+export function parseRefundRequest(
+    req: RefundRequest,
+    network: Network,
+    wrappedCurrency: WrappedCurrency
+): RefundRequestExt {
     return {
         vaultId: req.vault,
-        amountIssuing: BTCAmount.from.Satoshi(req.amount_issuing.toString()),
-        fee: BTCAmount.from.Satoshi(req.fee.toString()),
-        amountBtc: BTCAmount.from.Satoshi(req.amount_btc.toString()),
+        amountIssuing: newMonetaryAmount(req.amount_issuing.toString(), wrappedCurrency),
+        fee: newMonetaryAmount(req.fee.toString(), wrappedCurrency),
+        amountBtc: newMonetaryAmount(req.amount_btc.toString(), wrappedCurrency),
         issuer: req.issuer,
         btcAddress: encodeBtcAddress(req.btc_address, network),
         issueId: stripHexPrefix(req.issue_id.toString()),
@@ -161,14 +166,20 @@ export function parseRefundRequest(req: RefundRequest, network: Network): Refund
     };
 }
 
-export function parseReplaceRequest(req: ReplaceRequest, network: Network): ReplaceRequestExt {
+export async function parseReplaceRequest(
+    vaultsAPI: VaultsAPI,
+    req: ReplaceRequest,
+    network: Network,
+    wrappedCurrency: WrappedCurrency
+): Promise<ReplaceRequestExt> {
+    const oldVault = await vaultsAPI.get(req.old_vault);
     return {
         btcAddress: encodeBtcAddress(req.btc_address, network),
         newVault: req.new_vault,
         oldVault: req.old_vault,
-        amount: BTCAmount.from.Satoshi(req.amount.toString()),
-        griefingCollateral: PolkadotAmount.from.Planck(req.griefing_collateral.toString()),
-        collateral: PolkadotAmount.from.Planck(req.collateral.toString()),
+        amount: newMonetaryAmount(req.amount.toString(), wrappedCurrency),
+        griefingCollateral: newMonetaryAmount(req.griefing_collateral.toString(), oldVault.collateralCurrency),
+        collateral: newMonetaryAmount(req.collateral.toString(), oldVault.collateralCurrency),
         acceptTime: req.accept_time.toNumber(),
         period: req.period.toNumber(),
         btcHeight: req.btc_height.toNumber(),
@@ -176,27 +187,38 @@ export function parseReplaceRequest(req: ReplaceRequest, network: Network): Repl
     };
 }
 
-export function parseIssueRequest(req: IssueRequest, network: Network, id: H256 | string): Issue {
+export async function parseIssueRequest(
+    vaultsAPI: VaultsAPI,
+    req: IssueRequest,
+    network: Network,
+    id: H256 | string
+): Promise<Issue> {
     const status = req.status.isCompleted
         ? IssueStatus.Completed
         : req.status.isCancelled
             ? IssueStatus.Cancelled
             : IssueStatus.PendingWithBtcTxNotFound;
+    const vault = await vaultsAPI.get(req.vault);
     return {
         id: stripHexPrefix(id.toString()),
         creationBlock: req.opentime.toNumber(),
         vaultBTCAddress: encodeBtcAddress(req.btc_address, network),
-        vaultDOTAddress: req.vault.toString(),
-        userDOTAddress: req.requester.toString(),
+        vaultParachainAddress: req.vault.toString(),
+        userParachainAddress: req.requester.toString(),
         vaultWalletPubkey: req.btc_public_key.toString(),
-        bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()),
-        amountInterBTC: BTCAmount.from.Satoshi(req.amount.toString()),
-        griefingCollateral: PolkadotAmount.from.Planck(req.griefing_collateral.toString()),
+        bridgeFee: newMonetaryAmount(req.fee.toString(), vaultsAPI.getWrappedCurrency()),
+        wrappedAmount: newMonetaryAmount(req.amount.toString(), vaultsAPI.getWrappedCurrency()),
+        griefingCollateral: newMonetaryAmount(req.griefing_collateral.toString(), vault.collateralCurrency),
         status,
     };
 }
 
-export function parseRedeemRequest(req: RedeemRequest, network: Network, id: H256): Redeem {
+export async function parseRedeemRequest(
+    vaultsAPI: VaultsAPI,
+    req: RedeemRequest,
+    network: Network,
+    id: H256
+): Promise<Redeem> {
     const status = req.status.isCompleted
         ? RedeemStatus.Completed
         : req.status.isRetried
@@ -204,15 +226,16 @@ export function parseRedeemRequest(req: RedeemRequest, network: Network, id: H25
             : req.status.isReimbursed
                 ? RedeemStatus.Reimbursed
                 : RedeemStatus.PendingWithBtcTxNotFound;
+    const vault = await vaultsAPI.get(req.vault);
     return {
         id: stripHexPrefix(id.toString()),
-        userDOTAddress: req.redeemer.toString(),
-        amountBTC: BTCAmount.from.Satoshi(req.amount_btc.toString()),
-        dotPremium: PolkadotAmount.from.Planck(req.premium.toString()),
-        bridgeFee: BTCAmount.from.Satoshi(req.fee.toString()),
-        btcTransferFee: BTCAmount.from.Satoshi(req.transfer_fee_btc.toString()),
+        userParachainAddress: req.redeemer.toString(),
+        amountBTC: newMonetaryAmount(req.amount_btc.toString(), vaultsAPI.getWrappedCurrency()),
+        collateralPremium: newMonetaryAmount(req.premium.toString(), vault.collateralCurrency),
+        bridgeFee: newMonetaryAmount(req.fee.toString(), vaultsAPI.getWrappedCurrency()),
+        btcTransferFee: newMonetaryAmount(req.transfer_fee_btc.toString(), vaultsAPI.getWrappedCurrency()),
         creationBlock: req.opentime.toNumber(),
-        vaultDOTAddress: req.vault.toString(),
+        vaultParachainAddress: req.vault.toString(),
         userBTCAddress: encodeBtcAddress(req.btc_address, network),
         status,
     };

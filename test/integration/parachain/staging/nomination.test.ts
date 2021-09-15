@@ -1,12 +1,12 @@
-import { Bitcoin, BTCAmount, Polkadot, PolkadotAmount } from "@interlay/monetary-js";
+import { InterBtcAmount, InterBtc, Polkadot } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
 import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, VaultsAPI } from "../../../../src";
-import { setNumericStorage, issueSingle } from "../../../../src/utils";
+import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
+import { assert, expect } from "../../../chai";
 import { ALICE_URI, BOB_URI, CHARLIE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
 
@@ -27,9 +27,9 @@ describe("NominationAPI", () => {
         alice = keyring.addFromUri(ALICE_URI);
         bob = keyring.addFromUri(BOB_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
-        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, bob);
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI);
-        feeAPI = new DefaultFeeAPI(api);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, bob);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
+        feeAPI = new DefaultFeeAPI(api, InterBtc);
 
         if (!(await nominationAPI.isNominationEnabled())) {
             console.log("Enabling nomination...");
@@ -72,51 +72,56 @@ describe("NominationAPI", () => {
 
     it("Should nominate to and withdraw from a vault", async () => {
         await optInWithAccount(charlie_stash);
-
         const issueFee = await feeAPI.getIssueFee();
-        const nominatorDeposit = PolkadotAmount.from.DOT(100);
-        // Set issue fees to 100%
-        await setIssueFee(new BN("1000000000000000000"));
-        const stakingCapacityBeforeNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address), Polkadot);
-        // Deposit
-        await nominationAPI.depositCollateral(charlie_stash.address, nominatorDeposit);
-        const stakingCapacityAfterNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address), Polkadot);
-        assert.equal(
-            stakingCapacityBeforeNomination.sub(nominatorDeposit).toString(),
-            stakingCapacityAfterNomination.toString(),
-            "Nomination failed to decrease staking capacity"
-        );
-        const nominationPairs = await nominationAPI.listNominationPairs(Bitcoin);
-        assert.equal(2, nominationPairs.length, "There should be one nomination pair in the system, besides the vault to itself");
+        const vault = await vaultsAPI.get(newAccountId(api, charlie_stash.address));
+        const nominatorDeposit = newMonetaryAmount(100, vault.collateralCurrency, true);
+        try {
+            // Set issue fees to 100%
+            await setIssueFee(new BN("1000000000000000000"));
+            const stakingCapacityBeforeNomination = (await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address)));
+            // Deposit
+            await nominationAPI.depositCollateral(charlie_stash.address, nominatorDeposit);
+            const stakingCapacityAfterNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address));
+            assert.equal(
+                stakingCapacityBeforeNomination.sub(nominatorDeposit).toString(),
+                stakingCapacityAfterNomination.toString(),
+                "Nomination failed to decrease staking capacity"
+            );
+            const nominationPairs = await nominationAPI.listNominationPairs(Polkadot);
+            assert.equal(2, nominationPairs.length, "There should be one nomination pair in the system, besides the vault to itself");
 
-        const bobAddress = bob.address;
-        const charlieStashAddress = charlie_stash.address;
+            const bobAddress = bob.address;
+            const charlieStashAddress = charlie_stash.address;
 
-        const [vaultId, nominatorId] = nominationPairs.find(([_, nominatorId]) => bobAddress == nominatorId)!;
+            const [vaultId, nominatorId] = nominationPairs.find(([_, nominatorId]) => bobAddress == nominatorId)!;
 
-        assert.equal(bobAddress, nominatorId);
-        assert.equal(charlieStashAddress, vaultId);
+            assert.equal(bobAddress, nominatorId);
+            assert.equal(charlieStashAddress, vaultId);
 
-        const interBtcToIssue = BTCAmount.from.BTC(1);
-        await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
-        const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, Bitcoin)).toBig();
-        assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0.1), "Nominator should receive at least 0.1 interBTC");
+            const interBtcToIssue = InterBtcAmount.from.BTC(0.1);
+            await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
+            const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, InterBtc)).toBig();
+            assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0.1), "Nominator should receive at least 0.1 InterBtc");
 
-        // Withdraw
-        await nominationAPI.withdrawCollateral(charlie_stash.address, nominatorDeposit);
-        const nominatorsAfterWithdrawal = await nominationAPI.listNominationPairs(Polkadot);
-        assert.equal(0, nominatorsAfterWithdrawal.length);
-        const nominatorCollateral = await nominationAPI.getTotalNomination(Polkadot, bob.address);
-        assert.equal("0", nominatorCollateral.toString());
-
-        const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, Bitcoin)).toBig();
-        assert.equal(
-            wrappedRewardsBeforeWithdrawal.round(5, 0).toString(),
-            wrappedRewardsAfterWithdrawal.round(5, 0).toString(),
-            "Reward amount has been affected by the withdrawal"
-        );
-        await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
-        await optOutWithAccount(charlie_stash);
+            // Withdraw
+            await nominationAPI.withdrawCollateral(charlie_stash.address, nominatorDeposit);
+            const nominatorsAfterWithdrawal = await nominationAPI.listNominationPairs(Polkadot);
+            // The vault always has a "nomination" to itself
+            assert.equal(1, nominatorsAfterWithdrawal.length);
+            await expect(nominationAPI.getTotalNomination(Polkadot, bob.address)).to.be.rejected;
+            console.log("successfully rejected");
+            const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, InterBtc)).toBig();
+            assert.equal(
+                wrappedRewardsBeforeWithdrawal.round(5, 0).toString(),
+                wrappedRewardsAfterWithdrawal.round(5, 0).toString(),
+                "Reward amount has been affected by the withdrawal"
+            );
+        } catch(error) {
+            throw error;
+        } finally {
+            await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
+            await optOutWithAccount(charlie_stash);
+        }
     });
 
     async function optInWithAccount(vaultAccount: KeyringPair) {

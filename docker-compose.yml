@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     interbtc:
-        image: "interlayhq/interbtc:interbtc-standalone-0.10.0"
+        image: "interlayhq/interbtc:interbtc-standalone-1.0.3"
         command:
             - interbtc-standalone
             - --rpc-external
@@ -66,7 +66,7 @@ services:
             - "3002:3002"
         restart: always
     oracle:
-        image: "interlayhq/interbtc-clients:oracle-0-10-1"
+        image: "interlayhq/interbtc-clients:oracle-1-0-0"
         command:
             - oracle
             - --keyring
@@ -76,7 +76,7 @@ services:
         environment:
             RUST_LOG: info
     faucet:
-        image: "interlayhq/interbtc-clients:faucet-0-10-1"
+        image: "interlayhq/interbtc-clients:faucet-1-0-0"
         command:
             - /bin/sh
             - -c
@@ -88,7 +88,7 @@ services:
         ports:
             - "3036:3036"
     vault_1:
-        image: "interlayhq/interbtc-clients:vault-0-10-1"
+        image: "interlayhq/interbtc-clients:vault-1-0-0"
         command:
             - /bin/sh
             - -c
@@ -98,14 +98,14 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Charlie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=charlie_stash --auto-register-with-collateral 1000000000000000000 --btc-parachain-url 'ws://interbtc:9944'
+                vault --keyfile="keyfile.json" --keyname=charlie_stash --auto-register-with-collateral 10000000000000000 --btc-parachain-url 'ws://interbtc:9944' --currency-id 'DOT'
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443
             BITCOIN_RPC_USER: rpcuser
             BITCOIN_RPC_PASS: rpcpassword
             RUST_LOG: info
     vault_2:
-        image: "interlayhq/interbtc-clients:vault-0-10-1"
+        image: "interlayhq/interbtc-clients:vault-1-0-0"
         command:
             - /bin/sh
             - -c
@@ -115,11 +115,12 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Dave wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=dave_stash --auto-register-with-collateral 1000000000000001000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944'
+                # KSM atomic units for registration must be 100x those for DOT, because of the difference in max currency granularity
+                vault --keyfile="keyfile.json" --keyname=dave_stash --auto-register-with-collateral 1000000000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --currency-id 'KSM'
         environment:
             <<: *client-env
     vault_3:
-        image: "interlayhq/interbtc-clients:vault-0-10-1"
+        image: "interlayhq/interbtc-clients:vault-1-0-0"
         command:
             - /bin/sh
             - -c
@@ -129,11 +130,11 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Eve wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=eve_stash --auto-register-with-collateral 1000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944'
+                vault --keyfile="keyfile.json" --keyname=eve_stash --auto-register-with-collateral 1000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --currency-id 'DOT'
         environment:
             <<: *client-env
     vault_to_liquidate:
-        image: "interlayhq/interbtc-clients:vault-0-10-1"
+        image: "interlayhq/interbtc-clients:vault-1-0-0"
         command:
             - /bin/sh
             - -c
@@ -143,11 +144,11 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Ferdie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=ferdie_stash --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944'
+                vault --keyfile="keyfile.json" --keyname=ferdie_stash --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --currency-id 'DOT'
         environment:
             <<: *client-env
     vault_to_ban:
-        image: "interlayhq/interbtc-clients:vault-0-10-1"
+        image: "interlayhq/interbtc-clients:vault-1-0-0"
         command:
             - /bin/sh
             - -c
@@ -157,7 +158,7 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Ferdie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault --keyfile="keyfile.json" --keyname=ferdie --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944'
+                vault --keyfile="keyfile.json" --keyname=ferdie --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --currency-id 'DOT'
         environment:
             <<: *client-env
     postgres:
