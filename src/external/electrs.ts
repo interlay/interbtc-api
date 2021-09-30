@@ -108,19 +108,6 @@ export interface ElectrsAPI {
      */
     getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string>;
     /**
-     * Fetch the last bitcoin transaction ID based on the recipient address and amount.
-     * Throw an error if no such transaction is found.
-     *
-     * @remarks
-     * Performs the lookup using an external service, Esplora
-     *
-     * @param recipientAddress Match the receiving address of a UTXO
-     * @param amount Match the amount (in BTC) of a UTXO that contains said recipientAddress.
-     *
-     * @returns A Bitcoin transaction ID
-     */
-    getUtxoTxIdByRecipientAddress(recipientAddress: string, amount?: BitcoinAmount): Promise<string>;
-    /**
      * Fetch the Bitcoin transaction that matches the given TxId
      *
      * @remarks
@@ -249,22 +236,8 @@ export class DefaultElectrsAPI implements ElectrsAPI {
                 throw new Error("No transaction found for recipient and amount");
             }
             for (const txo of oldestTx.vout) {
-                if (txo.scriptpubkey_address === recipientAddress && this.txoHasAtLeastAmount(txo, amount)) {
+                if (this.txOutputHasRecipientAndAmount(txo, recipientAddress, amount)) {
                     return oldestTx.txid;
-                }
-            }
-        } catch (e) {
-            return Promise.reject(new Error(`Error during tx lookup by address: ${e}`));
-        }
-        return Promise.reject(new Error("No transaction found for recipient and amount"));
-    }
-
-    async getUtxoTxIdByRecipientAddress(recipientAddress: string, amount?: BitcoinAmount): Promise<string> {
-        try {
-            const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
-            for (const utxo of utxos.reverse()) {
-                if (this.txoHasAtLeastAmount(utxo, amount)) {
-                    return utxo.txid;
                 }
             }
         } catch (e) {
