@@ -38,6 +38,17 @@ describe("ElectrsAPI regtest", function () {
             const amount = BitcoinAmount.from.BTC(0.00022244);
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
+            const txid = await waitSuccess(() => electrsAPI.getEarliestPaymentToRecipientAddressTxId(recipientAddress, amount));
+            assert.strictEqual(txid, txData.txid);
+        });
+    });
+
+    it("should getUtxoTxIdByRecipientAddress", async () => {
+        await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
+            const recipientAddress = makeRandomBitcoinAddress();
+            const amount = BitcoinAmount.from.BTC(0.00022244);
+
+            const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
             const txid = await waitSuccess(() => electrsAPI.getUtxoTxIdByRecipientAddress(recipientAddress, amount));
             assert.strictEqual(txid, txData.txid);
         });
@@ -60,18 +71,18 @@ describe("ElectrsAPI regtest", function () {
             const opReturnValue = "01234567891154267bf7d05901cc8c2f647414a42126c3aee89e01a2c905ae91";
             const recipientAddress = makeRandomBitcoinAddress();
             const amount = BitcoinAmount.from.BTC(0.00029);
-    
+
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
             // transaction in mempool
             let status = await electrsAPI.getTransactionStatus(txData.txid);
             assert.strictEqual(status.confirmations, 0);
-    
+
             // transaction in the latest block
             await waitSuccess(async () => {
                 status = await electrsAPI.getTransactionStatus(txData.txid);
                 assert.strictEqual(status.confirmations, 1);
             });
-    
+
             // transaction in the parent of the latest block
             await waitSuccess(async () => {
                 status = await electrsAPI.getTransactionStatus(txData.txid);
