@@ -95,18 +95,18 @@ export interface ElectrsAPI {
      */
     getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: BitcoinAmount): Promise<string>;
     /**
-     * Fetch the last bitcoin transaction ID based on the recipient address and amount.
+     * Fetch the earliest bitcoin transaction ID based on the recipient address and amount.
      * Throw an error if no such transaction is found.
      *
      * @remarks
      * Performs the lookup using an external service, Esplora
      *
-     * @param recipientAddress Match the receiving address of a UTXO
-     * @param amount Match the amount (in BTC) of a UTXO that contains said recipientAddress.
+     * @param recipientAddress Match the receiving address of a transaction output
+     * @param amount Match the amount (in BTC) of a transaction output that contains said recipientAddress.
      *
      * @returns A Bitcoin transaction ID
      */
-    getUtxoTxIdByRecipientAddress(recipientAddress: string, amount?: BitcoinAmount): Promise<string>;
+    getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string>;
     /**
      * Fetch the Bitcoin transaction that matches the given TxId
      *
@@ -224,12 +224,20 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return amount;
     }
 
-    async getUtxoTxIdByRecipientAddress(recipientAddress: string, amount?: BitcoinAmount): Promise<string> {
+    async getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string> {
         try {
-            const utxos = await this.getData(this.addressApi.getAddressUtxo(recipientAddress));
-            for (const utxo of utxos.reverse()) {
-                if (this.utxoHasAtLeastAmount(utxo, amount)) {
-                    return utxo.txid;
+            const txes = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
+            if (txes.length >= 25) {
+                throw new Error("Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address");
+            }
+
+            const oldestTx = txes.pop();
+            if (!oldestTx || !(oldestTx.vout)) {
+                throw new Error("No transaction found for recipient and amount");
+            }
+            for (const txo of oldestTx.vout) {
+                if (this.txOutputHasRecipientAndAmount(txo, recipientAddress, amount)) {
+                    return oldestTx.txid;
                 }
             }
         } catch (e) {
@@ -245,12 +253,12 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      * @param amountAsBTC (Optional) Amount the recipient must receive
      * @returns Boolean value
      */
-    private utxoHasAtLeastAmount(utxo: UTXO | VOut, amount?: BitcoinAmount): boolean {
+    private txoHasAtLeastAmount(txo: UTXO | VOut, amount?: BitcoinAmount): boolean {
         if (amount) {
-            if (utxo.value === undefined) {
+            if (txo.value === undefined) {
                 return false;
             } else {
-                const utxoValue = BitcoinAmount.from.Satoshi(utxo.value);
+                const utxoValue = BitcoinAmount.from.Satoshi(txo.value);
                 return utxoValue.gte(amount);
             }
         }
@@ -339,7 +347,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
             if (recipientAddress !== vout.scriptpubkey_address) {
                 return false;
             }
-            return this.utxoHasAtLeastAmount(vout, amount);
+            return this.txoHasAtLeastAmount(vout, amount);
         }
         return true;
     }
