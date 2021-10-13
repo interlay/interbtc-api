@@ -8,7 +8,7 @@ import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src/utils";
 import { assert } from "../../../chai";
-import { USER_1_URI, VAULT_1, VAULT_2, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE } from "../../../config";
+import { USER_1_URI, VAULT_1, VAULT_2, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { IssueStatus, stripHexPrefix } from "../../../../src";
@@ -27,7 +27,7 @@ describe("issue", () => {
     let vault_to_ban: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         vault_1 = keyring.addFromUri(VAULT_1);
@@ -36,12 +36,12 @@ describe("issue", () => {
 
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
     });

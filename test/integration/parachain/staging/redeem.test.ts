@@ -8,13 +8,13 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
 import { assert } from "../../../chai";
 import {
-    DEFAULT_BITCOIN_CORE_HOST,
-    DEFAULT_BITCOIN_CORE_NETWORK,
-    DEFAULT_BITCOIN_CORE_PASSWORD,
-    DEFAULT_BITCOIN_CORE_USERNAME,
-    DEFAULT_PARACHAIN_ENDPOINT,
-    DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_BITCOIN_CORE_PORT,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_USERNAME,
+    PARACHAIN_ENDPOINT,
+    BITCOIN_CORE_WALLET,
+    BITCOIN_CORE_PORT,
     USER_1_URI,
     VAULT_TO_LIQUIDATE,
     VAULT_1,
@@ -43,7 +43,7 @@ describe("redeem", () => {
     let vault_2: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE);
         vault_1 = keyring.addFromUri(VAULT_1);
@@ -53,12 +53,12 @@ describe("redeem", () => {
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
     });
 

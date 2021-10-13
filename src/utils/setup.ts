@@ -31,14 +31,14 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 
 import {
-    DEFAULT_BITCOIN_CORE_HOST,
-    DEFAULT_BITCOIN_CORE_NETWORK,
-    DEFAULT_BITCOIN_CORE_PASSWORD,
-    DEFAULT_BITCOIN_CORE_PORT,
-    DEFAULT_BITCOIN_CORE_USERNAME,
-    DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_PARACHAIN_ENDPOINT,
-    DEFAULT_REDEEM_ADDRESS,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    PARACHAIN_ENDPOINT,
+    REDEEM_ADDRESS,
 } from "../../test/config";
 import { CollateralUnit, WrappedCurrency } from "../types";
 
@@ -131,7 +131,7 @@ function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string):
         redeem: {
             amount: InterBtcAmount.from.BTC(0.05),
             redeemingAccount: keyring.addFromUri("//Alice"),
-            redeemingBTCAddress: DEFAULT_REDEEM_ADDRESS,
+            redeemingBTCAddress: REDEEM_ADDRESS,
         },
         delayMs: 0,
     };
@@ -211,18 +211,18 @@ async function main(params: InitializationParams): Promise<void> {
     const charlieStash = keyring.addFromUri("//Charlie//stash");
     const defaultInitializationParams = getDefaultInitializationParams(keyring, charlieStash.address);
 
-    const api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+    const api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
     const sudoAccount = keyring.addFromUri("//Alice");
     const oracleAccount = keyring.addFromUri("//Bob");
 
     const electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
     const bitcoinCoreClient = new BitcoinCoreClient(
-        DEFAULT_BITCOIN_CORE_NETWORK,
-        DEFAULT_BITCOIN_CORE_HOST,
-        DEFAULT_BITCOIN_CORE_USERNAME,
-        DEFAULT_BITCOIN_CORE_PASSWORD,
-        DEFAULT_BITCOIN_CORE_PORT,
-        DEFAULT_BITCOIN_CORE_WALLET
+        BITCOIN_CORE_NETWORK,
+        BITCOIN_CORE_HOST,
+        BITCOIN_CORE_USERNAME,
+        BITCOIN_CORE_PASSWORD,
+        BITCOIN_CORE_PORT,
+        BITCOIN_CORE_WALLET
     );
     const oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
     // initialize the nomination API with Alice in order to make sudo calls

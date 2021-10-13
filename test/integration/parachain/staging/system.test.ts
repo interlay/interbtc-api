@@ -5,7 +5,7 @@ import * as path from "path";
 import { DefaultSystemAPI, SystemAPI } from "../../../../src/parachain/system";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { SUDO_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { SUDO_URI, PARACHAIN_ENDPOINT } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 describe("systemAPI", () => {
@@ -15,7 +15,7 @@ describe("systemAPI", () => {
     let keyring: Keyring;
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         systemAPI = new DefaultSystemAPI(api, sudoAccount);

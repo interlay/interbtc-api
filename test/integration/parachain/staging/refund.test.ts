@@ -5,7 +5,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { USER_1_URI, VAULT_3, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { USER_1_URI, VAULT_3, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
@@ -22,16 +22,16 @@ describe("refund", () => {
     let vault_3: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
         refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         userAccount = keyring.addFromUri(USER_1_URI);

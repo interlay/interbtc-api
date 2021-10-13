@@ -40,13 +40,13 @@ import {
     ORACLE_URI,
     VAULT_1,
     VAULT_2,
-    DEFAULT_BITCOIN_CORE_HOST,
-    DEFAULT_BITCOIN_CORE_NETWORK,
-    DEFAULT_BITCOIN_CORE_PASSWORD,
-    DEFAULT_BITCOIN_CORE_PORT,
-    DEFAULT_BITCOIN_CORE_USERNAME,
-    DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_PARACHAIN_ENDPOINT,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    PARACHAIN_ENDPOINT,
     VAULT_3,
     VAULT_TO_LIQUIDATE,
     VAULT_TO_BAN,
@@ -91,7 +91,7 @@ describe("Initialize parachain state", () => {
     }
 
     before(async function () {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         oracleAccount = keyring.addFromUri(ORACLE_URI);
@@ -103,12 +103,12 @@ describe("Initialize parachain state", () => {
 
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, sudoAccount);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, sudoAccount);

@@ -7,7 +7,7 @@ import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationA
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert, expect } from "../../../chai";
-import { SUDO_URI, USER_1_URI, VAULT_1, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { SUDO_URI, USER_1_URI, VAULT_1, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
@@ -22,7 +22,7 @@ describe("NominationAPI", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
@@ -39,12 +39,12 @@ describe("NominationAPI", () => {
         // The account of a vault from docker-compose
         vault_1 = keyring.addFromUri(VAULT_1);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
     });
 

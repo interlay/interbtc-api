@@ -7,7 +7,7 @@ import Big from "big.js";
 
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { ORACLE_URI, VAULT_1, VAULT_2, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT, VAULT_3, VAULT_TO_LIQUIDATE, VAULT_TO_BAN } from "../../../config";
+import { ORACLE_URI, VAULT_1, VAULT_2, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3, VAULT_TO_LIQUIDATE, VAULT_TO_BAN } from "../../../config";
 import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src/";
 import { issueSingle } from "../../../../src/utils";
 import { DefaultRewardsAPI } from "../../../../src/parachain/rewards";
@@ -29,7 +29,7 @@ describe("vaultsAPI", () => {
     const registry = new TypeRegistry();
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         vault_1 = keyring.addFromUri(VAULT_1);
@@ -44,12 +44,12 @@ describe("vaultsAPI", () => {
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
     });
 

@@ -6,7 +6,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
-import { USER_1_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE, VAULT_TO_BAN } from "../../../config";
+import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE, VAULT_TO_BAN } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle, stripHexPrefix } from "../../../../src/utils";
@@ -31,7 +31,7 @@ describe("redeem", () => {
     let issueAPI: IssueAPI;
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN);
@@ -39,21 +39,21 @@ describe("redeem", () => {
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
         userBitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
         issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
     });
 
@@ -69,11 +69,11 @@ describe("redeem", () => {
             const issuedTokens = InterBtcAmount.from.BTC(0.0001);
             await issueSingle(api, electrsAPI, userBitcoinCoreClient, userAccount, issuedTokens, vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
-                DEFAULT_BITCOIN_CORE_NETWORK,
-                DEFAULT_BITCOIN_CORE_HOST,
-                DEFAULT_BITCOIN_CORE_USERNAME,
-                DEFAULT_BITCOIN_CORE_PASSWORD,
-                DEFAULT_BITCOIN_CORE_PORT,
+                BITCOIN_CORE_NETWORK,
+                BITCOIN_CORE_HOST,
+                BITCOIN_CORE_USERNAME,
+                BITCOIN_CORE_PASSWORD,
+                BITCOIN_CORE_PORT,
                 "vault_to_ban"
             );
             // Steal some bitcoin (spend from the vault's account)

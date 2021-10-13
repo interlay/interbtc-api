@@ -5,7 +5,7 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { USER_1_URI, USER_2_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT } from "../../../config";
 import { CollateralCurrency, CurrencyUnit, newMonetaryAmount, WrappedCurrency } from "../../../../src";
 
 describe("TokensAPI", () => {
@@ -15,7 +15,7 @@ describe("TokensAPI", () => {
     let user2Account: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         user1Account = keyring.addFromUri(USER_1_URI);
         user2Account = keyring.addFromUri(USER_2_URI);
