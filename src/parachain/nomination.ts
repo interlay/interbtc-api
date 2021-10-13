@@ -268,7 +268,10 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         });
     }
 
-    async getNominatorReward(nominatorId: string, vaultId: string): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
+    async getNominatorReward(
+        nominatorId: string,
+        vaultId: string
+    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
         return await this.rewardsAPI.computeReward(vaultId, nominatorId);
     }
 

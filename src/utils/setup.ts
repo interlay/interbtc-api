@@ -212,8 +212,8 @@ async function main(params: InitializationParams): Promise<void> {
     const defaultInitializationParams = getDefaultInitializationParams(keyring, charlieStash.address);
 
     const api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
-    const alice = keyring.addFromUri("//Alice");
-    const bob = keyring.addFromUri("//Bob");
+    const sudoAccount = keyring.addFromUri("//Alice");
+    const oracleAccount = keyring.addFromUri("//Bob");
 
     const electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
     const bitcoinCoreClient = new BitcoinCoreClient(
@@ -224,9 +224,9 @@ async function main(params: InitializationParams): Promise<void> {
         DEFAULT_BITCOIN_CORE_PORT,
         DEFAULT_BITCOIN_CORE_WALLET
     );
-    const oracleAPI = new DefaultOracleAPI(api, InterBtc, bob);
+    const oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
     // initialize the nomination API with Alice in order to make sudo calls
-    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, alice);
+    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, sudoAccount);
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
@@ -239,7 +239,12 @@ async function main(params: InitializationParams): Promise<void> {
     if (params.setExchangeRate !== undefined) {
         const exchangeRateToSet =
             params.setExchangeRate === true
-                ? (defaultInitializationParams.setExchangeRate as ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>)
+                ? (defaultInitializationParams.setExchangeRate as ExchangeRate<
+                      Bitcoin,
+                      BitcoinUnit,
+                      Polkadot,
+                      PolkadotUnit
+                  >)
                 : params.setExchangeRate;
         await initializeExchangeRate(exchangeRateToSet, oracleAPI);
     }

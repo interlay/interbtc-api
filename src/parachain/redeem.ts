@@ -141,7 +141,9 @@ export interface RedeemAPI extends TransactionAPI {
      * @param amount The amount of wrapped tokens for which to compute the redeem fees
      * @returns The fees
      */
-    getFeesToPay(amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    getFeesToPay(
+        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
+    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
     /**
      * @returns If users execute a redeem with a Vault flagged for premium redeem,
      * they can earn a premium, slashed from the Vault's collateral.
@@ -153,7 +155,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @param amount The amount of wrapped tokens to burn
      * @param collateralCurrency Liquidated collateral currency to use when burning wrapped tokens
      */
-     burn<C extends CollateralUnit>(
+    burn<C extends CollateralUnit>(
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
         collateralCurrency: Currency<C>
     ): Promise<void>;

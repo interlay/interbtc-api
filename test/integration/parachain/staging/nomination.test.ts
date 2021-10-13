@@ -7,27 +7,27 @@ import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationA
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert, expect } from "../../../chai";
-import { ALICE_URI, BOB_URI, CHARLIE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { SUDO_URI, USER_1_URI, VAULT_1, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
     let api: ApiPromise;
-    let alice: KeyringPair;
-    let bob: KeyringPair;
+    let sudoAccount: KeyringPair;
+    let userAccount: KeyringPair;
     let nominationAPI: NominationAPI;
     let vaultsAPI: VaultsAPI;
     let feeAPI: FeeAPI;
-    let charlie_stash: KeyringPair;
+    let vault_1: KeyringPair;
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri(ALICE_URI);
-        bob = keyring.addFromUri(BOB_URI);
+        sudoAccount = keyring.addFromUri(SUDO_URI);
+        userAccount = keyring.addFromUri(USER_1_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
-        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, bob);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         feeAPI = new DefaultFeeAPI(api, InterBtc);
 
@@ -37,7 +37,7 @@ describe("NominationAPI", () => {
         }
 
         // The account of a vault from docker-compose
-        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
+        vault_1 = keyring.addFromUri(VAULT_1);
         bitcoinCoreClient = new BitcoinCoreClient(
             DEFAULT_BITCOIN_CORE_NETWORK,
             DEFAULT_BITCOIN_CORE_HOST,
@@ -53,17 +53,17 @@ describe("NominationAPI", () => {
     });
 
     it("Should opt a vault in and out of nomination", async () => {
-        await optInWithAccount(charlie_stash);
+        await optInWithAccount(vault_1);
         const nominationVaults = await nominationAPI.listVaults();
         assert.equal(1, nominationVaults.length);
-        assert.equal(charlie_stash.address, nominationVaults.map(v => v.toString())[0]);
-        await optOutWithAccount(charlie_stash);
+        assert.equal(vault_1.address, nominationVaults.map(v => v.toString())[0]);
+        await optOutWithAccount(vault_1);
         assert.equal(0, (await nominationAPI.listVaults()).length);
     });
 
     async function setIssueFee(x: BN) {
         const previousAccount = nominationAPI.getAccount();
-        nominationAPI.setAccount(alice);
+        nominationAPI.setAccount(sudoAccount);
         await setNumericStorage(api, "Fee", "IssueFee", x, nominationAPI, 128);
         if (previousAccount) {
             nominationAPI.setAccount(previousAccount);
@@ -71,17 +71,17 @@ describe("NominationAPI", () => {
     }
 
     it("Should nominate to and withdraw from a vault", async () => {
-        await optInWithAccount(charlie_stash);
+        await optInWithAccount(vault_1);
         const issueFee = await feeAPI.getIssueFee();
-        const vault = await vaultsAPI.get(newAccountId(api, charlie_stash.address));
+        const vault = await vaultsAPI.get(newAccountId(api, vault_1.address));
         const nominatorDeposit = newMonetaryAmount(100, vault.collateralCurrency, true);
         try {
             // Set issue fees to 100%
             await setIssueFee(new BN("1000000000000000000"));
-            const stakingCapacityBeforeNomination = (await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address)));
+            const stakingCapacityBeforeNomination = (await vaultsAPI.getStakingCapacity(newAccountId(api, vault_1.address)));
             // Deposit
-            await nominationAPI.depositCollateral(charlie_stash.address, nominatorDeposit);
-            const stakingCapacityAfterNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, charlie_stash.address));
+            await nominationAPI.depositCollateral(vault_1.address, nominatorDeposit);
+            const stakingCapacityAfterNomination = await vaultsAPI.getStakingCapacity(newAccountId(api, vault_1.address));
             assert.equal(
                 stakingCapacityBeforeNomination.sub(nominatorDeposit).toString(),
                 stakingCapacityAfterNomination.toString(),
@@ -90,27 +90,27 @@ describe("NominationAPI", () => {
             const nominationPairs = await nominationAPI.listNominationPairs(Polkadot);
             assert.equal(2, nominationPairs.length, "There should be one nomination pair in the system, besides the vault to itself");
 
-            const bobAddress = bob.address;
-            const charlieStashAddress = charlie_stash.address;
+            const userAddress = userAccount.address;
+            const charlieStashAddress = vault_1.address;
 
-            const [vaultId, nominatorId] = nominationPairs.find(([_, nominatorId]) => bobAddress == nominatorId)!;
+            const [vaultId, nominatorId] = nominationPairs.find(([_, nominatorId]) => userAddress == nominatorId)!;
 
-            assert.equal(bobAddress, nominatorId);
+            assert.equal(userAddress, nominatorId);
             assert.equal(charlieStashAddress, vaultId);
 
             const interBtcToIssue = InterBtcAmount.from.BTC(0.1);
-            await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, interBtcToIssue, charlie_stash.address);
-            const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, InterBtc)).toBig();
+            await issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, vault_1.address);
+            const wrappedRewardsBeforeWithdrawal = (await nominationAPI.getNominatorReward(userAccount.address, vault_1.address, InterBtc)).toBig();
             assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0.1), "Nominator should receive at least 0.1 InterBtc");
 
             // Withdraw
-            await nominationAPI.withdrawCollateral(charlie_stash.address, nominatorDeposit);
+            await nominationAPI.withdrawCollateral(vault_1.address, nominatorDeposit);
             const nominatorsAfterWithdrawal = await nominationAPI.listNominationPairs(Polkadot);
             // The vault always has a "nomination" to itself
             assert.equal(1, nominatorsAfterWithdrawal.length);
-            await expect(nominationAPI.getTotalNomination(Polkadot, bob.address)).to.be.rejected;
+            await expect(nominationAPI.getTotalNomination(Polkadot, userAccount.address)).to.be.rejected;
             console.log("successfully rejected");
-            const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorReward(bob.address, charlie_stash.address, InterBtc)).toBig();
+            const wrappedRewardsAfterWithdrawal = (await nominationAPI.getNominatorReward(userAccount.address, vault_1.address, InterBtc)).toBig();
             assert.equal(
                 wrappedRewardsBeforeWithdrawal.round(5, 0).toString(),
                 wrappedRewardsAfterWithdrawal.round(5, 0).toString(),
@@ -120,7 +120,7 @@ describe("NominationAPI", () => {
             throw error;
         } finally {
             await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
-            await optOutWithAccount(charlie_stash);
+            await optOutWithAccount(vault_1);
         }
     });
 

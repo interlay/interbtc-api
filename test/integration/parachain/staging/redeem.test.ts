@@ -15,10 +15,10 @@ import {
     DEFAULT_PARACHAIN_ENDPOINT,
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_BITCOIN_CORE_PORT,
-    ALICE_URI,
-    FERDIE_STASH_URI,
-    CHARLIE_STASH_URI,
-    DAVE_STASH_URI
+    USER_1_URI,
+    VAULT_TO_LIQUIDATE,
+    VAULT_1,
+    VAULT_2
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
@@ -33,23 +33,22 @@ describe("redeem", () => {
     let redeemAPI: RedeemAPI;
     let api: ApiPromise;
     let keyring: Keyring;
-    // alice is the root account
-    let alice: KeyringPair;
+    let userAccount: KeyringPair;
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let electrsAPI: ElectrsAPI;
     let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
-    let ferdie_stash: KeyringPair;
-    let charlie_stash: KeyringPair;
-    let dave_stash: KeyringPair;
+    let vault_to_liquidate: KeyringPair;
+    let vault_1: KeyringPair;
+    let vault_2: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
-        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
-        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
-        alice = keyring.addFromUri(ALICE_URI);
+        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE);
+        vault_1 = keyring.addFromUri(VAULT_1);
+        vault_2 = keyring.addFromUri(VAULT_2);
+        userAccount = keyring.addFromUri(USER_1_URI);
         electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
@@ -82,8 +81,8 @@ describe("redeem", () => {
                 electrsAPI,
                 btcRelayAPI,
                 bitcoinCoreClient,
-                alice,
-                charlie_stash.address,
+                userAccount,
+                vault_1.address,
                 issueAmount,
                 redeemAmount,
                 false,
@@ -96,8 +95,8 @@ describe("redeem", () => {
                 electrsAPI,
                 btcRelayAPI,
                 bitcoinCoreClient,
-                alice,
-                dave_stash.address,
+                userAccount,
+                vault_2.address,
                 issueAmount,
                 redeemAmount,
                 false,
@@ -107,7 +106,7 @@ describe("redeem", () => {
     });
 
     it("should load existing redeem requests", async () => {
-        redeemAPI.setAccount(alice);
+        redeemAPI.setAccount(userAccount);
 
         const redeemRequests = await redeemAPI.list();
         assert.isAtLeast(
@@ -118,10 +117,10 @@ describe("redeem", () => {
     });
 
     it("should map existing requests", async () => {
-        redeemAPI.setAccount(alice);
+        redeemAPI.setAccount(userAccount);
 
-        const aliceAccountId = api.createType("AccountId", alice.address);
-        const redeemRequests = await redeemAPI.mapForUser(aliceAccountId);
+        const userAccountId = api.createType("AccountId", userAccount.address);
+        const redeemRequests = await redeemAPI.mapForUser(userAccountId);
         assert.isAtLeast(
             redeemRequests.size,
             1,
@@ -156,11 +155,11 @@ describe("redeem", () => {
     });
 
     it("should list redeem request by a vault", async () => {
-        const bobAddress = ferdie_stash.address;
-        const bobId = api.createType("AccountId", bobAddress);
-        const redeemRequests = await redeemAPI.mapRedeemRequests(bobId);
+        const vaultToLiquidateAddress = vault_to_liquidate.address;
+        const vaultToLiquidateId = api.createType("AccountId", vaultToLiquidateAddress);
+        const redeemRequests = await redeemAPI.mapRedeemRequests(vaultToLiquidateId);
         redeemRequests.forEach((request) => {
-            assert.deepEqual(request.vaultParachainAddress, bobAddress);
+            assert.deepEqual(request.vaultParachainAddress, vaultToLiquidateAddress);
         });
     });
 

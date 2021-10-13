@@ -228,11 +228,13 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         try {
             const txes = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
             if (txes.length >= 25) {
-                throw new Error("Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address");
+                throw new Error(
+                    "Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address"
+                );
             }
 
             const oldestTx = txes.pop();
-            if (!oldestTx || !(oldestTx.vout)) {
+            if (!oldestTx || !oldestTx.vout) {
                 throw new Error("No transaction found for recipient and amount");
             }
             for (const txo of oldestTx.vout) {

@@ -7,8 +7,8 @@ import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs"
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
 import {
-    ALICE_URI,
-    DAVE_STASH_URI,
+    USER_1_URI,
+    VAULT_2,
     DEFAULT_BITCOIN_CORE_HOST,
     DEFAULT_BITCOIN_CORE_NETWORK,
     DEFAULT_BITCOIN_CORE_PASSWORD,
@@ -16,7 +16,7 @@ import {
     DEFAULT_BITCOIN_CORE_USERNAME,
     DEFAULT_BITCOIN_CORE_WALLET,
     DEFAULT_PARACHAIN_ENDPOINT,
-    EVE_STASH_URI
+    VAULT_3
 } from "../../../config";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
@@ -29,9 +29,9 @@ describe("replace", () => {
     let replaceAPI: ReplaceAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
-    let alice: KeyringPair;
-    let eve_stash: KeyringPair;
-    let dave_stash: KeyringPair;
+    let userAccount: KeyringPair;
+    let vault_3: KeyringPair;
+    let vault_2: KeyringPair;
 
     before(async function () {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
@@ -46,9 +46,9 @@ describe("replace", () => {
             DEFAULT_BITCOIN_CORE_WALLET
         );
         replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
-        alice = keyring.addFromUri(ALICE_URI);
-        eve_stash = keyring.addFromUri(EVE_STASH_URI);
-        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
+        userAccount = keyring.addFromUri(USER_1_URI);
+        vault_3 = keyring.addFromUri(VAULT_3);
+        vault_2 = keyring.addFromUri(VAULT_2);
     });
 
     after(async () => {
@@ -65,16 +65,14 @@ describe("replace", () => {
                 api,
                 electrsAPI,
                 bitcoinCoreClient,
-                alice,
+                userAccount,
                 issueAmount,
-                eve_stash.address
+                vault_3.address
             );
-            // Eve//stash is a DOT vault that requests replacement
-            replaceAPI.setAccount(eve_stash);
+            replaceAPI.setAccount(vault_3);
             replaceId = await replaceAPI.request(replaceAmount);
 
-            // Dave//stash is a KSM vault that requests replacement
-            replaceAPI.setAccount(dave_stash);
+            replaceAPI.setAccount(vault_2);
             replaceId = await replaceAPI.request(replaceAmount);
         }).timeout(200000);
 
@@ -117,7 +115,7 @@ describe("replace", () => {
     }).timeout(500);
 
     it("should list replace request by a vault", async () => {
-        const eveStashId = api.createType("AccountId", eve_stash.address);
+        const eveStashId = api.createType("AccountId", vault_3.address);
         const replaceRequests = await replaceAPI.mapReplaceRequests(eveStashId);
         replaceRequests.forEach((request) => {
             assert.deepEqual(request.oldVault, eveStashId);

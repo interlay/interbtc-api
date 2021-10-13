@@ -5,21 +5,21 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { ALICE_URI, BOB_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { USER_1_URI, USER_2_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 import { CollateralCurrency, CurrencyUnit, newMonetaryAmount, WrappedCurrency } from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
     let tokens: TokensAPI;
-    let alice: KeyringPair;
-    let bob: KeyringPair;
+    let user1Account: KeyringPair;
+    let user2Account: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        alice = keyring.addFromUri(ALICE_URI);
-        bob = keyring.addFromUri(BOB_URI);
-        tokens = new DefaultTokensAPI(api, alice);
+        user1Account = keyring.addFromUri(USER_1_URI);
+        user2Account = keyring.addFromUri(USER_2_URI);
+        tokens = new DefaultTokensAPI(api, user1Account);
     });
 
     after(() => {
@@ -40,22 +40,22 @@ describe("TokensAPI", () => {
             updatedBalance = newBalance;
             updatedAccount = account;
         }
-        const amountToUpdateBobsAccountBy = newMonetaryAmount(0.00000001, currency);
-        const bobBalanceBeforeTransfer =
-            await tokens.balance<typeof currency.units>(currency, api.createType("AccountId", bob.address));
-        const unsubscribe = await tokens.subscribeToBalance(currency, bob.address, balanceUpdateCallback);
+        const amountToUpdateUser2sAccountBy = newMonetaryAmount(0.00000001, currency);
+        const user2BalanceBeforeTransfer =
+            await tokens.balance<typeof currency.units>(currency, api.createType("AccountId", user2Account.address));
+        const unsubscribe = await tokens.subscribeToBalance(currency, user2Account.address, balanceUpdateCallback);
 
         // Send the first transfer, expect the callback to be called with correct values
-        await tokens.transfer(bob.address, amountToUpdateBobsAccountBy);
-        assert.equal(updatedAccount, bob.address);
-        const expectedBobBalanceAfterFirstTransfer = bobBalanceBeforeTransfer.add(amountToUpdateBobsAccountBy);
-        assert.equal(updatedBalance.toString(), expectedBobBalanceAfterFirstTransfer.toString());
+        await tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy);
+        assert.equal(updatedAccount, user2Account.address);
+        const expectedUser2BalanceAfterFirstTransfer = user2BalanceBeforeTransfer.add(amountToUpdateUser2sAccountBy);
+        assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterFirstTransfer.toString());
 
         // Send the second transfer, expect the callback to be called with correct values
-        await tokens.transfer(bob.address, amountToUpdateBobsAccountBy);
-        assert.equal(updatedAccount, bob.address);
-        const expectedBobBalanceAfterSecondTransfer = expectedBobBalanceAfterFirstTransfer.add(amountToUpdateBobsAccountBy);
-        assert.equal(updatedBalance.toString(), expectedBobBalanceAfterSecondTransfer.toString());
+        await tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy);
+        assert.equal(updatedAccount, user2Account.address);
+        const expectedUser2BalanceAfterSecondTransfer = expectedUser2BalanceAfterFirstTransfer.add(amountToUpdateUser2sAccountBy);
+        assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterSecondTransfer.toString());
 
         unsubscribe();
     }

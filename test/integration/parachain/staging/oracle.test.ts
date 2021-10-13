@@ -6,19 +6,19 @@ import Big from "big.js";
 import { DefaultOracleAPI, OracleAPI } from "../../../../src/parachain/oracle";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { BOB_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { ORACLE_URI, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
     let oracleAPI: OracleAPI;
-    let bob: KeyringPair;
+    let oracleAccount: KeyringPair;
 
     before(async () => {
         api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        bob = keyring.addFromUri(BOB_URI);
+        oracleAccount = keyring.addFromUri(ORACLE_URI);
         oracleAPI = new DefaultOracleAPI(api, InterBtc);
-        oracleAPI.setAccount(bob);
+        oracleAPI.setAccount(oracleAccount);
     });
 
     after(() => {

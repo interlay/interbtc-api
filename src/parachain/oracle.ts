@@ -100,7 +100,7 @@ export interface OracleAPI extends TransactionAPI {
      */
     waitForFeeEstimateUpdate(type?: FeeEstimationType): Promise<void>;
     /**
-     * @param exchangeRate The exchange rate whose counter currency to await an update for 
+     * @param exchangeRate The exchange rate whose counter currency to await an update for
      * (with respect to BTC)
      * @remark Awaits an oracle update to the exchange rate
      */
