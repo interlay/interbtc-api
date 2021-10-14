@@ -16,11 +16,12 @@ import {
     BITCOIN_CORE_USERNAME,
     BITCOIN_CORE_WALLET,
     PARACHAIN_ENDPOINT,
-    VAULT_3
+    VAULT_3,
+    ESPLORA_BASE_PATH
 } from "../../../config";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { DefaultReplaceAPI, REGTEST_ESPLORA_BASE_PATH, ReplaceAPI } from "../../../../src";
+import { DefaultReplaceAPI, ReplaceAPI } from "../../../../src";
 import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
 
 describe("replace", () => {
@@ -36,7 +37,7 @@ describe("replace", () => {
     before(async function () {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,

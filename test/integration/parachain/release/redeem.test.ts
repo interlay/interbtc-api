@@ -6,14 +6,14 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
-import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE, VAULT_TO_BAN } from "../../../config";
+import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE, VAULT_TO_BAN, ESPLORA_BASE_PATH } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle, stripHexPrefix } from "../../../../src/utils";
-import { DefaultBTCRelayAPI, DefaultIssueAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, REGTEST_ESPLORA_BASE_PATH, waitForBlockFinalization } from "../../../../src";
+import { DefaultBTCRelayAPI, DefaultIssueAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, waitForBlockFinalization } from "../../../../src";
 import { assert, expect } from "../../../chai";
 import { InterBtcAmount, Polkadot, InterBtc } from "@interlay/monetary-js";
-import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
+import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
 import Big from "big.js";
 
 export type RequestResult = { hash: Hash; vault: Vault };
@@ -35,7 +35,7 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN);
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
         userBitcoinCoreClient = new BitcoinCoreClient(
@@ -98,7 +98,7 @@ describe("redeem", () => {
             const issueAmount = InterBtcAmount.from.BTC(0.001);
             const redeemAmount = InterBtcAmount.from.BTC(0.0009);
             const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
-            await redeemAPI.setRedeemPeriod(0);
+            await sudo(redeemAPI, (api) => api.setRedeemPeriod(0));
             const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, btcRelayAPI, userBitcoinCoreClient, userAccount, vault_to_liquidate.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
     
             // Wait for redeem expiry callback
@@ -113,7 +113,7 @@ describe("redeem", () => {
             const redeemRequestAfterCancellation = await redeemAPI.getRequestById(redeemRequest.id);
             assert.isTrue(redeemRequestAfterCancellation.status === RedeemStatus.Reimbursed, "Failed to cancel issue request");
             // Set issue period back to its initial value to minimize side effects.
-            await redeemAPI.setRedeemPeriod(initialRedeemPeriod);
+            await sudo(redeemAPI, (api) => api.setRedeemPeriod(initialRedeemPeriod));
         });
     }).timeout(5 * 60 * 1000);
 

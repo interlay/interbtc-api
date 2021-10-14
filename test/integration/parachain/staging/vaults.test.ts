@@ -7,8 +7,8 @@ import Big from "big.js";
 
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { ORACLE_URI, VAULT_1, VAULT_2, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3, VAULT_TO_LIQUIDATE, VAULT_TO_BAN } from "../../../config";
-import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src/";
+import { ORACLE_URI, VAULT_1, VAULT_2, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3, VAULT_TO_LIQUIDATE, VAULT_TO_BAN, ESPLORA_BASE_PATH } from "../../../config";
+import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId } from "../../../../src/";
 import { issueSingle } from "../../../../src/utils";
 import { DefaultRewardsAPI } from "../../../../src/parachain/rewards";
 
@@ -37,11 +37,10 @@ describe("vaultsAPI", () => {
         vault_3 = keyring.addFromUri(VAULT_3);
         vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN);
-        // Bob is the authorized oracle
         oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
         rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
 
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

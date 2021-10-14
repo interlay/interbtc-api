@@ -5,11 +5,10 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { USER_1_URI, VAULT_3, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT } from "../../../config";
+import { USER_1_URI, VAULT_3, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { InterBtc, InterBtcAmount } from "@interlay/monetary-js";
 
 describe("refund", () => {
@@ -24,7 +23,7 @@ describe("refund", () => {
     before(async function () {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,

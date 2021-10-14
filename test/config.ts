@@ -1,3 +1,5 @@
+import { REGTEST_ESPLORA_BASE_PATH } from "../src/external/electrs";
+
 // The default config is for regtest and a local standalone parachain, started using docker-compose
 const DEFAULT_PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
 const DEFAULT_FAUCET_ENDPOINT = "http://0.0.0.0:3036";
@@ -8,8 +10,8 @@ const DEFAULT_BITCOIN_CORE_PASSWORD = "rpcpassword";
 const DEFAULT_BITCOIN_CORE_PORT = "18443";
 const DEFAULT_BITCOIN_CORE_WALLET = "Alice";
 const DEFAULT_REDEEM_ADDRESS = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-const DEFAULT_USER_1_URI="//Charlie";
-const DEFAULT_USER_2_URI="//Dave";
+const DEFAULT_USER_1_URI="//Dave";
+const DEFAULT_USER_2_URI="//Eve";
 const DEFAULT_ORACLE_URI="//Bob";
 const DEFAULT_VAULT_1="//Charlie//stash";
 const DEFAULT_VAULT_2="//Dave//stash";
@@ -41,3 +43,5 @@ export const VAULT_TO_LIQUIDATE = process.env.VAULT_TO_LIQUIDATE || DEFAULT_VAUL
 export const VAULT_TO_BAN = process.env.VAULT_TO_BAN || DEFAULT_VAULT_TO_BAN;
 
 export const SUDO_URI = process.env.SUDO_URI || DEFAULT_SUDO_URI;
+
+export const ESPLORA_BASE_PATH = process.env.SUDO_URI || REGTEST_ESPLORA_BASE_PATH;

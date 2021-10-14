@@ -18,12 +18,13 @@ import {
     USER_1_URI,
     VAULT_TO_LIQUIDATE,
     VAULT_1,
-    VAULT_2
+    VAULT_2,
+    ESPLORA_BASE_PATH
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { BTCRelayAPI, DefaultBTCRelayAPI, ElectrsAPI, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { BTCRelayAPI, DefaultBTCRelayAPI, ElectrsAPI } from "../../../../src";
 import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
@@ -49,9 +50,9 @@ describe("redeem", () => {
         vault_1 = keyring.addFromUri(VAULT_1);
         vault_2 = keyring.addFromUri(VAULT_2);
         userAccount = keyring.addFromUri(USER_1_URI);
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
@@ -66,48 +67,44 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    describe("request", () => {
-        it("should fail if no account is set", () => {
-            const amount = InterBtcAmount.from.BTC(10);
-            assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
-        });
-
-        it("should issue and request redeem", async () => {
-            const issueAmount = InterBtcAmount.from.BTC(0.001);
-            const redeemAmount = InterBtcAmount.from.BTC(0.0009);
-            // DOT collateral
-            await issueAndRedeem(
-                api,
-                electrsAPI,
-                btcRelayAPI,
-                bitcoinCoreClient,
-                userAccount,
-                vault_1.address,
-                issueAmount,
-                redeemAmount,
-                false,
-                ExecuteRedeem.False
-            );
-
-            // KSM collateral
-            await issueAndRedeem(
-                api,
-                electrsAPI,
-                btcRelayAPI,
-                bitcoinCoreClient,
-                userAccount,
-                vault_2.address,
-                issueAmount,
-                redeemAmount,
-                false,
-                ExecuteRedeem.False
-            );
-        }).timeout(300000);
+    it("should fail if no account is set", () => {
+        const amount = InterBtcAmount.from.BTC(10);
+        assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
     });
 
-    it("should load existing redeem requests", async () => {
-        redeemAPI.setAccount(userAccount);
+    it("should issue and request redeem", async () => {
+        const issueAmount = InterBtcAmount.from.BTC(0.001);
+        const redeemAmount = InterBtcAmount.from.BTC(0.0009);
+        // DOT collateral
+        await issueAndRedeem(
+            api,
+            electrsAPI,
+            btcRelayAPI,
+            bitcoinCoreClient,
+            userAccount,
+            vault_1.address,
+            issueAmount,
+            redeemAmount,
+            false,
+            ExecuteRedeem.False
+        );
 
+        // KSM collateral
+        await issueAndRedeem(
+            api,
+            electrsAPI,
+            btcRelayAPI,
+            bitcoinCoreClient,
+            userAccount,
+            vault_2.address,
+            issueAmount,
+            redeemAmount,
+            false,
+            ExecuteRedeem.False
+        );
+    }).timeout(300000);
+
+    it("should load existing redeem requests", async () => {
         const redeemRequests = await redeemAPI.list();
         assert.isAtLeast(
             redeemRequests.length,
@@ -117,8 +114,6 @@ describe("redeem", () => {
     });
 
     it("should map existing requests", async () => {
-        redeemAPI.setAccount(userAccount);
-
         const userAccountId = api.createType("AccountId", userAccount.address);
         const redeemRequests = await redeemAPI.mapForUser(userAccountId);
         assert.isAtLeast(

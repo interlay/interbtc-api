@@ -13,7 +13,7 @@ import {
 import { Big } from "big.js";
 import BN from "bn.js";
 import { createPolkadotAPI } from "../factory";
-import { issueSingle, REGTEST_ESPLORA_BASE_PATH, setNumericStorage } from ".";
+import { issueSingle, setNumericStorage } from ".";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import {
     DefaultNominationAPI,
@@ -37,6 +37,7 @@ import {
     BITCOIN_CORE_PORT,
     BITCOIN_CORE_USERNAME,
     BITCOIN_CORE_WALLET,
+    ESPLORA_BASE_PATH,
     PARACHAIN_ENDPOINT,
     REDEEM_ADDRESS,
 } from "../../test/config";
@@ -215,7 +216,7 @@ async function main(params: InitializationParams): Promise<void> {
     const sudoAccount = keyring.addFromUri("//Alice");
     const oracleAccount = keyring.addFromUri("//Bob");
 
-    const electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+    const electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
     const bitcoinCoreClient = new BitcoinCoreClient(
         BITCOIN_CORE_NETWORK,
         BITCOIN_CORE_HOST,

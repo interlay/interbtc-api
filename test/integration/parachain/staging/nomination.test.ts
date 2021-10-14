@@ -3,11 +3,11 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
-import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, newAccountId, NominationAPI, REGTEST_ESPLORA_BASE_PATH, VaultsAPI } from "../../../../src";
+import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, newAccountId, NominationAPI, VaultsAPI } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert, expect } from "../../../chai";
-import { SUDO_URI, USER_1_URI, VAULT_1, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT } from "../../../config";
+import { SUDO_URI, USER_1_URI, VAULT_1, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
@@ -26,7 +26,7 @@ describe("NominationAPI", () => {
         const keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         feeAPI = new DefaultFeeAPI(api, InterBtc);
@@ -59,7 +59,7 @@ describe("NominationAPI", () => {
         assert.equal(vault_1.address, nominationVaults.map(v => v.toString())[0]);
         await optOutWithAccount(vault_1);
         assert.equal(0, (await nominationAPI.listVaults()).length);
-    });
+    }).timeout(60000);
 
     async function setIssueFee(x: BN) {
         const previousAccount = nominationAPI.getAccount();
@@ -122,7 +122,7 @@ describe("NominationAPI", () => {
             await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
             await optOutWithAccount(vault_1);
         }
-    });
+    }).timeout(5 * 60000);
 
     async function optInWithAccount(vaultAccount: KeyringPair) {
         // will fail if vault is already opted in

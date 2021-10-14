@@ -6,13 +6,13 @@ import { InterBtcAmount, BitcoinUnit, Polkadot, InterBtc } from "@interlay/monet
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src/utils";
+import { newAccountId } from "../../../../src/utils";
 import { assert } from "../../../chai";
-import { USER_1_URI, VAULT_1, VAULT_2, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE } from "../../../config";
+import { USER_1_URI, VAULT_1, VAULT_2, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE, ESPLORA_BASE_PATH } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { IssueStatus, stripHexPrefix } from "../../../../src";
-import { runWhileMiningBTCBlocks } from "../../../utils/helpers";
+import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -34,7 +34,7 @@ describe("issue", () => {
         vault_2 = keyring.addFromUri(VAULT_2);
         vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE);
 
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
@@ -199,7 +199,7 @@ describe("issue", () => {
     it("should cancel an issue request", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const initialIssuePeriod = await issueAPI.getIssuePeriod();
-            await issueAPI.setIssuePeriod(0);
+            await sudo(issueAPI, (api) => api.setIssuePeriod(0));
             try {
                 // request issue
                 const amount = InterBtcAmount.from.BTC(0.0000121);
@@ -220,16 +220,17 @@ describe("issue", () => {
     
                 const issueRequest = await issueAPI.getRequestById(requestResult.id);
                 assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
-    
+
                 // Set issue period back to its initial value to minimize side effects.
-                await issueAPI.setIssuePeriod(initialIssuePeriod);
+                await sudo(issueAPI, (api) => api.setIssuePeriod(initialIssuePeriod));
+
             } catch (e) {
                 // Set issue period back to its initial value to minimize side effects.
-                await issueAPI.setIssuePeriod(initialIssuePeriod);
+                await sudo(issueAPI, (api) => api.setIssuePeriod(initialIssuePeriod));
                 throw e;
             }
         });
-    }).timeout(100000);
+    }).timeout(5 * 60000);
 
     it("should list issue request by a vault", async () => {
         const vaultToBanAddress = vault_to_ban.address;
