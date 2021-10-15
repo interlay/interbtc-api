@@ -37,8 +37,8 @@ import {
 import {
     SUDO_URI,
     ORACLE_URI,
-    VAULT_1,
-    VAULT_2,
+    VAULT_1_URI,
+    VAULT_2_URI,
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,
     BITCOIN_CORE_PASSWORD,
@@ -46,9 +46,9 @@ import {
     BITCOIN_CORE_USERNAME,
     BITCOIN_CORE_WALLET,
     PARACHAIN_ENDPOINT,
-    VAULT_3,
-    VAULT_TO_LIQUIDATE,
-    VAULT_TO_BAN,
+    VAULT_3_URI,
+    VAULT_TO_LIQUIDATE_URI,
+    VAULT_TO_BAN_URI,
     USER_1_URI,
     ESPLORA_BASE_PATH,
 } from "../../../config";
@@ -98,11 +98,11 @@ describe("Initialize parachain state", () => {
         sudoAccount = keyring.addFromUri(SUDO_URI);
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
-        vault_1 = keyring.addFromUri(VAULT_1);
-        vault_2 = keyring.addFromUri(VAULT_2);
-        vault_3 = keyring.addFromUri(VAULT_3);
-        vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE);
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN);
+        vault_1 = keyring.addFromUri(VAULT_1_URI);
+        vault_2 = keyring.addFromUri(VAULT_2_URI);
+        vault_3 = keyring.addFromUri(VAULT_3_URI);
+        vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
+        vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN_URI);
 
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(

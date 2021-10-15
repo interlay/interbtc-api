@@ -8,7 +8,7 @@ import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
 import {
     USER_1_URI,
-    VAULT_2,
+    VAULT_2_URI,
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,
     BITCOIN_CORE_PASSWORD,
@@ -16,7 +16,7 @@ import {
     BITCOIN_CORE_USERNAME,
     BITCOIN_CORE_WALLET,
     PARACHAIN_ENDPOINT,
-    VAULT_3,
+    VAULT_3_URI,
     ESPLORA_BASE_PATH
 } from "../../../config";
 import { assert } from "../../../chai";
@@ -48,8 +48,8 @@ describe("replace", () => {
         );
         replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         userAccount = keyring.addFromUri(USER_1_URI);
-        vault_3 = keyring.addFromUri(VAULT_3);
-        vault_2 = keyring.addFromUri(VAULT_2);
+        vault_3 = keyring.addFromUri(VAULT_3_URI);
+        vault_2 = keyring.addFromUri(VAULT_2_URI);
     });
 
     after(async () => {

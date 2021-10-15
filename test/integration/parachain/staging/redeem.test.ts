@@ -16,9 +16,9 @@ import {
     BITCOIN_CORE_WALLET,
     BITCOIN_CORE_PORT,
     USER_1_URI,
-    VAULT_TO_LIQUIDATE,
-    VAULT_1,
-    VAULT_2,
+    VAULT_TO_LIQUIDATE_URI,
+    VAULT_1_URI,
+    VAULT_2_URI,
     ESPLORA_BASE_PATH
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
@@ -46,9 +46,9 @@ describe("redeem", () => {
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE);
-        vault_1 = keyring.addFromUri(VAULT_1);
-        vault_2 = keyring.addFromUri(VAULT_2);
+        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
+        vault_1 = keyring.addFromUri(VAULT_1_URI);
+        vault_2 = keyring.addFromUri(VAULT_2_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);

@@ -7,7 +7,7 @@ import { BitcoinCoreClient, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationA
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert, expect } from "../../../chai";
-import { SUDO_URI, USER_1_URI, VAULT_1, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
+import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
@@ -37,7 +37,7 @@ describe("NominationAPI", () => {
         }
 
         // The account of a vault from docker-compose
-        vault_1 = keyring.addFromUri(VAULT_1);
+        vault_1 = keyring.addFromUri(VAULT_1_URI);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,

@@ -8,7 +8,7 @@ import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { newAccountId } from "../../../../src/utils";
 import { assert } from "../../../chai";
-import { USER_1_URI, VAULT_1, VAULT_2, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE, ESPLORA_BASE_PATH } from "../../../config";
+import { USER_1_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { IssueStatus, stripHexPrefix } from "../../../../src";
@@ -30,9 +30,9 @@ describe("issue", () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
-        vault_1 = keyring.addFromUri(VAULT_1);
-        vault_2 = keyring.addFromUri(VAULT_2);
-        vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE);
+        vault_1 = keyring.addFromUri(VAULT_1_URI);
+        vault_2 = keyring.addFromUri(VAULT_2_URI);
+        vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
 
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(

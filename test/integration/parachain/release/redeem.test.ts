@@ -1,18 +1,18 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
+import { InterBtcAmount, Polkadot, InterBtc } from "@interlay/monetary-js";
 import * as bitcoinjs from "bitcoinjs-lib";
 
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
-import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE, VAULT_TO_BAN, ESPLORA_BASE_PATH } from "../../../config";
+import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle, stripHexPrefix } from "../../../../src/utils";
 import { DefaultBTCRelayAPI, DefaultIssueAPI, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, RedeemStatus, waitForBlockFinalization } from "../../../../src";
 import { assert, expect } from "../../../chai";
-import { InterBtcAmount, Polkadot, InterBtc } from "@interlay/monetary-js";
 import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
 import Big from "big.js";
 
@@ -25,7 +25,7 @@ describe("redeem", () => {
     let api: ApiPromise;
     let keyring: Keyring;
     let userAccount: KeyringPair;
-    let vault_to_liquidate: KeyringPair;
+    let vaultToLiquidate: KeyringPair;
     let userBitcoinCoreClient: BitcoinCoreClient;
     let bitcoinCoreClient: BitcoinCoreClient;
     let issueAPI: IssueAPI;
@@ -34,7 +34,7 @@ describe("redeem", () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN);
+        vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
@@ -65,7 +65,6 @@ describe("redeem", () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             // There should be no burnable tokens
             await expect(redeemAPI.getBurnExchangeRate(Polkadot)).to.be.rejected;
-            const vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE);
             const issuedTokens = InterBtcAmount.from.BTC(0.0001);
             await issueSingle(api, electrsAPI, userBitcoinCoreClient, userAccount, issuedTokens, vaultToLiquidate.address, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
@@ -74,7 +73,7 @@ describe("redeem", () => {
                 BITCOIN_CORE_USERNAME,
                 BITCOIN_CORE_PASSWORD,
                 BITCOIN_CORE_PORT,
-                "vault_to_ban"
+                "vault_to_liquidate"
             );
             // Steal some bitcoin (spend from the vault's account)
             const foreignBitcoinAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
@@ -99,7 +98,7 @@ describe("redeem", () => {
             const redeemAmount = InterBtcAmount.from.BTC(0.0009);
             const initialRedeemPeriod = await redeemAPI.getRedeemPeriod();
             await sudo(redeemAPI, (api) => api.setRedeemPeriod(0));
-            const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, btcRelayAPI, userBitcoinCoreClient, userAccount, vault_to_liquidate.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
+            const [, redeemRequest] = await issueAndRedeem(api, electrsAPI, btcRelayAPI, userBitcoinCoreClient, userAccount, vaultToLiquidate.address, issueAmount, redeemAmount, false, ExecuteRedeem.False);
     
             // Wait for redeem expiry callback
             await new Promise<void>((resolve, _) => {
