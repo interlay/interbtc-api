@@ -98,7 +98,6 @@ describe("replace", () => {
 
     });
 
-
     it("should getDustValue", async () => {
         const dustValue = await replaceAPI.getDustValue();
         assert.equal(dustValue.str.BTC(), "0.00001");
@@ -116,10 +115,10 @@ describe("replace", () => {
     }).timeout(500);
 
     it("should list replace request by a vault", async () => {
-        const eveStashId = api.createType("AccountId", vault_3.address);
-        const replaceRequests = await replaceAPI.mapReplaceRequests(eveStashId);
+        const vault3Id = api.createType("AccountId", vault_3.address);
+        const replaceRequests = await replaceAPI.mapReplaceRequests(vault3Id);
         replaceRequests.forEach((request) => {
-            assert.deepEqual(request.oldVault, eveStashId);
+            assert.deepEqual(request.oldVault, vault3Id);
         });
     });
 

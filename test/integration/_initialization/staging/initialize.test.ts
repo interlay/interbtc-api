@@ -101,9 +101,9 @@ describe("Initialize parachain state", () => {
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN_URI);
-
+        vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
+        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
+        
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

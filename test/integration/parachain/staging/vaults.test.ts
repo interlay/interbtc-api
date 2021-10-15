@@ -35,8 +35,8 @@ describe("vaultsAPI", () => {
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_to_ban = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_BAN_URI);
+        vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
+        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
         rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
 
@@ -174,8 +174,8 @@ describe("vaultsAPI", () => {
     });
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {
-        const charlieId = api.createType("AccountId", vault_1.address);
-        assert.isRejected(vaultsAPI.getVaultCollateralization(charlieId));
+        const vault1Id = api.createType("AccountId", vault_1.address);
+        assert.isRejected(vaultsAPI.getVaultCollateralization(vault1Id));
     });
 
     it("should fail to get total collateralization when no tokens are issued", async () => {
@@ -183,14 +183,14 @@ describe("vaultsAPI", () => {
     });
 
     it("should get vault theft flag", async () => {
-        const ferdieStashId = api.createType("AccountId", vault_to_ban.address);
-        const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(ferdieStashId);
+        const vaultToBanId = api.createType("AccountId", vault_to_ban.address);
+        const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(vaultToBanId);
         assert.isTrue(flaggedForTheft);
     });
 
     it("should get the issuable InterBtc for a vault", async () => {
-        const charlieId = api.createType("AccountId", vault_1.address);
-        const issuableInterBtc = await vaultsAPI.getIssuableAmount(charlieId);
+        const vault1Id = api.createType("AccountId", vault_1.address);
+        const issuableInterBtc = await vaultsAPI.getIssuableAmount(vault1Id);
         assert.isTrue(issuableInterBtc.gt(InterBtcAmount.zero));
     });
 

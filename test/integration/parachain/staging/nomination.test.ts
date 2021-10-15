@@ -91,12 +91,12 @@ describe("NominationAPI", () => {
             assert.equal(2, nominationPairs.length, "There should be one nomination pair in the system, besides the vault to itself");
 
             const userAddress = userAccount.address;
-            const charlieStashAddress = vault_1.address;
+            const vault_1Address = vault_1.address;
 
             const [vaultId, nominatorId] = nominationPairs.find(([_, nominatorId]) => userAddress == nominatorId)!;
 
             assert.equal(userAddress, nominatorId);
-            assert.equal(charlieStashAddress, vaultId);
+            assert.equal(vault_1Address, vaultId);
 
             const interBtcToIssue = InterBtcAmount.from.BTC(0.1);
             await issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, vault_1.address);

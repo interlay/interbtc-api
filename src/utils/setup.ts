@@ -38,8 +38,12 @@ import {
     BITCOIN_CORE_USERNAME,
     BITCOIN_CORE_WALLET,
     ESPLORA_BASE_PATH,
+    ORACLE_URI,
     PARACHAIN_ENDPOINT,
     REDEEM_ADDRESS,
+    SUDO_URI,
+    USER_1_URI,
+    VAULT_1_URI,
 } from "../../test/config";
 import { CollateralUnit, WrappedCurrency } from "../types";
 
@@ -126,12 +130,12 @@ function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string):
         enableNomination: true,
         issue: {
             amount: InterBtcAmount.from.BTC(0.1),
-            issuingAccount: keyring.addFromUri("//Alice"),
+            issuingAccount: keyring.addFromUri(USER_1_URI),
             vaultAddress,
         },
         redeem: {
             amount: InterBtcAmount.from.BTC(0.05),
-            redeemingAccount: keyring.addFromUri("//Alice"),
+            redeemingAccount: keyring.addFromUri(USER_1_URI),
             redeemingBTCAddress: REDEEM_ADDRESS,
         },
         delayMs: 0,
@@ -209,12 +213,12 @@ async function main(params: InitializationParams): Promise<void> {
     await cryptoWaitReady();
     console.log("Running initialization script...");
     const keyring = new Keyring({ type: "sr25519" });
-    const charlieStash = keyring.addFromUri("//Charlie//stash");
-    const defaultInitializationParams = getDefaultInitializationParams(keyring, charlieStash.address);
+    const vault_1 = keyring.addFromUri(VAULT_1_URI);
+    const defaultInitializationParams = getDefaultInitializationParams(keyring, vault_1.address);
 
     const api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-    const sudoAccount = keyring.addFromUri("//Alice");
-    const oracleAccount = keyring.addFromUri("//Bob");
+    const sudoAccount = keyring.addFromUri(SUDO_URI);
+    const oracleAccount = keyring.addFromUri(ORACLE_URI);
 
     const electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
     const bitcoinCoreClient = new BitcoinCoreClient(
