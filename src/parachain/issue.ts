@@ -133,7 +133,9 @@ export interface IssueAPI extends TransactionAPI {
      * @param amount The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
-    getFeesToPay(amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    getFeesToPay(
+        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
+    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
     /**
      * @param amountBtc The amount, in BTC, for which to compute the griefing collateral
      * @param collateralCurrency The collateral, as a currency object (using `Monetary.js`)
@@ -176,7 +178,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         this.feeAPI = new DefaultFeeAPI(api, wrappedCurrency);
     }
 
-    async getRequestLimits(vaults?: Map<AccountId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>): Promise<IssueLimits> {
+    async getRequestLimits(
+        vaults?: Map<AccountId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+    ): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
         const vaultsArr = [...vaults.entries()];
         if (vaultsArr.length === 0) {

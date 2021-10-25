@@ -202,7 +202,9 @@ export interface VaultsAPI extends TransactionAPI {
      * @param collateralCurrency
      * @returns A vault object representing the liquidation vault
      */
-    getLiquidationVault<C extends CollateralUnit>(collateralCurrency: Currency<C>): Promise<SystemVaultExt<BitcoinUnit>>;
+    getLiquidationVault<C extends CollateralUnit>(
+        collateralCurrency: Currency<C>
+    ): Promise<SystemVaultExt<BitcoinUnit>>;
     /**
      * @param vaultId account id
      * @returns The collateral of a vault, taking slashes into account.

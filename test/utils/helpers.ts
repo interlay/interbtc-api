@@ -1,8 +1,9 @@
+import { Bitcoin, BitcoinUnit, Currency, ExchangeRate } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { BitcoinCoreClient } from "../../src";
+import { BitcoinCoreClient, CollateralCurrency, CollateralUnit, OracleAPI } from "../../src";
 import { TransactionAPI } from "../../src/parachain/transaction";
 import { SUDO_URI } from "../config";
 
@@ -64,4 +65,29 @@ export async function runWhileMiningBTCBlocks(bitcoinCoreClient: BitcoinCoreClie
     } finally {
         clearInterval(intervalId);
     }
+}
+
+// TODO: test this function
+export async function runWithChangingExchangeRates(oracleAPI: OracleAPI, fn: () => Promise<void>): Promise<void> {
+    const MAX_RATE_CHANGE_PERCENTAGE = 0.005;
+    return new Promise(async (resolve, reject) => {
+        fn().then(resolve).catch(reject);
+
+        while (true) {
+            const exchangeRates = await Promise.all(
+                CollateralCurrency.map(currency => oracleAPI.getExchangeRate(currency as Currency<CollateralUnit>))
+            );
+            await Promise.all(
+                exchangeRates.map(exchangeRate => {
+                    const exchangeRateValue = exchangeRate.toBig();
+                    // The exchange rate can go up or down, by at most `MAX_RATE_CHANGE_PERCENTAGE`
+                    const newExchangeRateValue = exchangeRateValue.mul(1 + (Math.random() * 2 - 1) * MAX_RATE_CHANGE_PERCENTAGE);
+                    const newExchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, typeof exchangeRate.counter, typeof exchangeRate.counter.units>(
+                        Bitcoin, exchangeRate.counter, newExchangeRateValue
+                    );
+                    oracleAPI.setExchangeRate(newExchangeRate);
+                })
+            );
+        }
+    });
 }

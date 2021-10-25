@@ -233,7 +233,10 @@ export class DefaultRewardsAPI implements RewardsAPI {
         return nominatorCollateral.toBig().div(vault.backingCollateral.toBig());
     }
 
-    async computeReward(vaultId: string, nominatorId: string): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+    async computeReward(
+        vaultId: string,
+        nominatorId: string
+    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const [totalGlobalReward, globalRewardShare] = await Promise.all([
             this.computeRewardInRewardsPool(vaultId),
             this.backingCollateralProportion(vaultId, nominatorId),
