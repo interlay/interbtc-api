@@ -13,7 +13,7 @@ import {
 import { Big } from "big.js";
 import BN from "bn.js";
 import { createPolkadotAPI } from "../factory";
-import { issueSingle, REGTEST_ESPLORA_BASE_PATH, setNumericStorage } from ".";
+import { issueSingle, setNumericStorage } from ".";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import {
     DefaultNominationAPI,
@@ -31,14 +31,19 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 
 import {
-    DEFAULT_BITCOIN_CORE_HOST,
-    DEFAULT_BITCOIN_CORE_NETWORK,
-    DEFAULT_BITCOIN_CORE_PASSWORD,
-    DEFAULT_BITCOIN_CORE_PORT,
-    DEFAULT_BITCOIN_CORE_USERNAME,
-    DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_PARACHAIN_ENDPOINT,
-    DEFAULT_REDEEM_ADDRESS,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    ESPLORA_BASE_PATH,
+    ORACLE_URI,
+    PARACHAIN_ENDPOINT,
+    REDEEM_ADDRESS,
+    SUDO_URI,
+    USER_1_URI,
+    VAULT_1_URI,
 } from "../../test/config";
 import { CollateralUnit, WrappedCurrency } from "../types";
 
@@ -125,13 +130,13 @@ function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string):
         enableNomination: true,
         issue: {
             amount: InterBtcAmount.from.BTC(0.1),
-            issuingAccount: keyring.addFromUri("//Alice"),
+            issuingAccount: keyring.addFromUri(USER_1_URI),
             vaultAddress,
         },
         redeem: {
             amount: InterBtcAmount.from.BTC(0.05),
-            redeemingAccount: keyring.addFromUri("//Alice"),
-            redeemingBTCAddress: DEFAULT_REDEEM_ADDRESS,
+            redeemingAccount: keyring.addFromUri(USER_1_URI),
+            redeemingBTCAddress: REDEEM_ADDRESS,
         },
         delayMs: 0,
     };
@@ -208,25 +213,25 @@ async function main(params: InitializationParams): Promise<void> {
     await cryptoWaitReady();
     console.log("Running initialization script...");
     const keyring = new Keyring({ type: "sr25519" });
-    const charlieStash = keyring.addFromUri("//Charlie//stash");
-    const defaultInitializationParams = getDefaultInitializationParams(keyring, charlieStash.address);
+    const vault_1 = keyring.addFromUri(VAULT_1_URI);
+    const defaultInitializationParams = getDefaultInitializationParams(keyring, vault_1.address);
 
-    const api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
-    const alice = keyring.addFromUri("//Alice");
-    const bob = keyring.addFromUri("//Bob");
+    const api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+    const sudoAccount = keyring.addFromUri(SUDO_URI);
+    const oracleAccount = keyring.addFromUri(ORACLE_URI);
 
-    const electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+    const electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
     const bitcoinCoreClient = new BitcoinCoreClient(
-        DEFAULT_BITCOIN_CORE_NETWORK,
-        DEFAULT_BITCOIN_CORE_HOST,
-        DEFAULT_BITCOIN_CORE_USERNAME,
-        DEFAULT_BITCOIN_CORE_PASSWORD,
-        DEFAULT_BITCOIN_CORE_PORT,
-        DEFAULT_BITCOIN_CORE_WALLET
+        BITCOIN_CORE_NETWORK,
+        BITCOIN_CORE_HOST,
+        BITCOIN_CORE_USERNAME,
+        BITCOIN_CORE_PASSWORD,
+        BITCOIN_CORE_PORT,
+        BITCOIN_CORE_WALLET
     );
-    const oracleAPI = new DefaultOracleAPI(api, InterBtc, bob);
+    const oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
     // initialize the nomination API with Alice in order to make sudo calls
-    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, alice);
+    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, sudoAccount);
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
@@ -239,7 +244,12 @@ async function main(params: InitializationParams): Promise<void> {
     if (params.setExchangeRate !== undefined) {
         const exchangeRateToSet =
             params.setExchangeRate === true
-                ? (defaultInitializationParams.setExchangeRate as ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>)
+                ? (defaultInitializationParams.setExchangeRate as ExchangeRate<
+                      Bitcoin,
+                      BitcoinUnit,
+                      Polkadot,
+                      PolkadotUnit
+                  >)
                 : params.setExchangeRate;
         await initializeExchangeRate(exchangeRateToSet, oracleAPI);
     }

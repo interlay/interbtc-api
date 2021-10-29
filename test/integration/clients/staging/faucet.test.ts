@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { FaucetClient } from "../../../../src/clients";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { DEFAULT_PARACHAIN_ENDPOINT, DEFAULT_FAUCET_ENDPOINT } from "../../../config";
+import { PARACHAIN_ENDPOINT, FAUCET_ENDPOINT } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { assert } from "../../../chai";
 import { DefaultTokensAPI, TokensAPI } from "../../../../src";
@@ -19,8 +19,8 @@ describe("Faucet", function () {
     let account: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
-        faucet = new FaucetClient(DEFAULT_FAUCET_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        faucet = new FaucetClient(FAUCET_ENDPOINT);
         tokensAPI = new DefaultTokensAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         account = makeRandomPolkadotKeyPair(keyring);

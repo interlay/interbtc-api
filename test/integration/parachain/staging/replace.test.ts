@@ -7,20 +7,21 @@ import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs"
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
 import {
-    ALICE_URI,
-    DAVE_STASH_URI,
-    DEFAULT_BITCOIN_CORE_HOST,
-    DEFAULT_BITCOIN_CORE_NETWORK,
-    DEFAULT_BITCOIN_CORE_PASSWORD,
-    DEFAULT_BITCOIN_CORE_PORT,
-    DEFAULT_BITCOIN_CORE_USERNAME,
-    DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_PARACHAIN_ENDPOINT,
-    EVE_STASH_URI
+    USER_1_URI,
+    VAULT_2_URI,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    PARACHAIN_ENDPOINT,
+    VAULT_3_URI,
+    ESPLORA_BASE_PATH
 } from "../../../config";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { DefaultReplaceAPI, REGTEST_ESPLORA_BASE_PATH, ReplaceAPI } from "../../../../src";
+import { DefaultReplaceAPI, ReplaceAPI } from "../../../../src";
 import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
 
 describe("replace", () => {
@@ -29,26 +30,26 @@ describe("replace", () => {
     let replaceAPI: ReplaceAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
-    let alice: KeyringPair;
-    let eve_stash: KeyringPair;
-    let dave_stash: KeyringPair;
+    let userAccount: KeyringPair;
+    let vault_3: KeyringPair;
+    let vault_2: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
         replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
-        alice = keyring.addFromUri(ALICE_URI);
-        eve_stash = keyring.addFromUri(EVE_STASH_URI);
-        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
+        userAccount = keyring.addFromUri(USER_1_URI);
+        vault_3 = keyring.addFromUri(VAULT_3_URI);
+        vault_2 = keyring.addFromUri(VAULT_2_URI);
     });
 
     after(async () => {
@@ -65,16 +66,14 @@ describe("replace", () => {
                 api,
                 electrsAPI,
                 bitcoinCoreClient,
-                alice,
+                userAccount,
                 issueAmount,
-                eve_stash.address
+                vault_3.address
             );
-            // Eve//stash is a DOT vault that requests replacement
-            replaceAPI.setAccount(eve_stash);
+            replaceAPI.setAccount(vault_3);
             replaceId = await replaceAPI.request(replaceAmount);
 
-            // Dave//stash is a KSM vault that requests replacement
-            replaceAPI.setAccount(dave_stash);
+            replaceAPI.setAccount(vault_2);
             replaceId = await replaceAPI.request(replaceAmount);
         }).timeout(200000);
 
@@ -99,7 +98,6 @@ describe("replace", () => {
 
     });
 
-
     it("should getDustValue", async () => {
         const dustValue = await replaceAPI.getDustValue();
         assert.equal(dustValue.str.BTC(), "0.00001");
@@ -117,10 +115,10 @@ describe("replace", () => {
     }).timeout(500);
 
     it("should list replace request by a vault", async () => {
-        const eveStashId = api.createType("AccountId", eve_stash.address);
-        const replaceRequests = await replaceAPI.mapReplaceRequests(eveStashId);
+        const vault3Id = api.createType("AccountId", vault_3.address);
+        const replaceRequests = await replaceAPI.mapReplaceRequests(vault3Id);
         replaceRequests.forEach((request) => {
-            assert.deepEqual(request.oldVault, eveStashId);
+            assert.deepEqual(request.oldVault, vault3Id);
         });
     });
 

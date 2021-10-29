@@ -8,22 +8,23 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { Vault } from "../../../../src/interfaces/default";
 import { assert } from "../../../chai";
 import {
-    DEFAULT_BITCOIN_CORE_HOST,
-    DEFAULT_BITCOIN_CORE_NETWORK,
-    DEFAULT_BITCOIN_CORE_PASSWORD,
-    DEFAULT_BITCOIN_CORE_USERNAME,
-    DEFAULT_PARACHAIN_ENDPOINT,
-    DEFAULT_BITCOIN_CORE_WALLET,
-    DEFAULT_BITCOIN_CORE_PORT,
-    ALICE_URI,
-    FERDIE_STASH_URI,
-    CHARLIE_STASH_URI,
-    DAVE_STASH_URI
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_USERNAME,
+    PARACHAIN_ENDPOINT,
+    BITCOIN_CORE_WALLET,
+    BITCOIN_CORE_PORT,
+    USER_1_URI,
+    VAULT_TO_LIQUIDATE_URI,
+    VAULT_1_URI,
+    VAULT_2_URI,
+    ESPLORA_BASE_PATH
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { BTCRelayAPI, DefaultBTCRelayAPI, ElectrsAPI, REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
+import { BTCRelayAPI, DefaultBTCRelayAPI, ElectrsAPI } from "../../../../src";
 import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
@@ -33,33 +34,32 @@ describe("redeem", () => {
     let redeemAPI: RedeemAPI;
     let api: ApiPromise;
     let keyring: Keyring;
-    // alice is the root account
-    let alice: KeyringPair;
+    let userAccount: KeyringPair;
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let electrsAPI: ElectrsAPI;
     let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
-    let ferdie_stash: KeyringPair;
-    let charlie_stash: KeyringPair;
-    let dave_stash: KeyringPair;
+    let vault_to_liquidate: KeyringPair;
+    let vault_1: KeyringPair;
+    let vault_2: KeyringPair;
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
-        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
-        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
-        alice = keyring.addFromUri(ALICE_URI);
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
+        vault_1 = keyring.addFromUri(VAULT_1_URI);
+        vault_2 = keyring.addFromUri(VAULT_2_URI);
+        userAccount = keyring.addFromUri(USER_1_URI);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
     });
 
@@ -67,48 +67,44 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    describe("request", () => {
-        it("should fail if no account is set", () => {
-            const amount = InterBtcAmount.from.BTC(10);
-            assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
-        });
-
-        it("should issue and request redeem", async () => {
-            const issueAmount = InterBtcAmount.from.BTC(0.001);
-            const redeemAmount = InterBtcAmount.from.BTC(0.0009);
-            // DOT collateral
-            await issueAndRedeem(
-                api,
-                electrsAPI,
-                btcRelayAPI,
-                bitcoinCoreClient,
-                alice,
-                charlie_stash.address,
-                issueAmount,
-                redeemAmount,
-                false,
-                ExecuteRedeem.False
-            );
-
-            // KSM collateral
-            await issueAndRedeem(
-                api,
-                electrsAPI,
-                btcRelayAPI,
-                bitcoinCoreClient,
-                alice,
-                dave_stash.address,
-                issueAmount,
-                redeemAmount,
-                false,
-                ExecuteRedeem.False
-            );
-        }).timeout(300000);
+    it("should fail if no account is set", () => {
+        const amount = InterBtcAmount.from.BTC(10);
+        assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
     });
 
-    it("should load existing redeem requests", async () => {
-        redeemAPI.setAccount(alice);
+    it("should issue and request redeem", async () => {
+        const issueAmount = InterBtcAmount.from.BTC(0.001);
+        const redeemAmount = InterBtcAmount.from.BTC(0.0009);
+        // DOT collateral
+        await issueAndRedeem(
+            api,
+            electrsAPI,
+            btcRelayAPI,
+            bitcoinCoreClient,
+            userAccount,
+            vault_1.address,
+            issueAmount,
+            redeemAmount,
+            false,
+            ExecuteRedeem.False
+        );
 
+        // KSM collateral
+        await issueAndRedeem(
+            api,
+            electrsAPI,
+            btcRelayAPI,
+            bitcoinCoreClient,
+            userAccount,
+            vault_2.address,
+            issueAmount,
+            redeemAmount,
+            false,
+            ExecuteRedeem.False
+        );
+    }).timeout(300000);
+
+    it("should load existing redeem requests", async () => {
         const redeemRequests = await redeemAPI.list();
         assert.isAtLeast(
             redeemRequests.length,
@@ -118,10 +114,8 @@ describe("redeem", () => {
     });
 
     it("should map existing requests", async () => {
-        redeemAPI.setAccount(alice);
-
-        const aliceAccountId = api.createType("AccountId", alice.address);
-        const redeemRequests = await redeemAPI.mapForUser(aliceAccountId);
+        const userAccountId = api.createType("AccountId", userAccount.address);
+        const redeemRequests = await redeemAPI.mapForUser(userAccountId);
         assert.isAtLeast(
             redeemRequests.size,
             1,
@@ -156,11 +150,11 @@ describe("redeem", () => {
     });
 
     it("should list redeem request by a vault", async () => {
-        const bobAddress = ferdie_stash.address;
-        const bobId = api.createType("AccountId", bobAddress);
-        const redeemRequests = await redeemAPI.mapRedeemRequests(bobId);
+        const vaultToLiquidateAddress = vault_to_liquidate.address;
+        const vaultToLiquidateId = api.createType("AccountId", vaultToLiquidateAddress);
+        const redeemRequests = await redeemAPI.mapRedeemRequests(vaultToLiquidateId);
         redeemRequests.forEach((request) => {
-            assert.deepEqual(request.vaultParachainAddress, bobAddress);
+            assert.deepEqual(request.vaultParachainAddress, vaultToLiquidateAddress);
         });
     });
 

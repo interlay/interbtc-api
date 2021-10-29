@@ -5,11 +5,10 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { ALICE_URI, EVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT } from "../../../config";
+import { USER_1_URI, VAULT_3_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { DefaultRefundAPI, RefundAPI } from "../../../../src/parachain/refund";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { InterBtc, InterBtcAmount } from "@interlay/monetary-js";
 
 describe("refund", () => {
@@ -18,24 +17,24 @@ describe("refund", () => {
     let refundAPI: RefundAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
-    let alice: KeyringPair;
-    let eve_stash: KeyringPair;
+    let userAccount: KeyringPair;
+    let vault_3: KeyringPair;
 
     before(async function () {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
         refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
-        alice = keyring.addFromUri(ALICE_URI);
-        eve_stash = keyring.addFromUri(EVE_STASH_URI);
+        userAccount = keyring.addFromUri(USER_1_URI);
+        vault_3 = keyring.addFromUri(VAULT_3_URI);
     });
 
     after(async () => {
@@ -47,9 +46,9 @@ describe("refund", () => {
             api,
             electrsAPI,
             bitcoinCoreClient,
-            alice,
+            userAccount,
             InterBtcAmount.from.BTC(0.001),
-            eve_stash.address,
+            vault_3.address,
             false,
             false
         );
@@ -64,9 +63,9 @@ describe("refund", () => {
             api,
             electrsAPI,
             bitcoinCoreClient,
-            alice,
+            userAccount,
             InterBtcAmount.from.BTC(0.001),
-            eve_stash.address,
+            vault_3.address,
             true,
             true
         );

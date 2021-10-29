@@ -15,7 +15,9 @@ import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
 import { BitcoinAmount } from "@interlay/monetary-js";
 
-import { MAINNET_ESPLORA_BASE_PATH, REGTEST_ESPLORA_BASE_PATH, TESTNET_ESPLORA_BASE_PATH } from "../utils/constants";
+export const MAINNET_ESPLORA_BASE_PATH = "https://blockstream.info/api";
+export const TESTNET_ESPLORA_BASE_PATH = "https://btc-testnet.interlay.io";
+export const REGTEST_ESPLORA_BASE_PATH = "http://localhost:3002";
 
 export type TxStatus = {
     confirmed: boolean;
@@ -228,11 +230,13 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         try {
             const txes = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
             if (txes.length >= 25) {
-                throw new Error("Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address");
+                throw new Error(
+                    "Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address"
+                );
             }
 
             const oldestTx = txes.pop();
-            if (!oldestTx || !(oldestTx.vout)) {
+            if (!oldestTx || !oldestTx.vout) {
                 throw new Error("No transaction found for recipient and amount");
             }
             for (const txo of oldestTx.vout) {

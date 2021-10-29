@@ -31,11 +31,11 @@ and then to instantiate a `InterBTCAPI` instance.
 import { createInterbtcAPI } from "@interlay/interbtc";
 
 // If you are using a local development environment
-// const DEFAULT_PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
+// const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
 // if you want to use the Interlay-hosted beta network
-const DEFAULT_PARACHAIN_ENDPOINT = "wss://bridge.interlay.io/api/parachain";
+const PARACHAIN_ENDPOINT = "wss://api-dev.interlay.io/parachain";
 const isMainnet = false;
-const interBTC = await createInterbtcAPI(DEFAULT_PARACHAIN_ENDPOINT, isMainnet);
+const interBTC = await createInterbtcAPI(PARACHAIN_ENDPOINT, isMainnet);
 ```
 
 ### Attaching an Account
