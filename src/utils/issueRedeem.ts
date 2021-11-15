@@ -15,7 +15,7 @@ import { stripHexPrefix } from "../utils/encoding";
 import { BTCRelayAPI, DefaultBTCRelayAPI, DefaultRedeemAPI } from "../parachain";
 import { Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
 import { BitcoinNetwork } from "../types/bitcoinTypes";
-import { newMonetaryAmount, REGTEST_ESPLORA_BASE_PATH, waitForBlockFinalization } from "..";
+import { newMonetaryAmount, waitForBlockFinalization } from "..";
 
 export const SLEEP_TIME_MS = 1000;
 
@@ -114,12 +114,7 @@ export async function issueSingle(
 ): Promise<IssueResult<BitcoinUnit>> {
     try {
         const bitcoinjsNetwork = getBitcoinNetwork(network);
-        const issueAPI = new DefaultIssueAPI(
-            api,
-            bitcoinjsNetwork,
-            new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH),
-            amount.currency
-        );
+        const issueAPI = new DefaultIssueAPI(api, bitcoinjsNetwork, new DefaultElectrsAPI(network), amount.currency);
         const btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         const tokensAPI = new DefaultTokensAPI(api);
 

@@ -7,18 +7,18 @@ import Big from "big.js";
 
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { BOB_URI, CHARLIE_STASH_URI, DAVE_STASH_URI, DEFAULT_BITCOIN_CORE_HOST, DEFAULT_BITCOIN_CORE_NETWORK, DEFAULT_BITCOIN_CORE_PASSWORD, DEFAULT_BITCOIN_CORE_PORT, DEFAULT_BITCOIN_CORE_USERNAME, DEFAULT_BITCOIN_CORE_WALLET, DEFAULT_PARACHAIN_ENDPOINT, EVE_STASH_URI, FERDIE_STASH_URI, FERDIE_URI } from "../../../config";
-import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, REGTEST_ESPLORA_BASE_PATH } from "../../../../src/";
+import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH } from "../../../config";
+import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId } from "../../../../src/";
 import { issueSingle } from "../../../../src/utils";
 import { DefaultRewardsAPI } from "../../../../src/parachain/rewards";
 
 describe("vaultsAPI", () => {
-    let bob: KeyringPair;
-    let ferdie: KeyringPair;
-    let ferdie_stash: KeyringPair;
-    let charlie_stash: KeyringPair;
-    let dave_stash: KeyringPair;
-    let eve_stash: KeyringPair;
+    let oracleAccount: KeyringPair;
+    let vault_to_liquidate: KeyringPair;
+    let vault_to_ban: KeyringPair;
+    let vault_1: KeyringPair;
+    let vault_2: KeyringPair;
+    let vault_3: KeyringPair;
     let api: ApiPromise;
     let vaultsAPI: DefaultVaultsAPI;
     let oracleAPI: DefaultOracleAPI;
@@ -29,27 +29,26 @@ describe("vaultsAPI", () => {
     const registry = new TypeRegistry();
 
     before(async () => {
-        api = await createPolkadotAPI(DEFAULT_PARACHAIN_ENDPOINT);
+        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        bob = keyring.addFromUri(BOB_URI);
-        charlie_stash = keyring.addFromUri(CHARLIE_STASH_URI);
-        dave_stash = keyring.addFromUri(DAVE_STASH_URI);
-        eve_stash = keyring.addFromUri(EVE_STASH_URI);
-        ferdie_stash = keyring.addFromUri(FERDIE_STASH_URI);
-        ferdie = keyring.addFromUri(FERDIE_URI);
-        // Bob is the authorized oracle
-        oracleAPI = new DefaultOracleAPI(api, InterBtc, bob);
+        oracleAccount = keyring.addFromUri(ORACLE_URI);
+        vault_1 = keyring.addFromUri(VAULT_1_URI);
+        vault_2 = keyring.addFromUri(VAULT_2_URI);
+        vault_3 = keyring.addFromUri(VAULT_3_URI);
+        vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
+        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
+        oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
         rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
 
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         bitcoinCoreClient = new BitcoinCoreClient(
-            DEFAULT_BITCOIN_CORE_NETWORK,
-            DEFAULT_BITCOIN_CORE_HOST,
-            DEFAULT_BITCOIN_CORE_USERNAME,
-            DEFAULT_BITCOIN_CORE_PASSWORD,
-            DEFAULT_BITCOIN_CORE_PORT,
-            DEFAULT_BITCOIN_CORE_WALLET
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            BITCOIN_CORE_WALLET
         );
     });
 
@@ -58,11 +57,11 @@ describe("vaultsAPI", () => {
     });
 
     function vaultIsATestVault(vaultAddress: string): boolean {
-        return vaultAddress === dave_stash.address ||
-            vaultAddress === charlie_stash.address ||
-            vaultAddress === eve_stash.address ||
-            vaultAddress === ferdie_stash.address ||
-            vaultAddress === ferdie.address;
+        return vaultAddress === vault_2.address ||
+            vaultAddress === vault_1.address ||
+            vaultAddress === vault_3.address ||
+            vaultAddress === vault_to_ban.address ||
+            vaultAddress === vault_to_liquidate.address;
     }
 
     it("should get issuable", async () => {
@@ -73,11 +72,11 @@ describe("vaultsAPI", () => {
 
     // WARNING: this test is not idempotent
     it("should deposit and withdraw collateral", async () => {
-        vaultsAPI.setAccount(charlie_stash);
+        vaultsAPI.setAccount(vault_1);
         const amount = PolkadotAmount.from.DOT(100);
-        const collateralizationBeforeDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
+        const collateralizationBeforeDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, vault_1.address));
         await vaultsAPI.depositCollateral(amount);
-        const collateralizationAfterDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
+        const collateralizationAfterDeposit = await vaultsAPI.getVaultCollateralization(newAccountId(api, vault_1.address));
         if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
             throw new Error("Collateralization is undefined");
         }
@@ -87,7 +86,7 @@ describe("vaultsAPI", () => {
         );
 
         await vaultsAPI.withdrawCollateral(amount);
-        const collateralizationAfterWithdrawal = await vaultsAPI.getVaultCollateralization(newAccountId(api, charlie_stash.address));
+        const collateralizationAfterWithdrawal = await vaultsAPI.getVaultCollateralization(newAccountId(api, vault_1.address));
         if (collateralizationAfterWithdrawal === undefined) {
             throw new Error("Collateralization is undefined");
         }
@@ -107,10 +106,10 @@ describe("vaultsAPI", () => {
     });
 
     it("should getPremiumRedeemVaults after a price crash", async () => {
-        const issuableAmount = await vaultsAPI.getIssuableAmount(newAccountId(api, eve_stash.address));
-        await issueSingle(api, electrsAPI, bitcoinCoreClient, bob, issuableAmount, eve_stash.address);
+        const issuableAmount = await vaultsAPI.getIssuableAmount(newAccountId(api, vault_3.address));
+        await issueSingle(api, electrsAPI, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3.address);
 
-        const currentVaultCollateralization = await vaultsAPI.getVaultCollateralization(newAccountId(api, eve_stash.address));
+        const currentVaultCollateralization = await vaultsAPI.getVaultCollateralization(newAccountId(api, vault_3.address));
         if (currentVaultCollateralization === undefined) {
             throw new Error("Collateralization is undefined");
         }
@@ -130,7 +129,7 @@ describe("vaultsAPI", () => {
         assert.equal(premiumRedeemVaults.size, 1);
         assert.equal(
             premiumRedeemVaults.keys().next().value.toString(),
-            eve_stash.address,
+            vault_3.address,
             "Premium redeem vault is not the expected one"
         );
 
@@ -175,8 +174,8 @@ describe("vaultsAPI", () => {
     });
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {
-        const charlieId = api.createType("AccountId", charlie_stash.address);
-        assert.isRejected(vaultsAPI.getVaultCollateralization(charlieId));
+        const vault1Id = api.createType("AccountId", vault_1.address);
+        assert.isRejected(vaultsAPI.getVaultCollateralization(vault1Id));
     });
 
     it("should fail to get total collateralization when no tokens are issued", async () => {
@@ -184,14 +183,14 @@ describe("vaultsAPI", () => {
     });
 
     it("should get vault theft flag", async () => {
-        const ferdieStashId = api.createType("AccountId", ferdie_stash.address);
-        const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(ferdieStashId);
+        const vaultToBanId = api.createType("AccountId", vault_to_ban.address);
+        const flaggedForTheft = await vaultsAPI.isVaultFlaggedForTheft(vaultToBanId);
         assert.isTrue(flaggedForTheft);
     });
 
     it("should get the issuable InterBtc for a vault", async () => {
-        const charlieId = api.createType("AccountId", charlie_stash.address);
-        const issuableInterBtc = await vaultsAPI.getIssuableAmount(charlieId);
+        const vault1Id = api.createType("AccountId", vault_1.address);
+        const issuableInterBtc = await vaultsAPI.getIssuableAmount(vault1Id);
         assert.isTrue(issuableInterBtc.gt(InterBtcAmount.zero));
     });
 
@@ -201,12 +200,12 @@ describe("vaultsAPI", () => {
     });
 
     it("should getFees", async () => {
-        const feesWrapped = await rewardsAPI.getFeesWrapped(charlie_stash.address);
+        const feesWrapped = await rewardsAPI.getFeesWrapped(vault_1.address);
         assert.isTrue(feesWrapped.gte(InterBtcAmount.zero));
     });
 
     it("should getAPY", async () => {
-        const apy = await vaultsAPI.getAPY(registry.createType("AccountId", charlie_stash.address));
+        const apy = await vaultsAPI.getAPY(registry.createType("AccountId", vault_1.address));
         const apyBig = new Big(apy);
         const apyBenchmark = new Big("0");
         assert.isTrue(apyBig.gte(apyBenchmark));
