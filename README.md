@@ -5,7 +5,7 @@
 The interbtc TypeScript library connects the Polkadot and Kusama ecosystems with Bitcoin. It allows the creation of interBTC on Polkadot and kBTC on Kusama, fungible "wrapped" tokens that represent Bitcoin. Wrapped tokens are backed by Bitcoin 1:1 and allow redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
 In comparison to other bridge constructions (like tBTC, wBTC, or RenVM) _anyone_ can become an intermediary by depositing collateral making interBTC the only truly open system.
 
-The bridge itself follows the detailed specification: <a href="https://interlay.gitlab.io/interbtc-spec/" target="_blank"><strong>Explore the specification »</strong></a>
+The bridge itself follows the detailed specification: <a href="https://gitlab.com/interlay/interbtc-spec/" target="_blank"><strong>Explore the specification »</strong></a>
 
 It is implemented as a collection of open-source Substrate modules using Rust: <a href="https://github.com/interlay/interbtc" target="_blank"><strong>Explore the implementation »</strong></a>
 
