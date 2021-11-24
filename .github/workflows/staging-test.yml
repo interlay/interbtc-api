@@ -19,5 +19,5 @@ jobs:
                   node-version: "14.x"
             - run: npm install -g yarn
             - run: yarn install
-            - run: ln -s .env.staging .env
-            - run: yarn ci:test
+            - run: |
+                source .env.staging && yarn ci:test
