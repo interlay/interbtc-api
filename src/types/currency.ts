@@ -96,7 +96,8 @@ export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId:
 }
 
 export function currencyIdToLiteral(currencyId: InterbtcPrimitivesCurrencyId): CurrencyIdLiteral {
-    return tickerToCurrencyIdLiteral(currencyIdToMonetaryCurrency(currencyId).ticker);
+    const monetaryCurrency = currencyIdToMonetaryCurrency(currencyId);
+    return tickerToCurrencyIdLiteral(monetaryCurrency.ticker);
 }
 
 export function tickerToMonetaryCurrency<U extends CurrencyUnit>(api: ApiPromise, ticker: string): Currency<U> {

@@ -23,7 +23,7 @@ describe("refund", () => {
     let vault_3: KeyringPair;
     let vault_3_id: InterbtcPrimitivesVaultId;
 
-    let nativeCurrency: CollateralCurrency;
+    let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
 
     before(async function () {
@@ -38,7 +38,7 @@ describe("refund", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        nativeCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         refundAPI = new DefaultRefundAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
         userAccount = keyring.addFromUri(USER_1_URI);
@@ -57,7 +57,7 @@ describe("refund", () => {
             bitcoinCoreClient,
             userAccount,
             InterBtcAmount.from.BTC(0.00005),
-            nativeCurrency,
+            collateralCurrency,
             vault_3_id,
             false,
             false
@@ -72,7 +72,7 @@ describe("refund", () => {
             bitcoinCoreClient,
             userAccount,
             InterBtcAmount.from.BTC(0.00005),
-            nativeCurrency,
+            collateralCurrency,
             vault_3_id,
             true,
             true

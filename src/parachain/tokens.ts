@@ -6,6 +6,7 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
+import { OrmlTokensAccountData } from "@polkadot/types/lookup";
 
 /**
  * @category InterBTC Bridge
@@ -62,22 +63,28 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         return newMonetaryAmount(rawAmount.toString(), currency);
     }
 
+    async getAccountData<U extends CurrencyUnit>(
+        currency: Currency<U>,
+        id: AccountId
+    ): Promise<OrmlTokensAccountData> {
+        const currencyIdLiteral = tickerToCurrencyIdLiteral(currency.ticker);
+        return await this.api.query.tokens.accounts(id, newCurrencyId(this.api, currencyIdLiteral));
+    }
+
     async balance<U extends CurrencyUnit>(
         currency: Currency<U>,
         id: AccountId
     ): Promise<MonetaryAmount<Currency<U>, U>> {
-        const currencyIdLiteral = tickerToCurrencyIdLiteral(currency.ticker);
-        const account = await this.api.query.tokens.accounts(id, newCurrencyId(this.api, currencyIdLiteral));
-        return newMonetaryAmount(account.free.toString(), currency);
+        const accountData = await this.getAccountData(currency, id);
+        return newMonetaryAmount(accountData.free.toString(), currency);
     }
 
     async balanceLocked<U extends CurrencyUnit>(
         currency: Currency<U>,
         id: AccountId
     ): Promise<MonetaryAmount<Currency<U>, U>> {
-        const currencyIdLiteral = tickerToCurrencyIdLiteral(currency.ticker);
-        const account = await this.api.query.tokens.accounts(id, newCurrencyId(this.api, currencyIdLiteral));
-        return newMonetaryAmount(account.reserved.toString(), currency);
+        const accountData = await this.getAccountData(currency, id);
+        return newMonetaryAmount(accountData.reserved.toString(), currency);
     }
 
     async subscribeToBalance<U extends CurrencyUnit>(
@@ -106,12 +113,12 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
     }
 
     async transfer<U extends CurrencyUnit>(destination: string, amount: MonetaryAmount<Currency<U>, U>): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", amount.toString());
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString());
         const currencyIdLiteral = tickerToCurrencyIdLiteral(amount.currency.ticker);
         const transferTransaction = this.api.tx.tokens.transfer(
             destination,
             newCurrencyId(this.api, currencyIdLiteral),
-            amountSmallDenomination
+            amountAtomicUnit
         );
         await this.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
     }

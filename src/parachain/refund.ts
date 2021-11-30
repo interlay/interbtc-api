@@ -81,10 +81,10 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
 
     async getRequestByIssueId(issueId: string): Promise<RefundRequestExt> {
         const list = await this.list();
-        const requests = list.filter((request) => request.issueId === issueId);
-        if (requests.length !== 1) {
+        const request = list.find((request) => request.issueId === issueId);
+        if (!request) {
             return Promise.reject(new Error(`No refund request fund for issue ID ${issueId}`));
         }
-        return requests[0];
+        return request;
     }
 }

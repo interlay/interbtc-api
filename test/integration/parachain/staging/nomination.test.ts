@@ -5,7 +5,7 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
 import { InterbtcPrimitivesVaultId } from "../../../../src/index";
 
-import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, CurrencyIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultRewardsAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, newAccountId, newVaultId, NominationAPI, RewardsAPI, tickerToMonetaryCurrency, VaultsAPI, WrappedCurrency } from "../../../../src";
+import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultRewardsAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, newAccountId, newVaultId, NominationAPI, RewardsAPI, tickerToMonetaryCurrency, VaultsAPI, WrappedCurrency } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
@@ -25,7 +25,7 @@ describe("NominationAPI", () => {
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
 
-    let nativeCurrency: CollateralCurrency;
+    let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
 
     before(async () => {
@@ -33,14 +33,14 @@ describe("NominationAPI", () => {
         const keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
-        nativeCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
-        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency, userAccount);
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
         feeAPI = new DefaultFeeAPI(api, InterBtc);
-        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency);
+        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
 
@@ -107,24 +107,24 @@ describe("NominationAPI", () => {
                 stakingCapacityAfterNomination.toString(),
                 "Nomination failed to decrease staking capacity"
             );
-            const nominationPairs = await nominationAPI.listNominationPairs();
+            const nominationPairs = await nominationAPI.list();
             assert.equal(2, nominationPairs.length, "There should be one nomination pair in the system, besides the vault to itself");
 
             const userAddress = userAccount.address;
             const vault_1Address = vault_1.address;
 
-            const [vaultId, nominatorId] = nominationPairs.find(([_, nominatorId]) => userAddress == nominatorId.toString())!;
+            const nomination = nominationPairs.find((nominarion) => userAddress == nominarion.nominatorId.toString())!;
 
-            assert.equal(userAddress, nominatorId.toString());
-            assert.equal(vault_1Address, vaultId.accountId.toString());
+            assert.equal(userAddress, nomination.nominatorId.toString());
+            assert.equal(vault_1Address, nomination.vaultId.accountId.toString());
 
             const interBtcToIssue = InterBtcAmount.from.BTC(0.00001);
-            await issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, nativeCurrency, vault_1_id);
+            await issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, collateralCurrency, vault_1_id);
             const wrappedRewardsBeforeWithdrawal = (
                 await nominationAPI.getNominatorReward(
-                    newAccountId(api, userAccount.address),
                     vault_1_id.accountId,
-                    collateralCurrencyIdLiteral
+                    collateralCurrencyIdLiteral,
+                    newAccountId(api, userAccount.address),
                 )
             ).toBig();
             assert.isTrue(
@@ -134,20 +134,20 @@ describe("NominationAPI", () => {
 
             // Withdraw
             await nominationAPI.withdrawCollateral(vault_1_id.accountId, nominatorDeposit);
-            const nominatorsAfterWithdrawal = await nominationAPI.listNominationPairs();
+            const nominatorsAfterWithdrawal = await nominationAPI.list();
             // The vault always has a "nomination" to itself
             assert.equal(1, nominatorsAfterWithdrawal.length);
             const totalNomination = await nominationAPI.getTotalNomination(
+                newAccountId(api, userAccount.address),
                 currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency,
-                newAccountId(api, userAccount.address)
             );
             assert.equal(totalNomination.toString(), "0");
 
             const wrappedRewardsAfterWithdrawal = (
                 await nominationAPI.getNominatorReward(
-                    newAccountId(api, userAccount.address),
                     vault_1_id.accountId,
-                    collateralCurrencyIdLiteral
+                    collateralCurrencyIdLiteral,
+                    newAccountId(api, userAccount.address),
                 )
             ).toBig();
             assert.equal(
@@ -171,5 +171,4 @@ describe("NominationAPI", () => {
     async function optOutWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrency) {
         await callWith(nominationAPI, vaultAccount, api => api.optOut(collateralCurrency));
     }
-
 });

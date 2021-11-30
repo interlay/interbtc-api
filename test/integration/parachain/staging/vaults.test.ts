@@ -11,6 +11,7 @@ import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_N
 import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, CollateralCurrency, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral, tickerToMonetaryCurrency, CurrencyIdLiteral } from "../../../../src/";
 import { encodeVaultId, issueSingle } from "../../../../src/utils";
 import { DefaultRewardsAPI } from "../../../../src/parachain/rewards";
+import { callWithExchangeRate } from "../../../utils/helpers";
 
 describe("vaultsAPI", () => {
     let oracleAccount: KeyringPair;
@@ -29,13 +30,12 @@ describe("vaultsAPI", () => {
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     
-    let nativeCurrency: CollateralCurrency;
+    let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
-
 
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-        nativeCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         const keyring = new Keyring({ type: "sr25519" });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
@@ -48,10 +48,10 @@ describe("vaultsAPI", () => {
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
-        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency);
+        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
 
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
@@ -121,7 +121,7 @@ describe("vaultsAPI", () => {
             newAccountId(api, vault_3.address),
             collateralLiteral
         );
-        await issueSingle(api, electrsAPI, bitcoinCoreClient, oracleAccount, issuableAmount, nativeCurrency, vault_3_id);
+        await issueSingle(api, electrsAPI, bitcoinCoreClient, oracleAccount, issuableAmount, collateralCurrency, vault_3_id);
 
         const currentVaultCollateralization = await vaultsAPI.getVaultCollateralization(newAccountId(api, vault_3.address), collateralLiteral);
         if (currentVaultCollateralization === undefined) {
@@ -137,26 +137,22 @@ describe("vaultsAPI", () => {
         // crash the exchange rate so that the vault falls below the premium redeem threshold
         const exchangeRateValue = initialExchangeRate.toBig().div(modifyExchangeRateBy);
         const exchangeRateToSet = new ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
-        await oracleAPI.setExchangeRate(exchangeRateToSet);
-        await oracleAPI.waitForExchangeRateUpdate(exchangeRateToSet);
 
-        const premiumRedeemVaults = await vaultsAPI.getPremiumRedeemVaults();
-        assert.equal(premiumRedeemVaults.size, 1);
-        assert.equal(
-            premiumRedeemVaults.keys().next().value.toString(),
-            encodeVaultId(vault_3_id),
-            "Premium redeem vault is not the expected one"
-        );
-
-        const premiumRedeemAmount = premiumRedeemVaults.values().next().value as InterBtcAmount;
-        assert.isTrue(
-            premiumRedeemAmount.gte(issuableAmount),
-            "Amount available for premium redeem should be higher"
-        );
-
-        // Revert the exchange rate to its initial value,
-        // to minimize the side effects of this test.
-        await oracleAPI.setExchangeRate(initialExchangeRate);
+        await callWithExchangeRate(oracleAPI, exchangeRateToSet, async () => {
+            const premiumRedeemVaults = await vaultsAPI.getPremiumRedeemVaults();
+            assert.equal(premiumRedeemVaults.size, 1);
+            assert.equal(
+                encodeVaultId(premiumRedeemVaults.keys().next().value),
+                encodeVaultId(vault_3_id),
+                "Premium redeem vault is not the expected one"
+            );
+    
+            const premiumRedeemAmount = premiumRedeemVaults.values().next().value as InterBtcAmount;
+            assert.isTrue(
+                premiumRedeemAmount.gte(issuableAmount),
+                "Amount available for premium redeem should be higher"
+            );
+        });
     });
 
     it("should getLiquidationCollateralThreshold", async () => {

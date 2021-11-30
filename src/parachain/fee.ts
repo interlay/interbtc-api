@@ -6,6 +6,11 @@ import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/m
 import { decodeFixedPointType } from "..";
 import { CollateralUnit, WrappedCurrency } from "../types";
 
+export enum GriefingCollateralType {
+    Issue,
+    Replace
+}
+
 /**
  * @category InterBTC Bridge
  */
@@ -13,14 +18,15 @@ export interface FeeAPI {
     /**
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
-     * @param griefingCollateralRate
+     * @param collateralCurrency Currency for determining the griefing collateral 
+     * @param type Type of griefing collateral to compute (e.g. for issuing, replacing)
      * @returns The griefing collateral
      */
     getGriefingCollateral<C extends CollateralUnit>(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        griefingCollateralRate: Big,
-        collateralCurrency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>>;
+        collateralCurrency: Currency<C>,
+        type: GriefingCollateralType
+    ): Promise<MonetaryAmount<Currency<C>, C>>
     /**
      * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
      * @param lockedCollateral Collateral value representing the value locked to gain yield.
@@ -55,10 +61,24 @@ export class DefaultFeeAPI implements FeeAPI {
 
     async getGriefingCollateral<C extends CollateralUnit>(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        griefingCollateralRate: Big,
-        collateralCurrency: Currency<C>
+        collateralCurrency: Currency<C>,
+        type: GriefingCollateralType
     ): Promise<MonetaryAmount<Currency<C>, C>> {
-        const collateralAmount = await this.oracleAPI.convertWrappedToCollateral(amount, collateralCurrency);
+        let ratePromise;
+        switch (type) {
+            case(GriefingCollateralType.Issue): {
+                ratePromise = this.getIssueGriefingCollateralRate();
+                break;
+            }
+            case(GriefingCollateralType.Replace): {
+                ratePromise = this.getReplaceGriefingCollateralRate();
+                break;
+            }
+        }
+        const [griefingCollateralRate, collateralAmount] = await Promise.all([
+            ratePromise,
+            this.oracleAPI.convertWrappedToCollateral(amount, collateralCurrency)
+        ]);
         return collateralAmount.mul(griefingCollateralRate);
     }
 

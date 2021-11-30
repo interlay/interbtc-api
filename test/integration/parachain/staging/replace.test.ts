@@ -39,7 +39,7 @@ describe("replace", () => {
     let vault_2: KeyringPair;
     let vault_2_id: InterbtcPrimitivesVaultId;
 
-    let nativeCurrency: CollateralCurrency;
+    let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
 
     before(async function () {
@@ -54,9 +54,9 @@ describe("replace", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        nativeCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency);
+        replaceAPI = new DefaultReplaceAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
         userAccount = keyring.addFromUri(USER_1_URI);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_id = newVaultId(api, vault_3.address, Polkadot, wrappedCurrency);
@@ -78,7 +78,7 @@ describe("replace", () => {
                 bitcoinCoreClient,
                 userAccount,
                 issueAmount,
-                nativeCurrency,
+                collateralCurrency,
                 vault_3_id
             );
             replaceAPI.setAccount(vault_3);
@@ -113,12 +113,6 @@ describe("replace", () => {
     it("should getDustValue", async () => {
         const dustValue = await replaceAPI.getDustValue();
         assert.equal(dustValue.str.BTC(), "0.00001");
-    }).timeout(500);
-
-    it("should getGriefingCollateral", async () => {
-        const amountToReplace = InterBtcAmount.from.BTC(0.728);
-        const griefingCollateral = await replaceAPI.getGriefingCollateral(amountToReplace, Polkadot);
-        assert.equal(griefingCollateral.str.DOT(), "284.9204534203");
     }).timeout(500);
 
     it("should getReplacePeriod", async () => {

@@ -73,17 +73,17 @@ export function getRequestIdsFromEvents(
  * one vault can fulfil a request alone, a random one among them is selected.
  **/
 export function allocateAmountsToVaults<U extends BitcoinUnit>(
-    vaultsWithAvailableAmounts: Map<string, MonetaryAmount<Currency<U>, U>>,
+    vaultsWithAvailableAmounts: Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>>,
     amountToAllocate: MonetaryAmount<Currency<U>, U>
-): Map<string, MonetaryAmount<Currency<U>, U>> {
+): Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>> {
     const maxReservationPercent = 95; // don't reserve more than 95% of a vault's collateral
-    const allocations = new Map<string, MonetaryAmount<Currency<U>, U>>();
+    const allocations = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>>();
     // iterable array in ascending order of issuing capacity:
     const vaultsArray = [...vaultsWithAvailableAmounts.entries()]
         .reverse()
         .map(
             (entry) =>
-                [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [string, MonetaryAmount<Currency<U>, U>]
+                [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>]
         );
     while (amountToAllocate.gt(newMonetaryAmount(0, amountToAllocate.currency))) {
         // find first vault that can fulfil request (or undefined if none)
@@ -115,7 +115,7 @@ export async function issueSingle(
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    nativeCurrency: CollateralCurrency,
+    collateralCurrency: CollateralCurrency,
     vaultId?: InterbtcPrimitivesVaultId,
     autoExecute = true,
     triggerRefund = false,
@@ -129,7 +129,7 @@ export async function issueSingle(
             bitcoinjsNetwork,
             new DefaultElectrsAPI(network),
             amount.currency,
-            nativeCurrency
+            collateralCurrency
         );
         const btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         const tokensAPI = new DefaultTokensAPI(api);
@@ -201,15 +201,16 @@ export async function redeem(
     btcRelayAPI: BTCRelayAPI,
     redeemingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    nativeCurrency: CollateralCurrency,
+    collateralCurrency: CollateralCurrency,
     vaultId?: InterbtcPrimitivesVaultId,
     autoExecute = ExecuteRedeem.Auto,
     network: BitcoinNetwork = "regtest",
     atomic = true,
-    timeout = 5 * 60 * 1000
+    timeout = 5 * 60 * 1000,
+    retries: number = 0
 ): Promise<Redeem> {
     const bitcoinjsNetwork = getBitcoinNetwork(network);
-    const redeemAPI = new DefaultRedeemAPI(api, bitcoinjsNetwork, electrsAPI, amount.currency, nativeCurrency);
+    const redeemAPI = new DefaultRedeemAPI(api, bitcoinjsNetwork, electrsAPI, amount.currency, collateralCurrency);
     redeemAPI.setAccount(redeemingAccount);
 
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
@@ -218,7 +219,7 @@ export async function redeem(
         btcAddress,
         vaultId,
         atomic,
-        0 // retries
+        retries
     );
 
     switch (autoExecute) {
@@ -251,7 +252,7 @@ export async function issueAndRedeem(
     btcRelayAPI: BTCRelayAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     account: KeyringPair,
-    nativeCurrency: CollateralCurrency,
+    collateralCurrency: CollateralCurrency,
     vaultId?: InterbtcPrimitivesVaultId,
     issueAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.1),
     redeemAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.009),
@@ -267,7 +268,7 @@ export async function issueAndRedeem(
         bitcoinCoreClient,
         account,
         issueAmount,
-        nativeCurrency,
+        collateralCurrency,
         vaultId,
         autoExecuteIssue,
         triggerRefund,
@@ -282,7 +283,7 @@ export async function issueAndRedeem(
         btcRelayAPI,
         account,
         redeemAmount,
-        nativeCurrency,
+        collateralCurrency,
         issueResult.request.vaultId,
         autoExecuteRedeem,
         network,

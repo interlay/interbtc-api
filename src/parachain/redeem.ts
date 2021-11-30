@@ -25,8 +25,6 @@ import {
     parseRedeemRequest,
     newMonetaryAmount,
     newVaultCurrencyPair,
-    encodeVaultId,
-    decodeVaultId,
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
@@ -65,7 +63,7 @@ export interface RedeemAPI extends TransactionAPI {
         vaultId?: InterbtcPrimitivesVaultId,
         atomic?: boolean,
         retries?: number,
-        availableVaults?: Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+        availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
     ): Promise<Redeem[]>;
 
     /**
@@ -78,7 +76,7 @@ export interface RedeemAPI extends TransactionAPI {
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
     requestAdvanced(
-        amountsPerVault: Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>,
+        amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>,
         btcAddressEnc: string,
         atomic: boolean
     ): Promise<Redeem[]>;
@@ -146,7 +144,7 @@ export interface RedeemAPI extends TransactionAPI {
      * they can earn a premium, slashed from the Vault's collateral.
      * This value is a percentage of the redeemed amount.
      */
-    getPremiumRedeemFee(): Promise<Big>;
+    getPremiumRedeemFeeRate(): Promise<Big>;
     /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of wrapped tokens to burn
@@ -187,11 +185,11 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        private nativeCurrency: CollateralCurrency,
+        private collateralCurrency: CollateralCurrency,
         account?: AddressOrPair
     ) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, nativeCurrency, account);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency, account);
         this.tokensAPI = new DefaultTokensAPI(api, account);
         this.oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, account);
     }
@@ -206,14 +204,14 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         vaultId?: InterbtcPrimitivesVaultId,
         atomic: boolean = true,
         retries: number = 0,
-        cachedVaults?: Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+        cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
     ): Promise<Redeem[]> {
         try {
             if (vaultId) {
                 // If a vault account id is defined, request to issue with that vault only.
                 // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
-                const amountsPerVault = new Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>([
-                    [encodeVaultId(vaultId), amount],
+                const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>([
+                    [vaultId, amount],
                 ]);
                 return await this.requestAdvanced(amountsPerVault, btcAddressEnc, atomic);
             }
@@ -237,14 +235,14 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
     }
 
     async requestAdvanced(
-        amountsPerVault: Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>,
+        amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>,
         btcAddressEnc: string,
         atomic: boolean
     ): Promise<Redeem[]> {
         const btcAddress = this.api.createType<BitcoinAddress>("BitcoinAddress", decodeBtcAddress(btcAddressEnc, this.btcNetwork));
         const txes = new Array<SubmittableExtrinsic<"promise">>();
         for (const [vaultId, amount] of amountsPerVault) {
-            txes.push(this.api.tx.redeem.requestRedeem(amount.str.Satoshi(), btcAddress, decodeVaultId(this.api, vaultId)));
+            txes.push(this.api.tx.redeem.requestRedeem(amount.str.Satoshi(), btcAddress, vaultId));
         }
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
@@ -323,8 +321,8 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             collateralCurrency,
             Bitcoin,
             exchangeRate,
-            collateralCurrency.base,
-            Bitcoin.units.BTC
+            collateralCurrency.rawBase,
+            Bitcoin.units.Satoshi
         );
     }
 
@@ -370,7 +368,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         return newMonetaryAmount(dustValueSat.toString(), this.wrappedCurrency);
     }
 
-    async getPremiumRedeemFee(): Promise<Big> {
+    async getPremiumRedeemFeeRate(): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
         return decodeFixedPointType(premiumRedeemFee);

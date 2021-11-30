@@ -331,3 +331,12 @@ export function decodeVaultId(api: ApiPromise, id: string): InterbtcPrimitivesVa
         currencyIdToMonetaryCurrency(newCurrencyId(api, wrappedCurrencyIdLiteral)) as WrappedCurrency
     );
 }
+
+export function queryNominationsMap(map: Map<InterbtcPrimitivesVaultId, number>, vaultId: InterbtcPrimitivesVaultId): number | undefined {
+    for (const [entryVaultId, entryNonce] of map.entries()) {
+        if (encodeVaultId(entryVaultId) === encodeVaultId(vaultId)) {
+            return entryNonce;
+        }
+    }
+    return undefined;
+}

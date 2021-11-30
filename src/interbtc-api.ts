@@ -77,14 +77,14 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
 
     constructor(
         readonly api: ApiPromise,
-        nativeCurrency: CollateralCurrency,
+        collateralCurrency: CollateralCurrency,
         network: BitcoinNetwork = "mainnet",
         wrappedCurrency: WrappedCurrency = InterBtc,
         private _account?: AddressOrPair
     ) {
         const btcNetwork = getBitcoinNetwork(network);
         this.electrsAPI = new DefaultElectrsAPI(network);
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, nativeCurrency, _account);
+        this.vaults = new DefaultVaultsAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, collateralCurrency, _account);
         this.faucet = new FaucetClient(api, "");
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency);
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
@@ -96,21 +96,21 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
             btcNetwork,
             this.electrsAPI,
             wrappedCurrency,
-            nativeCurrency,
+            collateralCurrency,
             _account
         );
         this.fee = new DefaultFeeAPI(api, wrappedCurrency);
-        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, nativeCurrency, _account);
-        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, nativeCurrency, _account);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, collateralCurrency, _account);
+        this.redeem = new DefaultRedeemAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, collateralCurrency, _account);
         this.nomination = new DefaultNominationAPI(
             api,
             btcNetwork,
             this.electrsAPI,
             wrappedCurrency,
-            nativeCurrency,
+            collateralCurrency,
             _account
         );
-        this.pools = new DefaultRewardsAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, nativeCurrency);
+        this.pools = new DefaultRewardsAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, collateralCurrency);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

@@ -9,14 +9,13 @@ import { isKeyringPair } from "@polkadot/api/util";
 import { InterbtcPrimitivesReplaceReplaceRequest, BitcoinAddress } from "@polkadot/types/lookup";
 
 import { storageKeyToNthInner, getTxProof, parseReplaceRequest, ensureHashEncoded } from "../utils";
-import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { DefaultFeeAPI, FeeAPI, GriefingCollateralType } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
 import {
     CollateralCurrency,
     CollateralUnit,
     ReplaceRequestExt,
-    tickerToCurrencyIdLiteral,
     WrappedCurrency,
 } from "../types";
 import { DefaultVaultsAPI, newMonetaryAmount, newVaultCurrencyPair, newVaultId, VaultsAPI } from "..";
@@ -91,20 +90,10 @@ export interface ReplaceAPI extends TransactionAPI {
      */
     execute(replaceId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
     /**
-     *
-     * @param amount The amount of wrapped tokens to request replacement for.
-     * @param collateralCurrency The collateral, as a currency object (using `Monetary.js`)
-     * @returns The griefing collateral
-     */
-    getGriefingCollateral<C extends CollateralUnit>(
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-        collateralCurrency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>>;
-    /**
      * Fetch the replace requests associated with a vault. In the returned requests,
      * the vault is either the replaced or the replacing one.
      *
-     * @param vaultId The AccountId of the vault used to filter replace requests
+     * @param vaultAccountId The AccountId of the vault used to filter replace requests
      * @returns An array with replace requests involving said vault
      */
     mapReplaceRequests(vaultAccountId: AccountId): Promise<ReplaceRequestExt[]>;
@@ -120,19 +109,20 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        private nativeCurrency: CollateralCurrency,
+        private collateralCurrency: CollateralCurrency,
         account?: AddressOrPair
     ) {
         super(api, account);
         this.btcNetwork = btcNetwork;
         this.feeAPI = new DefaultFeeAPI(api, wrappedCurrency);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, nativeCurrency);
+        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
     }
 
     async request(
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
         collateralCurrency: CollateralCurrency
     ): Promise<void> {
+        const castCollateralCurrency = collateralCurrency as Currency<CollateralUnit>;
         const amountAtomicUnit = this.api.createType("Balance", amount.str.Satoshi());
         // Assumes the calling account is the `vaultId`
         const vaultAccount = this.getAccount();
@@ -141,14 +131,14 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         }
         const vaultAccountId = isKeyringPair(vaultAccount) ? vaultAccount.address : vaultAccount.toString();
         const vaultId = newVaultId(this.api, vaultAccountId, collateralCurrency, this.wrappedCurrency);
-        const vault = await this.vaultsAPI.get(
-            vaultId.accountId,
-            tickerToCurrencyIdLiteral(collateralCurrency.ticker)
+        const griefingCollateral = await this.feeAPI.getGriefingCollateral(
+            amount,
+            castCollateralCurrency,
+            GriefingCollateralType.Replace
         );
-        const griefingCollateral = await this.getGriefingCollateral(amount, vault.collateralCurrency);
         const griefingCollateralAtomicUnit = this.api.createType(
             "Balance",
-            griefingCollateral.toString(vault.collateralCurrency.rawBase)
+            griefingCollateral.toString(castCollateralCurrency.rawBase)
         );
         const requestTx = this.api.tx.replace.requestReplace(
             vaultId.currencies,
@@ -205,14 +195,6 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         return newMonetaryAmount(dustSatoshi.toString(), this.wrappedCurrency);
     }
 
-    async getGriefingCollateral<C extends CollateralUnit>(
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-        collateralCurrency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>> {
-        const griefingCollateralRate = await this.feeAPI.getReplaceGriefingCollateralRate();
-        return await this.feeAPI.getGriefingCollateral(amount, griefingCollateralRate, collateralCurrency);
-    }
-
     async getReplacePeriod(): Promise<BlockNumber> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return await this.api.query.replace.replacePeriod.at(head);
@@ -267,8 +249,10 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
 
     async mapReplaceRequests(vaultAccountId: AccountId): Promise<ReplaceRequestExt[]> {
         try {
-            const oldVaultReplaceRequests = await this.getOldVaultReplaceRequests(vaultAccountId);
-            const newVaultReplaceRequests = await this.getNewVaultReplaceRequests(vaultAccountId);
+            const [oldVaultReplaceRequests, newVaultReplaceRequests] = await Promise.all([
+                this.getOldVaultReplaceRequests(vaultAccountId),
+                this.getNewVaultReplaceRequests(vaultAccountId)
+            ]);
             return [...oldVaultReplaceRequests, ...newVaultReplaceRequests];
         } catch (err) {
             return Promise.reject(new Error(`Error during replace request retrieval: ${err}`));

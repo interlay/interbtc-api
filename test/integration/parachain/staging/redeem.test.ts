@@ -47,12 +47,12 @@ describe("redeem", () => {
     let vault_2: KeyringPair;
     let vault_2_id: InterbtcPrimitivesVaultId;
 
-    let nativeCurrency: CollateralCurrency;
+    let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
 
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-        nativeCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         keyring = new Keyring({ type: "sr25519" });
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
@@ -63,7 +63,7 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency, userAccount);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
@@ -93,7 +93,7 @@ describe("redeem", () => {
             btcRelayAPI,
             bitcoinCoreClient,
             userAccount,
-            nativeCurrency,
+            collateralCurrency,
             vault_1_id,
             issueAmount,
             redeemAmount,
@@ -108,7 +108,7 @@ describe("redeem", () => {
             btcRelayAPI,
             bitcoinCoreClient,
             userAccount,
-            nativeCurrency,
+            collateralCurrency,
             vault_2_id,
             issueAmount,
             redeemAmount,
@@ -137,8 +137,8 @@ describe("redeem", () => {
         assert.equal(feePercentage.toString(), "0.005");
     });
 
-    it("should getPremiumRedeemFee", async () => {
-        const premiumRedeemFee = await redeemAPI.getPremiumRedeemFee();
+    it("should getPremiumRedeemFeeRate", async () => {
+        const premiumRedeemFee = await redeemAPI.getPremiumRedeemFeeRate();
         assert.equal(premiumRedeemFee.toString(), "0.05");
     });
 

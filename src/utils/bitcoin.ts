@@ -3,8 +3,8 @@ export { bitcoinjs as bitcoin };
 
 import { H160 } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types";
-import { TypeRegistry } from "@polkadot/types";
 import { BitcoinAddress } from "@polkadot/types/lookup";
+import { TypeRegistry } from "@polkadot/types";
 
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
@@ -56,6 +56,16 @@ function decode<P extends Payable, O>(p: P, f: (payment: P, options?: O) => P): 
     }
 }
 
+export function btcAddressFromParams(
+    registry: TypeRegistry,
+    params: { p2pkh: H160 | string } | { p2sh: H160 | string } | { p2wpkhv0: H160 | string }
+): BitcoinAddress {
+    registry.register;
+    return registry.createType<BitcoinAddress>("BitcoinAddress", {
+        ...params,
+    });
+}
+
 export function decodeBtcAddress(
     address: string,
     network: bitcoinjs.Network
@@ -70,15 +80,6 @@ export function decodeBtcAddress(
     if (p2wpkhv0) return { p2wpkhv0 };
 
     throw new Error("Unable to decode address");
-}
-
-export function btcAddressFromParams(
-    registry: TypeRegistry,
-    params: { p2pkh: H160 | string } | { p2sh: H160 | string } | { p2wpkhv0: H160 | string }
-): BitcoinAddress {
-    return registry.createType("BitcoinAddress", {
-        ...params,
-    });
 }
 
 export async function getTxProof(

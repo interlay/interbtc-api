@@ -153,7 +153,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        private nativeCurrency: CollateralCurrency
+        private collateralCurrency: CollateralCurrency
     ) {}
 
     async computeRewardInStakingPool(
@@ -249,7 +249,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
             this.btcNetwork,
             this.electrsAPI,
             this.wrappedCurrency,
-            this.nativeCurrency
+            this.collateralCurrency
         );
         const [vault, stake, slashPerToken, slashTally] = await Promise.all([
             vaultsAPI.get(vaultAccountId, collateralCurrencyIdLiteral),
@@ -352,7 +352,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
             this.btcNetwork,
             this.electrsAPI,
             this.wrappedCurrency,
-            this.nativeCurrency
+            this.collateralCurrency
         );
         const vault = await vaultsAPI.get(vaultAccountId, collateralCurrencyIdLiteral);
         const nominatorCollateral = await this.computeCollateralInStakingPool(

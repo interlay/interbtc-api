@@ -16,8 +16,6 @@ import {
     newCurrencyId,
     newVaultId,
     newVaultCurrencyPair,
-    decodeVaultId,
-    encodeVaultId,
 } from "../utils";
 import { TokensAPI, DefaultTokensAPI } from "./tokens";
 import { DefaultOracleAPI, OracleAPI } from "./oracle";
@@ -139,15 +137,15 @@ export interface VaultsAPI extends TransactionAPI {
     /**
      * @returns Vaults below the premium redeem threshold, sorted in descending order of their redeemable tokens
      */
-    getPremiumRedeemVaults(): Promise<Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
+    getPremiumRedeemVaults(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
     /**
      * @returns Vaults with issuable tokens
      */
-    getVaultsWithIssuableTokens(): Promise<Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
+    getVaultsWithIssuableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
     /**
      * @returns Vaults with redeemable tokens
      */
-    getVaultsWithRedeemableTokens(): Promise<Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
+    getVaultsWithRedeemableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
     /**
      * @param vaultAccountId The vault account ID
      * @param collateralCurrency The currency specification, a `Monetary.js` object
@@ -274,7 +272,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        private nativeCurrency: CollateralCurrency,
+        private collateralCurrency: CollateralCurrency,
         account?: AddressOrPair
     ) {
         super(api, account);
@@ -282,7 +280,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         this.tokensAPI = new DefaultTokensAPI(api);
         this.oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
         this.feeAPI = new DefaultFeeAPI(api, wrappedCurrency);
-        this.rewardsAPI = new DefaultRewardsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, nativeCurrency);
+        this.rewardsAPI = new DefaultRewardsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
     }
 
     getWrappedCurrency(): WrappedCurrency {
@@ -290,24 +288,24 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async register<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>, publicKey: string): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", amount.toString());
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString());
         const currencyPair = newVaultCurrencyPair(
             this.api,
             tickerToMonetaryCurrency(this.api, amount.currency.ticker) as CollateralCurrency,
             this.wrappedCurrency
         );
-        const tx = this.api.tx.vaultRegistry.registerVault(currencyPair, amountSmallDenomination, publicKey);
+        const tx = this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit, publicKey);
         await this.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", amount.toString());
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString());
         const currencyPair = newVaultCurrencyPair(
             this.api,
             tickerToMonetaryCurrency(this.api, amount.currency.ticker) as CollateralCurrency,
             this.wrappedCurrency
         );
-        const tx = this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountSmallDenomination);
+        const tx = this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
         await this.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
     }
 
@@ -506,6 +504,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         );
         try {
             // TODO: Decide whether to keep using RPC or duplicate logic
+            // RPC decoration in polkadot-js/api is broken at the moment, disable linter
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const amountWrapper: BalanceWrapper = await (this.api.rpc as any).vaultRegistry.getRequiredCollateralForVault(
                 vaultId
@@ -538,7 +537,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             this.btcNetwork,
             this.electrsAPI,
             this.wrappedCurrency,
-            this.nativeCurrency
+            this.collateralCurrency
         );
         const fees = await issueAPI.getFeesToPay(issuableAmountExcludingFees);
         return issuableAmountExcludingFees.sub(fees);
@@ -588,7 +587,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const vaults = await this.getVaultsWithIssuableTokens();
         for (const [id, issuableAmount] of vaults) {
             if (issuableAmount.gte(amount)) {
-                return decodeVaultId(this.api, id);
+                return id;
             }
         }
         return Promise.reject(new Error("Did not find vault with sufficient collateral"));
@@ -605,8 +604,8 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return Promise.reject(new Error("Did not find vault with sufficient locked BTC"));
     }
 
-    async getPremiumRedeemVaults(): Promise<Map<string, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>> {
-        const map: Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
+    async getPremiumRedeemVaults(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>> {
+        const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const vaults = await this.list();
         const premiumRedeemVaultPredicates = await Promise.all(
             vaults.map(vault => {
@@ -622,12 +621,12 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         );
         vaults
             .filter((_, index) => premiumRedeemVaultPredicates[index])
-            .forEach(vault => map.set(encodeVaultId(vault.id), vault.getRedeemableTokens()));
+            .forEach(vault => map.set(vault.id, vault.getRedeemableTokens()));
         return map;
     }
 
-    async getVaultsWithIssuableTokens(): Promise<Map<string, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>> {
-        const map: Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
+    async getVaultsWithIssuableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>> {
+        const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const vaults = await this.list();
         const issuableTokens = await Promise.all(
             vaults
@@ -647,19 +646,18 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
                     }
                     vault.getIssuableTokens().then((amount) => resolve([amount, vault.id]));
                 });
-                
                     }
                 ));
         issuableTokens.forEach(([amount, vaultId]) => {
             if (!amount.isZero()) {
-                map.set(encodeVaultId(vaultId), amount);
+                map.set(vaultId, amount);
             }
         });
         return map;
     }
 
-    async getVaultsWithRedeemableTokens(): Promise<Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>>> {
-        const map: Map<string, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
+    async getVaultsWithRedeemableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>> {
+        const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         (await this.list())
             .filter(vault => {
                 // issuedTokens - toBeRedeemedTokens > 0
@@ -671,7 +669,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
                 const vault2Redeemable = vault2.getRedeemableTokens().toBig();
                 return vault2Redeemable.sub(vault1Redeemable).toNumber();
             })
-            .forEach(vault => map.set(encodeVaultId(vault.id), vault.getRedeemableTokens()));
+            .forEach(vault => map.set(vault.id, vault.getRedeemableTokens()));
         return map;
     }
 

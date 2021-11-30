@@ -193,7 +193,7 @@ export async function initializeIssue(
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amountToIssue: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    nativeCurrency: CollateralCurrency,
+    collateralCurrency: CollateralCurrency,
     vaultAccountId: InterbtcPrimitivesVaultId
 ): Promise<void> {
     console.log("Initializing an issue...");
@@ -203,7 +203,7 @@ export async function initializeIssue(
         bitcoinCoreClient,
         issuingAccount,
         amountToIssue,
-        nativeCurrency,
+        collateralCurrency,
         vaultAccountId
     );
 }

@@ -85,7 +85,7 @@ describe("Initialize parachain state", () => {
     let vault_to_ban: KeyringPair;
     let vault_to_liquidate: KeyringPair;
 
-    let nativeCurrency: CollateralCurrency;
+    let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
 
     function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
@@ -113,7 +113,7 @@ describe("Initialize parachain state", () => {
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
-        nativeCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
@@ -125,12 +125,12 @@ describe("Initialize parachain state", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency, userAccount);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency, userAccount);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
+        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
         oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, oracleAccount);
         tokensAPI = new DefaultTokensAPI(api, userAccount);
-        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency, userAccount);
-        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, nativeCurrency, sudoAccount);
+        vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
+        nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, sudoAccount);
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
 
         const vaultCollateralPairs: [KeyringPair, CurrencyIdLiteral][] = [
@@ -207,7 +207,7 @@ describe("Initialize parachain state", () => {
         const userAccountId = newAccountId(api, userAccount.address);
         const sudoInterBTCBefore = await tokensAPI.balance(InterBtc, userAccountId);
 
-        await initializeIssue(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, nativeCurrency, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency));
+        await initializeIssue(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, collateralCurrency, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency));
         const sudoInterBTCAfter = await tokensAPI.balance(InterBtc, userAccountId);
         assert.equal(
             sudoInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
