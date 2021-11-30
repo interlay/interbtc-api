@@ -4,13 +4,13 @@ export { bitcoinjs as bitcoin };
 import { H160 } from "@polkadot/types/interfaces";
 import { Bytes } from "@polkadot/types";
 import { TypeRegistry } from "@polkadot/types";
+import { BitcoinAddress } from "@polkadot/types/lookup";
 
-import { BtcAddress } from "../interfaces/default";
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
 import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "..";
 
-export function encodeBtcAddress(address: BtcAddress, network: bitcoinjs.Network): string {
+export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
     try {
         if (address.isP2Pkh) {
@@ -75,8 +75,8 @@ export function decodeBtcAddress(
 export function btcAddressFromParams(
     registry: TypeRegistry,
     params: { p2pkh: H160 | string } | { p2sh: H160 | string } | { p2wpkhv0: H160 | string }
-): BtcAddress {
-    return registry.createType("BtcAddress", {
+): BitcoinAddress {
+    return registry.createType("BitcoinAddress", {
         ...params,
     });
 }

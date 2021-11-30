@@ -13,7 +13,7 @@ import {
 import { Big } from "big.js";
 import BN from "bn.js";
 import { createPolkadotAPI } from "../factory";
-import { issueSingle, REGTEST_ESPLORA_BASE_PATH, setNumericStorage } from ".";
+import { issueSingle, setNumericStorage } from ".";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import {
     DefaultNominationAPI,
@@ -29,6 +29,7 @@ import { DefaultElectrsAPI, ElectrsAPI } from "../external";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
+import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import {
     BITCOIN_CORE_HOST,
@@ -37,10 +38,16 @@ import {
     BITCOIN_CORE_PORT,
     BITCOIN_CORE_USERNAME,
     BITCOIN_CORE_WALLET,
+    ESPLORA_BASE_PATH,
+    ORACLE_URI,
     PARACHAIN_ENDPOINT,
     REDEEM_ADDRESS,
+    SUDO_URI,
+    USER_1_URI,
+    VAULT_1_URI,
 } from "../../test/config";
-import { CollateralUnit, WrappedCurrency } from "../types";
+import { CollateralCurrency, CollateralUnit, WrappedCurrency } from "../types";
+import { newVaultId } from "..";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -125,12 +132,12 @@ function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string):
         enableNomination: true,
         issue: {
             amount: InterBtcAmount.from.BTC(0.1),
-            issuingAccount: keyring.addFromUri("//Alice"),
+            issuingAccount: keyring.addFromUri(USER_1_URI),
             vaultAddress,
         },
         redeem: {
             amount: InterBtcAmount.from.BTC(0.05),
-            redeemingAccount: keyring.addFromUri("//Alice"),
+            redeemingAccount: keyring.addFromUri(USER_1_URI),
             redeemingBTCAddress: REDEEM_ADDRESS,
         },
         delayMs: 0,
@@ -186,10 +193,19 @@ export async function initializeIssue(
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amountToIssue: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    vaultAddress: string
+    nativeCurrency: CollateralCurrency,
+    vaultAccountId: InterbtcPrimitivesVaultId
 ): Promise<void> {
     console.log("Initializing an issue...");
-    await issueSingle(api, electrsAPI, bitcoinCoreClient, issuingAccount, amountToIssue, vaultAddress);
+    await issueSingle(
+        api,
+        electrsAPI,
+        bitcoinCoreClient,
+        issuingAccount,
+        amountToIssue,
+        nativeCurrency,
+        vaultAccountId
+    );
 }
 
 export async function initializeRedeem(
@@ -208,14 +224,14 @@ async function main(params: InitializationParams): Promise<void> {
     await cryptoWaitReady();
     console.log("Running initialization script...");
     const keyring = new Keyring({ type: "sr25519" });
-    const charlieStash = keyring.addFromUri("//Charlie//stash");
-    const defaultInitializationParams = getDefaultInitializationParams(keyring, charlieStash.address);
+    const vault_1 = keyring.addFromUri(VAULT_1_URI);
+    const defaultInitializationParams = getDefaultInitializationParams(keyring, vault_1.address);
 
     const api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-    const sudoAccount = keyring.addFromUri("//Alice");
-    const oracleAccount = keyring.addFromUri("//Bob");
+    const sudoAccount = keyring.addFromUri(SUDO_URI);
+    const oracleAccount = keyring.addFromUri(ORACLE_URI);
 
-    const electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+    const electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
     const bitcoinCoreClient = new BitcoinCoreClient(
         BITCOIN_CORE_NETWORK,
         BITCOIN_CORE_HOST,
@@ -226,7 +242,14 @@ async function main(params: InitializationParams): Promise<void> {
     );
     const oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
     // initialize the nomination API with Alice in order to make sudo calls
-    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, sudoAccount);
+    const nominationAPI = new DefaultNominationAPI(
+        api,
+        bitcoinjs.networks.regtest,
+        electrsAPI,
+        InterBtc,
+        Polkadot,
+        sudoAccount
+    );
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
@@ -263,13 +286,15 @@ async function main(params: InitializationParams): Promise<void> {
             params.issue === true
                 ? (defaultInitializationParams.issue as InitializeIssue)
                 : (params.issue as InitializeIssue);
+        const vaultId = newVaultId(api, issueParams.vaultAddress, Polkadot, InterBtc);
         await initializeIssue(
             api,
             electrsAPI,
             bitcoinCoreClient,
             issueParams.issuingAccount,
             issueParams.amount,
-            issueParams.vaultAddress
+            Polkadot,
+            vaultId
         );
     }
 
@@ -283,6 +308,7 @@ async function main(params: InitializationParams): Promise<void> {
             bitcoinjs.networks.regtest,
             electrsAPI,
             InterBtc,
+            Polkadot,
             redeemParams.redeemingAccount
         );
 

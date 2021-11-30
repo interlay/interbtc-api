@@ -7,6 +7,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { SUDO_URI, PARACHAIN_ENDPOINT } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { sudo } from "../../../utils/helpers";
 
 describe("systemAPI", () => {
     let api: ApiPromise;
@@ -35,12 +36,11 @@ describe("systemAPI", () => {
         assert.isDefined(statusCode);
     });
 
-    // TODO: Unskip once differences between rococo-local and standalone are fix
+    // TODO: Unskip once differences between rococo-local and standalone are fixed
     it.skip("should setCode", async () => {
         const code = fs.readFileSync(
             path.join(__dirname, "../../../mock/rococo_runtime.compact.wasm")
         ).toString("hex");
-        await systemAPI.setCode(code);
-
+        await sudo(systemAPI, (api) => api.setCode(code));
     });
 });

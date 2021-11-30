@@ -16,16 +16,25 @@ import {
     Kintsugi,
     Interlay,
 } from "@interlay/monetary-js";
-import { CurrencyId } from "../interfaces";
+import { ApiPromise } from "@polkadot/api";
+import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
+import { newCurrencyId } from "..";
 
 export enum CurrencyIdLiteral {
     DOT = "DOT",
-    KSM = "KSM",
     INTERBTC = "INTERBTC",
+    INTR = "INTR",
+    KSM = "KSM",
     KBTC = "KBTC",
     KINT = "KINT",
-    INTR = "INTR",
 }
+
+export type WrappedIdLiteral = CurrencyIdLiteral.INTERBTC | CurrencyIdLiteral.KBTC;
+export type CollateralIdLiteral =
+    | CurrencyIdLiteral.DOT
+    | CurrencyIdLiteral.KSM
+    | CurrencyIdLiteral.KINT
+    | CurrencyIdLiteral.INTR;
 
 export const CollateralAmount = [PolkadotAmount, KusamaAmount];
 export type CollateralAmount = typeof CollateralAmount[number];
@@ -69,7 +78,7 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
-export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: CurrencyId): Currency<U> {
+export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: InterbtcPrimitivesCurrencyId): Currency<U> {
     if (currencyId.isInterbtc) {
         return InterBtc as unknown as Currency<U>;
     } else if (currencyId.isDot) {
@@ -84,4 +93,13 @@ export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId:
         return Interlay as unknown as Currency<U>;
     }
     throw new Error("No CurrencyId entry for provided ticker");
+}
+
+export function currencyIdToLiteral(currencyId: InterbtcPrimitivesCurrencyId): CurrencyIdLiteral {
+    return tickerToCurrencyIdLiteral(currencyIdToMonetaryCurrency(currencyId).ticker);
+}
+
+export function tickerToMonetaryCurrency<U extends CurrencyUnit>(api: ApiPromise, ticker: string): Currency<U> {
+    const currencyIdLiteral = tickerToCurrencyIdLiteral(ticker);
+    return currencyIdToMonetaryCurrency(newCurrencyId(api, currencyIdLiteral));
 }

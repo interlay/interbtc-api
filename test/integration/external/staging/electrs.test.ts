@@ -2,9 +2,8 @@ import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT } from "../../../config";
+import { BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { REGTEST_ESPLORA_BASE_PATH } from "../../../../src";
 import { BitcoinAmount } from "@interlay/monetary-js";
 import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, wait_success as waitSuccess } from "../../../utils/helpers";
 
@@ -17,7 +16,7 @@ describe("ElectrsAPI regtest", function () {
 
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-        electrsAPI = new DefaultElectrsAPI(REGTEST_ESPLORA_BASE_PATH);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,

@@ -9,7 +9,7 @@ import { InterBtc } from "@interlay/monetary-js";
 
 import * as definitions from "./interfaces/definitions";
 import { InterBTCAPI, DefaultInterBTCAPI } from "./interbtc-api";
-import { BitcoinNetwork, WrappedCurrency } from "./types";
+import { BitcoinNetwork, CollateralCurrency, WrappedCurrency } from "./types";
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
     if (/https?:\/\//.exec(endpoint)) {
@@ -23,20 +23,19 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
 
 export function createPolkadotAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
-    const types = getAPITypes();
-    const rpc = getRPCTypes();
-    return ApiPromise.create({ provider, types, rpc });
+    return ApiPromise.create({ provider });
 }
 
 export async function createInterbtcAPI(
     endpoint: string,
+    nativeCurrency: CollateralCurrency,
     network: BitcoinNetwork = "mainnet",
     wrappedCurrency: WrappedCurrency = InterBtc,
     account?: AddressOrPair,
     autoConnect?: number | false | undefined
 ): Promise<InterBTCAPI> {
     const api = await createPolkadotAPI(endpoint, autoConnect);
-    return new DefaultInterBTCAPI(api, network, wrappedCurrency, account);
+    return new DefaultInterBTCAPI(api, nativeCurrency, network, wrappedCurrency, account);
 }
 
 export function getAPITypes(): RegistryTypes {

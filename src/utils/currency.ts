@@ -1,8 +1,8 @@
 import Big, { BigSource } from "big.js";
 import BN from "bn.js";
 import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types/currency";
-import { OracleKey } from "../interfaces";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 
@@ -59,14 +59,14 @@ export function newCollateralBTCExchangeRate<U extends CurrencyUnit>(
     );
 }
 
-export function createInclusionOracleKey(api: ApiPromise, type: FeeEstimationType): OracleKey {
-    return api.createType("OracleKey", { FeeEstimation: type });
+export function createInclusionOracleKey(api: ApiPromise, type: FeeEstimationType): InterbtcPrimitivesOracleKey {
+    return api.createType("InterbtcPrimitivesOracleKey", { FeeEstimation: type });
 }
 
 export function createExchangeRateOracleKey<U extends CurrencyUnit>(
     api: ApiPromise,
     collateralCurrency: Currency<U>
-): OracleKey {
-    const currencyId = api.createType("CurrencyId", tickerToCurrencyIdLiteral(collateralCurrency.ticker));
-    return api.createType("OracleKey", { ExchangeRate: currencyId });
+): InterbtcPrimitivesOracleKey {
+    const currencyId = api.createType("InterbtcPrimitivesCurrencyId", tickerToCurrencyIdLiteral(collateralCurrency.ticker));
+    return api.createType("InterbtcPrimitivesOracleKey", { ExchangeRate: currencyId });
 }

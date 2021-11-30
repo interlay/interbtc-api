@@ -2,10 +2,10 @@
 
 ## About
 
-The interbtc TypeScript library connects the Polkadot and Kusama ecosystems with Bitcoin. It allows the creation of interBTC on Polkadot and kBTC on Kusama, fungible "wrapped" tokens that represent Bitcoin. Wrapped tokens are backed by Bitcoin 1:1 and allow redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
+The interBTC TypeScript library connects the Polkadot and Kusama ecosystems with Bitcoin. It allows the creation of interBTC on Polkadot and kBTC on Kusama, fungible "wrapped" tokens that represent Bitcoin. Wrapped tokens are backed by Bitcoin 1:1 and allow redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
 In comparison to other bridge constructions (like tBTC, wBTC, or RenVM) _anyone_ can become an intermediary by depositing collateral making interBTC the only truly open system.
 
-The bridge itself follows the detailed specification: <a href="https://interlay.gitlab.io/interbtc-spec/" target="_blank"><strong>Explore the specification »</strong></a>
+The bridge itself follows the detailed specification: <a href="https://spec.interlay.io/" target="_blank"><strong>Explore the specification »</strong></a>
 
 It is implemented as a collection of open-source Substrate modules using Rust: <a href="https://github.com/interlay/interbtc" target="_blank"><strong>Explore the implementation »</strong></a>
 
@@ -20,12 +20,12 @@ You can visit [bridge.interlay.io](https://bridge.interlay.io/) to see the libra
 
 ## Usage
 
-The library assumes you have a [BTC-Parachain](https://github.com/interlay/interbtc) running locally or remotely.
+The library assumes you have a version of the [Interlay or Kintsugi networks](https://github.com/interlay/interbtc) running locally or remotely.
 
 ### Creating an API Instance
 
 To use the library, you will first need to create a PolkadotJS `APIPromise` instance,
-and then to instantiate a `InterBTCAPI` instance.
+and then instantiate a `InterBTCAPI` instance.
 
 ```ts
 import { createInterbtcAPI } from "@interlay/interbtc";
@@ -33,7 +33,7 @@ import { createInterbtcAPI } from "@interlay/interbtc";
 // If you are using a local development environment
 // const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
 // if you want to use the Interlay-hosted beta network
-const PARACHAIN_ENDPOINT = "wss://api-dev.interlay.io/parachain";
+const PARACHAIN_ENDPOINT = "wss://api.interlay.io/parachain";
 const isMainnet = false;
 const interBTC = await createInterbtcAPI(PARACHAIN_ENDPOINT, isMainnet);
 ```
@@ -66,9 +66,9 @@ import { BitcoinAmount } from "@interlay/monetary-js";
 const amount = BitcoinAmount.from.BTC(0.001);
 // request to issue interBTC
 const requestResults = await interBTC.issue.request(amount);
-// the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)
-// NOTE: the library will automatically distribute issue requests across multiple vaults if no single vault can fulfill the request.
-// Most of the time, a single vault will be able to fulfill the request.
+// the request results includes the BTC address(es) and the BTC that should be sent to the Vault(s)
+// NOTE: the library will automatically distribute issue requests across multiple Vaults if no single Vault can fulfill the request.
+// Most of the time, a single Vault will be able to fulfill the request.
 ```
 
 At this point, you will need to send BTC using your favorite BTC wallet.
@@ -82,29 +82,29 @@ import { BitcoinAmount } from "@interlay/monetary-js";
 const amount = BitcoinAmount.from.BTC(0.001);
 // your BTC address
 const btcAddress = "tb123....";
-// the request results includes the BTC address(es) and the BTC that should be sent to the vault(s)
-// NOTE: the library will automatically distribute redeem requests across multiple vaults if no single vault can fulfill the request.
-// Most of the time, a single vault will be able to fulfill the request.
+// the request results includes the BTC address(es) and the BTC that should be sent to the Vault(s)
+// NOTE: the library will automatically distribute redeem requests across multiple Vaults if no single Vault can fulfill the request.
+// Most of the time, a single Vault will be able to fulfill the request.
 const requestResults = await interBTC.redeem.request(amount, btcAddress);
 ```
 
-At this point, one more more vaults will send BTC to the address specified within 24 hours.
+At this point, one more more Vaults will send BTC to the address specified within 24 hours.
 
 ### More Examples
 
-There are plenty more examples how to use this library. Best is to take a look at the integration tests: https://github.com/interlay/interbtc-js/tree/13b421bb0fb91a04ce671e15a6be860750cc08a2/test/integration/parachain
+There are plenty more examples how to use this library. Best is to take a look at the integration tests: https://github.com/interlay/interbtc-api/tree/master/test/integration
 
 ## API Documentation
 
-Please check the documentation at https://www.interlay.io/interbtc-js/#/modules
+Please check the documentation at https://docs.interlay.io/interbtc-api/#/classes/DefaultInterBTCAPI
 
 ## Development
 
 ### Clone this Repository
 
 ```bash
-git@gitlab.com:interlay/interbtc-js.git
-cd interbtc-js
+git@gitlab.com:interlay/interbtc-api.git
+cd interbtc-api
 ```
 
 ### Setting up a Local Development Environment
@@ -174,12 +174,16 @@ yarn build
 ```
 
 ### Usage as script
+
 This library can be used as a script for initializing a local interBTC setup (the services ran using docker-compose), to allow for manual testing of the UI.
+
 ```bash
 yarn install
 yarn initialize
 ```
+
 By default, every flag is enabled. To get more information about the flags and disable some of them, run
+
 ```bash
 yarn initialize --help
 ```
@@ -238,7 +242,7 @@ Contributions are what make the open source community such an amazing place to b
 
 If you are searching for a place to start or would like to discuss features, reach out to us:
 
-- [Discord](https://discord.gg/BgA6dTYmAV)
+- [Discord](https://discord.com/invite/interlay)
 
 ## License
 

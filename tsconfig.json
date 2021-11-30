@@ -16,15 +16,18 @@
             "ES2019"
         ],
         "paths": {
-            "@interlay/interbtc/*": [
-                "src/*"
-            ],
             "@polkadot/api/augment": [
                 "src/interfaces/augment-api.ts"
             ],
             "@polkadot/types/augment": [
                 "src/interfaces/augment-types.ts"
-            ]
+            ],
+            "@polkadot/types/lookup": [
+                "src/interfaces/types-lookup.ts"
+            ],
+            "@interlay/interbtc/*": [
+                "src/*"
+            ],
         }
     },
     "include": [

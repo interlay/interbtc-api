@@ -6,7 +6,7 @@ import { DefaultTokensAPI, TokensAPI } from "../../../../src/parachain/tokens";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT } from "../../../config";
-import { CollateralCurrency, CurrencyUnit, newMonetaryAmount, WrappedCurrency } from "../../../../src";
+import { CollateralCurrency, CurrencyUnit, newAccountId, newMonetaryAmount, WrappedCurrency } from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
@@ -42,7 +42,7 @@ describe("TokensAPI", () => {
         }
         const amountToUpdateUser2sAccountBy = newMonetaryAmount(0.00000001, currency);
         const user2BalanceBeforeTransfer =
-            await tokens.balance<typeof currency.units>(currency, api.createType("AccountId", user2Account.address));
+            await tokens.balance<typeof currency.units>(currency, newAccountId(api, user2Account.address));
         const unsubscribe = await tokens.subscribeToBalance(currency, user2Account.address, balanceUpdateCallback);
 
         // Send the first transfer, expect the callback to be called with correct values

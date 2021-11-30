@@ -1,6 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { ElectrsAPI } from "../external/electrs";
-import { H256Le, RichBlockHeader } from "../interfaces/default";
+import { BitcoinH256Le, BtcRelayRichBlockHeader } from "@polkadot/types/lookup";
+
 import { addHexPrefix } from "../utils";
 
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
@@ -22,7 +23,7 @@ export interface BTCRelayAPI {
     /**
      * @returns The raw transaction data, represented as a Buffer object
      */
-    getLatestBlock(): Promise<H256Le>;
+    getLatestBlock(): Promise<BitcoinH256Le>;
     /**
      * @returns The height of the latest Bitcoin block that was rekayed by the BTC-Relay
      */
@@ -53,7 +54,7 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
         return this.api.query.btcRelay.stableParachainConfirmations.at(head).then((param) => param.toNumber());
     }
 
-    async getLatestBlock(): Promise<H256Le> {
+    async getLatestBlock(): Promise<BitcoinH256Le> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return await this.api.query.btcRelay.bestBlock.at(head);
     }
@@ -75,7 +76,7 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
 
     async isBlockInRelay(blockHash: string): Promise<boolean> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const value = await this.api.query.btcRelay.blockHeaders.at<RichBlockHeader>(head, addHexPrefix(blockHash));
+        const value = await this.api.query.btcRelay.blockHeaders.at<BtcRelayRichBlockHeader>(head, addHexPrefix(blockHash));
         return !value.isEmpty;
     }
 }

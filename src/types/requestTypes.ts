@@ -1,8 +1,8 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 import { CollateralUnit, WrappedCurrency } from ".";
-import { ReplaceRequestStatus } from "../interfaces";
 import { BitcoinUnit, Currency } from "@interlay/monetary-js";
+import { InterbtcPrimitivesVaultId, InterbtcPrimitivesReplaceReplaceRequestStatus } from "@polkadot/types/lookup";
 
 export interface Issue {
     id: string;
@@ -13,16 +13,16 @@ export interface Issue {
     vaultWalletPubkey: string;
     creationBlock: number;
     creationTimestamp?: number;
-    vaultBTCAddress: string;
-    vaultParachainAddress: string;
+    vaultWrappedAddress: string;
+    vaultId: InterbtcPrimitivesVaultId;
     btcTxId?: string;
     confirmations?: number;
     btcBlockHeight?: number;
     btcAmountSubmittedByUser?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     status: IssueStatus;
     refundBtcAddress?: string;
-    refundAmountBTC?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
-    executedAmountBTC?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    refundAmountWrapped?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    executedAmountWrapped?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
 }
 
 export enum IssueStatus {
@@ -51,7 +51,7 @@ export interface Redeem {
     btcTransferFee: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     creationTimestamp?: number;
     creationBlock: number;
-    vaultParachainAddress: string;
+    vaultId: InterbtcPrimitivesVaultId;
     userBTCAddress: string;
     btcTxId?: string;
     confirmations?: number;
@@ -71,7 +71,7 @@ export enum RedeemStatus {
 }
 
 export interface RefundRequestExt {
-    vaultId: AccountId;
+    vaultId: InterbtcPrimitivesVaultId;
     amountIssuing: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     fee: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     amountBtc: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
@@ -83,13 +83,13 @@ export interface RefundRequestExt {
 
 export interface ReplaceRequestExt {
     btcAddress: string;
-    newVault: AccountId;
-    oldVault: AccountId;
+    newVault: InterbtcPrimitivesVaultId;
+    oldVault: InterbtcPrimitivesVaultId;
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     griefingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     collateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     acceptTime: number;
     period: number;
     btcHeight: number;
-    status: ReplaceRequestStatus;
+    status: InterbtcPrimitivesReplaceReplaceRequestStatus;
 }
