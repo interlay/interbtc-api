@@ -161,7 +161,7 @@ describe("NominationAPI", () => {
             await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
             await optOutWithAccount(vault_1, currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency);
         }
-    });
+    }).timeout(5 * 60000);
 
     async function optInWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrency) {
         // will fail if vault is already opted in

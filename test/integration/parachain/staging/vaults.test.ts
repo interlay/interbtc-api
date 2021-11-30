@@ -1,7 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama } from "@interlay/monetary-js";
-import { TypeRegistry } from "@polkadot/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 import { InterbtcPrimitivesVaultId } from "../../../../src/index";
