@@ -16,3 +16,4 @@ docs/*
 coverage
 .nyc_output
 .vscode
+.yarn

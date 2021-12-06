@@ -4,7 +4,7 @@ import { createPolkadotAPI } from "../../../../src/factory";
 import { PARACHAIN_ENDPOINT, FAUCET_ENDPOINT } from "../../../config";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { assert } from "../../../chai";
-import { DefaultTokensAPI, TokensAPI } from "../../../../src";
+import { CurrencyIdLiteral, DefaultTokensAPI, newAccountId, TokensAPI } from "../../../../src";
 import { Polkadot, PolkadotAmount } from "@interlay/monetary-js";
 import { makeRandomPolkadotKeyPair } from "../../../utils/helpers";
 
@@ -20,7 +20,7 @@ describe("Faucet", function () {
 
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-        faucet = new FaucetClient(FAUCET_ENDPOINT);
+        faucet = new FaucetClient(api, FAUCET_ENDPOINT);
         tokensAPI = new DefaultTokensAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         account = makeRandomPolkadotKeyPair(keyring);
@@ -32,10 +32,10 @@ describe("Faucet", function () {
 
     describe("Funding", () => {
         it("should get funds from faucet", async () => {
-            const accountId = api.createType("AccountId", account.address);
+            const accountId = newAccountId(api, account.address);
             const expectedAllowance = PolkadotAmount.from.DOT(1);
             const balanceBeforeFunding = await tokensAPI.balance(Polkadot, accountId);
-            await faucet.fundAccount(accountId);
+            await faucet.fundAccount(accountId, CurrencyIdLiteral.DOT);
             const balanceAfterFunding = await tokensAPI.balance(Polkadot, accountId);
             assert.equal(
                 balanceBeforeFunding.add(expectedAllowance).toString(),
@@ -44,8 +44,8 @@ describe("Faucet", function () {
         });
 
         it("should fail to get funds from faucet again", async () => {
-            const accountId = api.createType("AccountId", account.address);
-            assert.isRejected(faucet.fundAccount(accountId));
+            const accountId = newAccountId(api, account.address);
+            assert.isRejected(faucet.fundAccount(accountId, CurrencyIdLiteral.DOT));
         });
     });
 });

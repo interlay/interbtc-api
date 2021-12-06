@@ -3,9 +3,10 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
-import { newAccountId, newMonetaryAmount } from "../utils";
+import { newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
+import { OrmlTokensAccountData } from "@polkadot/types/lookup";
 
 /**
  * @category InterBTC Bridge
@@ -62,22 +63,28 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
         return newMonetaryAmount(rawAmount.toString(), currency);
     }
 
+    async getAccountData<U extends CurrencyUnit>(
+        currency: Currency<U>,
+        id: AccountId
+    ): Promise<OrmlTokensAccountData> {
+        const currencyIdLiteral = tickerToCurrencyIdLiteral(currency.ticker);
+        return await this.api.query.tokens.accounts(id, newCurrencyId(this.api, currencyIdLiteral));
+    }
+
     async balance<U extends CurrencyUnit>(
         currency: Currency<U>,
         id: AccountId
     ): Promise<MonetaryAmount<Currency<U>, U>> {
-        const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
-        const account = await this.api.query.tokens.accounts(id, currencyId);
-        return newMonetaryAmount(account.free.toString(), currency);
+        const accountData = await this.getAccountData(currency, id);
+        return newMonetaryAmount(accountData.free.toString(), currency);
     }
 
     async balanceLocked<U extends CurrencyUnit>(
         currency: Currency<U>,
         id: AccountId
     ): Promise<MonetaryAmount<Currency<U>, U>> {
-        const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
-        const account = await this.api.query.tokens.accounts(id, currencyId);
-        return newMonetaryAmount(account.reserved.toString(), currency);
+        const accountData = await this.getAccountData(currency, id);
+        return newMonetaryAmount(accountData.reserved.toString(), currency);
     }
 
     async subscribeToBalance<U extends CurrencyUnit>(
@@ -87,10 +94,14 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
     ): Promise<() => void> {
         try {
             const accountId = newAccountId(this.api, account);
-            const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
-            const unsubscribe = await this.api.query.tokens.accounts(accountId, currencyId, (balance) => {
-                callback(account, newMonetaryAmount(balance.free.toString(), currency));
-            });
+            const currencyIdLiteral = tickerToCurrencyIdLiteral(currency.ticker);
+            const unsubscribe = await this.api.query.tokens.accounts(
+                accountId,
+                newCurrencyId(this.api, currencyIdLiteral),
+                (balance) => {
+                    callback(account, newMonetaryAmount(balance.free.toString(), currency));
+                }
+            );
             return unsubscribe;
         } catch (error) {
             Promise.reject(error);
@@ -102,9 +113,13 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
     }
 
     async transfer<U extends CurrencyUnit>(destination: string, amount: MonetaryAmount<Currency<U>, U>): Promise<void> {
-        const amountSmallDenomination = this.api.createType("Balance", amount.toString());
-        const currencyId = tickerToCurrencyIdLiteral(amount.currency.ticker);
-        const transferTransaction = this.api.tx.tokens.transfer(destination, currencyId, amountSmallDenomination);
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString());
+        const currencyIdLiteral = tickerToCurrencyIdLiteral(amount.currency.ticker);
+        const transferTransaction = this.api.tx.tokens.transfer(
+            destination,
+            newCurrencyId(this.api, currencyIdLiteral),
+            amountAtomicUnit
+        );
         await this.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
     }
 }

@@ -1,9 +1,10 @@
 import { ApiPromise } from "@polkadot/api";
-import { BTreeSet, Option, Bool } from "@polkadot/types";
+import { Option, Bool } from "@polkadot/types";
 import { Moment } from "@polkadot/types/interfaces";
 import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { SecurityErrorCode, InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 
 import {
     convertMoment,
@@ -16,7 +17,7 @@ import {
     storageKeyToNthInner,
     unwrapRawExchangeRate,
 } from "../utils";
-import { ErrorCode, OracleKey, UnsignedFixedPoint } from "../interfaces/default";
+import { UnsignedFixedPoint } from "../interfaces/default";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { CollateralUnit, CurrencyUnit, WrappedCurrency } from "../types/currency";
 import { FeeEstimationType } from "../types/oracleTypes";
@@ -93,7 +94,7 @@ export interface OracleAPI extends TransactionAPI {
      * @param key A key defining an exchange rate or a BTC network fee estimate
      * @returns Whether the oracle entr for the given key has been updated
      */
-    getRawValuesUpdated(key: OracleKey): Promise<boolean>;
+    getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean>;
     /**
      * @param type The fee estimate type whose update is awaited
      * @remark Awaits an oracle update to the BTC inclusion fee
@@ -216,10 +217,10 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
     async isOnline(): Promise<boolean> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const errors = await this.api.query.security.errors.at(head);
-        return !this.hasOracleError(errors);
+        return !this.hasOracleError(errors.toArray());
     }
 
-    async getRawValuesUpdated(key: OracleKey): Promise<boolean> {
+    async getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const isSet = await this.api.query.oracle.rawValuesUpdated.at<Option<Bool>>(head, key);
         return isSet.unwrap().isTrue;
@@ -241,7 +242,7 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         }
     }
 
-    private hasOracleError(errors: BTreeSet<ErrorCode>): boolean {
+    private hasOracleError(errors: SecurityErrorCode[]): boolean {
         for (const error of errors.values()) {
             if (error.isOracleOffline) {
                 return true;

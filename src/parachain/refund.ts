@@ -1,11 +1,10 @@
 import { ApiPromise } from "@polkadot/api";
-import { AccountId, H256 } from "@polkadot/types/interfaces";
+import { H256 } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import { Bytes } from "@polkadot/types";
 import { AddressOrPair } from "@polkadot/api/types";
 
-import { RefundRequest } from "../interfaces";
-import { ensureHashEncoded, getTxProof, parseRefundRequest } from "../utils";
+import { getTxProof, parseRefundRequest } from "../utils";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RefundRequestExt } from "../types/requestTypes";
@@ -30,11 +29,6 @@ export interface RefundAPI extends TransactionAPI {
      */
     list(): Promise<RefundRequestExt[]>;
     /**
-     * @param account The ID of the account whose refund requests are to be retrieved
-     * @returns A mapping from the refund ID to the refund request, corresponding to the given account
-     */
-    mapForUser(account: AccountId): Promise<Map<H256, RefundRequestExt>>;
-    /**
      * @param issueId The ID of the refund to fetch
      * @returns A refund object
      */
@@ -43,12 +37,7 @@ export interface RefundAPI extends TransactionAPI {
      * @param issueId The ID of the refund request to fetch
      * @returns A refund request object
      */
-    getRequestByIssueId(issueId: H256 | string): Promise<RefundRequestExt>;
-    /**
-     * @param issueId The ID of the refund request to fetch
-     * @returns The ID of the refund request
-     */
-    getRequestIdByIssueId(issueId: H256 | string): Promise<H256>;
+    getRequestByIssueId(issueId: string): Promise<RefundRequestExt>;
 }
 
 export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI {
@@ -72,44 +61,30 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
     async list(): Promise<RefundRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const refundRequests = await this.api.query.refund.refundRequests.entriesAt(head);
-        return refundRequests.map((v) => parseRefundRequest(v[1], this.btcNetwork, this.wrappedCurrency));
-    }
-
-    async mapForUser(account: AccountId): Promise<Map<H256, RefundRequestExt>> {
-        const refundPairs: [H256, RefundRequest][] = await this.api.rpc.refund.getRefundRequests(account);
-        const mapForUser: Map<H256, RefundRequestExt> = new Map<H256, RefundRequestExt>();
-        refundPairs.forEach((refundPair) =>
-            mapForUser.set(refundPair[0], parseRefundRequest(refundPair[1], this.btcNetwork, this.wrappedCurrency))
-        );
-        return mapForUser;
+        return refundRequests
+            .filter(([_, req]) => req.isSome.valueOf)
+            .map((v) => parseRefundRequest(v[1].unwrap(), this.btcNetwork, this.wrappedCurrency));
     }
 
     async getRequestById(refundId: H256): Promise<RefundRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return parseRefundRequest(
-            await this.api.query.refund.refundRequests.at(head, refundId),
-            this.btcNetwork,
-            this.wrappedCurrency
-        );
-    }
-
-    async getRequestIdByIssueId(issueId: H256 | string): Promise<H256> {
         try {
-            const id = ensureHashEncoded(this.api, issueId);
-            const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(id);
-            return keyValuePair[0];
+            return parseRefundRequest(
+                (await this.api.query.refund.refundRequests.at(head, refundId)).unwrap(),
+                this.btcNetwork,
+                this.wrappedCurrency
+            );
         } catch (error) {
             return Promise.reject(new Error(`Error fetching refund request by issue id: ${error}`));
         }
     }
 
-    async getRequestByIssueId(issueId: H256 | string): Promise<RefundRequestExt> {
-        try {
-            const id = ensureHashEncoded(this.api, issueId);
-            const keyValuePair = await this.api.rpc.refund.getRefundRequestsByIssueId(id);
-            return parseRefundRequest(keyValuePair[1], this.btcNetwork, this.wrappedCurrency);
-        } catch (error) {
-            return Promise.reject(new Error(`Error fetching refund request by issue id: ${error}`));
+    async getRequestByIssueId(issueId: string): Promise<RefundRequestExt> {
+        const list = await this.list();
+        const request = list.find((request) => request.issueId === issueId);
+        if (!request) {
+            return Promise.reject(new Error(`No refund request fund for issue ID ${issueId}`));
         }
+        return request;
     }
 }

@@ -29,6 +29,7 @@ import { DefaultElectrsAPI, ElectrsAPI } from "../external";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
+import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import {
     BITCOIN_CORE_HOST,
@@ -45,7 +46,8 @@ import {
     USER_1_URI,
     VAULT_1_URI,
 } from "../../test/config";
-import { CollateralUnit, WrappedCurrency } from "../types";
+import { CollateralCurrency, CollateralUnit, WrappedCurrency } from "../types";
+import { newVaultId } from "..";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -191,10 +193,19 @@ export async function initializeIssue(
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amountToIssue: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    vaultAddress: string
+    collateralCurrency: CollateralCurrency,
+    vaultAccountId: InterbtcPrimitivesVaultId
 ): Promise<void> {
     console.log("Initializing an issue...");
-    await issueSingle(api, electrsAPI, bitcoinCoreClient, issuingAccount, amountToIssue, vaultAddress);
+    await issueSingle(
+        api,
+        electrsAPI,
+        bitcoinCoreClient,
+        issuingAccount,
+        amountToIssue,
+        collateralCurrency,
+        vaultAccountId
+    );
 }
 
 export async function initializeRedeem(
@@ -231,7 +242,14 @@ async function main(params: InitializationParams): Promise<void> {
     );
     const oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
     // initialize the nomination API with Alice in order to make sudo calls
-    const nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, sudoAccount);
+    const nominationAPI = new DefaultNominationAPI(
+        api,
+        bitcoinjs.networks.regtest,
+        electrsAPI,
+        InterBtc,
+        Polkadot,
+        sudoAccount
+    );
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
@@ -268,13 +286,15 @@ async function main(params: InitializationParams): Promise<void> {
             params.issue === true
                 ? (defaultInitializationParams.issue as InitializeIssue)
                 : (params.issue as InitializeIssue);
+        const vaultId = newVaultId(api, issueParams.vaultAddress, Polkadot, InterBtc);
         await initializeIssue(
             api,
             electrsAPI,
             bitcoinCoreClient,
             issueParams.issuingAccount,
             issueParams.amount,
-            issueParams.vaultAddress
+            Polkadot,
+            vaultId
         );
     }
 
@@ -288,6 +308,7 @@ async function main(params: InitializationParams): Promise<void> {
             bitcoinjs.networks.regtest,
             electrsAPI,
             InterBtc,
+            Polkadot,
             redeemParams.redeemingAccount
         );
 

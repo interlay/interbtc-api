@@ -40,14 +40,26 @@ export class DefaultTransactionAPI {
             // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
             transaction
                 .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) =>
-                    callback({ unsubscribe, result })
+                    callback(this.api, { unsubscribe, result })
                 )
                 .then((u: () => void) => (unsubscribe = u))
                 .catch((error) => reject(error));
 
-            function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
+            function callback(api: ApiPromise, callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
                 if (status.isFinalized) {
+                    const dispatchError = callbackObject.result.dispatchError;
+                    if (dispatchError) {
+                        if (dispatchError.isModule) {
+                            // for module errors, we have the section indexed, lookup
+                            const decoded = api.registry.findMetaError(dispatchError.asModule);
+                            const { docs, name, section } = decoded;
+                            console.log(`Error: ${section}.${name} ${docs.join(" ")}`);
+                        } else {
+                            // Other, CannotLookup, BadOrigin, no extra info
+                            console.log(dispatchError.toString());
+                        }
+                    }
                     resolve(callbackObject);
                 }
             }
