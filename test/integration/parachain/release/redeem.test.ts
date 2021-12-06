@@ -3,18 +3,17 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { InterBtcAmount, Polkadot } from "@interlay/monetary-js";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { InterbtcPrimitivesVaultId, stripHexPrefix, VaultRegistryVault } from "../../../../src/index";
+import { DefaultOracleAPI, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
 
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, NATIVE_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER } from "../../../config";
+import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, NATIVE_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ORACLE_URI } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle } from "../../../../src/utils";
 import { CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, DefaultBTCRelayAPI, DefaultIssueAPI, DefaultTransactionAPI, DefaultVaultsAPI, ExecuteRedeem, issueAndRedeem, IssueAPI, newAccountId, newVaultId, RedeemStatus, tickerToMonetaryCurrency, waitForBlockFinalization, WrappedCurrency } from "../../../../src";
 import { assert, expect } from "../../../chai";
 import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
-import Big from "big.js";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -33,6 +32,7 @@ describe("redeem", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
     let vaultsAPI: DefaultVaultsAPI;
     let issueAPI: IssueAPI;
+    let oracleAccount: KeyringPair;
 
     let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
@@ -51,7 +51,7 @@ describe("redeem", () => {
         btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
         redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
-
+        oracleAccount = keyring.addFromUri(ORACLE_URI);
         userBitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
@@ -77,6 +77,8 @@ describe("redeem", () => {
 
     it("should liquidate a vault that committed theft", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
+            const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, oracleAccount);
+            const regularExchangeRate = await oracleAPI.getExchangeRate(Polkadot);
             // There should be no burnable tokens
             await expect(redeemAPI.getBurnExchangeRate(Polkadot)).to.be.rejected;
             const issuedTokens = InterBtcAmount.from.BTC(0.0001);
@@ -107,7 +109,10 @@ describe("redeem", () => {
             const maxBurnableTokens = await redeemAPI.getMaxBurnableTokens(Polkadot);
             assert.equal(maxBurnableTokens.str.BTC(), issuedTokens.str.BTC());
             const burnExchangeRate = await redeemAPI.getBurnExchangeRate(Polkadot);
-            assert.isTrue(burnExchangeRate.toBig().gt(new Big(1)), "Burn exchange rate should be above one");
+            assert.isTrue(
+                regularExchangeRate.toBig().lt(burnExchangeRate.toBig()),
+                `Burn exchange rate (${burnExchangeRate.toHuman()}) is not better than the regular one (${regularExchangeRate.toHuman()})`
+            );
             // Burn InterBtc for a premium, to restore peg
             await redeemAPI.burn(amountToSteal, Polkadot);
         });

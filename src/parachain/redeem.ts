@@ -165,7 +165,7 @@ export interface RedeemAPI extends TransactionAPI {
      */
     getBurnExchangeRate<C extends CollateralUnit>(
         collateralCurrency: Currency<C>
-    ): Promise<ExchangeRate<typeof collateralCurrency, typeof collateralCurrency.units, Bitcoin, BitcoinUnit>>;
+    ): Promise<ExchangeRate<Bitcoin, BitcoinUnit, typeof collateralCurrency, typeof collateralCurrency.units>>;
     /**
      * @returns The current inclusion fee based on the expected number of bytes
      * in the transaction, and the inclusion fee rate reported by the oracle
@@ -303,10 +303,8 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
 
     async getBurnExchangeRate<C extends CollateralUnit>(
         collateralCurrency: Currency<C>
-    ): Promise<ExchangeRate<typeof collateralCurrency, typeof collateralCurrency.units, Bitcoin, BitcoinUnit>> {
-        const liquidationVault = await this.vaultsAPI.getLiquidationVault(
-            collateralCurrency as unknown as CollateralCurrency
-        );
+    ): Promise<ExchangeRate<Bitcoin, BitcoinUnit, typeof collateralCurrency, typeof collateralCurrency.units>> {
+        const liquidationVault = await this.vaultsAPI.getLiquidationVault(collateralCurrency as unknown as CollateralCurrency);
         const issuedAmount = liquidationVault.issuedTokens.add(liquidationVault.toBeIssuedTokens);
         if (issuedAmount.isZero()) {
             return Promise.reject(new Error("There are no burnable tokens. The burn exchange rate is undefined"));
@@ -316,13 +314,13 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
             collateralCurrency,
             newAccountId(this.api, liquidationVaultId)
         );
-        const exchangeRate = collateralAmount.toBig().div(issuedAmount.toBig());
-        return new ExchangeRate<typeof collateralCurrency, typeof collateralCurrency.units, Bitcoin, BitcoinUnit>(
-            collateralCurrency,
+        const exchangeRate = collateralAmount.toBig(collateralCurrency.base).div(issuedAmount.toBig(Bitcoin.units.BTC));
+        return new ExchangeRate<Bitcoin, BitcoinUnit, typeof collateralCurrency, typeof collateralCurrency.units>(
             Bitcoin,
+            collateralCurrency,
             exchangeRate,
-            collateralCurrency.rawBase,
-            Bitcoin.units.Satoshi
+            Bitcoin.units.BTC,
+            collateralCurrency.base,
         );
     }
 
