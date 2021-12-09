@@ -33,7 +33,6 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
     replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
-    collateralCurrency: Currency<CollateralUnit>;
 
     constructor(
         private api: ApiPromise,
@@ -48,7 +47,6 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
         replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
         liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
-        collateralCurrency: Currency<CollateralUnit>,
     ) {
         this.wallet = wallet;
         this.backingCollateral = backingCollateral;
@@ -61,7 +59,6 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         this.toBeReplacedTokens = toBeReplacedTokens;
         this.replaceCollateral = replaceCollateral;
         this.liquidatedCollateral = liquidatedCollateral;
-        this.collateralCurrency = collateralCurrency;
     }
 
     getRedeemableTokens(): MonetaryAmount<Currency<WrappedUnit>, WrappedUnit> {

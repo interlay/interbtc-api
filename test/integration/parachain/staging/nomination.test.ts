@@ -1,9 +1,9 @@
-import { InterBtcAmount, InterBtc, Polkadot } from "@interlay/monetary-js";
+import { InterBtcAmount, InterBtc, Polkadot, Currency } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import BN from "bn.js";
-import { InterbtcPrimitivesVaultId } from "../../../../src/index";
+import { CollateralUnit, InterbtcPrimitivesVaultId } from "../../../../src/index";
 
 import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, DefaultElectrsAPI, DefaultFeeAPI, DefaultNominationAPI, DefaultRewardsAPI, DefaultVaultsAPI, ElectrsAPI, encodeUnsignedFixedPoint, FeeAPI, newAccountId, newVaultId, NominationAPI, RewardsAPI, tickerToMonetaryCurrency, VaultsAPI, WrappedCurrency } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
@@ -88,7 +88,8 @@ describe("NominationAPI", () => {
         const issueFee = await feeAPI.getIssueFee();
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral;
         const vault = await vaultsAPI.get(vault_1_id.accountId, collateralCurrencyIdLiteral);
-        const nominatorDeposit = newMonetaryAmount(1, vault.collateralCurrency, true);
+        const collateralCurrency = currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>;
+        const nominatorDeposit = newMonetaryAmount(1, collateralCurrency, true);
         try {
             // Set issue fees to 100%
             await setIssueFee(new BN("1000000000000000000"));
@@ -119,7 +120,7 @@ describe("NominationAPI", () => {
             assert.equal(vault_1Address, nomination.vaultId.accountId.toString());
 
             const interBtcToIssue = InterBtcAmount.from.BTC(0.00001);
-            await issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, collateralCurrency, vault_1_id);
+            await issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, collateralCurrency as CollateralCurrency, vault_1_id);
             const wrappedRewardsBeforeWithdrawal = (
                 await nominationAPI.getNominatorReward(
                     vault_1_id.accountId,
