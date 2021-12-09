@@ -258,7 +258,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
             this.getStakingPoolSlashTally(collateralCurrencyIdLiteral, vaultAccountId, nominatorId),
         ]);
         const toSlash = computeLazyDistribution(stake, slashPerToken, slashTally);
-        return newMonetaryAmount(stake.sub(toSlash), vault.collateralCurrency);
+        return newMonetaryAmount(stake.sub(toSlash), currencyIdToMonetaryCurrency(vault.id.currencies.collateral));
     }
 
     async getStakingPoolSlashPerToken(

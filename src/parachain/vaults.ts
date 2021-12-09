@@ -390,7 +390,9 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const vault = await this.get(vaultAccountId, collateralCurrency);
         const [collateral, maxNominationRatio] = await Promise.all([
             this.getCollateral(vaultAccountId, collateralCurrency),
-            this.getMaxNominationRatio(vault.collateralCurrency as CollateralCurrency)
+            this.getMaxNominationRatio(
+                currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as CollateralCurrency
+            )
         ]);
         return collateral.mul(maxNominationRatio).sub(vault.backingCollateral);
     }
@@ -725,7 +727,10 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
                 collateralCurrency,
                 tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker) as WrappedIdLiteral
             ),
-            await this.tokensAPI.balanceLocked(vault.collateralCurrency, vaultAccountId),
+            await this.tokensAPI.balanceLocked(
+                currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
+                vaultAccountId
+            ),
         ]);
         return this.feeAPI.calculateAPY(feesWrapped, lockedCollateral);
     }
@@ -785,7 +790,6 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             newMonetaryAmount(vault.toBeReplacedTokens.toString(), this.wrappedCurrency),
             replaceCollateral,
             liquidatedCollateral,
-            collateralCurrency,
         );
     }
 

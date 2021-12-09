@@ -221,13 +221,17 @@ export async function parseReplaceRequest(
 ): Promise<ReplaceRequestExt> {
     const currencyIdLiteral = currencyIdToLiteral(req.oldVault.currencies.collateral);
     const oldVault = await vaultsAPI.get(req.oldVault.accountId, currencyIdLiteral);
+    const collateralCurrency = currencyIdToMonetaryCurrency(oldVault.id.currencies.collateral) as Currency<CollateralUnit>;
     return {
         btcAddress: encodeBtcAddress(req.btcAddress, network),
         newVault: req.newVault,
         oldVault: req.oldVault,
         amount: newMonetaryAmount(req.amount.toString(), wrappedCurrency),
-        griefingCollateral: newMonetaryAmount(req.griefingCollateral.toString(), oldVault.collateralCurrency),
-        collateral: newMonetaryAmount(req.collateral.toString(), oldVault.collateralCurrency),
+        griefingCollateral: newMonetaryAmount(
+            req.griefingCollateral.toString(),
+            collateralCurrency
+        ),
+        collateral: newMonetaryAmount(req.collateral.toString(), collateralCurrency),
         acceptTime: req.acceptTime.toNumber(),
         period: req.period.toNumber(),
         btcHeight: req.btcHeight.toNumber(),
@@ -279,11 +283,12 @@ export async function parseRedeemRequest(
 
     const currencyIdLiteral = currencyIdToLiteral(req.vault.currencies.collateral);
     const vault = await vaultsAPI.get(req.vault.accountId, currencyIdLiteral);
+    const collateralCurrency = currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>;
     return {
         id: stripHexPrefix(id.toString()),
         userParachainAddress: req.redeemer.toString(),
         amountBTC: newMonetaryAmount(req.amountBtc.toString(), vaultsAPI.getWrappedCurrency()),
-        collateralPremium: newMonetaryAmount(req.premium.toString(), vault.collateralCurrency),
+        collateralPremium: newMonetaryAmount(req.premium.toString(), collateralCurrency),
         bridgeFee: newMonetaryAmount(req.fee.toString(), vaultsAPI.getWrappedCurrency()),
         btcTransferFee: newMonetaryAmount(req.transferFeeBtc.toString(), vaultsAPI.getWrappedCurrency()),
         creationBlock: req.opentime.toNumber(),
