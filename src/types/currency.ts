@@ -100,6 +100,15 @@ export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId:
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
+export function currencyIdLiteralToMonetaryCurrency<U extends CurrencyUnit>(
+    api: ApiPromise,
+    currencyIdLiteral: CurrencyIdLiteral
+): Currency<U> {
+    return currencyIdToMonetaryCurrency(
+        newCurrencyId(api, currencyIdLiteral)
+    );
+}
+
 export function currencyIdToLiteral(currencyId: InterbtcPrimitivesCurrencyId): CurrencyIdLiteral {
     const monetaryCurrency = currencyIdToMonetaryCurrency(currencyId);
     return tickerToCurrencyIdLiteral(monetaryCurrency.ticker);

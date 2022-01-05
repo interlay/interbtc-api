@@ -153,20 +153,15 @@ export interface NominationAPI extends TransactionAPI {
 }
 
 export class DefaultNominationAPI extends DefaultTransactionAPI implements NominationAPI {
-    vaultsAPI: VaultsAPI;
-    rewardsAPI: RewardsAPI;
-
     constructor(
         api: ApiPromise,
-        btcNetwork: Network,
-        electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private collateralCurrency: CollateralCurrency,
+        private vaultsAPI: VaultsAPI,
+        private rewardsAPI: RewardsAPI,
         account?: AddressOrPair
     ) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
-        this.rewardsAPI = new DefaultRewardsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
     }
 
     async depositCollateral<C extends CollateralUnit>(

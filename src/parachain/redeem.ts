@@ -174,24 +174,21 @@ export interface RedeemAPI extends TransactionAPI {
 }
 
 export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
-    private vaultsAPI: VaultsAPI;
-    private tokensAPI: TokensAPI;
-    private oracleAPI: OracleAPI;
+    
     requestHash: Hash = this.api.createType("Hash");
     events: EventRecord[] = [];
 
     constructor(
         api: ApiPromise,
         private btcNetwork: Network,
-        private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private collateralCurrency: CollateralCurrency,
+        private vaultsAPI: VaultsAPI,
+        private tokensAPI: TokensAPI,
+        private oracleAPI: OracleAPI,
         account?: AddressOrPair
     ) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency, account);
-        this.tokensAPI = new DefaultTokensAPI(api, account);
-        this.oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, account);
     }
 
     private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
@@ -256,15 +253,16 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         }
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes, electrsAPI?: ElectrsAPI): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
-        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
-        const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
-        const result = await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
-        const ids = this.getRedeemIdsFromEvents(result.events, this.api.events.redeem.ExecuteRedeem);
-        if (ids.length > 1) {
-            return Promise.reject(new Error("Unexpected multiple redeem events from single execute transaction!"));
+        if (electrsAPI) {
+            [merkleProof, rawTx] = await getTxProof(electrsAPI, btcTxId, merkleProof, rawTx);
         }
+        if (!merkleProof || !rawTx) {
+            return Promise.reject(new Error("The Bitcoin Merkle Proof and Raw Transaction could not be fetched"));
+        }
+        const executeRedeemTx = this.api.tx.redeem.executeRedeem(parsedRequestId, merkleProof, rawTx);
+        await this.sendLogged(executeRedeemTx, this.api.events.redeem.ExecuteRedeem);
     }
 
     async cancel(requestId: string, reimburse = false): Promise<void> {

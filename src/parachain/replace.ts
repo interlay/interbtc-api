@@ -108,22 +108,16 @@ export interface ReplaceAPI extends TransactionAPI {
 }
 
 export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceAPI {
-    private btcNetwork: Network;
-    private feeAPI: FeeAPI;
-    private vaultsAPI: VaultsAPI;
-
     constructor(
         api: ApiPromise,
-        btcNetwork: Network,
-        private electrsAPI: ElectrsAPI,
+        private btcNetwork: Network,
         private wrappedCurrency: WrappedCurrency,
         private collateralCurrency: CollateralCurrency,
+        private feeAPI: FeeAPI,
+        private vaultsAPI: VaultsAPI,
         account?: AddressOrPair
     ) {
         super(api, account);
-        this.btcNetwork = btcNetwork;
-        this.feeAPI = new DefaultFeeAPI(api, wrappedCurrency);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
     }
 
     async request(
@@ -189,9 +183,9 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         await this.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
-        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
+    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes, electrsAPI?: ElectrsAPI,): Promise<void> {
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
+        [merkleProof, rawTx] = await getTxProof(electrsAPI, btcTxId, merkleProof, rawTx);
         const requestTx = this.api.tx.replace.executeReplace(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(requestTx, this.api.events.replace.ExecuteReplace);
     }

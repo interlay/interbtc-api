@@ -26,7 +26,7 @@ import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import {
     CollateralCurrency,
-    CurrencyUnit,
+    CollateralIdLiteral,
     CurrencyIdLiteral,
     currencyIdToMonetaryCurrency,
     Issue,
@@ -140,23 +140,28 @@ export interface IssueAPI extends TransactionAPI {
     getFeesToPay(
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    /**
+     * @param vaultAccountId The vault account ID
+     * @param collateralCurrency The currency specification, a `Monetary.js` object
+     * @returns The amount of wrapped tokens issuable by this vault
+     */
+    getVaultIssuableAmount(
+        vaultAccountId: AccountId,
+        collateralCurrency: CurrencyIdLiteral
+    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
-    private vaultsAPI: VaultsAPI;
-    private feeAPI: FeeAPI;
-
     constructor(
         api: ApiPromise,
         private btcNetwork: Network,
-        private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private collateralCurrency: CollateralCurrency,
+        private feeAPI: FeeAPI,
+        private vaultsAPI: VaultsAPI,
         account?: AddressOrPair
     ) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
-        this.feeAPI = new DefaultFeeAPI(api, wrappedCurrency);
     }
 
     async getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>): Promise<IssueLimits> {
@@ -286,9 +291,14 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         }
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes, electrsAPI?: ElectrsAPI): Promise<void> {
+        if (electrsAPI) {
+            [merkleProof, rawTx] = await getTxProof(electrsAPI, btcTxId, merkleProof, rawTx);
+        }
+        if (!merkleProof || !rawTx) {
+            return Promise.reject(new Error("The Bitcoin Merkle Proof and Raw Transaction could not be fetched"));
+        }
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
-        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
         const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
         await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
     }
@@ -360,5 +370,17 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
                     parseIssueRequest(this.vaultsAPI, issueRequest.unwrap(), this.btcNetwork, issueId)
                 )
         );
+    }
+
+    async getVaultIssuableAmount(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralIdLiteral
+    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+        const vault = await this.vaultsAPI.get(vaultAccountId, collateralCurrency);
+        const wrappedTokenCapacity = await this.vaultsAPI.calculateCapacity(vault.backingCollateral);
+        const issuedAmount = vault.issuedTokens.add(vault.toBeIssuedTokens);
+        const issuableAmountExcludingFees = wrappedTokenCapacity.sub(issuedAmount);
+        const fees = await this.getFeesToPay(issuableAmountExcludingFees);
+        return issuableAmountExcludingFees.sub(fees);
     }
 }
