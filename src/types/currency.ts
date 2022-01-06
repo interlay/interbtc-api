@@ -79,17 +79,22 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
 }
 
 export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: InterbtcPrimitivesCurrencyId): Currency<U> {
-    if (currencyId.isInterbtc) {
+    // The currencyId is always a token, since it is just a tuple struct
+    if (!currencyId.isToken) {
+        throw new Error("The currency ID must be a token");
+    }
+    const token = currencyId.asToken;
+    if (token.isInterbtc) {
         return InterBtc as unknown as Currency<U>;
-    } else if (currencyId.isDot) {
+    } else if (token.isDot) {
         return Polkadot as unknown as Currency<U>;
-    } else if (currencyId.isKsm) {
+    } else if (token.isKsm) {
         return Kusama as unknown as Currency<U>;
-    } else if (currencyId.isKbtc) {
+    } else if (token.isKbtc) {
         return KBtc as unknown as Currency<U>;
-    } else if (currencyId.isKint) {
+    } else if (token.isKint) {
         return Kintsugi as unknown as Currency<U>;
-    } else if (currencyId.isIntr) {
+    } else if (token.isIntr) {
         return Interlay as unknown as Currency<U>;
     }
     throw new Error("No CurrencyId entry for provided ticker");

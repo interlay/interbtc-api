@@ -143,19 +143,6 @@ describe("NominationAPI", () => {
                 currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency,
             );
             assert.equal(totalNomination.toString(), "0");
-
-            const wrappedRewardsAfterWithdrawal = (
-                await nominationAPI.getNominatorReward(
-                    vault_1_id.accountId,
-                    collateralCurrencyIdLiteral,
-                    newAccountId(api, userAccount.address),
-                )
-            ).toBig();
-            assert.equal(
-                wrappedRewardsBeforeWithdrawal.round(5, 0).toString(),
-                wrappedRewardsAfterWithdrawal.round(5, 0).toString(),
-                "Reward amount has been affected by the withdrawal"
-            );
         } catch(error) {
             throw error;
         } finally {

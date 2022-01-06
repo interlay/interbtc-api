@@ -244,7 +244,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
 
     async listAllNominations(): Promise<RawNomination[]> {
         const [head, nonces] = await Promise.all([this.api.rpc.chain.getFinalizedHead(), this.getNonces()]);
-        const stakesMap = await this.api.query.staking.stake.entriesAt(head);
+        const stakesMap = await this.api.query.vaultStaking.stake.entriesAt(head);
         return stakesMap
             .map((v): RawNomination => {
                 const nonce = storageKeyToNthInner(v[0], 0) as Index;

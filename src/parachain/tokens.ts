@@ -58,7 +58,7 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
 
     async total<U extends CurrencyUnit>(currency: Currency<U>): Promise<MonetaryAmount<Currency<U>, U>> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const currencyId = tickerToCurrencyIdLiteral(currency.ticker);
+        const currencyId = newCurrencyId(this.api, tickerToCurrencyIdLiteral(currency.ticker));
         const rawAmount = await this.api.query.tokens.totalIssuance.at(head, currencyId);
         return newMonetaryAmount(rawAmount.toString(), currency);
     }

@@ -5,6 +5,7 @@ import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
+import { newCurrencyId } from "..";
 
 // set maximum exponents
 Big.PE = 21;
@@ -67,6 +68,6 @@ export function createExchangeRateOracleKey<U extends CurrencyUnit>(
     api: ApiPromise,
     collateralCurrency: Currency<U>
 ): InterbtcPrimitivesOracleKey {
-    const currencyId = api.createType("InterbtcPrimitivesCurrencyId", tickerToCurrencyIdLiteral(collateralCurrency.ticker));
+    const currencyId = newCurrencyId(api, tickerToCurrencyIdLiteral(collateralCurrency.ticker));
     return api.createType("InterbtcPrimitivesOracleKey", { ExchangeRate: currencyId });
 }

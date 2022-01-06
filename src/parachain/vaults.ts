@@ -203,10 +203,6 @@ export interface VaultsAPI extends TransactionAPI {
      */
     depositCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void>;
     /**
-     * @returns The account id of the liquidation vault
-     */
-    getLiquidationVaultId(): Promise<string>;
-    /**
      * @param collateralCurrency
      * @returns A vault object representing the liquidation vault
      */
@@ -375,7 +371,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             nonce = await this.rewardsAPI.getStakingPoolNonce(collateralCurrencyIdLiteral, vaultId.accountId);
         }
 
-        const rawBackingCollateral = await this.api.query.staking.totalCurrentStake(nonce, vaultId);
+        const rawBackingCollateral = await this.api.query.vaultStaking.totalCurrentStake(nonce, vaultId);
         const collateralCurrency = currencyIdToMonetaryCurrency(vaultId.currencies.collateral);
         return newMonetaryAmount(
             decodeFixedPointType(rawBackingCollateral),
@@ -397,12 +393,6 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         return collateral.mul(maxNominationRatio).sub(vault.backingCollateral);
     }
 
-    async getLiquidationVaultId(): Promise<string> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const liquidationVaultId = await this.api.query.vaultRegistry.liquidationVaultAccountId.at(head);
-        return liquidationVaultId.toString();
-    }
-
     async getLiquidationVault(collateralCurrency: CollateralCurrency): Promise<SystemVaultExt<BitcoinUnit>> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -410,7 +400,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         if (!liquidationVault.isSome) {
             return Promise.reject("System vault could not be fetched");
         }
-        return parseSystemVault(liquidationVault.value as VaultRegistrySystemVault, this.wrappedCurrency);
+        return parseSystemVault(liquidationVault.value as VaultRegistrySystemVault, this.wrappedCurrency, collateralCurrency);
     }
 
     private isNoTokensIssuedError(e: Error): boolean {
@@ -746,7 +736,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             "BalanceWrapper",
             {
                 amount: this.api.createType("u128", amount.toString()),
-                currencyId: this.api.createType("InterbtcPrimitivesCurrencyId", tickerToCurrencyIdLiteral(amount.currency.ticker))
+                currencyId: newCurrencyId(this.api, tickerToCurrencyIdLiteral(amount.currency.ticker))
             }    
         );
     }

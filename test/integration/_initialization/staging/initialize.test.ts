@@ -205,13 +205,13 @@ describe("Initialize parachain state", () => {
         const interBtcToIssue = InterBtcAmount.from.BTC(0.00007);
         const feesToPay = await issueAPI.getFeesToPay(interBtcToIssue);
         const userAccountId = newAccountId(api, userAccount.address);
-        const sudoInterBTCBefore = await tokensAPI.balance(InterBtc, userAccountId);
+        const userInterBTCBefore = await tokensAPI.balance(InterBtc, userAccountId);
 
         await initializeIssue(api, electrsAPI, bitcoinCoreClient, userAccount, interBtcToIssue, collateralCurrency, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency));
-        const sudoInterBTCAfter = await tokensAPI.balance(InterBtc, userAccountId);
+        const userInterBTCAfter = await tokensAPI.balance(InterBtc, userAccountId);
         assert.equal(
-            sudoInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
-            sudoInterBTCAfter.toString(),
+            userInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
+            userInterBTCAfter.toString(),
             "Issued amount is different from the requested amount"
         );
         const totalIssuance = await tokensAPI.total(InterBtc);
