@@ -181,7 +181,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawNonce = await this.api.query.staking.nonce.at(head, vaultId);
+        const rawNonce = await this.api.query.vaultStaking.nonce.at(head, vaultId);
         return rawNonce.toNumber();
     }
 
@@ -199,7 +199,8 @@ export class DefaultRewardsAPI implements RewardsAPI {
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return decodeFixedPointType(await this.api.query.staking.stake.at(head, nonce, [vaultId, nominatorId]));
+        const rawStake = await this.api.query.vaultStaking.stake.at(head, nonce, [vaultId, nominatorId]);
+        return decodeFixedPointType(rawStake);
     }
 
     async getStakingPoolRewardTally(
@@ -213,17 +214,18 @@ export class DefaultRewardsAPI implements RewardsAPI {
             nonce = await this.getStakingPoolNonce(collateralCurrencyIdLiteral, vaultAccountId);
         }
         const head = await this.api.rpc.chain.getFinalizedHead();
+        const collateralCurrencyId = newCurrencyId(this.api, collateralCurrencyIdLiteral);
         const collateralCurrency = currencyIdToMonetaryCurrency(
-            newCurrencyId(this.api, collateralCurrencyIdLiteral)
+            collateralCurrencyId
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         return decodeFixedPointType(
-            await this.api.query.staking.rewardTally.at(head, currencyId, [nonce, vaultId, nominatorId])
+            await this.api.query.vaultStaking.rewardTally.at(head, collateralCurrencyId, [nonce, vaultId, nominatorId])
         );
     }
 
     async getStakingPoolRewardPerToken(
-        wrappedCurrencyId: WrappedIdLiteral,
+        wrappedCurrencyIdLiteral: WrappedIdLiteral,
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral,
         nonce?: number
@@ -236,7 +238,12 @@ export class DefaultRewardsAPI implements RewardsAPI {
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return decodeFixedPointType(await this.api.query.staking.rewardPerToken.at(head, wrappedCurrencyId, [nonce, vaultId]));
+        const wrappedCurrencyId = newCurrencyId(this.api, wrappedCurrencyIdLiteral);
+        return decodeFixedPointType(await this.api.query.vaultStaking.rewardPerToken.at(
+            head,
+            wrappedCurrencyId,
+            [nonce, vaultId])
+        );
     }
 
     async computeCollateralInStakingPool(
@@ -274,7 +281,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return decodeFixedPointType(await this.api.query.staking.slashPerToken.at(head, nonce, vaultId));
+        return decodeFixedPointType(await this.api.query.vaultStaking.slashPerToken.at(head, nonce, vaultId));
     }
 
     async getStakingPoolSlashTally(
@@ -291,7 +298,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         const head = await this.api.rpc.chain.getFinalizedHead();
-        return decodeFixedPointType(await this.api.query.staking.slashTally.at(head, nonce, [vaultId, nominatorId]));
+        return decodeFixedPointType(await this.api.query.vaultStaking.slashTally.at(head, nonce, [vaultId, nominatorId]));
     }
 
     async computeRewardInRewardsPool(
@@ -317,7 +324,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
             newCurrencyId(this.api, vaultCollateralIdLiteral)
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
-        return decodeFixedPointType(await this.api.query.rewards.stake.at(head, vaultId));
+        return decodeFixedPointType(await this.api.query.vaultRewards.stake.at(head, vaultId));
     }
 
     async getRewardsPoolRewardTally(
@@ -332,13 +339,13 @@ export class DefaultRewardsAPI implements RewardsAPI {
             newCurrencyId(this.api, vaultCollateralIdLiteral)
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
-        return decodeFixedPointType(await this.api.query.rewards.rewardTally.at(head, rewardCurrencyId, vaultId));
+        return decodeFixedPointType(await this.api.query.vaultRewards.rewardTally.at(head, rewardCurrencyId, vaultId));
     }
 
     async getRewardsPoolRewardPerToken(currencyId: CurrencyIdLiteral): Promise<Big> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return decodeFixedPointType(
-            await this.api.query.rewards.rewardPerToken.at(head, newCurrencyId(this.api, currencyId))
+            await this.api.query.vaultRewards.rewardPerToken.at(head, newCurrencyId(this.api, currencyId))
         );
     }
 

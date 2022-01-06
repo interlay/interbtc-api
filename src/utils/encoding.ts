@@ -18,7 +18,7 @@ import {
     VaultRegistryWallet,
     InterbtcPrimitivesVaultId,
     InterbtcPrimitivesVaultCurrencyPair,
-    InterbtcPrimitivesCurrencyId
+    InterbtcPrimitivesCurrencyId,
 } from "@polkadot/types/lookup";
 
 import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
@@ -154,11 +154,20 @@ export function parseWallet(wallet: VaultRegistryWallet, network: Network): Wall
     };
 }
 
-export function parseSystemVault(vault: VaultRegistrySystemVault, wrappedCurrency: WrappedCurrency): SystemVaultExt<BitcoinUnit> {
+export function parseSystemVault(
+    vault: VaultRegistrySystemVault,
+    wrappedCurrency: WrappedCurrency,
+    collateralCurrency: CollateralCurrency
+): SystemVaultExt<BitcoinUnit> {
     return {
         toBeIssuedTokens: newMonetaryAmount(vault.toBeIssuedTokens.toString(), wrappedCurrency),
         issuedTokens: newMonetaryAmount(vault.issuedTokens.toString(), wrappedCurrency),
         toBeRedeemedTokens: newMonetaryAmount(vault.toBeRedeemedTokens.toString(), wrappedCurrency),
+        collateral: newMonetaryAmount(vault.collateral.toString(), collateralCurrency as Currency<CollateralUnit>),
+        currencyPair: {
+            collateralCurrency: currencyIdToMonetaryCurrency(vault.currencyPair.collateral),
+            wrappedCurrency: currencyIdToMonetaryCurrency(vault.currencyPair.wrapped),
+        }
     };
 }
 
@@ -193,7 +202,7 @@ export function newVaultCurrencyPair(
 }
 
 export function newCurrencyId(api: ApiPromise, currency: CurrencyIdLiteral): InterbtcPrimitivesCurrencyId {
-    return api.createType("InterbtcPrimitivesCurrencyId", currency);
+    return api.createType("InterbtcPrimitivesCurrencyId", { token: currency });
 }
 
 export function parseRefundRequest(

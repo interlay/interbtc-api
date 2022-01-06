@@ -2,6 +2,7 @@ import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
+import { CollateralCurrency, WrappedCurrency } from ".";
 
 import { UnsignedFixedPoint } from "../interfaces";
 import { DefaultOracleAPI, DefaultSystemAPI } from "../parachain";
@@ -126,7 +127,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         if (nonce === undefined) {
             nonce = await this.getStakingPoolNonce();
         }
-        const rawBackingCollateral = await this.api.query.staking.totalCurrentStake(nonce, this.id);
+        const rawBackingCollateral = await this.api.query.vaultStaking.totalCurrentStake(nonce, this.id);
         const collateralCurrency = currencyIdToMonetaryCurrency(this.id.currencies.collateral);
         return newMonetaryAmount(
             decodeFixedPointType(rawBackingCollateral),
@@ -136,7 +137,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
 
     async getStakingPoolNonce(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawNonce = await this.api.query.staking.nonce.at(head, this.id);
+        const rawNonce = await this.api.query.vaultStaking.nonce.at(head, this.id);
         return rawNonce.toNumber();
     }
 }
@@ -145,4 +146,9 @@ export interface SystemVaultExt<WrappedUnit extends BitcoinUnit> {
     toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
     issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
     toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+    collateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    currencyPair: {
+        collateralCurrency: Currency<CollateralUnit>,
+        wrappedCurrency: Currency<WrappedUnit>
+    }
 }

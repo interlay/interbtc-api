@@ -110,11 +110,6 @@ describe("vaultsAPI", () => {
         );
     });
 
-    it("should getLiquidationVaultId", async () => {
-        const liquidationVaultId = await vaultsAPI.getLiquidationVaultId();
-        assert.equal(liquidationVaultId.toString(), "5EYCAe5i8QbRra1jndPz1WAuf1q1KHQNfu2cW1EXJ231emTd");
-    });
-
     it("should getPremiumRedeemVaults after a price crash", async () => {
         const collateralLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
         const issuableAmount = await vaultsAPI.getIssuableAmount(
