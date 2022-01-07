@@ -14,4 +14,4 @@ export { NominationAPI, DefaultNominationAPI } from "./nomination";
 export * from "./transaction";
 
 // Hacky way of forcing the resolution of these types in test files
-export { InterbtcPrimitivesVaultId, VaultRegistryVault } from "@polkadot/types/lookup";
+export { InterbtcPrimitivesVaultId, VaultRegistryVault, SecurityStatusCode } from "@polkadot/types/lookup";
