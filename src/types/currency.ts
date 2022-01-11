@@ -18,7 +18,7 @@ import {
 } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
-import { newCurrencyId } from "..";
+import { newCurrencyId } from "../utils";
 
 export enum CurrencyIdLiteral {
     DOT = "DOT",

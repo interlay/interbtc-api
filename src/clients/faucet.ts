@@ -4,7 +4,8 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import { JsonRpcClient } from "./client";
-import { CollateralIdLiteral, newCurrencyId } from "..";
+import { CollateralIdLiteral } from "../types";
+import { newCurrencyId } from "../utils";
 import { ApiPromise } from "@polkadot/api";
 
 /**

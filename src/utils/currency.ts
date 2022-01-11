@@ -5,7 +5,7 @@ import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
-import { newCurrencyId } from "..";
+import { newCurrencyId } from "./encoding";
 
 // set maximum exponents
 Big.PE = 21;

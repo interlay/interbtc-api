@@ -47,7 +47,7 @@ import {
     VAULT_1_URI,
 } from "../../test/config";
 import { CollateralCurrency, CollateralUnit, WrappedCurrency } from "../types";
-import { newVaultId } from "..";
+import { newVaultId } from "./encoding";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -131,12 +131,12 @@ function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string):
         btcTxFees: new Big(1),
         enableNomination: true,
         issue: {
-            amount: InterBtcAmount.from.BTC(0.1),
+            amount: InterBtcAmount.from.BTC(0.00007),
             issuingAccount: keyring.addFromUri(USER_1_URI),
             vaultAddress,
         },
         redeem: {
-            amount: InterBtcAmount.from.BTC(0.05),
+            amount: InterBtcAmount.from.BTC(0.00005),
             redeemingAccount: keyring.addFromUri(USER_1_URI),
             redeemingBTCAddress: REDEEM_ADDRESS,
         },

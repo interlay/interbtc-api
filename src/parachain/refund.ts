@@ -7,8 +7,7 @@ import { AddressOrPair } from "@polkadot/api/types";
 import { getTxProof, parseRefundRequest } from "../utils";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { RefundRequestExt } from "../types/requestTypes";
-import { WrappedCurrency } from "..";
+import { RefundRequestExt, WrappedCurrency } from "../types";
 
 /**
  * @category InterBTC Bridge

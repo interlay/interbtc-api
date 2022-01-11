@@ -8,7 +8,15 @@ import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { isKeyringPair } from "@polkadot/api/util";
 import { InterbtcPrimitivesReplaceReplaceRequest, BitcoinAddress } from "@polkadot/types/lookup";
 
-import { storageKeyToNthInner, getTxProof, parseReplaceRequest, ensureHashEncoded } from "../utils";
+import {
+    storageKeyToNthInner,
+    getTxProof,
+    parseReplaceRequest,
+    ensureHashEncoded,
+    newMonetaryAmount,
+    newVaultCurrencyPair,
+    newVaultId
+} from "../utils";
 import { DefaultFeeAPI, FeeAPI, GriefingCollateralType } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
@@ -18,7 +26,7 @@ import {
     ReplaceRequestExt,
     WrappedCurrency,
 } from "../types";
-import { DefaultVaultsAPI, newMonetaryAmount, newVaultCurrencyPair, newVaultId, VaultsAPI } from "..";
+import { DefaultVaultsAPI, VaultsAPI } from "../parachain";
 
 /**
  * @category InterBTC Bridge

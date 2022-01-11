@@ -3,7 +3,7 @@ import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
-import { decodeFixedPointType } from "..";
+import { decodeFixedPointType } from "../utils/encoding";
 import { CollateralUnit, WrappedCurrency } from "../types";
 
 export enum GriefingCollateralType {
