@@ -8,7 +8,7 @@ import { TypeRegistry } from "@polkadot/types";
 
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
-import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "..";
+import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "../utils";
 
 export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;

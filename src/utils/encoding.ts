@@ -35,12 +35,12 @@ import {
     CurrencyIdLiteral,
     currencyIdToLiteral,
     currencyIdToMonetaryCurrency,
-    newMonetaryAmount,
     tickerToCurrencyIdLiteral,
-    VaultsAPI,
     WrappedCurrency,
     WrappedIdLiteral,
-} from "..";
+} from "../types";
+import { newMonetaryAmount } from "../utils";
+import { VaultsAPI } from "../parachain";
 
 /**
  * Converts endianness of a Uint8Array

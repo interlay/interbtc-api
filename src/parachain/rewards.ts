@@ -4,18 +4,22 @@ import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import {
-    CollateralUnit,
-    computeLazyDistribution,
-    CurrencyIdLiteral,
-    decodeFixedPointType,
-    DefaultVaultsAPI,
     ElectrsAPI,
+} from "../external";
+import {
+    computeLazyDistribution,
+    decodeFixedPointType,
     newCurrencyId,
     newMonetaryAmount,
     newVaultId,
-    tickerToCurrencyIdLiteral,
-} from "..";
+} from "../utils";
 import {
+    DefaultVaultsAPI,
+} from "../parachain";
+import {
+    tickerToCurrencyIdLiteral,
+    CurrencyIdLiteral,
+    CollateralUnit,
     CollateralCurrency,
     CollateralIdLiteral,
     currencyIdToMonetaryCurrency,

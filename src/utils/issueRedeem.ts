@@ -24,7 +24,8 @@ import {
     WrappedCurrency,
 } from "../types";
 import { BitcoinNetwork } from "../types/bitcoinTypes";
-import { newMonetaryAmount, waitForBlockFinalization } from "..";
+import { waitForBlockFinalization } from "./bitcoin";
+import { newMonetaryAmount } from "./currency";
 
 export const SLEEP_TIME_MS = 1000;
 
