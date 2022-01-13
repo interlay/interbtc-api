@@ -1,9 +1,9 @@
 version: "3.8"
 services:
     interbtc:
-        image: "interlayhq/interbtc:interbtc-standalone-1.5.9"
+        image: "interlayhq/interbtc:interbtc-parachain-1.5.10"
         command:
-            - interbtc-standalone
+            - interbtc-parachain
             - --rpc-external
             - --ws-external
             - --rpc-methods

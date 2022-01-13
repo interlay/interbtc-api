@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "1.5.11",
+  "version": "1.5.12",
   "description": "JavaScript library to interact with interBTC and kBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
@@ -27,6 +27,7 @@
     "generate:defs": "ts-node --skip-project node_modules/.bin/polkadot-types-from-defs --package @interlay/interbtc/interfaces --input ./src/interfaces --endpoint ./src/json/parachain.json",
     "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/interbtc/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "initialize": "run-s build && ts-node src/utils/setup --initialize",
+    "xcm-script": "ts-node src/utils/xcm",
     "test": "run-s build test:*",
     "test:lint": "eslint src --ext .ts",
     "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts",
