@@ -40,7 +40,7 @@ describe("NominationAPI", () => {
         nominationAPI = new DefaultNominationAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
         vaultsAPI = new DefaultVaultsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
         feeAPI = new DefaultFeeAPI(api, InterBtc);
-        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
+        rewardsAPI = new DefaultRewardsAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
 
@@ -133,8 +133,11 @@ describe("NominationAPI", () => {
                 "Nominator should receive non-zero wrapped tokens"
             );
 
-            // Withdraw
+            // Withdraw Rewards
+            await rewardsAPI.withdrawRewards(vault_1_id);
+            // Withdraw Collateral
             await nominationAPI.withdrawCollateral(vault_1_id.accountId, nominatorDeposit);
+
             const nominatorsAfterWithdrawal = await nominationAPI.list();
             // The vault always has a "nomination" to itself
             assert.equal(1, nominatorsAfterWithdrawal.length);

@@ -1,8 +1,18 @@
 import Big, { BigSource } from "big.js";
 import BN from "bn.js";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import {
+    Bitcoin,
+    BitcoinUnit,
+    Currency,
+    ExchangeRate,
+    Interlay,
+    Kintsugi,
+    MonetaryAmount,
+    VoteInterlay,
+    VoteKintsugi
+} from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types/currency";
+import { CurrencyUnit, tickerToCurrencyIdLiteral, GovernanceCurrency, GovernanceUnit } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId } from "./encoding";
@@ -70,4 +80,15 @@ export function createExchangeRateOracleKey<U extends CurrencyUnit>(
 ): InterbtcPrimitivesOracleKey {
     const currencyId = newCurrencyId(api, tickerToCurrencyIdLiteral(collateralCurrency.ticker));
     return api.createType("InterbtcPrimitivesOracleKey", { ExchangeRate: currencyId });
+}
+
+export function toVoting(governanceCurrency: GovernanceCurrency): Currency<GovernanceUnit> {
+    switch (governanceCurrency) {
+        case (Interlay):
+            return VoteInterlay as Currency<GovernanceUnit>;
+        case (Kintsugi):
+            return VoteKintsugi as Currency<GovernanceUnit>;
+        default:
+            throw new Error("Provided currency is not a governance currency");
+    }
 }
