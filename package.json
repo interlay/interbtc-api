@@ -44,7 +44,7 @@
     "@interlay/esplora-btc-api": "0.4.0",
     "@interlay/interbtc-types": "1.5.10",
     "@interlay/monetary-js": "0.5.1",
-    "@polkadot/api": "6.9.2",
+    "@polkadot/api": "7.4.1",
     "@types/big.js": "6.1.2",
     "big.js": "6.1.1",
     "bitcoin-core": "^3.0.0",
@@ -57,7 +57,7 @@
     "ts-mock-imports": "^1.3.0"
   },
   "devDependencies": {
-    "@polkadot/typegen": "6.9.2",
+    "@polkadot/typegen": "7.4.1",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
     "@types/mocha": "^8.0.3",

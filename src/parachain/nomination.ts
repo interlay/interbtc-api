@@ -223,8 +223,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
     }
 
     async isNominationEnabled(): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const isNominationEnabled = await this.api.query.nomination.nominationEnabled.at(head);
+        const isNominationEnabled = await this.api.query.nomination.nominationEnabled();
         return isNominationEnabled.isTrue;
     }
 
@@ -243,8 +242,8 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
     }
 
     async listAllNominations(): Promise<RawNomination[]> {
-        const [head, nonces] = await Promise.all([this.api.rpc.chain.getFinalizedHead(), this.getNonces()]);
-        const stakesMap = await this.api.query.vaultStaking.stake.entriesAt(head);
+        const nonces = await this.getNonces();
+        const stakesMap = await this.api.query.vaultStaking.stake();
         return stakesMap
             .map((v): RawNomination => {
                 const nonce = storageKeyToNthInner(v[0], 0) as Index;
