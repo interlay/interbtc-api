@@ -28,14 +28,13 @@ export function createPolkadotAPI(endpoint: string, autoConnect?: number | false
 
 export async function createInterbtcAPI(
     endpoint: string,
-    collateralCurrency: CollateralCurrency,
     network: BitcoinNetwork = "mainnet",
     wrappedCurrency: WrappedCurrency = InterBtc,
     account?: AddressOrPair,
     autoConnect?: number | false | undefined
 ): Promise<InterBTCAPI> {
     const api = await createPolkadotAPI(endpoint, autoConnect);
-    return new DefaultInterBTCAPI(api, collateralCurrency, network, wrappedCurrency, account);
+    return new DefaultInterBTCAPI(api, network, wrappedCurrency, account);
 }
 
 export function getAPITypes(): RegistryTypes {

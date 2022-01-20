@@ -294,7 +294,6 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         api: ApiPromise,
         private btcNetwork: Network,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
         private tokensAPI: TokensAPI,
         private oracleAPI: OracleAPI,
         private feeAPI: FeeAPI,
@@ -432,7 +431,13 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrencyId),
         ]);
         const ownGlobalReward = totalGlobalReward.mul(globalRewardShare);
-        const localReward = await this.rewardsAPI.computeRewardInStakingPool(vaultAccountId, nominatorId, collateralCurrencyId, rewardCurrencyId, nonce);
+        const localReward = await this.rewardsAPI.computeRewardInStakingPool(
+            vaultAccountId,
+            nominatorId,
+            collateralCurrencyId,
+            rewardCurrencyId,
+            nonce
+        );
         return ownGlobalReward.add(localReward);
     }
 

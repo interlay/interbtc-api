@@ -7,7 +7,7 @@ import { DefaultOracleAPI, InterbtcPrimitivesVaultId, VaultRegistryVault } from 
 
 import { DefaultRedeemAPI } from "../../../../src/parachain/redeem";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, NATIVE_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ORACLE_URI } from "../../../config";
+import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ORACLE_URI } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { issueSingle } from "../../../../src/utils";
@@ -41,7 +41,7 @@ describe("redeem", () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
-        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        collateralCurrency = tickerToMonetaryCurrency(api, COLLATERAL_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         vaultToLiquidateId = newVaultId(api, vaultToLiquidate.address, Polkadot, wrappedCurrency);

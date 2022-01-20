@@ -156,7 +156,6 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
     constructor(
         api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
         private vaultsAPI: VaultsAPI,
         private rewardsAPI: RewardsAPI,
         account?: AddressOrPair
@@ -271,7 +270,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         const rawList = await this.listAllNominations();
         return await Promise.all(
             rawList.map(async (rawNomination): Promise<NominationReward> => {
-                const reward = await this.rewardsAPI.computeReward(
+                const reward = await this.vaultsAPI.computeReward(
                     rawNomination.vaultId.accountId,
                     rawNomination.nominatorId,
                     currencyIdToLiteral(rawNomination.vaultId.currencies.collateral) as CollateralIdLiteral,
@@ -301,7 +300,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         collateralCurrencyId: CollateralIdLiteral,
         nominatorId: AccountId,
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-        return await this.rewardsAPI.computeReward(
+        return await this.vaultsAPI.computeReward(
             vaultId,
             nominatorId,
             collateralCurrencyId,
@@ -333,15 +332,11 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         });
         return await Promise.all(
             rawNominations.map(async (rawNomination): Promise<Nomination> => {
-                const nominationCurrencyId = tickerToCurrencyIdLiteral(
-                    rawNomination.amount.currency.ticker
-                ) as CollateralIdLiteral;
                 return {
                     ...rawNomination,
                     amount: await this.rewardsAPI.computeCollateralInStakingPool(
-                        rawNomination.vaultId.accountId,
+                        rawNomination.vaultId,
                         rawNomination.nominatorId,
-                        nominationCurrencyId
                     ),
                     type: NominationAmountType.Parsed,
                 };

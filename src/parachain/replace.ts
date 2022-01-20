@@ -112,7 +112,6 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         api: ApiPromise,
         private btcNetwork: Network,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
         account?: AddressOrPair

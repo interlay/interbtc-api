@@ -77,20 +77,29 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
 
     constructor(
         readonly api: ApiPromise,
-        collateralCurrency: CollateralCurrency,
-        network: BitcoinNetwork = "mainnet",
+        bitcoinNetwork: BitcoinNetwork = "mainnet",
         wrappedCurrency: WrappedCurrency = InterBtc,
-        private _account?: AddressOrPair
+        private _account?: AddressOrPair,
+        esploraNetwork?: string,
     ) {
-        const btcNetwork = getBitcoinNetwork(network);
-        this.electrsAPI = new DefaultElectrsAPI(network);
+        const btcNetwork = getBitcoinNetwork(bitcoinNetwork);
+        this.electrsAPI = new DefaultElectrsAPI(esploraNetwork || bitcoinNetwork);
 
         this.tokens = new DefaultTokensAPI(api, _account);
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency);
         this.fee = new DefaultFeeAPI(api, this.oracle);
-        this.rewards = new DefaultRewardsAPI(api, btcNetwork, wrappedCurrency, collateralCurrency);
+        this.rewards = new DefaultRewardsAPI(api, wrappedCurrency);
 
-        this.vaults = new DefaultVaultsAPI(api, btcNetwork, wrappedCurrency, collateralCurrency, this.tokens, this.oracle, this.fee, this.rewards,_account);
+        this.vaults = new DefaultVaultsAPI(
+            api,
+            btcNetwork,
+            wrappedCurrency,
+            this.tokens,
+            this.oracle,
+            this.fee,
+            this.rewards,
+            _account
+        );
         this.faucet = new FaucetClient(api, "");
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
@@ -100,17 +109,23 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
             api,
             btcNetwork,
             wrappedCurrency,
-            collateralCurrency,
             this.fee,
             this.vaults,
             _account
         );
-        this.issue = new DefaultIssueAPI(api, btcNetwork, wrappedCurrency, collateralCurrency, this.fee, this.vaults, _account);
-        this.redeem = new DefaultRedeemAPI(api, btcNetwork, wrappedCurrency, collateralCurrency, this.vaults, this.tokens, this.oracle, _account);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, wrappedCurrency, this.fee, this.vaults, _account);
+        this.redeem = new DefaultRedeemAPI(
+            api,
+            btcNetwork,
+            wrappedCurrency,
+            this.vaults,
+            this.tokens,
+            this.oracle,
+            _account
+        );
         this.nomination = new DefaultNominationAPI(
             api,
             wrappedCurrency,
-            collateralCurrency,
             this.vaults,
             this.rewards,
             _account

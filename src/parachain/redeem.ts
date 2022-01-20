@@ -182,7 +182,6 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         api: ApiPromise,
         private btcNetwork: Network,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
         private vaultsAPI: VaultsAPI,
         private tokensAPI: TokensAPI,
         private oracleAPI: OracleAPI,

@@ -156,7 +156,6 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         api: ApiPromise,
         private btcNetwork: Network,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
         account?: AddressOrPair

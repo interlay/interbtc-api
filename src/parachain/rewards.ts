@@ -126,9 +126,7 @@ export interface RewardsAPI {
 export class DefaultRewardsAPI implements RewardsAPI {
     constructor(
         public api: ApiPromise,
-        private btcNetwork: Network,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
     ) {}
 
     async computeRewardInStakingPool(
@@ -202,7 +200,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
     }
 
     async getStakingPoolRewardPerToken(
-        wrappedCurrencyIdLiteral: WrappedIdLiteral,
+        wrappedCurrencyIdLiteral: CurrencyIdLiteral,
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral,
         nonce?: number
