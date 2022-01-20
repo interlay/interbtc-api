@@ -44,7 +44,7 @@ describe("OracleAPI", () => {
         const exchangeRate = await oracleAPI.getExchangeRate(Polkadot);
         const expectedCollateral = exchangeRate.toBig(undefined).mul(bitcoinAmount.toBig(BitcoinUnit.BTC)).round(0, 0);
 
-        const collateralAmount = await oracleAPI.convertWrappedToCollateral(bitcoinAmount, Polkadot);
+        const collateralAmount = await oracleAPI.convertWrappedToCurrency(bitcoinAmount, Polkadot);
         assert.equal(collateralAmount.toBig(Polkadot.units.DOT).round(0, 0).toString(), expectedCollateral.toString());
     });
 

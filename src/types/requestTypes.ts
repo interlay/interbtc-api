@@ -1,6 +1,6 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
-import { CollateralUnit, WrappedCurrency } from ".";
+import { CollateralUnit, WrappedCurrency } from "../types";
 import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 import { InterbtcPrimitivesVaultId, InterbtcPrimitivesReplaceReplaceRequestStatus } from "@polkadot/types/lookup";
 

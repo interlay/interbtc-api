@@ -26,7 +26,7 @@ import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import {
     CollateralCurrency,
-    CollateralUnit,
+    CurrencyUnit,
     CurrencyIdLiteral,
     currencyIdToMonetaryCurrency,
     Issue,
@@ -248,15 +248,14 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         vaultId: InterbtcPrimitivesVaultId,
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
     ): Promise<SubmittableExtrinsic<"promise">> {
-        const collateralCurrency = currencyIdToMonetaryCurrency(vaultId.currencies.collateral) as Currency<CollateralUnit>;
-        let griefingCollateral = await this.feeAPI.getGriefingCollateral(amount, collateralCurrency, GriefingCollateralType.Issue);
+        let griefingCollateral = await this.feeAPI.getGriefingCollateral(amount, GriefingCollateralType.Issue);
         // add() here is a hacky workaround for rounding errors
-        const oneHundred = newMonetaryAmount(100, collateralCurrency);
+        const oneHundred = newMonetaryAmount(100, griefingCollateral.currency);
         griefingCollateral = griefingCollateral.add(oneHundred);
         return this.api.tx.issue.requestIssue(
             amount.toString(amount.currency.rawBase),
             vaultId,
-            griefingCollateral.toString(Bitcoin.units.Satoshi)
+            griefingCollateral.toString(griefingCollateral.currency.rawBase)
         );
     }
 
