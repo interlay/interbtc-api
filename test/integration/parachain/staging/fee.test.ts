@@ -36,8 +36,8 @@ describe("fee", () => {
         const exchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
         await callWithExchangeRate(oracleAPI, exchangeRate, async () => {
             const amountBtc = InterBtcAmount.from.BTC(0.001);
-            const griefingCollateral = await feeAPI.getGriefingCollateral(amountBtc, Polkadot, GriefingCollateralType.Issue);
-            assert.equal(griefingCollateral.toBig(Polkadot.units.DOT).round(5, 0).toString(), "0.00019");
+            const griefingCollateral = await feeAPI.getGriefingCollateral(amountBtc, GriefingCollateralType.Issue);
+            assert.equal(griefingCollateral.toBig(griefingCollateral.currency.base).round(5, 0).toString(), "0.00019");
         });
     }).timeout(50000);
 
@@ -46,9 +46,8 @@ describe("fee", () => {
         const exchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
         await callWithExchangeRate(oracleAPI, exchangeRate, async () => {
             const amountToReplace = InterBtcAmount.from.BTC(0.728);
-            const griefingCollateral = await feeAPI.getGriefingCollateral(amountToReplace, Polkadot, GriefingCollateralType.Replace);
-            assert.equal(griefingCollateral.str.DOT(), "280.660880136");
+            const griefingCollateral = await feeAPI.getGriefingCollateral(amountToReplace, GriefingCollateralType.Replace);
+            assert.equal(griefingCollateral.toString(griefingCollateral.currency.base), "280.660880136");
         });
-        
     }).timeout(50000);
 });

@@ -141,12 +141,11 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         const vaultId = newVaultId(this.api, vaultAccountId, collateralCurrency, this.wrappedCurrency);
         const griefingCollateral = await this.feeAPI.getGriefingCollateral(
             amount,
-            castCollateralCurrency,
             GriefingCollateralType.Replace
         );
         const griefingCollateralAtomicUnit = this.api.createType(
             "Balance",
-            griefingCollateral.toString(castCollateralCurrency.rawBase)
+            griefingCollateral.toString(griefingCollateral.currency.rawBase)
         );
         const requestTx = this.api.tx.replace.requestReplace(
             vaultId.currencies,
