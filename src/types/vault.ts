@@ -2,7 +2,6 @@ import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
-import { CollateralCurrency, WrappedCurrency } from ".";
 
 import { UnsignedFixedPoint } from "../interfaces";
 import { DefaultOracleAPI, DefaultSystemAPI } from "../parachain";
