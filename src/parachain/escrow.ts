@@ -26,7 +26,10 @@ export interface EscrowAPI extends TransactionAPI {
     /**
      * @param blockNumber The number of block to query state at 
      * @returns The voting balance
-     * @remarks Logic is duplicated from Escrow pallet in the parachain
+     * @remarks 
+     * - Expect poor performance from this function as more blocks are appended to the parachain.
+     * It is not recommended to call this directly, but rather to query through the indexer (currently `interbtc-index`).
+     * - Logic is duplicated from Escrow pallet in the parachain
      */
     totalVotingSupply(
         blockNumber?: number
@@ -96,8 +99,7 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
 
     async withdrawRewards(): Promise<void> {
         const tx = this.api.tx.escrowAnnuity.withdrawRewards();
-        // EscrowAnnuity::WithdrawRewards doesn't seem to emit any event
-        await this.sendLogged(tx);
+        await this.sendLogged(tx, this.api.events.escrowRewards.WithdrawReward);
     }
 
     async increaseAmount<U extends GovernanceUnit>(amount: MonetaryAmount<Currency<U>, U>): Promise<void> {
@@ -114,7 +116,7 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
         accountId: AccountId,
         blockNumber?: number
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const height = blockNumber ? blockNumber : await this.systemAPI.getCurrentBlockNumber();
+        const height = blockNumber || await this.systemAPI.getCurrentBlockNumber();
         const userPointEpoch = await this.api.query.escrow.userPointEpoch(accountId);
         const lastPoint = await this.api.query.escrow.userPointHistory(accountId, userPointEpoch);
         const rawBalance = this.rawBalanceAt(parseEscrowPoint(lastPoint), height);
@@ -128,13 +130,8 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
 
     private rawBalanceAt(escrowPoint: RWEscrowPoint, height: number): BN {
     /*
-    Rust reference implementation:
-    
-    pub fn balance_at(who: &T::AccountId, height: Option<T::BlockNumber>) -> BalanceOf<T> {
-        let height = height.unwrap_or(Self::current_height());
-        let last_point = <UserPointHistory<T>>::get(who, <UserPointEpoch<T>>::get(who));
-        last_point.balance_at::<T::BlockNumberToBalance>(height)
-    }
+        Rust reference implementation:
+        https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L524
     */
         const heightDiff = new BN(height).sub(escrowPoint.ts);
         return escrowPoint.bias.sub(escrowPoint.slope.mul(heightDiff));
@@ -149,7 +146,7 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
             this.getSpan(),
             this.api.query.escrow.slopeChanges.entries()
         ]);
-        const height = blockNumber ? blockNumber : currentBlockNumber;
+        const height = blockNumber || currentBlockNumber;
         const slopeChanges = new Map<BN, BN>();
         rawSlopeChanges.forEach(
             ([id, value]) => slopeChanges.set(storageKeyToNthInner(id).toBn(), value.toBn())
@@ -162,37 +159,10 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
     }
 
     private rawSupplyAt(escrowPoint: RWEscrowPoint, height: BN, escrowSpan: BN, slopeChanges: Map<BN, BN>): BN {
-    /*
-    Rust reference implementation:
-
-    pub fn supply_at(point: DefaultPoint<T>, height: T::BlockNumber) -> BalanceOf<T> {
-        let mut last_point = point;
-
-        let mut t_i = Self::round_height(last_point.ts);
-        while t_i < height {
-            t_i.saturating_accrue(T::Span::get());
-
-            let d_slope = if t_i > height {
-                t_i = height;
-                Zero::zero()
-            } else {
-                <SlopeChanges<T>>::get(t_i)
-            };
-
-            let height_diff = T::BlockNumberToBalance::convert(t_i.saturating_sub(last_point.ts));
-            last_point.bias.saturating_reduce(last_point.slope * height_diff);
-
-            if t_i == height {
-                break;
-            }
-
-            last_point.slope.saturating_accrue(d_slope);
-            last_point.ts = t_i;
-        }
-
-        last_point.bias
-    }
-    */
+        /*
+            Rust reference implementation:
+            https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L530
+        */
         const lastPoint = escrowPoint;
         let t_i = this.roundHeight(lastPoint.ts, escrowSpan);
         while (t_i.lt(height)) {
