@@ -601,12 +601,12 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const vaults = await this.list();
         const premiumRedeemVaultPredicates = await Promise.all(
             vaults.map(vault => {
-                return new Promise((resolve, _) => {
+                return new Promise((resolve, reject) => {
                     const redemableTokens = vault.getRedeemableTokens();
                     if(redemableTokens.isZero()) {
                         resolve(false);
                     } else {
-                        this.isBelowPremiumThreshold(vault.id).then(resolve);
+                        this.isBelowPremiumThreshold(vault.id).then(resolve).catch(reject);
                     }
                 });
             })
