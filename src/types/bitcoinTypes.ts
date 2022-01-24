@@ -5,10 +5,7 @@ export type TxInclusionDetails = {
     merkleProof: Bytes;
     rawTx: Bytes;
 }
-export type TxInclusionDeterminants = {
-    btcTxId: string,
-}
-export type TxFetchingDetails = TxInclusionDetails | TxInclusionDeterminants;
+export type TxFetchingDetails = TxInclusionDetails | { btcTxId: string };
 
 export function isTxInclusionDetails(args: TxFetchingDetails): args is TxInclusionDetails {
     return (
@@ -17,6 +14,6 @@ export function isTxInclusionDetails(args: TxFetchingDetails): args is TxInclusi
     );
 }
 
-export function isTxInclusionDeterminants(args: TxFetchingDetails): args is TxInclusionDeterminants {
-    return (args as TxInclusionDeterminants).btcTxId !== undefined;
+export function isTxInclusionDeterminants(args: TxFetchingDetails): args is { btcTxId: string } {
+    return (args as { btcTxId: string }).btcTxId !== undefined;
 }

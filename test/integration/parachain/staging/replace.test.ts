@@ -19,15 +19,14 @@ import {
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
     ESPLORA_BASE_PATH,
-    COLLATERAL_CURRENCY_TICKER,
     WRAPPED_CURRENCY_TICKER
 } from "../../../config";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { CollateralCurrency, currencyIdToMonetaryCurrency, DefaultReplaceAPI, newAccountId, newVaultId, ReplaceAPI, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
 
-describe.only("replace", () => {
+describe("replace", () => {
     let api: ApiPromise;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -65,7 +64,7 @@ describe.only("replace", () => {
         api.disconnect();
     });
 
-    describe.only("request", () => {
+    describe("request", () => {
         it("should request vault replacement", async () => {
             const issueAmount = InterBtcAmount.from.BTC(0.00005);
             const replaceAmount = InterBtcAmount.from.BTC(0.00004);

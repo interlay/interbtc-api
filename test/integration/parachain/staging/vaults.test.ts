@@ -10,7 +10,6 @@ import { assert } from "../../../chai";
 import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER, COLLATERAL_CURRENCY_TICKER } from "../../../config";
 import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, CollateralCurrency, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral, tickerToMonetaryCurrency, CurrencyIdLiteral } from "../../../../src/";
 import { encodeVaultId, issueSingle } from "../../../../src/utils";
-import { DefaultRewardsAPI } from "../../../../src/parachain/rewards";
 import { callWithExchangeRate } from "../../../utils/helpers";
 
 describe("vaultsAPI", () => {
@@ -106,7 +105,7 @@ describe("vaultsAPI", () => {
         );
     });
 
-    it.only("should getPremiumRedeemVaults after a price crash", async () => {
+    it("should getPremiumRedeemVaults after a price crash", async () => {
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
         const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrencyIdLiteral);
         const issuableAmount = await vault.getIssuableTokens();
@@ -127,7 +126,7 @@ describe("vaultsAPI", () => {
         const exchangeRateValue = initialExchangeRate.toBig().div(modifyExchangeRateBy);
         const exchangeRateToSet = new ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>(Bitcoin, Polkadot, exchangeRateValue);
 
-        await callWithExchangeRate(interBtcAPI.oracle, exchangeRateToSet, async () => {
+        await callWithExchangeRate(oracleInterBtcAPI.oracle, exchangeRateToSet, async () => {
             const premiumRedeemVaults = await interBtcAPI.vaults.getPremiumRedeemVaults();
             assert.equal(premiumRedeemVaults.size, 1);
             assert.equal(

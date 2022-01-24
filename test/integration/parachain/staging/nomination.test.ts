@@ -57,11 +57,11 @@ describe("NominationAPI", () => {
 
     it("Should opt a vault in and out of nomination", async () => {
         await optInWithAccount(vault_1, currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency);
-        const nominationVaults = await sudoInterBtcAPI.nomination.listVaults();
+        const nominationVaults = await userInterBtcAPI.nomination.listVaults();
         assert.equal(1, nominationVaults.length);
         assert.equal(vault_1.address, nominationVaults.map(v => v.accountId.toString())[0]);
         await optOutWithAccount(vault_1, currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency);
-        assert.equal(0, (await sudoInterBtcAPI.nomination.listVaults()).length);
+        assert.equal(0, (await userInterBtcAPI.nomination.listVaults()).length);
     }).timeout(60000);
 
     async function setIssueFee(x: BN) {
@@ -88,7 +88,7 @@ describe("NominationAPI", () => {
                 collateralCurrencyIdLiteral
             );
             // Deposit
-            await sudoInterBtcAPI.nomination.depositCollateral(vault_1_id.accountId, nominatorDeposit);
+            await userInterBtcAPI.nomination.depositCollateral(vault_1_id.accountId, nominatorDeposit);
             const stakingCapacityAfterNomination = await userInterBtcAPI.vaults.getStakingCapacity(
                 vault_1_id.accountId,
                 collateralCurrencyIdLiteral
@@ -98,7 +98,7 @@ describe("NominationAPI", () => {
                 stakingCapacityAfterNomination.toString(),
                 "Nomination failed to decrease staking capacity"
             );
-            const nominationPairs = await sudoInterBtcAPI.nomination.list();
+            const nominationPairs = await userInterBtcAPI.nomination.list();
             assert.equal(2, nominationPairs.length, "There should be one nomination pair in the system, besides the vault to itself");
 
             const userAddress = userAccount.address;
@@ -112,7 +112,7 @@ describe("NominationAPI", () => {
             const interBtcToIssue = InterBtcAmount.from.BTC(0.00001);
             await issueSingle(api, bitcoinCoreClient, userAccount, interBtcToIssue, vault_1_id);
             const wrappedRewardsBeforeWithdrawal = (
-                await sudoInterBtcAPI.nomination.getNominatorReward(
+                await userInterBtcAPI.nomination.getNominatorReward(
                     vault_1_id.accountId,
                     collateralCurrencyIdLiteral,
                     newAccountId(api, userAccount.address),
@@ -131,7 +131,7 @@ describe("NominationAPI", () => {
             const nominatorsAfterWithdrawal = await userInterBtcAPI.nomination.list();
             // The vault always has a "nomination" to itself
             assert.equal(1, nominatorsAfterWithdrawal.length);
-            const totalNomination = await sudoInterBtcAPI.nomination.getTotalNomination(
+            const totalNomination = await userInterBtcAPI.nomination.getTotalNomination(
                 newAccountId(api, userAccount.address),
                 currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency,
             );
@@ -146,10 +146,10 @@ describe("NominationAPI", () => {
 
     async function optInWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrency) {
         // will fail if vault is already opted in
-        await callWith(sudoInterBtcAPI.nomination, vaultAccount, api => api.optIn(collateralCurrency));
+        await callWith(userInterBtcAPI.nomination, vaultAccount, api => api.optIn(collateralCurrency));
     }
 
     async function optOutWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrency) {
-        await callWith(sudoInterBtcAPI.nomination, vaultAccount, api => api.optOut(collateralCurrency));
+        await callWith(userInterBtcAPI.nomination, vaultAccount, api => api.optOut(collateralCurrency));
     }
 });
