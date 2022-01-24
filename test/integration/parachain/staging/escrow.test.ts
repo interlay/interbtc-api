@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 
 import { createPolkadotAPI } from "../../../../src/factory";
 import { ORACLE_URI, PARACHAIN_ENDPOINT, USER_1_URI, USER_2_URI, VAULT_TO_BAN_URI } from "../../../config";
-import { DefaultEscrowAPI, DefaultFeeAPI, DefaultOracleAPI, DefaultSystemAPI, DefaultTokensAPI, EscrowAPI, FeeAPI, newAccountId, newMonetaryAmount, SystemAPI, TokensAPI } from "../../../../src";
+import { DefaultEscrowAPI, DefaultSystemAPI, DefaultTokensAPI, EscrowAPI, FeeAPI, newAccountId, newMonetaryAmount, SystemAPI, TokensAPI } from "../../../../src";
 import { assert } from "chai";
 import { Interlay } from "@interlay/monetary-js";
 import { KeyringPair } from "@polkadot/keyring/types";
@@ -32,6 +32,16 @@ describe("escrow", () => {
     after(async () => {
         api.disconnect();
     });
+
+    // PRECONDITION: This test must run first, so no tokens are locked.
+    it("Non-negative voting supply", async () => {
+        const totalVotingSupply = await escrowAPI.totalVotingSupply();
+        assert.equal(
+            totalVotingSupply.toString(),
+            "0",
+            "Voting supply balance should be zero before any tokens are locked"
+        );
+    }).timeout(100000);
 
     it("should compute voting balance and total supply", async () => {
         const user1_intrAmount = newMonetaryAmount(1000, Interlay, true);

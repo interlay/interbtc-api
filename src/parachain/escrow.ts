@@ -133,8 +133,14 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
         Rust reference implementation:
         https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L524
     */
-        const heightDiff = new BN(height).sub(escrowPoint.ts);
-        return escrowPoint.bias.sub(escrowPoint.slope.mul(heightDiff));
+        const heightDiff = this.saturatingSub(
+            new BN(height),
+            escrowPoint.ts
+        );
+        return this.saturatingSub(
+            escrowPoint.bias,
+            escrowPoint.slope.mul(heightDiff)
+        );
     }
 
     async totalVotingSupply(
@@ -176,8 +182,11 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
                 d_slope = this.getSlopeChange(slopeChanges, t_i);
             }
 
-            const heightDiff = t_i.sub(lastPoint.ts);
-            lastPoint.bias = lastPoint.bias.sub(lastPoint.slope.mul(heightDiff));
+            const heightDiff = this.saturatingSub(t_i, lastPoint.ts);
+            lastPoint.bias = this.saturatingSub(
+                lastPoint.bias,
+                lastPoint.slope.mul(heightDiff)
+            );
 
             if (t_i.eq(height)) {
                 break;
@@ -208,6 +217,10 @@ export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI
             d_slope = new BN(0);
         }
         return d_slope;
+    }
+
+    private saturatingSub(x: BN, y: BN): BN {
+        return BN.max(x.sub(y), new BN(0));
     }
 
 }
