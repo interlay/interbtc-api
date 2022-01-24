@@ -29,6 +29,7 @@ describe("vaultsAPI", () => {
     let wrappedCurrency: WrappedCurrency;
 
     let interBtcAPI: InterBTCAPI;
+    let oracleInterBtcAPI: InterBTCAPI;
 
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
@@ -45,6 +46,7 @@ describe("vaultsAPI", () => {
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
 
         interBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, undefined, ESPLORA_BASE_PATH);
+        oracleInterBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, oracleAccount, ESPLORA_BASE_PATH);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -104,7 +106,7 @@ describe("vaultsAPI", () => {
         );
     });
 
-    it("should getPremiumRedeemVaults after a price crash", async () => {
+    it.only("should getPremiumRedeemVaults after a price crash", async () => {
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
         const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrencyIdLiteral);
         const issuableAmount = await vault.getIssuableTokens();

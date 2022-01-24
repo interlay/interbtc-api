@@ -27,7 +27,7 @@ import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { CollateralCurrency, currencyIdToMonetaryCurrency, DefaultReplaceAPI, newAccountId, newVaultId, ReplaceAPI, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
 
-describe("replace", () => {
+describe.only("replace", () => {
     let api: ApiPromise;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -65,7 +65,7 @@ describe("replace", () => {
         api.disconnect();
     });
 
-    describe("request", () => {
+    describe.only("request", () => {
         it("should request vault replacement", async () => {
             const issueAmount = InterBtcAmount.from.BTC(0.00005);
             const replaceAmount = InterBtcAmount.from.BTC(0.00004);

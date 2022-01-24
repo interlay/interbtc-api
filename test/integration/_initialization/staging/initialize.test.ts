@@ -46,7 +46,7 @@ import {
 } from "../../../config";
 import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
 
-describe("Initialize parachain state", () => {
+describe.only("Initialize parachain state", () => {
     let api: ApiPromise;
     let userInterBtcAPI: InterBTCAPI;
     let sudoInterBtcAPI: InterBTCAPI;

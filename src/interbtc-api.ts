@@ -88,7 +88,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.tokens = new DefaultTokensAPI(api, _account);
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency, _account);
         this.fee = new DefaultFeeAPI(api, this.oracle);
-        this.rewards = new DefaultRewardsAPI(api, wrappedCurrency);
+        this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, _account);
 
         this.vaults = new DefaultVaultsAPI(
             api,

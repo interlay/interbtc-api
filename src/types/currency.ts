@@ -15,9 +15,12 @@ import {
     KBtcAmount,
     Kintsugi,
     Interlay,
+    VoteInterlay,
+    VoteKintsugi
 } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
-import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
+import { EscrowPoint, InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
+import BN from "bn.js";
 import { newCurrencyId } from "../utils";
 
 export enum CurrencyIdLiteral {
@@ -53,6 +56,18 @@ export type WrappedCurrency = typeof WrappedCurrency[number];
 
 export const WrappedAmount = [InterBtcAmount, KBtcAmount];
 export type WrappedAmount = typeof WrappedAmount[number];
+
+export const GovernanceCurrency = [Interlay, Kintsugi];
+export type GovernanceCurrency = typeof GovernanceCurrency[number];
+
+export const GovernanceUnit = [InterlayUnit, KintsugiUnit];
+export type GovernanceUnit = typeof GovernanceUnit[number];
+
+export const VotingCurrency = [VoteInterlay, VoteKintsugi];
+export type VotingCurrency = typeof VotingCurrency[number];
+
+export const VoteUnit = GovernanceUnit;
+export type VoteUnit = GovernanceUnit;
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     switch (ticker) {
@@ -117,4 +132,18 @@ export function currencyIdToLiteral(currencyId: InterbtcPrimitivesCurrencyId): C
 export function tickerToMonetaryCurrency<U extends CurrencyUnit>(api: ApiPromise, ticker: string): Currency<U> {
     const currencyIdLiteral = tickerToCurrencyIdLiteral(ticker);
     return currencyIdToMonetaryCurrency(newCurrencyId(api, currencyIdLiteral));
+}
+
+export type RWEscrowPoint = {
+    bias: BN,
+    slope: BN,
+    ts: BN
+}
+
+export function parseEscrowPoint(e: EscrowPoint): RWEscrowPoint {
+    return {
+        bias: e.bias.toBn(),
+        slope: e.slope.toBn(),
+        ts: e.ts.toBn()
+    };
 }

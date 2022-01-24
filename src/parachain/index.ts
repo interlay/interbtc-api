@@ -11,6 +11,7 @@ export { ReplaceAPI, DefaultReplaceAPI } from "./replace";
 export { FeeAPI, DefaultFeeAPI } from "./fee";
 export { RewardsAPI, DefaultRewardsAPI } from "./rewards";
 export { NominationAPI, DefaultNominationAPI } from "./nomination";
+export { EscrowAPI, DefaultEscrowAPI } from "./escrow";
 export * from "./transaction";
 
 // Hacky way of forcing the resolution of these types in test files

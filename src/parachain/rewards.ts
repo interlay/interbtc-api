@@ -2,6 +2,8 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
+import { AddressOrPair } from "@polkadot/api/types";
+
 import {
     computeLazyDistribution,
     decodeFixedPointType,
@@ -9,18 +11,19 @@ import {
     newMonetaryAmount,
     newVaultId,
 } from "../utils";
+import { InterbtcPrimitivesVaultId } from "../parachain";
+import { DefaultTransactionAPI } from "../parachain/transaction";
 import {
     tickerToCurrencyIdLiteral,
     CurrencyIdLiteral,
     CollateralUnit,
     CollateralCurrency,
     CollateralIdLiteral,
-    currencyIdToLiteral,
     currencyIdToMonetaryCurrency,
     WrappedCurrency,
     WrappedIdLiteral,
+    currencyIdToLiteral,
 } from "../types";
-import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 export interface RewardsAPI {
     /**
@@ -120,13 +123,39 @@ export interface RewardsAPI {
      * @returns The reward per token, as a Big object
      */
     getRewardsPoolRewardPerToken(currencyId: CurrencyIdLiteral): Promise<Big>;
+    /**
+     * @param vaultId VaultId object
+     * @param nonce Staking pool nonce
+     * @remarks Withdraw all rewards from the current account in the `vaultId` staking pool.
+     */
+    withdrawRewards(
+        vaultId: InterbtcPrimitivesVaultId,
+        nonce?: number,
+    ): Promise<void>;
 }
 
-export class DefaultRewardsAPI implements RewardsAPI {
+export class DefaultRewardsAPI extends DefaultTransactionAPI implements RewardsAPI {
     constructor(
         public api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
-    ) {}
+        account?: AddressOrPair
+    ) {
+        super(api, account);
+    }
+
+    async withdrawRewards(
+        vaultId: InterbtcPrimitivesVaultId,
+        nonce?: number,
+    ): Promise<void> {
+        const definedNonce = nonce
+            ? nonce
+            : await this.getStakingPoolNonce(
+                currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral,
+                vaultId.accountId
+            );
+        const tx = this.api.tx.fee.withdrawRewards(vaultId, definedNonce.toString());
+        await this.sendLogged(tx, this.api.events.vaultStaking.WithdrawReward);
+    }
 
     async computeRewardInStakingPool(
         vaultAccountId: AccountId,

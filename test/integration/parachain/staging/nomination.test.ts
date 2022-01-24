@@ -17,7 +17,6 @@ describe("NominationAPI", () => {
     let sudoInterBtcAPI: InterBTCAPI;
     let sudoAccount: KeyringPair;
     let userAccount: KeyringPair;
-    let feeAPI: FeeAPI;
     let vault_1: KeyringPair;
     let vault_1_id: InterbtcPrimitivesVaultId;
     let bitcoinCoreClient: BitcoinCoreClient;
@@ -76,7 +75,7 @@ describe("NominationAPI", () => {
 
     it("Should nominate to and withdraw from a vault", async () => {
         await optInWithAccount(vault_1, currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency);
-        const issueFee = await feeAPI.getIssueFee();
+        const issueFee = await userInterBtcAPI.fee.getIssueFee();
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral;
         const vault = await userInterBtcAPI.vaults.get(vault_1_id.accountId, collateralCurrencyIdLiteral);
         const collateralCurrency = currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>;
@@ -124,9 +123,12 @@ describe("NominationAPI", () => {
                 "Nominator should receive non-zero wrapped tokens"
             );
 
-            // Withdraw
-            await sudoInterBtcAPI.nomination.withdrawCollateral(vault_1_id.accountId, nominatorDeposit);
-            const nominatorsAfterWithdrawal = await sudoInterBtcAPI.nomination.list();
+            // Withdraw Rewards
+            await userInterBtcAPI.rewards.withdrawRewards(vault_1_id);
+            // Withdraw Collateral
+            await userInterBtcAPI.nomination.withdrawCollateral(vault_1_id.accountId, nominatorDeposit);
+
+            const nominatorsAfterWithdrawal = await userInterBtcAPI.nomination.list();
             // The vault always has a "nomination" to itself
             assert.equal(1, nominatorsAfterWithdrawal.length);
             const totalNomination = await sudoInterBtcAPI.nomination.getTotalNomination(
