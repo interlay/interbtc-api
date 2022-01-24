@@ -5,7 +5,7 @@ import { ApiPromise } from "@polkadot/api";
 import BN from "bn.js";
 import { ITuple, Codec } from "@polkadot/types/types";
 
-import { stripHexPrefix } from "..";
+import { stripHexPrefix } from "./encoding";
 import { TransactionAPI } from "../parachain";
 
 export function getStorageKey(moduleName: string, storageItemName: string): string {

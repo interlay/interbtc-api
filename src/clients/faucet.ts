@@ -4,6 +4,9 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import { JsonRpcClient } from "./client";
+import { CollateralIdLiteral } from "../types";
+import { newCurrencyId } from "../utils";
+import { ApiPromise } from "@polkadot/api";
 
 /**
  * @category Clients
@@ -15,7 +18,7 @@ export class FaucetClient extends JsonRpcClient<void> {
         FundAccountJsonRpcRequest: Constructor<FundAccountJsonRpcRequest>;
     };
 
-    constructor(url: string) {
+    constructor(private api: ApiPromise, url: string) {
         super(url);
         this.registry = new TypeRegistry();
         this.registry.register(getAPITypes());
@@ -25,9 +28,11 @@ export class FaucetClient extends JsonRpcClient<void> {
         };
     }
 
-    async fundAccount(account: AccountId): Promise<void> {
+    async fundAccount(account: AccountId, currencyIdLiteral: CollateralIdLiteral): Promise<void> {
+        const currencyId = newCurrencyId(this.api, currencyIdLiteral);
         const request = new this.constr["FundAccountJsonRpcRequest"](this.registry, {
             account_id: account,
+            currency_id: currencyId,
         });
         await this.post("fund_account", [request.toHex()]);
     }

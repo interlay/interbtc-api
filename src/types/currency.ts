@@ -15,17 +15,29 @@ import {
     KBtcAmount,
     Kintsugi,
     Interlay,
+    VoteInterlay,
+    VoteKintsugi
 } from "@interlay/monetary-js";
-import { CurrencyId } from "../interfaces";
+import { ApiPromise } from "@polkadot/api";
+import { EscrowPoint, InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
+import BN from "bn.js";
+import { newCurrencyId } from "../utils";
 
 export enum CurrencyIdLiteral {
     DOT = "DOT",
-    KSM = "KSM",
     INTERBTC = "INTERBTC",
+    INTR = "INTR",
+    KSM = "KSM",
     KBTC = "KBTC",
     KINT = "KINT",
-    INTR = "INTR",
 }
+
+export type WrappedIdLiteral = CurrencyIdLiteral.INTERBTC | CurrencyIdLiteral.KBTC;
+export type CollateralIdLiteral =
+    | CurrencyIdLiteral.DOT
+    | CurrencyIdLiteral.KSM
+    | CurrencyIdLiteral.KINT
+    | CurrencyIdLiteral.INTR;
 
 export const CollateralAmount = [PolkadotAmount, KusamaAmount];
 export type CollateralAmount = typeof CollateralAmount[number];
@@ -44,6 +56,18 @@ export type WrappedCurrency = typeof WrappedCurrency[number];
 
 export const WrappedAmount = [InterBtcAmount, KBtcAmount];
 export type WrappedAmount = typeof WrappedAmount[number];
+
+export const GovernanceCurrency = [Interlay, Kintsugi];
+export type GovernanceCurrency = typeof GovernanceCurrency[number];
+
+export const GovernanceUnit = [InterlayUnit, KintsugiUnit];
+export type GovernanceUnit = typeof GovernanceUnit[number];
+
+export const VotingCurrency = [VoteInterlay, VoteKintsugi];
+export type VotingCurrency = typeof VotingCurrency[number];
+
+export const VoteUnit = GovernanceUnit;
+export type VoteUnit = GovernanceUnit;
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     switch (ticker) {
@@ -69,19 +93,48 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
-export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: CurrencyId): Currency<U> {
-    if (currencyId.isInterbtc) {
+export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: InterbtcPrimitivesCurrencyId): Currency<U> {
+    // The currencyId is always a token, since it is just a tuple struct
+    if (!currencyId.isToken) {
+        throw new Error("The currency ID must be a token");
+    }
+    const token = currencyId.asToken;
+    if (token.isInterbtc) {
         return InterBtc as unknown as Currency<U>;
-    } else if (currencyId.isDot) {
+    } else if (token.isDot) {
         return Polkadot as unknown as Currency<U>;
-    } else if (currencyId.isKsm) {
+    } else if (token.isKsm) {
         return Kusama as unknown as Currency<U>;
-    } else if (currencyId.isKbtc) {
+    } else if (token.isKbtc) {
         return KBtc as unknown as Currency<U>;
-    } else if (currencyId.isKint) {
+    } else if (token.isKint) {
         return Kintsugi as unknown as Currency<U>;
-    } else if (currencyId.isIntr) {
+    } else if (token.isIntr) {
         return Interlay as unknown as Currency<U>;
     }
     throw new Error("No CurrencyId entry for provided ticker");
+}
+
+export function currencyIdToLiteral(currencyId: InterbtcPrimitivesCurrencyId): CurrencyIdLiteral {
+    const monetaryCurrency = currencyIdToMonetaryCurrency(currencyId);
+    return tickerToCurrencyIdLiteral(monetaryCurrency.ticker);
+}
+
+export function tickerToMonetaryCurrency<U extends CurrencyUnit>(api: ApiPromise, ticker: string): Currency<U> {
+    const currencyIdLiteral = tickerToCurrencyIdLiteral(ticker);
+    return currencyIdToMonetaryCurrency(newCurrencyId(api, currencyIdLiteral));
+}
+
+export type RWEscrowPoint = {
+    bias: BN,
+    slope: BN,
+    ts: BN
+}
+
+export function parseEscrowPoint(e: EscrowPoint): RWEscrowPoint {
+    return {
+        bias: e.bias.toBn(),
+        slope: e.slope.toBn(),
+        ts: e.ts.toBn()
+    };
 }

@@ -1,4 +1,4 @@
-import { encodeBtcAddress, decodeBtcAddress, btcAddressFromParams } from "../../../src/utils";
+import { btcAddressFromParams, decodeBtcAddress, encodeBtcAddress } from "../../../src/utils";
 import { assert } from "../../chai";
 import { TypeRegistry } from "@polkadot/types";
 import { createAPIRegistry } from "../../../src/factory";
@@ -22,13 +22,5 @@ describe("Bitcoin", () => {
         assert.deepEqual(decodeBtcAddress("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", bitcoinjs.networks.bitcoin), {
             p2wpkhv0: "0xe8df018c7e326cc253faac7e46cdc51e68542c42",
         });
-    });
-
-    it("should correctly decode & encode address", () => {
-        const p2wpkh = "bcrt1qcweth0ufkhqqq2xv8z6vlrd0md4pcygqq5g6h7";
-        const params = decodeBtcAddress(p2wpkh, bitcoinjs.networks.regtest);
-        const btcAddress = btcAddressFromParams(registry, params);
-        const address = encodeBtcAddress(btcAddress, bitcoinjs.networks.regtest);
-        assert.equal(address, p2wpkh, "addresses should be the same");
     });
 });

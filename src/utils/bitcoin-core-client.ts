@@ -2,7 +2,7 @@
 
 import { BitcoinUnit, Bitcoin, MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { WrappedCurrency } from "..";
+import { WrappedCurrency } from "../types";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
@@ -67,7 +67,7 @@ export class BitcoinCoreClient {
         if (!this.client) {
             throw new Error("Client needs to be initialized before usage");
         }
-        console.log(`Broadcasting tx: ${amount.toString(Bitcoin.base)} BTC`);
+        console.log(`Broadcasting tx: ${amount.toString(Bitcoin.base)} BTC to ${recipient}`);
         const raw = await this.client.command(
             "createrawtransaction",
             [],
@@ -93,7 +93,7 @@ export class BitcoinCoreClient {
         return await this.client.command("getbalance");
     }
 
-    async sendToAddress(address: string, amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<void> {
+    async sendToAddress(address: string, amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<string> {
         return await this.client.command("sendtoaddress", address, amount.toString(Bitcoin.units.BTC));
     }
 

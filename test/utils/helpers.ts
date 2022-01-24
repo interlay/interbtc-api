@@ -27,11 +27,34 @@ export async function wait_success<R>(call: () => Promise<R>): Promise<R> {
     }
 }
 
+export async function callWithExchangeRate<C extends CollateralUnit>(
+    oracleAPI: OracleAPI,
+    exchangeRate: ExchangeRate<Bitcoin, BitcoinUnit, Currency<C>, C>,
+    fn: () => Promise<void>,
+): Promise<void> {
+    const initialExchangeRate = await oracleAPI.getExchangeRate(exchangeRate.counter);
+    await oracleAPI.setExchangeRate(exchangeRate);
+    await oracleAPI.waitForExchangeRateUpdate(exchangeRate);
+    try {
+        await fn();
+    } catch (error) {
+        console.log(`Error: ${(error as Error).toString()}`);
+    }
+    await oracleAPI.setExchangeRate(initialExchangeRate);
+    await oracleAPI.waitForExchangeRateUpdate(initialExchangeRate);
+}
+
 export async function callWith<T extends TransactionAPI, R>(api: T, key: KeyringPair, call: (api: T) => Promise<R>): Promise<R> {
     const prevKey = api.getAccount();
     api.setAccount(key);
-    const result = await call(api);
-    if (prevKey) api.setAccount(prevKey);
+    let result: R;
+    try {
+        result = await call(api);
+    } catch (error) {
+        throw error;
+    } finally {
+        if (prevKey) api.setAccount(prevKey);
+    }
     return result;
 }
 

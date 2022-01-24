@@ -1,7 +1,8 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { Header, BlockHash } from "@polkadot/types/interfaces";
-import { StatusCode } from "../interfaces/default";
+import { SecurityStatusCode } from "@polkadot/types/lookup";
+
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
@@ -27,7 +28,7 @@ export interface SystemAPI extends TransactionAPI {
     /**
      * @returns The parachain status code object.
      */
-    getStatusCode(): Promise<StatusCode>;
+    getStatusCode(): Promise<SecurityStatusCode>;
     /**
      * @remarks Upgrades runtime using `sudoUncheckedWeight`
      * @param code Hex-encoded wasm blob
@@ -57,7 +58,7 @@ export class DefaultSystemAPI extends DefaultTransactionAPI implements SystemAPI
         return unsub;
     }
 
-    async getStatusCode(): Promise<StatusCode> {
+    async getStatusCode(): Promise<SecurityStatusCode> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return await this.api.query.security.parachainStatus.at(head);
     }

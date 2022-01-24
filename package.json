@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "1.3.0",
+  "version": "1.5.13",
   "description": "JavaScript library to interact with interBTC and kBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
@@ -14,7 +14,7 @@
     "kBTC"
   ],
   "scripts": {
-    "build": "run-s generate:* build:*",
+    "build": "run-s generate:defs generate:meta build:tsc",
     "build:tsc": "tsc -p tsconfig.json",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
@@ -24,7 +24,7 @@
     "ci:test:release": "run-s build test:integration:release",
     "ci:test-with-coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" yarn ci:test",
     "docs": "./generate_docs",
-    "generate:defs": "ts-node --skip-project node_modules/.bin/polkadot-types-from-defs --package @interlay/interbtc/interfaces --input ./src/interfaces",
+    "generate:defs": "ts-node --skip-project node_modules/.bin/polkadot-types-from-defs --package @interlay/interbtc/interfaces --input ./src/interfaces --endpoint ./src/json/parachain.json",
     "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/interbtc/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "initialize": "run-s build && ts-node src/utils/setup --initialize",
     "test": "run-s build test:*",
@@ -42,12 +42,11 @@
   "engineStrict": true,
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
-    "@interlay/interbtc-types": "0.12.5",
-    "@interlay/monetary-js": "0.5.0",
-    "@polkadot/api": "5.3.2",
-    "@polkadot/keyring": "6.6.2-6",
-    "big.js": "6.1.1",
+    "@interlay/interbtc-types": "1.5.10",
+    "@interlay/monetary-js": "0.5.3",
+    "@polkadot/api": "6.9.2",
     "@types/big.js": "6.1.2",
+    "big.js": "6.1.1",
     "bitcoin-core": "^3.0.0",
     "bitcoinjs-lib": "^5.2.0",
     "bn.js": "^5.2.0",
@@ -58,7 +57,7 @@
     "ts-mock-imports": "^1.3.0"
   },
   "devDependencies": {
-    "@polkadot/typegen": "5.3.2",
+    "@polkadot/typegen": "6.9.2",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
     "@types/mocha": "^8.0.3",
@@ -71,14 +70,14 @@
     "eslint": "^7.8.0",
     "eslint-config-prettier": "^6.11.0",
     "husky": "^5.1.1",
-    "mocha": "^8.1.3",
+    "mocha": "9.1.3",
     "nock": "^13.0.4",
     "npm-run-all": "^4.1.5",
     "nyc": "^15.1.0",
     "prettier": "^2.0.5",
-    "ts-node": "^9.0.0",
-    "typedoc": "^0.21.0",
-    "typedoc-plugin-markdown": "^3.10.2",
+    "ts-node": "10.4.0",
+    "typedoc": "^0.22.9",
+    "typedoc-plugin-markdown": "^3.11.6",
     "typescript": "^4.3.2"
   },
   "files": [

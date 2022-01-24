@@ -3,8 +3,13 @@ import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
-import { decodeFixedPointType } from "..";
-import { CollateralUnit, WrappedCurrency } from "../types";
+import { decodeFixedPointType } from "../utils/encoding";
+import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit, WrappedCurrency } from "../types";
+
+export enum GriefingCollateralType {
+    Issue,
+    Replace
+}
 
 /**
  * @category InterBTC Bridge
@@ -13,14 +18,14 @@ export interface FeeAPI {
     /**
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
-     * @param griefingCollateralRate
+     * @param collateralCurrency Currency for determining the griefing collateral 
+     * @param type Type of griefing collateral to compute (e.g. for issuing, replacing)
      * @returns The griefing collateral
      */
-    getGriefingCollateral<C extends CollateralUnit>(
+    getGriefingCollateral(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        griefingCollateralRate: Big,
-        collateralCurrency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>>;
+        type: GriefingCollateralType
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>
     /**
      * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
      * @param lockedCollateral Collateral value representing the value locked to gain yield.
@@ -53,13 +58,28 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
     }
 
-    async getGriefingCollateral<C extends CollateralUnit>(
+    async getGriefingCollateral(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        griefingCollateralRate: Big,
-        collateralCurrency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>> {
-        const collateralAmount = await this.oracleAPI.convertWrappedToCollateral(amount, collateralCurrency);
-        return collateralAmount.mul(griefingCollateralRate);
+        type: GriefingCollateralType
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
+        let ratePromise;
+        switch (type) {
+            case(GriefingCollateralType.Issue): {
+                ratePromise = this.getIssueGriefingCollateralRate();
+                break;
+            }
+            case(GriefingCollateralType.Replace): {
+                ratePromise = this.getReplaceGriefingCollateralRate();
+                break;
+            }
+        }
+
+        const nativeCurrency = currencyIdToMonetaryCurrency(this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId);
+        const [griefingCollateralRate, griefingAmount] = await Promise.all([
+            ratePromise,
+            this.oracleAPI.convertWrappedToCurrency(amount, nativeCurrency)
+        ]);
+        return griefingAmount.mul(griefingCollateralRate);
     }
 
     async getIssueGriefingCollateralRate(): Promise<Big> {

@@ -1,17 +1,17 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { InterBtcAmount, BitcoinUnit, Polkadot, InterBtc } from "@interlay/monetary-js";
+import { InterBtcAmount, BitcoinUnit, Polkadot, Kusama } from "@interlay/monetary-js";
+import { currencyIdToLiteral, InterbtcPrimitivesVaultId, IssueStatus, newAccountId, stripHexPrefix } from "../../../../src/index";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
-import { newAccountId } from "../../../../src/utils";
 import { assert } from "../../../chai";
-import { USER_1_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI } from "../../../config";
+import { USER_1_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, NATIVE_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { IssueStatus, stripHexPrefix } from "../../../../src";
+import { CollateralCurrency, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
 
 describe("issue", () => {
@@ -23,15 +23,24 @@ describe("issue", () => {
 
     let userAccount: KeyringPair;
     let vault_1: KeyringPair;
+    let vault_1_id: InterbtcPrimitivesVaultId;
     let vault_2: KeyringPair;
+    let vault_2_id: InterbtcPrimitivesVaultId;
     let vault_to_ban: KeyringPair;
+
+    let collateralCurrency: CollateralCurrency;
+    let wrappedCurrency: WrappedCurrency;
 
     before(async function () {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
+        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
+        wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         vault_1 = keyring.addFromUri(VAULT_1_URI);
+        vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
+        vault_2_id = newVaultId(api, vault_2.address, Kusama, wrappedCurrency);
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
 
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
@@ -43,7 +52,7 @@ describe("issue", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc, userAccount);
+        issueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
     });
 
     after(async () => {
@@ -74,52 +83,43 @@ describe("issue", () => {
         );
     });
 
-    it("should map existing requests for account", async () => {
-        const userAccountId = api.createType("AccountId", userAccount.address);
-        const issueRequests = await issueAPI.mapForUser(userAccountId);
-        assert.isAtLeast(
-            issueRequests.size,
-            1,
-            "Should have at least 1 issue request"
-        );
-    });
-
     it("request should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
+        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
         const amount = InterBtcAmount.from.BTC(0.0000001);
         await assert.isRejected(tmpIssueAPI.request(amount));
     });
 
     it("should batch request across several vaults", async () => {
         const requestLimits = await issueAPI.getRequestLimits();
-
         const amount = requestLimits.singleVaultMaxIssuable.mul(1.1);
         const issueRequests = await issueAPI.request(amount);
         assert.equal(
             issueRequests.length,
-            2,
+            3,
             "Created wrong amount of requests, vaults have insufficient collateral"
         );
         const issuedAmount1 = issueRequests[0].wrappedAmount;
         const issueFee1 = issueRequests[0].bridgeFee;
         const issuedAmount2 = issueRequests[1].wrappedAmount;
         const issueFee2 = issueRequests[1].bridgeFee;
+        const issuedAmount3 = issueRequests[2].wrappedAmount;
+        const issueFee3 = issueRequests[2].bridgeFee;
         assert.equal(
-            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BitcoinUnit.BTC).round(5).toString(),
+            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).add(issuedAmount3).add(issueFee3).toBig(BitcoinUnit.BTC).round(5).toString(),
             amount.toBig(BitcoinUnit.BTC).round(5).toString(),
             "Issued amount is not equal to requested amount"
         );
     });
 
     it("execute should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, InterBtc);
+        const tmpIssueAPI = new DefaultIssueAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency);
         await assert.isRejected(tmpIssueAPI.execute("", ""));
     });
 
     it("should fail to request a value finer than 1 Satoshi", async () => {
         const amount = InterBtcAmount.from.BTC("0.00000121");
         await assert.isRejected(
-            issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, amount, vault_1.address, true, false)
+            issueSingle(api, electrsAPI, bitcoinCoreClient, userAccount, amount, collateralCurrency, vault_1_id, true, false)
         );
     });
 
@@ -135,7 +135,8 @@ describe("issue", () => {
             bitcoinCoreClient,
             userAccount,
             amount,
-            vault_1.address,
+            collateralCurrency,
+            vault_1_id,
             true,
             false
         );
@@ -158,7 +159,8 @@ describe("issue", () => {
             bitcoinCoreClient,
             userAccount,
             amount,
-            vault_2.address,
+            collateralCurrency,
+            vault_2_id,
             false,
             false
         );
@@ -180,40 +182,36 @@ describe("issue", () => {
         assert.equal(feePercentage.toString(), "0.005");
     });
 
-    it("should getGriefingCollateral", async () => {
-        const amountBtc = InterBtcAmount.from.BTC(0.001);
-        const griefingCollateral = await issueAPI.getGriefingCollateral(amountBtc, Polkadot);
-        assert.equal(griefingCollateral.toBig(Polkadot.units.DOT).round(5, 0).toString(), "0.00019");
-    });
-
     it("should getRequestLimits", async () => {
         const requestLimits = await issueAPI.getRequestLimits();
-        assert.isTrue(requestLimits.singleVaultMaxIssuable.gt(InterBtcAmount.from.BTC(100)), "singleVaultMaxIssuable is not greater than 100");
+        assert.isTrue(requestLimits.singleVaultMaxIssuable.gt(InterBtcAmount.from.BTC(0.001)), "singleVaultMaxIssuable is not greater than 100");
         assert.isTrue(
             requestLimits.totalMaxIssuable.gt(requestLimits.singleVaultMaxIssuable),
             "totalMaxIssuable is not greater than singleVaultMaxIssuable"
         );
     });
 
+    // TODO: Unskip after `subscribeToIssueExpiry` is reimplemented
     // This test should be kept at the end of the file as it will ban the vault used for issuing
-    it("should cancel an issue request", async () => {
+    it.skip("should cancel an issue request", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const initialIssuePeriod = await issueAPI.getIssuePeriod();
             await sudo(issueAPI, (api) => api.setIssuePeriod(0));
             try {
                 // request issue
                 const amount = InterBtcAmount.from.BTC(0.0000121);
-                const requestResults = await issueAPI.request(amount, newAccountId(api, vault_2.address));
+                const vaultCollateralIdLiteral = currencyIdToLiteral(vault_2_id.currencies.collateral);
+                const requestResults = await issueAPI.request(amount, newAccountId(api, vault_2.address), vaultCollateralIdLiteral);
                 assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                 const requestResult = requestResults[0];
 
                 // Wait for issue expiry callback
                 await new Promise<void>((resolve, _) => {
-                    issueAPI.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
-                        if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
-                            resolve();
-                        }
-                    });
+                    // issueAPI.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
+                    //     if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
+                    //         resolve();
+                    //     }
+                    // });
                 });
     
                 await issueAPI.cancel(requestResult.id);
@@ -231,14 +229,5 @@ describe("issue", () => {
             }
         });
     }).timeout(5 * 60000);
-
-    it("should list issue request by a vault", async () => {
-        const vaultToBanAddress = vault_to_ban.address;
-        const vaultToBanId = api.createType("AccountId", vaultToBanAddress);
-        const issueRequests = await issueAPI.mapIssueRequests(vaultToBanId);
-        issueRequests.forEach((request) => {
-            assert.deepEqual(request.vaultParachainAddress, vaultToBanAddress);
-        });
-    });
 
 });
