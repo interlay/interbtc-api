@@ -13,7 +13,6 @@ import {
     CollateralUnit,
     CurrencyIdLiteral,
     newVaultId,
-    CollateralCurrency,
     WrappedCurrency,
     tickerToMonetaryCurrency,
     DefaultInterBTCAPI,

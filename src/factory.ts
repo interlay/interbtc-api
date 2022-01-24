@@ -9,7 +9,7 @@ import { InterBtc } from "@interlay/monetary-js";
 
 import * as definitions from "./interfaces/definitions";
 import { InterBTCAPI, DefaultInterBTCAPI } from "./interbtc-api";
-import { BitcoinNetwork, CollateralCurrency, WrappedCurrency } from "./types";
+import { BitcoinNetwork, WrappedCurrency } from "./types";
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
     if (/https?:\/\//.exec(endpoint)) {

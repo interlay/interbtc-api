@@ -4,7 +4,7 @@ import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import { MonetaryAmount, Currency, BitcoinUnit } from "@interlay/monetary-js";
-import { Bytes, Option } from "@polkadot/types";
+import { Option } from "@polkadot/types";
 import { VaultRegistryVaultStatus, VaultRegistrySystemVault, InterbtcPrimitivesVaultId, VaultRegistryVault } from "@polkadot/types/lookup";
 
 import {
@@ -17,12 +17,11 @@ import {
     newVaultId,
     newVaultCurrencyPair,
 } from "../utils";
-import { TokensAPI, DefaultTokensAPI } from "./tokens";
-import { DefaultOracleAPI, OracleAPI } from "./oracle";
-import { DefaultFeeAPI, FeeAPI } from "./fee";
+import { TokensAPI } from "./tokens";
+import { OracleAPI } from "./oracle";
+import { FeeAPI } from "./fee";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
-import { DefaultIssueAPI } from "./issue";
 import {
     CollateralUnit,
     tickerToCurrencyIdLiteral,
@@ -39,8 +38,9 @@ import {
     currencyIdToLiteral,
     tickerToMonetaryCurrency,
     currencyIdLiteralToMonetaryCurrency,
+    TxFetchingDetails,
 } from "../types";
-import { DefaultRewardsAPI, RewardsAPI } from "./rewards";
+import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
 
 /**
@@ -244,18 +244,11 @@ export interface VaultsAPI extends TransactionAPI {
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
      * @param vaultId The account of the vault to check.
-     * @param electrsAPI API used to fetch the merkleProof and rawTx,
-     * if these paramters are not provided
-     * @param btcTxId The hash of the transaction
-     * @param merkleProof The proof of tx inclusion.
-     * @param rawTx The raw Bitcoin transaction.
+     * @param txFetcher TxFetchingDetails object
      */
-    reportVaultTheft(
+     reportVaultTheft(
         vaultAccountId: AccountId,
-        electrsAPI?: ElectrsAPI,
-        btcTxId?: string,
-        merkleProof?: Bytes,
-        rawTx?: Bytes,
+        txFetchingDetails: TxFetchingDetails
     ): Promise<void>;
     /**
      * @returns The wrapped currency issued by the vaults
@@ -293,6 +286,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     constructor(
         api: ApiPromise,
         private btcNetwork: Network,
+        private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private tokensAPI: TokensAPI,
         private oracleAPI: OracleAPI,
@@ -837,13 +831,10 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async reportVaultTheft(
         vaultAccountId: AccountId,
-        electrsAPI?: ElectrsAPI,
-        btcTxId?: string,
-        merkleProof?: Bytes,
-        rawTx?: Bytes,
+        txFetchingDetails: TxFetchingDetails
     ): Promise<void> {
-        [merkleProof, rawTx] = await getTxProof(electrsAPI, btcTxId, merkleProof, rawTx);
-        const tx = this.api.tx.relay.reportVaultTheft(vaultAccountId, merkleProof, rawTx);
+        const txInclusionDetails = await getTxProof(this.electrsAPI, txFetchingDetails);
+        const tx = this.api.tx.relay.reportVaultTheft(vaultAccountId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
         await this.sendLogged(tx, this.api.events.relay.VaultTheft);
     }
 }

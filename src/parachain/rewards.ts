@@ -2,7 +2,6 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
-import { Network } from "bitcoinjs-lib";
 import {
     computeLazyDistribution,
     decodeFixedPointType,

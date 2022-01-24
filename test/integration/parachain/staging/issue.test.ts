@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { InterBtcAmount, BitcoinUnit, Polkadot, Kusama } from "@interlay/monetary-js";
-import { currencyIdToLiteral, DefaultInterBTCAPI, InterBTCAPI, InterbtcPrimitivesVaultId, IssueStatus, newAccountId } from "../../../../src/index";
+import { currencyIdToLiteral, DefaultElectrsAPI, DefaultInterBTCAPI, ElectrsAPI, InterBTCAPI, InterbtcPrimitivesVaultId, IssueStatus, newAccountId } from "../../../../src/index";
 
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createPolkadotAPI } from "../../../../src/factory";
@@ -19,6 +19,7 @@ describe("issue", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
     let userInterBtcAPI: InterBTCAPI;
+    let electrsAPI: ElectrsAPI;
 
     let userAccount: KeyringPair;
     let vault_1: KeyringPair;
@@ -39,6 +40,7 @@ describe("issue", () => {
         vault_2 = keyring.addFromUri(VAULT_2_URI);
         vault_2_id = newVaultId(api, vault_2.address, Kusama, wrappedCurrency);
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
+        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -83,6 +85,7 @@ describe("issue", () => {
         const tmpIssueAPI = new DefaultIssueAPI(
             api,
             bitcoinjs.networks.regtest,
+            electrsAPI,
             wrappedCurrency,
             userInterBtcAPI.fee,
             userInterBtcAPI.vaults
@@ -117,11 +120,12 @@ describe("issue", () => {
         const tmpIssueAPI = new DefaultIssueAPI(
             api,
             bitcoinjs.networks.regtest,
+            electrsAPI,
             wrappedCurrency,
             userInterBtcAPI.fee,
             userInterBtcAPI.vaults
         );
-        await assert.isRejected(tmpIssueAPI.execute("", ""));
+        await assert.isRejected(tmpIssueAPI.execute("", { btcTxId: "" }));
     });
 
     it("should fail to request a value finer than 1 Satoshi", async () => {

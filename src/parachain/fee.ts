@@ -1,4 +1,4 @@
-import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import { OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";

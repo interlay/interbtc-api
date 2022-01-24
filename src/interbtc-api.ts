@@ -86,13 +86,14 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.electrsAPI = new DefaultElectrsAPI(esploraNetwork || bitcoinNetwork);
 
         this.tokens = new DefaultTokensAPI(api, _account);
-        this.oracle = new DefaultOracleAPI(api, wrappedCurrency);
+        this.oracle = new DefaultOracleAPI(api, wrappedCurrency, _account);
         this.fee = new DefaultFeeAPI(api, this.oracle);
         this.rewards = new DefaultRewardsAPI(api, wrappedCurrency);
 
         this.vaults = new DefaultVaultsAPI(
             api,
             btcNetwork,
+            this.electrsAPI,
             wrappedCurrency,
             this.tokens,
             this.oracle,
@@ -108,18 +109,19 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         this.replace = new DefaultReplaceAPI(
             api,
             btcNetwork,
+            this.electrsAPI,
             wrappedCurrency,
             this.fee,
             this.vaults,
             _account
         );
-        this.issue = new DefaultIssueAPI(api, btcNetwork, wrappedCurrency, this.fee, this.vaults, _account);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.fee, this.vaults, _account);
         this.redeem = new DefaultRedeemAPI(
             api,
             btcNetwork,
+            this.electrsAPI,
             wrappedCurrency,
             this.vaults,
-            this.tokens,
             this.oracle,
             _account
         );

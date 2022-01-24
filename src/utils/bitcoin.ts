@@ -2,13 +2,13 @@ import * as bitcoinjs from "bitcoinjs-lib";
 export { bitcoinjs as bitcoin };
 
 import { H160 } from "@polkadot/types/interfaces";
-import { Bytes } from "@polkadot/types";
 import { BitcoinAddress } from "@polkadot/types/lookup";
 import { TypeRegistry } from "@polkadot/types";
 
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
 import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "../utils";
+import { isTxInclusionDetails, TxFetchingDetails, TxInclusionDetails } from "../types";
 
 export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
@@ -83,21 +83,17 @@ export function decodeBtcAddress(
 }
 
 export async function getTxProof(
-    electrsAPI?: ElectrsAPI,
-    btcTxId?: string,
-    merkleProof?: Bytes,
-    rawTx?: Bytes
-): Promise<[Bytes, Bytes]> {
-    if (!merkleProof || !rawTx) {
-        if (!btcTxId) {
-            throw new Error("Either the `btcTxId` or both `merkleProof` and `rawTx` must be defined to execute.");
-        }
-        if (!electrsAPI) {
-            throw new Error("The ElectrAPI must be defined to fetch the `merkleProof` and `rawTx`");
-        }
-        [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
+    electrsAPI: ElectrsAPI,
+    txFetchingDetails: TxFetchingDetails
+): Promise<TxInclusionDetails> {
+    if (isTxInclusionDetails(txFetchingDetails)) {
+        return txFetchingDetails;
     }
-    return [merkleProof, rawTx];
+    const [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(txFetchingDetails.btcTxId);
+    return {
+        merkleProof,
+        rawTx
+    };
 }
 
 export async function waitForBlockRelaying(

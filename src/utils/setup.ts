@@ -22,7 +22,6 @@ import {
     TransactionAPI,
 } from "../parachain";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
-import { DefaultElectrsAPI, ElectrsAPI } from "../external";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
@@ -42,7 +41,7 @@ import {
     USER_1_URI,
     VAULT_1_URI,
 } from "../../test/config";
-import { CollateralCurrency, CollateralUnit, WrappedCurrency } from "../types";
+import { CollateralUnit, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
 import { DefaultInterBTCAPI } from "../interbtc-api";
 

@@ -1,13 +1,12 @@
 import { ApiPromise } from "@polkadot/api";
 import { H256 } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
-import { Bytes } from "@polkadot/types";
 import { AddressOrPair } from "@polkadot/api/types";
 
-import { getTxProof, parseRefundRequest } from "../utils";
+import { ensureHashEncoded, getTxProof, parseRefundRequest } from "../utils";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { RefundRequestExt, WrappedCurrency } from "../types";
+import { RefundRequestExt, TxFetchingDetails, WrappedCurrency } from "../types";
 
 /**
  * @category InterBTC Bridge
@@ -22,7 +21,7 @@ export interface RefundAPI extends TransactionAPI {
      * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction.
      * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
      */
-    execute(refundId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
+     execute(requestId: string, txFetchingDetails: TxFetchingDetails): Promise<void>;
     /**
      * @returns An array containing the refund requests
      */
@@ -50,10 +49,10 @@ export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI
         super(api, account);
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
-        const parsedRequestId = this.api.createType("H256", "0x" + requestId);
-        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
-        const requestTx = this.api.tx.refund.executeRefund(parsedRequestId, merkleProof, rawTx);
+    async execute(requestId: string, txFetchingDetails: TxFetchingDetails): Promise<void> {
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
+        const txInclusionDetails = await getTxProof(this.electrsAPI, txFetchingDetails);
+        const requestTx = this.api.tx.refund.executeRefund(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
         await this.sendLogged(requestTx, this.api.events.refund.ExecuteRefund);
     }
 

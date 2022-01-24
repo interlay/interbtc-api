@@ -1,11 +1,10 @@
-import { Network } from "bitcoinjs-lib";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Index } from "@polkadot/types/interfaces";
 import { Currency, MonetaryAmount, BitcoinUnit } from "@interlay/monetary-js";
 import type { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
-import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
+import { VaultsAPI } from "./vaults";
 import {
     decodeFixedPointType,
     newCurrencyId,
@@ -16,7 +15,6 @@ import {
     storageKeyToNthInner,
 } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { ElectrsAPI } from "../external";
 import {
     CollateralCurrency,
     CollateralIdLiteral,
@@ -30,7 +28,7 @@ import {
     WrappedCurrency,
     WrappedIdLiteral,
 } from "../types";
-import { DefaultRewardsAPI, RewardsAPI } from "./rewards";
+import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
 
 export enum NominationAmountType {

@@ -1,13 +1,13 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
-import { Bytes, Option } from "@polkadot/types";
+import { Option } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { Bitcoin, BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { InterbtcPrimitivesIssueIssueRequest, InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
-import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
+import { VaultsAPI } from "./vaults";
 import {
     decodeFixedPointType,
     getTxProof,
@@ -21,7 +21,7 @@ import {
     newVaultId,
     newCurrencyId,
 } from "../utils";
-import { DefaultFeeAPI, FeeAPI, GriefingCollateralType } from "./fee";
+import { FeeAPI, GriefingCollateralType } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import {
@@ -30,6 +30,7 @@ import {
     CurrencyIdLiteral,
     currencyIdToMonetaryCurrency,
     Issue,
+    TxFetchingDetails,
     WrappedCurrency,
 } from "../types";
 
@@ -89,11 +90,9 @@ export interface IssueAPI extends TransactionAPI {
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
      * @param issueId The ID returned by the issue request transaction
-     * @param txId (Optional) The ID of the Bitcoin transaction that sends funds to the vault address.
-     * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction.
-     * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
+     * @param txFetcher TxFetchingDetails object
      */
-    execute(issueId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
+    execute(requestId: string, txFetchingDetails: TxFetchingDetails): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance request can be cancelled. As a result, the griefing collateral
@@ -155,6 +154,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
     constructor(
         api: ApiPromise,
         private btcNetwork: Network,
+        private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
@@ -290,16 +290,11 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         }
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes, electrsAPI?: ElectrsAPI): Promise<void> {
-        if (electrsAPI) {
-            [merkleProof, rawTx] = await getTxProof(electrsAPI, btcTxId, merkleProof, rawTx);
-        }
-        if (!merkleProof || !rawTx) {
-            return Promise.reject(new Error("The Bitcoin Merkle Proof and Raw Transaction could not be fetched"));
-        }
+    async execute(requestId: string, txFetchingDetails: TxFetchingDetails): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
-        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
-        await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
+        const txInclusionDetails = await getTxProof(this.electrsAPI, txFetchingDetails);
+        const tx = this.api.tx.issue.executeIssue(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
+        await this.sendLogged(tx, this.api.events.issue.ExecuteIssue);
     }
 
     async cancel(requestId: string): Promise<void> {
