@@ -18,7 +18,7 @@ const ACCOUNT_URI = "//Alice";
 // const ACCOUNT_URI = "quick sense network ozone ostrich bone hole possible timber clog urban primary//sudo/1";
 
 main().catch((err) => {
-    console.log("Error during initialization:");
+    console.log("Error thrown by script:");
     console.log(err);
 });
 

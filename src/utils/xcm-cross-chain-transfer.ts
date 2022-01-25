@@ -13,7 +13,7 @@ const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9988";
 const ACCOUNT_URI = "//Alice";
 
 main().catch((err) => {
-    console.log("Error during initialization:");
+    console.log("Error thrown by script:");
     console.log(err);
 });
 
