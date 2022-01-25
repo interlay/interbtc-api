@@ -85,7 +85,7 @@ const argv = yargs(hideBin(process.argv))
     }).argv;
 
 main(argv as InitializationParams).catch((err) => {
-    console.log("Error during initialization:");
+    console.log("Error during setup:");
     console.log(err);
 });
 

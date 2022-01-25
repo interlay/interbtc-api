@@ -20,5 +20,5 @@ jobs:
             - run: npm i -g corepack
             - run: yarn install
             - name: Run and set up the parachain, oracle, staked relayer and vault
-              run: docker-compose up -d
+              run: yarn docker-standalone-start -- -d
             - run: yarn ci:test
