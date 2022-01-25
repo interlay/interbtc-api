@@ -38,13 +38,13 @@ async function main(): Promise<void> {
             interior: api.createType("XcmV1MultilocationJunctions", {
                 x2: [
                     api.createType("XcmV1Junction", { 
-                    parachain: 3000 
-                }), api.createType("XcmV1Junction", { 
-                    accountId32: {
-                        network: api.createType("XcmV0JunctionNetworkId", { any: true }),
-                        id: "0x8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48" // bob 
-                    }
-                })]
+                        parachain: 3000 
+                    }), api.createType("XcmV1Junction", { 
+                        accountId32: {
+                            network: api.createType("XcmV0JunctionNetworkId", { any: true }),
+                            id: "0x8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48" // bob 
+                        }
+                    })]
             })
         })
     });

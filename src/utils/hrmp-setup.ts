@@ -8,7 +8,9 @@ import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { XcmVersionedXcm } from "@polkadot/types/lookup";
 import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
 import { XcmV1MultiLocation } from "@polkadot/types/lookup";
-import type { BTreeMap, Bytes, Compact, Enum, Null, Option, Result, Struct, Text, U256, U8aFixed, Vec, bool, i128, i32, i64, u128, u16, u32, u64, u8 } from '@polkadot/types';
+import type { 
+    BTreeMap, Bytes, Compact, Enum, Null, Option, Result, Struct, Text, U256, U8aFixed, Vec, bool, i128, i32, i64, u128, u16, u32, u64, u8
+} from "@polkadot/types";
 
 
 const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9988";
@@ -84,7 +86,10 @@ function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
         }
     });
 
-    const xcmV2 = api.createType("XcmV2Xcm", [withdrawAssetInstruction, buyExecutionInstruction, transactInstruction, depositAssetsInstruction])
+    const xcmV2 = api.createType(
+        "XcmV2Xcm", 
+        [withdrawAssetInstruction, buyExecutionInstruction, transactInstruction, depositAssetsInstruction]
+    );
     const message = api.createType<XcmVersionedXcm>("XcmVersionedXcm", {
         v2: xcmV2
     });
@@ -98,7 +103,7 @@ function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
         })
     });
 
-    return api.tx.ormlXcm.sendAsSovereign(dest, message)
+    return api.tx.ormlXcm.sendAsSovereign(dest, message);
 }
 
 async function main(): Promise<void> {
@@ -126,7 +131,7 @@ async function main(): Promise<void> {
     // transactions to be used on kintsugi
     const kinstugiRequestXcmTx = construct_xcm(api, 2092, "0x3c00d0070000e803000000900100");
 
-    console.log(kinstugiRequestXcmTx.toHex())
+    console.log(kinstugiRequestXcmTx.toHex());
 
     const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
     console.log("Constructed the tx, broadcasting first...");
