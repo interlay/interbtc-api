@@ -16,6 +16,7 @@ import { DefaultSystemAPI, SystemAPI } from "./parachain/system";
 import { DefaultTokensAPI, TokensAPI } from "./parachain/tokens";
 import { FaucetClient } from "./clients";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
+import { AuraApi, DefaultAuraAPI } from "./parachain/aura";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
@@ -52,6 +53,7 @@ export interface InterBTCAPI {
     readonly fee: FeeAPI;
     readonly nomination: NominationAPI;
     readonly pools: RewardsAPI;
+    readonly aura: DefaultAuraAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
@@ -74,6 +76,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
     public readonly pools: RewardsAPI;
+    public readonly aura: DefaultAuraAPI;
 
     constructor(
         readonly api: ApiPromise,
@@ -111,6 +114,7 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
             _account
         );
         this.pools = new DefaultRewardsAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, collateralCurrency);
+        this.aura = new DefaultAuraAPI(api);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {
