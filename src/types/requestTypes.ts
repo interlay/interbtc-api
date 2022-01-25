@@ -18,6 +18,7 @@ export interface Issue {
     btcTxId?: string;
     confirmations?: number;
     btcBlockHeight?: number;
+    btcConfirmationActiveBlockHeight?: number;
     btcAmountSubmittedByUser?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     status: IssueStatus;
     refundBtcAddress?: string;

@@ -477,7 +477,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             currencyIdToMonetaryCurrency(vaultId.currencies.wrapped)
         );
         return collateralInWrapped.toBig().div(issuedTokens.toBig());
-    } 
+    }
 
     async getSystemCollateralization(): Promise<Big | undefined> {
         // TODO: Implement once method of calculation is decided on
@@ -521,6 +521,12 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         collateralCurrency: CollateralIdLiteral
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const vault = await this.get(vaultAccountId, collateralCurrency);
+        return this.getIssuableAmountFromVault(vault);
+    }
+
+    async getIssuableAmountFromVault(
+        vault: VaultExt<BitcoinUnit>,
+    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const wrappedTokenCapacity = await this.calculateCapacity(vault.backingCollateral);
         const issuedAmount = vault.issuedTokens.add(vault.toBeIssuedTokens);
         const issuableAmountExcludingFees = wrappedTokenCapacity.sub(issuedAmount);
@@ -541,20 +547,10 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async getTotalIssuableAmount(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-        const perCollateralIssuableAmounts = await Promise.all(
-            CollateralCurrency.map(
-                (currency) =>
-                    new Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>((resolve) => {
-                        this.tokensAPI.total(currency as Currency<CurrencyUnit>).then(async (nomination) => {
-                            const capacity = await this.calculateCapacity(
-                                nomination as MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>
-                            );
-                            resolve(capacity);
-                        });
-                    })
-            )
+        const perVaultIssuableAmounts = await Promise.all(
+            (await this.list()).map(vault => vault.getIssuableTokens())
         );
-        const totalIssuableAmount = perCollateralIssuableAmounts.reduce((acc, v) => acc.add(v));
+        const totalIssuableAmount = perVaultIssuableAmounts.reduce((acc, v) => acc.add(v));
         const issuedAmountBtc = await this.getTotalIssuedAmount();
         return totalIssuableAmount.sub(issuedAmountBtc);
     }
@@ -737,7 +733,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             {
                 amount: this.api.createType("u128", amount.toString()),
                 currencyId: newCurrencyId(this.api, tickerToCurrencyIdLiteral(amount.currency.ticker))
-            }    
+            }
         );
     }
 
