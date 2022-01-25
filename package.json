@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "1.5.11",
+  "version": "1.5.13",
   "description": "JavaScript library to interact with interBTC and kBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
@@ -50,7 +50,7 @@
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
     "@interlay/interbtc-types": "1.5.10",
-    "@interlay/monetary-js": "0.5.1",
+    "@interlay/monetary-js": "0.5.3",
     "@polkadot/api": "6.9.2",
     "@types/big.js": "6.1.2",
     "big.js": "6.1.1",

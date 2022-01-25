@@ -49,6 +49,17 @@ export interface TokensAPI extends TransactionAPI {
         account: string,
         callback: (account: string, balance: MonetaryAmount<Currency<U>, U>) => void
     ): Promise<() => void>;
+    /**
+     * @param accountId Account whose balance to set
+     * @param freeBalance Free balance to set, as a Monetary.js object
+     * @param lockedBalance Locked balance to set, as a Monetary.js object
+     * @remarks This extrinsic is only valid if submitted by a sudo account
+     */
+    setBalance<U extends CurrencyUnit>(
+        accountId: AccountId,
+        freeBalance: MonetaryAmount<Currency<U>, U>,
+        lockedBalance?: MonetaryAmount<Currency<U>, U>,
+    ): Promise<void>
 }
 
 export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI {
@@ -121,5 +132,22 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
             amountAtomicUnit
         );
         await this.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
+    }
+
+    async setBalance<U extends CurrencyUnit>(
+        accountId: AccountId,
+        freeBalance: MonetaryAmount<Currency<U>, U>,
+        lockedBalance?: MonetaryAmount<Currency<U>, U>,
+    ): Promise<void> {
+        lockedBalance = (lockedBalance ? lockedBalance : newMonetaryAmount(0, freeBalance.currency)) as MonetaryAmount<Currency<U>, U>;
+        const tx = this.api.tx.sudo.sudo(
+            this.api.tx.tokens.setBalance(
+                accountId,
+                newCurrencyId(this.api, tickerToCurrencyIdLiteral(freeBalance.currency.ticker)),
+                freeBalance.toString(freeBalance.currency.rawBase),
+                lockedBalance.toString(lockedBalance.currency.rawBase),
+            )
+        );
+        await this.sendLogged(tx, this.api.events.tokens.BalanceSet);
     }
 }

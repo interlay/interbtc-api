@@ -20,7 +20,6 @@ import {
     decodeFixedPointType,
     getTxProof,
     storageKeyToNthInner,
-    newAccountId,
     ensureHashEncoded,
     parseRedeemRequest,
     newMonetaryAmount,

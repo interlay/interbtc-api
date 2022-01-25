@@ -4,7 +4,7 @@ import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "../utils/encoding";
-import { CollateralUnit, WrappedCurrency } from "../types";
+import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit, WrappedCurrency } from "../types";
 
 export enum GriefingCollateralType {
     Issue,
@@ -22,11 +22,10 @@ export interface FeeAPI {
      * @param type Type of griefing collateral to compute (e.g. for issuing, replacing)
      * @returns The griefing collateral
      */
-    getGriefingCollateral<C extends CollateralUnit>(
+    getGriefingCollateral(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        collateralCurrency: Currency<C>,
         type: GriefingCollateralType
-    ): Promise<MonetaryAmount<Currency<C>, C>>
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>
     /**
      * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
      * @param lockedCollateral Collateral value representing the value locked to gain yield.
@@ -59,11 +58,10 @@ export class DefaultFeeAPI implements FeeAPI {
         this.oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
     }
 
-    async getGriefingCollateral<C extends CollateralUnit>(
+    async getGriefingCollateral(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        collateralCurrency: Currency<C>,
         type: GriefingCollateralType
-    ): Promise<MonetaryAmount<Currency<C>, C>> {
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
         let ratePromise;
         switch (type) {
             case(GriefingCollateralType.Issue): {
@@ -75,11 +73,13 @@ export class DefaultFeeAPI implements FeeAPI {
                 break;
             }
         }
-        const [griefingCollateralRate, collateralAmount] = await Promise.all([
+
+        const nativeCurrency = currencyIdToMonetaryCurrency(this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId);
+        const [griefingCollateralRate, griefingAmount] = await Promise.all([
             ratePromise,
-            this.oracleAPI.convertWrappedToCollateral(amount, collateralCurrency)
+            this.oracleAPI.convertWrappedToCurrency(amount, nativeCurrency)
         ]);
-        return collateralAmount.mul(griefingCollateralRate);
+        return griefingAmount.mul(griefingCollateralRate);
     }
 
     async getIssueGriefingCollateralRate(): Promise<Big> {
