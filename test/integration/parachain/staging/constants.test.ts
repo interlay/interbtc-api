@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { ConstantsAPI, DefaultConstantsAPI } from "../../../../src/parachain/constants";
-import { createPolkadotAPI } from "../../../../src/factory";
+import { createSubstrateAPI } from "../../../../src/factory";
 import { PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("Constants", function () {
@@ -11,7 +11,7 @@ describe("Constants", function () {
     let constantAPI: ConstantsAPI;
 
     before(async () => {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         constantAPI = new DefaultConstantsAPI(api);
     });
 

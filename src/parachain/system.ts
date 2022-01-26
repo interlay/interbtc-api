@@ -6,7 +6,7 @@ import { SecurityStatusCode } from "@polkadot/types/lookup";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface SystemAPI extends TransactionAPI {
     /**

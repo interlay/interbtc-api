@@ -9,7 +9,7 @@ import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { RefundRequestExt, WrappedCurrency } from "../types";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface RefundAPI extends TransactionAPI {
     /**

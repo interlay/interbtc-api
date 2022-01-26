@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { createPolkadotAPI } from "../factory";
+import { createSubstrateAPI } from "../factory";
 import { Keyring } from "@polkadot/api";
 import {
     DefaultTransactionAPI,
@@ -22,7 +22,7 @@ async function main(): Promise<void> {
     console.log("Running xcm script...");
     const keyring = new Keyring({ type: "sr25519" });
     const userKeyring = keyring.addFromUri(ACCOUNT_URI);
-    const api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+    const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
 
     const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
 

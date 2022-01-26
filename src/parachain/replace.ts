@@ -28,7 +28,7 @@ import {
 import { VaultsAPI } from "../parachain";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface ReplaceAPI extends TransactionAPI {
     /**

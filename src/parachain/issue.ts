@@ -39,7 +39,7 @@ export type IssueLimits = {
 };
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface IssueAPI extends TransactionAPI {
     /**

@@ -4,7 +4,7 @@ import { Vec } from "@polkadot/types/codec";
 import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  * The type Big represents Wrapped or Collateral token denominations,
  * while the type BN represents Planck or Satoshi denominations.
  */

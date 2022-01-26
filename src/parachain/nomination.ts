@@ -47,7 +47,7 @@ export type Nomination = NominationData<CollateralUnit> & { type: NominationAmou
 export type NominationReward = NominationData<BitcoinUnit>;
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface NominationAPI extends TransactionAPI {
     /**

@@ -10,7 +10,7 @@ import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import { AddressOrPair } from "@polkadot/api/types";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface EscrowAPI extends TransactionAPI {
     /**

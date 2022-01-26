@@ -3,8 +3,8 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { InterBtcAmount, Kusama, Polkadot } from "@interlay/monetary-js";
 
-import { DefaultInterBTCAPI, InterBTCAPI, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
-import { createPolkadotAPI } from "../../../../src/factory";
+import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
+import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import {
     BITCOIN_CORE_HOST,
@@ -46,10 +46,10 @@ describe("redeem", () => {
 
     let wrappedCurrency: WrappedCurrency;
 
-    let interBtcAPI: InterBTCAPI;
+    let interBtcAPI: BridgeAPI;
 
     before(async () => {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         keyring = new Keyring({ type: "sr25519" });
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
@@ -59,7 +59,7 @@ describe("redeem", () => {
         vault_2_id = newVaultId(api, vault_2.address, Kusama, wrappedCurrency);
         userAccount = keyring.addFromUri(USER_1_URI);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
-        interBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

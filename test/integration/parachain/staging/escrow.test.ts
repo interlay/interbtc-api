@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 
-import { createPolkadotAPI } from "../../../../src/factory";
+import { createSubstrateAPI } from "../../../../src/factory";
 import { ORACLE_URI, PARACHAIN_ENDPOINT, USER_1_URI, USER_2_URI, VAULT_TO_BAN_URI } from "../../../config";
 import { DefaultEscrowAPI, DefaultSystemAPI, DefaultTokensAPI, EscrowAPI, FeeAPI, newAccountId, newMonetaryAmount, SystemAPI, TokensAPI } from "../../../../src";
 import { assert } from "chai";
@@ -20,7 +20,7 @@ describe("escrow", () => {
 
     before(async function () {
         const keyring = new Keyring({ type: "sr25519" });
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         systemAPI = new DefaultSystemAPI(api);
         escrowAPI = new DefaultEscrowAPI(api, Interlay, systemAPI);
         tokensAPI = new DefaultTokensAPI(api);

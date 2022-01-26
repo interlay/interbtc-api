@@ -8,7 +8,7 @@ import { DefinitionRpc, DefinitionRpcSub } from "@polkadot/types/types";
 import { InterBtc } from "@interlay/monetary-js";
 
 import * as definitions from "./interfaces/definitions";
-import { InterBTCAPI, DefaultInterBTCAPI } from "./interbtc-api";
+import { BridgeAPI, DefaultBridgeAPI } from "./interbtc-api";
 import { BitcoinNetwork, WrappedCurrency } from "./types";
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
@@ -21,20 +21,20 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
     throw new Error(`unknown scheme for ${endpoint}`);
 }
 
-export function createPolkadotAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
+export function createSubstrateAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
     return ApiPromise.create({ provider });
 }
 
-export async function createInterbtcAPI(
+export async function createBridgeAPI(
     endpoint: string,
     network: BitcoinNetwork = "mainnet",
     wrappedCurrency: WrappedCurrency = InterBtc,
     account?: AddressOrPair,
     autoConnect?: number | false | undefined
-): Promise<InterBTCAPI> {
-    const api = await createPolkadotAPI(endpoint, autoConnect);
-    return new DefaultInterBTCAPI(api, network, wrappedCurrency, account);
+): Promise<BridgeAPI> {
+    const api = await createSubstrateAPI(endpoint, autoConnect);
+    return new DefaultBridgeAPI(api, network, wrappedCurrency, account);
 }
 
 export function getAPITypes(): RegistryTypes {

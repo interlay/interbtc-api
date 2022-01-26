@@ -37,7 +37,7 @@ import {
 } from "../types";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface RedeemAPI extends TransactionAPI {
     /**

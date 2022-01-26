@@ -2,25 +2,25 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
-import { createPolkadotAPI } from "../../../../src/factory";
+import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ESPLORA_BASE_PATH } from "../../../config";
-import { CollateralCurrency, CurrencyUnit, DefaultInterBTCAPI, InterBTCAPI, newAccountId, newMonetaryAmount, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { CollateralCurrency, CurrencyUnit, DefaultBridgeAPI, BridgeAPI, newAccountId, newMonetaryAmount, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
     let user1Account: KeyringPair;
     let user2Account: KeyringPair;
-    let interBtcAPI: InterBTCAPI;
+    let interBtcAPI: BridgeAPI;
 
     before(async () => {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         user1Account = keyring.addFromUri(USER_1_URI);
         user2Account = keyring.addFromUri(USER_2_URI);
 
         const wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        interBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, user1Account, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, user1Account, ESPLORA_BASE_PATH);
     });
 
     after(() => {

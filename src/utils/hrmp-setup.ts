@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { createPolkadotAPI } from "../factory";
+import { createSubstrateAPI } from "../factory";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import {
     DefaultTransactionAPI,
@@ -110,7 +110,7 @@ async function main(): Promise<void> {
     await cryptoWaitReady();
     const keyring = new Keyring({ type: "sr25519" });
     const userKeyring = keyring.addFromUri(ACCOUNT_URI);
-    const api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+    const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
 
     const parent = api.createType<XcmV1MultiLocation>("XcmV1MultiLocation", {
         parents: 1,

@@ -7,7 +7,7 @@ import Big from "big.js";
 
 import {
     BitcoinCoreClient,
-    createPolkadotAPI,
+    createSubstrateAPI,
     VaultsAPI,
     newAccountId,
     CollateralUnit,
@@ -15,8 +15,8 @@ import {
     newVaultId,
     WrappedCurrency,
     tickerToMonetaryCurrency,
-    DefaultInterBTCAPI,
-    InterBTCAPI,
+    BridgeAPI,
+    DefaultBridgeAPI,
 } from "../../../../src";
 import {
     initializeVaultNomination,
@@ -48,8 +48,8 @@ import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
-    let userInterBtcAPI: InterBTCAPI;
-    let sudoInterBtcAPI: InterBTCAPI;
+    let userInterBtcAPI: BridgeAPI;
+    let sudoInterBtcAPI: BridgeAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
 
@@ -80,7 +80,7 @@ describe("Initialize parachain state", () => {
     }
 
     before(async function () {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         oracleAccount = keyring.addFromUri(ORACLE_URI);
@@ -101,8 +101,8 @@ describe("Initialize parachain state", () => {
             BITCOIN_CORE_WALLET
         );
 
-        userInterBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
-        sudoInterBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, sudoAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
+        sudoInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, sudoAccount, ESPLORA_BASE_PATH);
 
         const vaultCollateralPairs: [KeyringPair, CurrencyIdLiteral][] = [
             [vault_1, CurrencyIdLiteral.DOT],

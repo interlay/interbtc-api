@@ -7,7 +7,7 @@ import { BitcoinAmount, BitcoinUnit, Currency, InterBtcAmount, MonetaryAmount } 
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import { newAccountId } from "../utils";
-import { DefaultInterBTCAPI } from "../interbtc-api";
+import { DefaultBridgeAPI } from "../interbtc-api";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
 import { BTCRelayAPI } from "../parachain";
@@ -118,7 +118,7 @@ export async function issueSingle(
     atomic = true
 ): Promise<IssueResult<BitcoinUnit>> {
     try {
-        const interBtcApi = new DefaultInterBTCAPI(api, network, amount.currency, issuingAccount);
+        const interBtcApi = new DefaultBridgeAPI(api, network, amount.currency, issuingAccount);
 
         const requesterAccountId = newAccountId(api, issuingAccount.address);
         const initialWrappedTokenBalance = await interBtcApi.tokens.balance(amount.currency, requesterAccountId);
@@ -192,7 +192,7 @@ export async function redeem(
     timeout = 5 * 60 * 1000,
     retries: number = 0
 ): Promise<Redeem> {
-    const interBtcApi = new DefaultInterBTCAPI(api, network, amount.currency, redeemingAccount);
+    const interBtcApi = new DefaultBridgeAPI(api, network, amount.currency, redeemingAccount);
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     const [redeemRequest] = await interBtcApi.redeem.request(
         amount,

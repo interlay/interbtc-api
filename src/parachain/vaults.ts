@@ -43,7 +43,7 @@ import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface VaultsAPI extends TransactionAPI {
     /**

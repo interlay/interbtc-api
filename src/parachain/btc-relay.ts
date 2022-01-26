@@ -7,7 +7,7 @@ import { addHexPrefix } from "../utils";
 export const DEFAULT_STABLE_CONFIRMATIONS = 6;
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface BTCRelayAPI {
     /**

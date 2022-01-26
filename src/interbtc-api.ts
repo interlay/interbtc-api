@@ -36,7 +36,7 @@ export function getBitcoinNetwork(network: BitcoinNetwork = "mainnet"): Network 
     }
 }
 
-export interface InterBTCAPI {
+export interface BridgeAPI {
     readonly api: ApiPromise;
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
@@ -57,9 +57,9 @@ export interface InterBTCAPI {
 }
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
-export class DefaultInterBTCAPI implements InterBTCAPI {
+export class DefaultBridgeAPI implements BridgeAPI {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;

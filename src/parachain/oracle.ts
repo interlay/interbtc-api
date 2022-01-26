@@ -26,7 +26,7 @@ export const DEFAULT_FEED_NAME = "DOT/BTC";
 export const DEFAULT_INCLUSION_TIME: FeeEstimationType = "Fast";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface OracleAPI extends TransactionAPI {
     /**

@@ -9,7 +9,7 @@ import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
 import { OrmlTokensAccountData } from "@polkadot/types/lookup";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface TokensAPI extends TransactionAPI {
     /**
