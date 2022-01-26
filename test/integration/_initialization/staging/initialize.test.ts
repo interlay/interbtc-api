@@ -17,6 +17,7 @@ import {
     tickerToMonetaryCurrency,
     BridgeAPI,
     DefaultBridgeAPI,
+    GovernanceCurrency,
 } from "../../../../src";
 import {
     initializeVaultNomination,
@@ -42,7 +43,8 @@ import {
     VAULT_TO_BAN_URI,
     USER_1_URI,
     ESPLORA_BASE_PATH,
-    WRAPPED_CURRENCY_TICKER
+    WRAPPED_CURRENCY_TICKER,
+    GOVERNANCE_CURRENCY_TICKER
 } from "../../../config";
 import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
 
@@ -64,6 +66,7 @@ describe("Initialize parachain state", () => {
     let vault_to_liquidate: KeyringPair;
 
     let wrappedCurrency: WrappedCurrency;
+    let governanceCurrency: GovernanceCurrency;
 
     function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
         return newAccountId(api, keyPair.address);
@@ -91,6 +94,7 @@ describe("Initialize parachain state", () => {
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
+        governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -101,8 +105,8 @@ describe("Initialize parachain state", () => {
             BITCOIN_CORE_WALLET
         );
 
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
-        sudoInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, sudoAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
+        sudoInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, sudoAccount, ESPLORA_BASE_PATH);
 
         const vaultCollateralPairs: [KeyringPair, CurrencyIdLiteral][] = [
             [vault_1, CurrencyIdLiteral.DOT],
@@ -124,8 +128,6 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the stable confirmations and ready the BTC-Relay", async () => {
-        const previousIssueApiAccount = userInterBtcAPI.issue.getAccount();
-        userInterBtcAPI.issue.setAccount(sudoAccount);
         // Speed up the process by only requiring 0 parachain and 0 bitcoin confirmations
         const stableBitcoinConfirmationsToSet = 0;
         const stableParachainConfirmationsToSet = 0;
@@ -135,16 +137,13 @@ describe("Initialize parachain state", () => {
                 bitcoinConfirmations: stableBitcoinConfirmationsToSet,
                 parachainConfirmations: stableParachainConfirmationsToSet
             },
-            userInterBtcAPI.issue,
+            sudoAccount,
             bitcoinCoreClient
         );
         const stableBitcoinConfirmations = await userInterBtcAPI.btcRelay.getStableBitcoinConfirmations();
         const stableParachainConfirmations = await userInterBtcAPI.btcRelay.getStableParachainConfirmations();
         assert.equal(stableBitcoinConfirmationsToSet, stableBitcoinConfirmations, "Setting the Bitcoin confirmations failed");
         assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
-        if (previousIssueApiAccount) {
-            userInterBtcAPI.issue.setAccount(previousIssueApiAccount);
-        }
     });
 
     it("should set the exchange rate", async () => {
@@ -178,7 +177,7 @@ describe("Initialize parachain state", () => {
         const userAccountId = newAccountId(api, userAccount.address);
         const userInterBTCBefore = await userInterBtcAPI.tokens.balance(InterBtc, userAccountId);
 
-        await initializeIssue(api, bitcoinCoreClient, userAccount, interBtcToIssue, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency));
+        await initializeIssue(userInterBtcAPI, bitcoinCoreClient, userAccount, interBtcToIssue, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency));
         const userInterBTCAfter = await userInterBtcAPI.tokens.balance(InterBtc, userAccountId);
         assert.equal(
             userInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),

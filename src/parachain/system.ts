@@ -8,7 +8,7 @@ import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 /**
  * @category BTC Bridge
  */
-export interface SystemAPI extends TransactionAPI {
+export interface SystemAPI {
     /**
      * @returns The current block number being processed.
      */
@@ -36,10 +36,8 @@ export interface SystemAPI extends TransactionAPI {
     setCode(code: string): Promise<void>;
 }
 
-export class DefaultSystemAPI extends DefaultTransactionAPI implements SystemAPI {
-    constructor(api: ApiPromise, account?: AddressOrPair) {
-        super(api, account);
-    }
+export class DefaultSystemAPI {
+    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
     async getCurrentBlockNumber(): Promise<number> {
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -65,6 +63,6 @@ export class DefaultSystemAPI extends DefaultTransactionAPI implements SystemAPI
 
     async setCode(code: string): Promise<void> {
         const tx = this.api.tx.sudo.sudoUncheckedWeight(this.api.tx.system.setCode(code), 0);
-        await this.sendLogged(tx, this.api.events.system.CodeUpdated);
+        await this.transactionAPI.sendLogged(tx, this.api.events.system.CodeUpdated);
     }
 }

@@ -12,7 +12,7 @@ import {
     newVaultId,
 } from "../utils";
 import { InterbtcPrimitivesVaultId } from "../parachain";
-import { DefaultTransactionAPI } from "../parachain/transaction";
+import { DefaultTransactionAPI, TransactionAPI } from "../parachain/transaction";
 import {
     tickerToCurrencyIdLiteral,
     CurrencyIdLiteral,
@@ -134,14 +134,12 @@ export interface RewardsAPI {
     ): Promise<void>;
 }
 
-export class DefaultRewardsAPI extends DefaultTransactionAPI implements RewardsAPI {
+export class DefaultRewardsAPI implements RewardsAPI {
     constructor(
         public api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private transactionAPI: TransactionAPI
+    ) {}
 
     async withdrawRewards(
         vaultId: InterbtcPrimitivesVaultId,
@@ -154,7 +152,7 @@ export class DefaultRewardsAPI extends DefaultTransactionAPI implements RewardsA
                 vaultId.accountId
             );
         const tx = this.api.tx.fee.withdrawRewards(vaultId, definedNonce.toString());
-        await this.sendLogged(tx, this.api.events.vaultStaking.WithdrawReward);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultStaking.WithdrawReward);
     }
 
     async computeRewardInStakingPool(

@@ -1,17 +1,16 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/types";
 import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
 import { OrmlTokensAccountData } from "@polkadot/types/lookup";
 
 /**
  * @category BTC Bridge
  */
-export interface TokensAPI extends TransactionAPI {
+export interface TokensAPI {
     /**
      * @param currency The currency specification, a `Monetary.js` object
      * @returns The total amount in the system
@@ -62,10 +61,8 @@ export interface TokensAPI extends TransactionAPI {
     ): Promise<void>
 }
 
-export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI {
-    constructor(api: ApiPromise, account?: AddressOrPair) {
-        super(api, account);
-    }
+export class DefaultTokensAPI implements TokensAPI {
+    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
     async total<U extends CurrencyUnit>(currency: Currency<U>): Promise<MonetaryAmount<Currency<U>, U>> {
         const head = await this.api.rpc.chain.getFinalizedHead();
@@ -131,7 +128,7 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
             newCurrencyId(this.api, currencyIdLiteral),
             amountAtomicUnit
         );
-        await this.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
+        await this.transactionAPI.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
     }
 
     async setBalance<U extends CurrencyUnit>(
@@ -148,6 +145,6 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
                 lockedBalance.toString(lockedBalance.currency.rawBase),
             )
         );
-        await this.sendLogged(tx, this.api.events.tokens.BalanceSet);
+        await this.transactionAPI.sendLogged(tx, this.api.events.tokens.BalanceSet);
     }
 }

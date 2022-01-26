@@ -1,10 +1,8 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import * as bitcoinjs from "bitcoinjs-lib";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { InterBtcAmount, Kusama, Polkadot } from "@interlay/monetary-js";
-import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId } from "../../../../src/index";
+import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
 
-import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createSubstrateAPI } from "../../../../src/factory";
 import {
@@ -19,7 +17,8 @@ import {
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
     ESPLORA_BASE_PATH,
-    WRAPPED_CURRENCY_TICKER
+    WRAPPED_CURRENCY_TICKER,
+    GOVERNANCE_CURRENCY_TICKER
 } from "../../../config";
 import { assert } from "../../../chai";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
@@ -51,9 +50,10 @@ describe("replace", () => {
             BITCOIN_CORE_WALLET
         );
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
+        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         
         userAccount = keyring.addFromUri(USER_1_URI);
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_id = newVaultId(api, vault_3.address, Polkadot, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
@@ -69,16 +69,16 @@ describe("replace", () => {
             const issueAmount = InterBtcAmount.from.BTC(0.00005);
             const replaceAmount = InterBtcAmount.from.BTC(0.00004);
             await issueSingle(
-                api,
+                interBtcAPI,
                 bitcoinCoreClient,
                 userAccount,
                 issueAmount,
                 vault_3_id
             );
-            interBtcAPI.replace.setAccount(vault_3);
+            interBtcAPI.setAccount(vault_3);
             await interBtcAPI.replace.request(replaceAmount, currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency);
 
-            interBtcAPI.replace.setAccount(vault_2);
+            interBtcAPI.setAccount(vault_2);
             await interBtcAPI.replace.request(replaceAmount, currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency);
         }).timeout(200000);
 

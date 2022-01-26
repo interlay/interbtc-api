@@ -9,17 +9,19 @@ import {
     MonetaryAmount,
     InterBtcAmount,
     InterBtc,
+    Interlay,
 } from "@interlay/monetary-js";
 import { Big } from "big.js";
 import BN from "bn.js";
-import { createPolkadotAPI } from "../factory";
-import { issueSingle, setNumericStorage } from ".";
 import { ApiPromise, Keyring } from "@polkadot/api";
+
+import { createSubstrateAPI } from "../factory";
+import { issueSingle } from "./issueRedeem";
+import { setNumericStorage } from "./storage";
 import {
     NominationAPI,
     OracleAPI,
     RedeemAPI,
-    TransactionAPI,
 } from "../parachain";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { KeyringPair } from "@polkadot/keyring/types";
@@ -43,7 +45,8 @@ import {
 } from "../../test/config";
 import { CollateralUnit, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
-import { DefaultInterBTCAPI } from "../interbtc-api";
+import { BridgeAPI, DefaultBridgeAPI } from "..";
+import { AddressOrPair } from "@polkadot/api/types";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -143,7 +146,7 @@ function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string):
 export async function initializeStableConfirmations(
     api: ApiPromise,
     stableConfirmationsToSet: ChainConfirmations,
-    transactionAPI: TransactionAPI,
+    account: AddressOrPair,
     bitcoinCoreClient: BitcoinCoreClient
 ): Promise<void> {
     console.log("Initializing stable block confirmations...");
@@ -152,14 +155,14 @@ export async function initializeStableConfirmations(
         "BTCRelay",
         "StableBitcoinConfirmations",
         new BN(stableConfirmationsToSet.bitcoinConfirmations),
-        transactionAPI
+        account
     );
     await setNumericStorage(
         api,
         "BTCRelay",
         "StableParachainConfirmations",
         new BN(stableConfirmationsToSet.parachainConfirmations),
-        transactionAPI
+        account
     );
     await bitcoinCoreClient.mineBlocks(3);
 }
@@ -184,7 +187,7 @@ export async function initializeVaultNomination(enabled: boolean, nominationAPI:
 }
 
 export async function initializeIssue(
-    api: ApiPromise,
+    bridgeAPI: BridgeAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amountToIssue: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
@@ -192,7 +195,7 @@ export async function initializeIssue(
 ): Promise<void> {
     console.log("Initializing an issue...");
     await issueSingle(
-        api,
+        bridgeAPI,
         bitcoinCoreClient,
         issuingAccount,
         amountToIssue,
@@ -219,7 +222,7 @@ async function main(params: InitializationParams): Promise<void> {
     const vault_1 = keyring.addFromUri(VAULT_1_URI);
     const defaultInitializationParams = getDefaultInitializationParams(keyring, vault_1.address);
 
-    const api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+    const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
     const sudoAccount = keyring.addFromUri(SUDO_URI);
     const oracleAccount = keyring.addFromUri(ORACLE_URI);
 
@@ -231,15 +234,15 @@ async function main(params: InitializationParams): Promise<void> {
         BITCOIN_CORE_PORT,
         BITCOIN_CORE_WALLET
     );
-    const oracleAccountInterBtcApi = new DefaultInterBTCAPI(api, "regtest", InterBtc, oracleAccount, ESPLORA_BASE_PATH);
-    const sudoAccountInterBtcApi = new DefaultInterBTCAPI(api, "regtest", InterBtc, sudoAccount, ESPLORA_BASE_PATH);
+    const oracleAccountInterBtcApi = new DefaultBridgeAPI(api, "regtest", InterBtc, Interlay, oracleAccount, ESPLORA_BASE_PATH);
+    const sudoAccountInterBtcApi = new DefaultBridgeAPI(api, "regtest", InterBtc, Interlay, sudoAccount, ESPLORA_BASE_PATH);
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
             params.setStableConfirmations === true
                 ? (defaultInitializationParams.setStableConfirmations as ChainConfirmations)
                 : params.setStableConfirmations;
-        await initializeStableConfirmations(api, stableConfirmationsToSet, sudoAccountInterBtcApi.nomination, bitcoinCoreClient);
+        await initializeStableConfirmations(api, stableConfirmationsToSet, sudoAccount, bitcoinCoreClient);
     }
 
     if (params.setExchangeRate !== undefined) {
@@ -271,7 +274,7 @@ async function main(params: InitializationParams): Promise<void> {
                 : (params.issue as InitializeIssue);
         const vaultId = newVaultId(api, issueParams.vaultAddress, Polkadot, InterBtc);
         await initializeIssue(
-            api,
+            sudoAccountInterBtcApi,
             bitcoinCoreClient,
             issueParams.issuingAccount,
             issueParams.amount,
@@ -284,7 +287,7 @@ async function main(params: InitializationParams): Promise<void> {
             params.redeem === true
                 ? (defaultInitializationParams.redeem as InitializeRedeem)
                 : (params.redeem as InitializeRedeem);
-        const redeemingAccountInterBtcApi = new DefaultInterBTCAPI(api, "regtest", InterBtc, sudoAccount);
+        const redeemingAccountInterBtcApi = new DefaultBridgeAPI(api, "regtest", InterBtc, Interlay, sudoAccount);
         await initializeRedeem(redeemingAccountInterBtcApi.redeem, redeemParams.amount, redeemParams.redeemingBTCAddress);
     }
     api.disconnect();

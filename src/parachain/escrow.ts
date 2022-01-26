@@ -6,13 +6,12 @@ import BN from "bn.js";
 import { newMonetaryAmount, storageKeyToNthInner, toVoting } from "../utils";
 import { GovernanceCurrency, GovernanceUnit, parseEscrowPoint, RWEscrowPoint, VoteUnit } from "../types";
 import { SystemAPI } from "./system";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { AddressOrPair } from "@polkadot/api/types";
+import { TransactionAPI } from ".";
 
 /**
  * @category BTC Bridge
  */
-export interface EscrowAPI extends TransactionAPI {
+export interface EscrowAPI {
     /**
      * @param accountId Account whose voting balance to fetch
      * @param blockNumber The number of block to query state at 
@@ -73,43 +72,41 @@ export interface EscrowAPI extends TransactionAPI {
     ): Promise<void>;
 }
 
-export class DefaultEscrowAPI extends DefaultTransactionAPI implements EscrowAPI {
+export class DefaultEscrowAPI implements EscrowAPI {
 
     constructor(
-        api: ApiPromise,
+        private api: ApiPromise,
         private governanceCurrency: GovernanceCurrency,
         private systemAPI: SystemAPI,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private transactionAPI: TransactionAPI
+    ) {}
 
     async createLock<U extends GovernanceUnit>(
         amount: MonetaryAmount<Currency<U>, U>,
         unlockHeight: number
     ): Promise<void> {
         const tx = this.api.tx.escrow.createLock(amount.toString(amount.currency.rawBase), unlockHeight);
-        await this.sendLogged(tx, this.api.events.escrow.Deposit);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit);
     }
 
     async withdraw(): Promise<void> {
         const tx = this.api.tx.escrow.withdraw();
-        await this.sendLogged(tx, this.api.events.escrow.Withdraw);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Withdraw);
     }
 
     async withdrawRewards(): Promise<void> {
         const tx = this.api.tx.escrowAnnuity.withdrawRewards();
-        await this.sendLogged(tx, this.api.events.escrowRewards.WithdrawReward);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrowRewards.WithdrawReward);
     }
 
     async increaseAmount<U extends GovernanceUnit>(amount: MonetaryAmount<Currency<U>, U>): Promise<void> {
         const tx = this.api.tx.escrow.increaseAmount(amount.toString(amount.currency.rawBase));
-        await this.sendLogged(tx, this.api.events.escrow.Deposit);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit);
     }
 
     async increaseUnlockHeight(unlockHeight: number): Promise<void> {
         const tx = this.api.tx.escrow.increaseUnlockHeight(unlockHeight);
-        await this.sendLogged(tx, this.api.events.escrow.Deposit);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit);
     }
 
     async votingBalance(

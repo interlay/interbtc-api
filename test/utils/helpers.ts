@@ -1,9 +1,9 @@
 import { Bitcoin, BitcoinUnit, Currency, ExchangeRate } from "@interlay/monetary-js";
-import { Keyring } from "@polkadot/api";
+import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { BitcoinCoreClient, CollateralCurrency, CollateralUnit, OracleAPI } from "../../src";
+import { BitcoinCoreClient, BridgeAPI, CollateralCurrency, CollateralUnit, OracleAPI } from "../../src";
 import { TransactionAPI } from "../../src/parachain/transaction";
 import { SUDO_URI } from "../config";
 
@@ -44,24 +44,33 @@ export async function callWithExchangeRate<C extends CollateralUnit>(
     await oracleAPI.waitForExchangeRateUpdate(initialExchangeRate);
 }
 
-export async function callWith<T extends TransactionAPI, R>(api: T, key: KeyringPair, call: (api: T) => Promise<R>): Promise<R> {
-    const prevKey = api.getAccount();
-    api.setAccount(key);
-    let result: R;
+/*
+    Assumption: the `call` argument uses one of the APIs in `bridgeAPI`.
+    Since `bridgeAPI` is passed by reference, modifying the account before
+    the call means `call` uses that account.
+*/
+export async function callWith(
+    bridgeAPI: BridgeAPI,
+    key: KeyringPair,
+    call: Function
+): Promise<any> {
+    const prevKey = bridgeAPI.account;
+    bridgeAPI.setAccount(key);
+    let result;
     try {
-        result = await call(api);
+        result = await call();
     } catch (error) {
         throw error;
     } finally {
-        if (prevKey) api.setAccount(prevKey);
+        if (prevKey) bridgeAPI.setAccount(prevKey);
     }
     return result;
 }
 
-export function sudo<T extends TransactionAPI, R>(api: T, call: (api: T) => Promise<R>): Promise<R> {
+export function sudo(bridgeAPI: BridgeAPI, call: Function): Promise<any> {
     const keyring = new Keyring({ type: "sr25519" });
     const rootKey = keyring.addFromUri(SUDO_URI);
-    return callWith(api, rootKey, call);
+    return callWith(bridgeAPI, rootKey, call);
 }
 
 export function makeRandomBitcoinAddress(): string {

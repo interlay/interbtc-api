@@ -41,7 +41,7 @@ export type IssueLimits = {
 /**
  * @category BTC Bridge
  */
-export interface IssueAPI extends TransactionAPI {
+export interface IssueAPI {
     /**
      * Gets the threshold for issuing with a single vault, and the maximum total
      * issue request size. Additionally passes the list of vaults for caching.
@@ -149,18 +149,16 @@ export interface IssueAPI extends TransactionAPI {
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
 }
 
-export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
+export class DefaultIssueAPI implements IssueAPI {
     constructor(
-        api: ApiPromise,
+        private api: ApiPromise,
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private transactionAPI: TransactionAPI
+    ) {}
 
     async getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
@@ -280,7 +278,7 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
         try {
-            const result = await this.sendLogged(batch, this.api.events.issue.RequestIssue);
+            const result = await this.transactionAPI.sendLogged(batch, this.api.events.issue.RequestIssue);
             const ids = this.getIssueIdsFromEvents(result.events);
             const issueRequests = await this.getRequestsByIds(ids);
             return issueRequests;
@@ -293,19 +291,19 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.issue.executeIssue(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.sendLogged(tx, this.api.events.issue.ExecuteIssue);
+        await this.transactionAPI.sendLogged(tx, this.api.events.issue.ExecuteIssue);
     }
 
     async cancel(requestId: string): Promise<void> {
         const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
         const cancelIssueTx = this.api.tx.issue.cancelIssue(parsedRequestId);
-        await this.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
+        await this.transactionAPI.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
     }
 
     async setIssuePeriod(blocks: number): Promise<void> {
         const period = this.api.createType("BlockNumber", blocks);
         const tx = this.api.tx.sudo.sudo(this.api.tx.issue.setIssuePeriod(period));
-        await this.sendLogged(tx);
+        await this.transactionAPI.sendLogged(tx);
     }
 
     async getIssuePeriod(): Promise<number> {

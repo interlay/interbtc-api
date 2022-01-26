@@ -2,12 +2,12 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { InterBtcAmount, BitcoinUnit, Polkadot, Kusama } from "@interlay/monetary-js";
-import { currencyIdToLiteral, DefaultElectrsAPI, DefaultBridgeAPI, ElectrsAPI, BridgeAPI, InterbtcPrimitivesVaultId, IssueStatus, newAccountId } from "../../../../src/index";
+import { currencyIdToLiteral, DefaultElectrsAPI, DefaultBridgeAPI, ElectrsAPI, BridgeAPI, InterbtcPrimitivesVaultId, IssueStatus, newAccountId, GovernanceCurrency } from "../../../../src/index";
 
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { USER_1_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER } from "../../../config";
+import { USER_1_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../src/utils/issueRedeem";
 import { newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
@@ -34,6 +34,7 @@ describe("issue", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
+        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
@@ -49,7 +50,7 @@ describe("issue", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
     });
 
     after(async () => {
@@ -80,19 +81,6 @@ describe("issue", () => {
         );
     });
 
-    it("request should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(
-            api,
-            bitcoinjs.networks.regtest,
-            electrsAPI,
-            wrappedCurrency,
-            userInterBtcAPI.fee,
-            userInterBtcAPI.vaults
-        );
-        const amount = InterBtcAmount.from.BTC(0.0000001);
-        await assert.isRejected(tmpIssueAPI.request(amount));
-    });
-
     it("should batch request across several vaults", async () => {
         const requestLimits = await userInterBtcAPI.issue.getRequestLimits();
         const amount = requestLimits.singleVaultMaxIssuable.mul(1.1);
@@ -115,22 +103,10 @@ describe("issue", () => {
         );
     });
 
-    it("execute should fail if no account is set", async () => {
-        const tmpIssueAPI = new DefaultIssueAPI(
-            api,
-            bitcoinjs.networks.regtest,
-            electrsAPI,
-            wrappedCurrency,
-            userInterBtcAPI.fee,
-            userInterBtcAPI.vaults
-        );
-        await assert.isRejected(tmpIssueAPI.execute("", ""));
-    });
-
     it("should fail to request a value finer than 1 Satoshi", async () => {
         const amount = InterBtcAmount.from.BTC("0.00000121");
         await assert.isRejected(
-            issueSingle(api, bitcoinCoreClient, userAccount, amount, vault_1_id, true, false)
+            issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, amount, vault_1_id, true, false)
         );
     });
 
@@ -141,7 +117,7 @@ describe("issue", () => {
 
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
         const issueResult = await issueSingle(
-            api,
+            userInterBtcAPI,
             bitcoinCoreClient,
             userAccount,
             amount,
@@ -163,7 +139,7 @@ describe("issue", () => {
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
         const oneSatoshi = InterBtcAmount.from.Satoshi(1);
         const issueResult = await issueSingle(
-            api,
+            userInterBtcAPI,
             bitcoinCoreClient,
             userAccount,
             amount,
@@ -203,7 +179,7 @@ describe("issue", () => {
     it.skip("should cancel an issue request", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const initialIssuePeriod = await userInterBtcAPI.issue.getIssuePeriod();
-            await sudo(userInterBtcAPI.issue, (api) => api.setIssuePeriod(0));
+            await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(0));
             try {
                 // request issue
                 const amount = InterBtcAmount.from.BTC(0.0000121);
@@ -227,11 +203,11 @@ describe("issue", () => {
                 assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
 
                 // Set issue period back to its initial value to minimize side effects.
-                await sudo(userInterBtcAPI.issue, (api) => api.setIssuePeriod(initialIssuePeriod));
+                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
 
             } catch (e) {
                 // Set issue period back to its initial value to minimize side effects.
-                await sudo(userInterBtcAPI.issue, (api) => api.setIssuePeriod(initialIssuePeriod));
+                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
                 throw e;
             }
         });

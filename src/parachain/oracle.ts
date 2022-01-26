@@ -28,7 +28,7 @@ export const DEFAULT_INCLUSION_TIME: FeeEstimationType = "Fast";
 /**
  * @category BTC Bridge
  */
-export interface OracleAPI extends TransactionAPI {
+export interface OracleAPI {
     /**
      * @param currency The collateral currency as a `Monetary.js` object
      * @param wrappedCurrency The wrapped currency to use in the returned exchange rate type, defaults to `Bitcoin`
@@ -110,10 +110,8 @@ export interface OracleAPI extends TransactionAPI {
     ): Promise<void>;
 }
 
-export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI {
-    constructor(api: ApiPromise, private wrappedCurrency: WrappedCurrency, account?: AddressOrPair) {
-        super(api, account);
-    }
+export class DefaultOracleAPI implements OracleAPI {
+    constructor(private api: ApiPromise, private wrappedCurrency: WrappedCurrency, private transactionAPI: TransactionAPI) {}
 
     async getExchangeRate<C extends CurrencyUnit>(
         collateralCurrency: Currency<C>
@@ -167,7 +165,7 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         );
         const oracleKey = createExchangeRateOracleKey(this.api, exchangeRate.counter);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedExchangeRate]]);
-        await this.sendLogged(tx, this.api.events.oracle.FeedValues);
+        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues);
     }
 
     async getBitcoinFees(): Promise<Big> {
@@ -196,7 +194,7 @@ export class DefaultOracleAPI extends DefaultTransactionAPI implements OracleAPI
         const oracleKey = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
         const encodedFee = encodeUnsignedFixedPoint(this.api, fees);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedFee]]);
-        await this.sendLogged(tx, this.api.events.oracle.FeedValues);
+        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues);
     }
 
     async getSourcesById(): Promise<Map<string, string>> {

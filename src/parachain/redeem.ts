@@ -39,7 +39,7 @@ import {
 /**
  * @category BTC Bridge
  */
-export interface RedeemAPI extends TransactionAPI {
+export interface RedeemAPI {
     /**
      * @returns An array containing the redeem requests
      */
@@ -169,22 +169,17 @@ export interface RedeemAPI extends TransactionAPI {
     getCurrentInclusionFee(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
 }
 
-export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI {
-    
-    requestHash: Hash = this.api.createType("Hash");
-    events: EventRecord[] = [];
+export class DefaultRedeemAPI implements RedeemAPI {
 
     constructor(
-        api: ApiPromise,
+        private api: ApiPromise,
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private vaultsAPI: VaultsAPI,
         private oracleAPI: OracleAPI,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private transactionAPI: TransactionAPI
+    ) {}
 
     private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
         return getRequestIdsFromEvents(events, event, this.api);
@@ -239,7 +234,7 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         try {
-            const result = await this.sendLogged(batch, this.api.events.issue.RequestRedeem);
+            const result = await this.transactionAPI.sendLogged(batch, this.api.events.issue.RequestRedeem);
             const ids = this.getRedeemIdsFromEvents(result.events, this.api.events.redeem.RequestRedeem);
             const redeemRequests = await this.getRequestsByIds(ids);
             return redeemRequests;
@@ -252,13 +247,13 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.redeem.executeRedeem(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.sendLogged(tx, this.api.events.redeem.ExecuteRedeem);
+        await this.transactionAPI.sendLogged(tx, this.api.events.redeem.ExecuteRedeem);
     }
 
     async cancel(requestId: string, reimburse = false): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
-        await this.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
+        await this.transactionAPI.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
     }
 
     async burn(
@@ -268,13 +263,13 @@ export class DefaultRedeemAPI extends DefaultTransactionAPI implements RedeemAPI
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const amountAtomicUnit = this.api.createType("Balance", amount.str.Satoshi());
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(vaultCurrencyPair, amountAtomicUnit);
-        await this.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
+        await this.transactionAPI.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
     }
 
     async setRedeemPeriod(blocks: number): Promise<void> {
         const period = this.api.createType("BlockNumber", blocks);
         const tx = this.api.tx.sudo.sudo(this.api.tx.redeem.setRedeemPeriod(period));
-        await this.sendLogged(tx);
+        await this.transactionAPI.sendLogged(tx);
     }
 
     async getRedeemPeriod(): Promise<number> {

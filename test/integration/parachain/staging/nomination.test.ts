@@ -2,13 +2,13 @@ import { InterBtcAmount, InterBtc, Polkadot, Currency } from "@interlay/monetary
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import { CollateralUnit, DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId } from "../../../../src/index";
+import { CollateralUnit, DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
 
 import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, FeeAPI, newAccountId, newVaultId, NominationAPI, RewardsAPI, tickerToMonetaryCurrency, VaultsAPI, WrappedCurrency } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER } from "../../../config";
+import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
@@ -29,14 +29,15 @@ describe("NominationAPI", () => {
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
-        sudoInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, sudoAccount, ESPLORA_BASE_PATH);
+        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
+        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
+        sudoInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, sudoAccount, ESPLORA_BASE_PATH);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
 
         if (!(await sudoInterBtcAPI.nomination.isNominationEnabled())) {
             console.log("Enabling nomination...");
-            await sudo(sudoInterBtcAPI.nomination, (api) => api.setNominationEnabled(true));
+            await sudo(sudoInterBtcAPI, () => sudoInterBtcAPI.nomination.setNominationEnabled(true));
         }
 
         // The account of a vault from docker-compose
@@ -65,12 +66,7 @@ describe("NominationAPI", () => {
     }).timeout(60000);
 
     async function setIssueFee(x: BN) {
-        const previousAccount = sudoInterBtcAPI.nomination.getAccount();
-        sudoInterBtcAPI.nomination.setAccount(sudoAccount);
-        await setNumericStorage(api, "Fee", "IssueFee", x, sudoInterBtcAPI.nomination, 128);
-        if (previousAccount) {
-            sudoInterBtcAPI.nomination.setAccount(previousAccount);
-        }
+        await setNumericStorage(api, "Fee", "IssueFee", x, sudoAccount, 128);
     }
 
     it("Should nominate to and withdraw from a vault", async () => {
@@ -110,7 +106,7 @@ describe("NominationAPI", () => {
             assert.equal(vault_1Address, nomination.vaultId.accountId.toString());
 
             const interBtcToIssue = InterBtcAmount.from.BTC(0.00001);
-            await issueSingle(api, bitcoinCoreClient, userAccount, interBtcToIssue, vault_1_id);
+            await issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, interBtcToIssue, vault_1_id);
             const wrappedRewardsBeforeWithdrawal = (
                 await userInterBtcAPI.nomination.getNominatorReward(
                     vault_1_id.accountId,
@@ -146,10 +142,10 @@ describe("NominationAPI", () => {
 
     async function optInWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrency) {
         // will fail if vault is already opted in
-        await callWith(userInterBtcAPI.nomination, vaultAccount, api => api.optIn(collateralCurrency));
+        await callWith(userInterBtcAPI, vaultAccount, () => userInterBtcAPI.nomination.optIn(collateralCurrency));
     }
 
     async function optOutWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrency) {
-        await callWith(userInterBtcAPI.nomination, vaultAccount, api => api.optOut(collateralCurrency));
+        await callWith(userInterBtcAPI, vaultAccount, () => userInterBtcAPI.nomination.optOut(collateralCurrency));
     }
 });

@@ -11,7 +11,7 @@ import { RefundRequestExt, WrappedCurrency } from "../types";
 /**
  * @category BTC Bridge
  */
-export interface RefundAPI extends TransactionAPI {
+export interface RefundAPI {
     /**
      * Execute a refund request
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
@@ -36,22 +36,20 @@ export interface RefundAPI extends TransactionAPI {
     getRequestByIssueId(issueId: string): Promise<RefundRequestExt>;
 }
 
-export class DefaultRefundAPI extends DefaultTransactionAPI implements RefundAPI {
+export class DefaultRefundAPI implements RefundAPI {
     constructor(
-        api: ApiPromise,
+        private api: ApiPromise,
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private transactionAPI: TransactionAPI
+    ) {}
 
     async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const requestTx = this.api.tx.refund.executeRefund(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.sendLogged(requestTx, this.api.events.refund.ExecuteRefund);
+        await this.transactionAPI.sendLogged(requestTx, this.api.events.refund.ExecuteRefund);
     }
 
     async list(): Promise<RefundRequestExt[]> {

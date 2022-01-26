@@ -4,7 +4,7 @@ import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
 
 import { UnsignedFixedPoint } from "../interfaces";
-import { DefaultOracleAPI, DefaultSystemAPI } from "../parachain";
+import { DefaultOracleAPI, DefaultSystemAPI, OracleAPI, SystemAPI } from "../parachain";
 import { decodeFixedPointType, newMonetaryAmount } from "../utils";
 import { CollateralUnit, currencyIdToMonetaryCurrency } from "./currency";
 
@@ -36,6 +36,8 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
 
     constructor(
         private api: ApiPromise,
+        private oracleAPI: OracleAPI,
+        private systemAPI: SystemAPI,
         wallet: WalletExt,
         backingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
         id: InterbtcPrimitivesVaultId,
@@ -72,15 +74,16 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         }
         const freeCollateral = await this.getFreeCollateral();
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
-        const oracleAPI = new DefaultOracleAPI(this.api, currencyIdToMonetaryCurrency(this.id.currencies.wrapped));
-        const backableWrappedTokens = await oracleAPI.convertCollateralToWrapped(freeCollateral);
+        const backableWrappedTokens = await this.oracleAPI.convertCollateralToWrapped(
+            freeCollateral,
+            currencyIdToMonetaryCurrency(this.id.currencies.wrapped)
+        );
         // Force type-assert here as the oracle API only uses wrapped Bitcoin
         return backableWrappedTokens.div(secureCollateralThreshold) as unknown as MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
     }
 
     async isBanned(): Promise<boolean> {
-        const systemAPI = new DefaultSystemAPI(this.api);
-        const currentBlockNumber = await systemAPI.getCurrentActiveBlockNumber();
+        const currentBlockNumber = await this.systemAPI.getCurrentActiveBlockNumber();
         if (!this.bannedUntil) {
             return false;
         }
@@ -98,9 +101,8 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     }
 
     async getUsedCollateral(): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
-        const oracleAPI = new DefaultOracleAPI(this.api, currencyIdToMonetaryCurrency(this.id.currencies.wrapped));
         const backedTokens = this.getBackedTokens();
-        const backedTokensInCollateral = await oracleAPI.convertWrappedToCurrency(
+        const backedTokensInCollateral = await this.oracleAPI.convertWrappedToCurrency(
             // Force type-assert here as the oracle API only uses wrapped Bitcoin
             backedTokens as unknown as MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
             currencyIdToMonetaryCurrency(this.id.currencies.collateral) as Currency<CollateralUnit>

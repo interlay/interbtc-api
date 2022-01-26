@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { InterBtcAmount, Kusama, Polkadot } from "@interlay/monetary-js";
 
-import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
+import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, VaultRegistryVault, GovernanceCurrency } from "../../../../src/index";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import {
@@ -20,11 +20,12 @@ import {
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
     COLLATERAL_CURRENCY_TICKER,
-    WRAPPED_CURRENCY_TICKER
+    WRAPPED_CURRENCY_TICKER,
+    GOVERNANCE_CURRENCY_TICKER
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { BTCRelayAPI, CollateralCurrency, ElectrsAPI, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { BTCRelayAPI, ElectrsAPI, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
@@ -36,7 +37,6 @@ describe("redeem", () => {
     let userAccount: KeyringPair;
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let electrsAPI: ElectrsAPI;
-    let btcRelayAPI: BTCRelayAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
     let vault_to_liquidate: KeyringPair;
     let vault_1: KeyringPair;
@@ -51,6 +51,7 @@ describe("redeem", () => {
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
+        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         keyring = new Keyring({ type: "sr25519" });
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
@@ -59,7 +60,7 @@ describe("redeem", () => {
         vault_2_id = newVaultId(api, vault_2.address, Kusama, wrappedCurrency);
         userAccount = keyring.addFromUri(USER_1_URI);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -85,8 +86,7 @@ describe("redeem", () => {
         const redeemAmount = InterBtcAmount.from.BTC(0.00003);
         // DOT collateral
         await issueAndRedeem(
-            api,
-            btcRelayAPI,
+            interBtcAPI,
             bitcoinCoreClient,
             userAccount,
             vault_1_id,
@@ -98,8 +98,7 @@ describe("redeem", () => {
 
         // KSM collateral
         await issueAndRedeem(
-            api,
-            btcRelayAPI,
+            interBtcAPI,
             bitcoinCoreClient,
             userAccount,
             vault_2_id,

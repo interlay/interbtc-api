@@ -4,8 +4,8 @@ import { assert } from "chai";
 import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT, WRAPPED_CURRENCY_TICKER } from "../../../config";
-import { DefaultBridgeAPI, BridgeAPI, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { ESPLORA_BASE_PATH, GOVERNANCE_CURRENCY_TICKER, ORACLE_URI, PARACHAIN_ENDPOINT, WRAPPED_CURRENCY_TICKER } from "../../../config";
+import { DefaultBridgeAPI, BridgeAPI, tickerToMonetaryCurrency, WrappedCurrency, GovernanceCurrency } from "../../../../src";
 import { GriefingCollateralType } from "../../../../src/parachain/fee";
 import { callWithExchangeRate } from "../../../utils/helpers";
 
@@ -18,7 +18,8 @@ describe("fee", () => {
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, oracleAccount, ESPLORA_BASE_PATH);
+        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
+        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, oracleAccount, ESPLORA_BASE_PATH);
     });
 
     after(async () => {
