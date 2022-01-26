@@ -124,7 +124,7 @@ describe("issue", () => {
             userInterBtcAPI.fee,
             userInterBtcAPI.vaults
         );
-        await assert.isRejected(tmpIssueAPI.execute("", { btcTxId: "" }));
+        await assert.isRejected(tmpIssueAPI.execute("", ""));
     });
 
     it("should fail to request a value finer than 1 Satoshi", async () => {

@@ -38,7 +38,6 @@ import {
     currencyIdToLiteral,
     tickerToMonetaryCurrency,
     currencyIdLiteralToMonetaryCurrency,
-    TxFetchingDetails,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
@@ -244,11 +243,11 @@ export interface VaultsAPI extends TransactionAPI {
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
      * @param vaultId The account of the vault to check.
-     * @param txFetcher TxFetchingDetails object
+     * @param btcTxId Bitcoin transaction ID
      */
-     reportVaultTheft(
+    reportVaultTheft(
         vaultAccountId: AccountId,
-        txFetchingDetails: TxFetchingDetails
+        btcTxId: string
     ): Promise<void>;
     /**
      * @returns The wrapped currency issued by the vaults
@@ -831,9 +830,9 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
 
     async reportVaultTheft(
         vaultAccountId: AccountId,
-        txFetchingDetails: TxFetchingDetails
+        btcTxId: string
     ): Promise<void> {
-        const txInclusionDetails = await getTxProof(this.electrsAPI, txFetchingDetails);
+        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.relay.reportVaultTheft(vaultAccountId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
         await this.sendLogged(tx, this.api.events.relay.VaultTheft);
     }

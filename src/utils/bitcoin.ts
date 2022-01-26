@@ -3,12 +3,11 @@ export { bitcoinjs as bitcoin };
 
 import { H160 } from "@polkadot/types/interfaces";
 import { BitcoinAddress } from "@polkadot/types/lookup";
-import { TypeRegistry } from "@polkadot/types";
+import { TypeRegistry, Bytes } from "@polkadot/types";
 
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
 import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "../utils";
-import { isTxInclusionDetails, TxFetchingDetails, TxInclusionDetails } from "../types";
 
 export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
@@ -84,12 +83,9 @@ export function decodeBtcAddress(
 
 export async function getTxProof(
     electrsAPI: ElectrsAPI,
-    txFetchingDetails: TxFetchingDetails
-): Promise<TxInclusionDetails> {
-    if (isTxInclusionDetails(txFetchingDetails)) {
-        return txFetchingDetails;
-    }
-    const [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(txFetchingDetails.btcTxId);
+    btcTxId: string
+): Promise<{ merkleProof: Bytes, rawTx: Bytes}> {
+    const [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
     return {
         merkleProof,
         rawTx

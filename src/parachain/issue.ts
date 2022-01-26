@@ -30,7 +30,6 @@ import {
     CurrencyIdLiteral,
     currencyIdToMonetaryCurrency,
     Issue,
-    TxFetchingDetails,
     WrappedCurrency,
 } from "../types";
 
@@ -90,9 +89,9 @@ export interface IssueAPI extends TransactionAPI {
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
      * @param issueId The ID returned by the issue request transaction
-     * @param txFetcher TxFetchingDetails object
+     * @param btcTxId Bitcoin transaction ID
      */
-    execute(requestId: string, txFetchingDetails: TxFetchingDetails): Promise<void>;
+    execute(requestId: string, btcTxId: string): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance request can be cancelled. As a result, the griefing collateral
@@ -290,9 +289,9 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         }
     }
 
-    async execute(requestId: string, txFetchingDetails: TxFetchingDetails): Promise<void> {
+    async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
-        const txInclusionDetails = await getTxProof(this.electrsAPI, txFetchingDetails);
+        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.issue.executeIssue(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
         await this.sendLogged(tx, this.api.events.issue.ExecuteIssue);
     }

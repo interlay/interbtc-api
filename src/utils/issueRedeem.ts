@@ -154,7 +154,7 @@ export async function issueSingle(
             console.log("Manually executing, waiting for relay to catchup");
             await waitForBlockFinalization(bitcoinCoreClient, interBtcApi.btcRelay);
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            await interBtcApi.issue.execute(issueRequest.id, { btcTxId: txData.txid } );
+            await interBtcApi.issue.execute(issueRequest.id, txData.txid);
         } else {
             console.log("Auto-executing, waiting for vault to submit proof");
             // wait for vault to execute issue
@@ -212,7 +212,7 @@ export async function redeem(
             await waitForBlockFinalization(bitcoinCoreClient, btcRelayAPI);
 
             // manually execute issue
-            await interBtcApi.redeem.execute(redeemRequest.id.toString(), { btcTxId });
+            await interBtcApi.redeem.execute(redeemRequest.id.toString(), btcTxId);
             break;
         }
         case ExecuteRedeem.Auto: {
