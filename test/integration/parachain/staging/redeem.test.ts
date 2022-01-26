@@ -2,9 +2,8 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { InterBtcAmount, Kusama, Polkadot } from "@interlay/monetary-js";
-import { InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
 
-import { DefaultRedeemAPI, RedeemAPI } from "../../../../src/parachain/redeem";
+import { DefaultInterBTCAPI, InterBTCAPI, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import {
@@ -20,20 +19,18 @@ import {
     VAULT_1_URI,
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
-    NATIVE_CURRENCY_TICKER,
+    COLLATERAL_CURRENCY_TICKER,
     WRAPPED_CURRENCY_TICKER
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
-import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { BTCRelayAPI, CollateralCurrency, DefaultBTCRelayAPI, ElectrsAPI, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { BTCRelayAPI, CollateralCurrency, ElectrsAPI, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
 describe("redeem", () => {
-    let redeemAPI: RedeemAPI;
     let api: ApiPromise;
     let keyring: Keyring;
     let userAccount: KeyringPair;
@@ -47,12 +44,12 @@ describe("redeem", () => {
     let vault_2: KeyringPair;
     let vault_2_id: InterbtcPrimitivesVaultId;
 
-    let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
+
+    let interBtcAPI: InterBTCAPI;
 
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-        collateralCurrency = tickerToMonetaryCurrency(api, NATIVE_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         keyring = new Keyring({ type: "sr25519" });
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
@@ -62,8 +59,8 @@ describe("redeem", () => {
         vault_2_id = newVaultId(api, vault_2.address, Kusama, wrappedCurrency);
         userAccount = keyring.addFromUri(USER_1_URI);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
-        btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        redeemAPI = new DefaultRedeemAPI(api, bitcoinjs.networks.regtest, electrsAPI, wrappedCurrency, collateralCurrency, userAccount);
+        interBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
+
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
@@ -80,7 +77,7 @@ describe("redeem", () => {
 
     it("should fail if no account is set", () => {
         const amount = InterBtcAmount.from.BTC(10);
-        assert.isRejected(redeemAPI.request(amount, randomBtcAddress));
+        assert.isRejected(interBtcAPI.redeem.request(amount, randomBtcAddress));
     });
 
     it("should issue and request redeem", async () => {
@@ -89,11 +86,9 @@ describe("redeem", () => {
         // DOT collateral
         await issueAndRedeem(
             api,
-            electrsAPI,
             btcRelayAPI,
             bitcoinCoreClient,
             userAccount,
-            collateralCurrency,
             vault_1_id,
             issueAmount,
             redeemAmount,
@@ -104,11 +99,9 @@ describe("redeem", () => {
         // KSM collateral
         await issueAndRedeem(
             api,
-            electrsAPI,
             btcRelayAPI,
             bitcoinCoreClient,
             userAccount,
-            collateralCurrency,
             vault_2_id,
             issueAmount,
             redeemAmount,
@@ -118,7 +111,7 @@ describe("redeem", () => {
     }).timeout(300000);
 
     it("should load existing redeem requests", async () => {
-        const redeemRequests = await redeemAPI.list();
+        const redeemRequests = await interBtcAPI.redeem.list();
         assert.isAtLeast(
             redeemRequests.length,
             1,
@@ -128,27 +121,27 @@ describe("redeem", () => {
 
     it("should getFeesToPay", async () => {
         const amount = InterBtcAmount.from.BTC(2);
-        const feesToPay = await redeemAPI.getFeesToPay(amount);
+        const feesToPay = await interBtcAPI.redeem.getFeesToPay(amount);
         assert.equal(feesToPay.str.BTC(), "0.01");
     });
 
     it("should getFeeRate", async () => {
-        const feePercentage = await redeemAPI.getFeeRate();
+        const feePercentage = await interBtcAPI.redeem.getFeeRate();
         assert.equal(feePercentage.toString(), "0.005");
     });
 
     it("should getPremiumRedeemFeeRate", async () => {
-        const premiumRedeemFee = await redeemAPI.getPremiumRedeemFeeRate();
+        const premiumRedeemFee = await interBtcAPI.redeem.getPremiumRedeemFeeRate();
         assert.equal(premiumRedeemFee.toString(), "0.05");
     });
 
     it("should getCurrentInclusionFee", async () => {
-        const currentInclusionFee = await redeemAPI.getCurrentInclusionFee();
+        const currentInclusionFee = await interBtcAPI.redeem.getCurrentInclusionFee();
         assert.isTrue(!currentInclusionFee.isZero());
     });
 
     it("should getDustValue", async () => {
-        const dustValue = await redeemAPI.getDustValue();
+        const dustValue = await interBtcAPI.redeem.getDustValue();
         assert.equal(dustValue.str.BTC(), "0.00001");
     });
 

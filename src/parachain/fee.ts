@@ -1,4 +1,4 @@
-import { DefaultOracleAPI, OracleAPI } from "./oracle";
+import { OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
@@ -52,11 +52,10 @@ export interface FeeAPI {
 }
 
 export class DefaultFeeAPI implements FeeAPI {
-    private oracleAPI: OracleAPI;
-
-    constructor(private api: ApiPromise, wrappedCurrency: WrappedCurrency) {
-        this.oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
-    }
+    constructor(
+        private api: ApiPromise, 
+        private oracleAPI: OracleAPI,
+    ) {}
 
     async getGriefingCollateral(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,

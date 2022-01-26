@@ -3,8 +3,6 @@ import { assert } from "../chai";
 import sinon from "sinon";
 import { createAPIRegistry, DefaultInterBTCAPI, InterBTCAPI } from "../../src/interbtc-api";
 import { SingleAccountSigner } from "../utils/SingleAccountSigner";
-import { Currency, Polkadot } from "@interlay/monetary-js";
-import { CollateralUnit } from "../../src";
 
 describe("InterBTCAPI", () => {
     const keyring = new Keyring();
@@ -15,7 +13,7 @@ describe("InterBTCAPI", () => {
     before(async () => {
         const api = sinon.createStubInstance(ApiPromise);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        interBTC = new DefaultInterBTCAPI(<any>api, Polkadot);
+        interBTC = new DefaultInterBTCAPI(<any>api);
     });
 
     describe("setAccount", () => {

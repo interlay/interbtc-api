@@ -1,13 +1,13 @@
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
-import { Bytes, Option } from "@polkadot/types";
+import { Option } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { Bitcoin, BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { InterbtcPrimitivesIssueIssueRequest, InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
-import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
+import { VaultsAPI } from "./vaults";
 import {
     decodeFixedPointType,
     getTxProof,
@@ -21,12 +21,12 @@ import {
     newVaultId,
     newCurrencyId,
 } from "../utils";
-import { DefaultFeeAPI, FeeAPI, GriefingCollateralType } from "./fee";
+import { FeeAPI, GriefingCollateralType } from "./fee";
 import { ElectrsAPI } from "../external";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
 import {
     CollateralCurrency,
-    CurrencyUnit,
+    CollateralIdLiteral,
     CurrencyIdLiteral,
     currencyIdToMonetaryCurrency,
     Issue,
@@ -89,11 +89,9 @@ export interface IssueAPI extends TransactionAPI {
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
      * @param issueId The ID returned by the issue request transaction
-     * @param txId (Optional) The ID of the Bitcoin transaction that sends funds to the vault address.
-     * @param merkleProof (Optional) The merkle inclusion proof of the Bitcoin transaction.
-     * @param rawTx (Optional) The raw bytes of the Bitcoin transaction
+     * @param btcTxId Bitcoin transaction ID
      */
-    execute(issueId: string, txId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void>;
+    execute(requestId: string, btcTxId: string): Promise<void>;
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance request can be cancelled. As a result, the griefing collateral
@@ -140,23 +138,28 @@ export interface IssueAPI extends TransactionAPI {
     getFeesToPay(
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    /**
+     * @param vaultAccountId The vault account ID
+     * @param collateralCurrency The currency specification, a `Monetary.js` object
+     * @returns The amount of wrapped tokens issuable by this vault
+     */
+    getVaultIssuableAmount(
+        vaultAccountId: AccountId,
+        collateralCurrency: CurrencyIdLiteral
+    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
 }
 
 export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
-    private vaultsAPI: VaultsAPI;
-    private feeAPI: FeeAPI;
-
     constructor(
         api: ApiPromise,
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
+        private feeAPI: FeeAPI,
+        private vaultsAPI: VaultsAPI,
         account?: AddressOrPair
     ) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
-        this.feeAPI = new DefaultFeeAPI(api, wrappedCurrency);
     }
 
     async getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>): Promise<IssueLimits> {
@@ -286,11 +289,11 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
         }
     }
 
-    async execute(requestId: string, btcTxId?: string, merkleProof?: Bytes, rawTx?: Bytes): Promise<void> {
+    async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
-        [merkleProof, rawTx] = await getTxProof(this.electrsAPI, btcTxId, merkleProof, rawTx);
-        const executeIssueTx = this.api.tx.issue.executeIssue(parsedRequestId, merkleProof, rawTx);
-        await this.sendLogged(executeIssueTx, this.api.events.issue.ExecuteIssue);
+        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
+        const tx = this.api.tx.issue.executeIssue(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
+        await this.sendLogged(tx, this.api.events.issue.ExecuteIssue);
     }
 
     async cancel(requestId: string): Promise<void> {
@@ -360,5 +363,17 @@ export class DefaultIssueAPI extends DefaultTransactionAPI implements IssueAPI {
                     parseIssueRequest(this.vaultsAPI, issueRequest.unwrap(), this.btcNetwork, issueId)
                 )
         );
+    }
+
+    async getVaultIssuableAmount(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralIdLiteral
+    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+        const vault = await this.vaultsAPI.get(vaultAccountId, collateralCurrency);
+        const wrappedTokenCapacity = await this.vaultsAPI.calculateCapacity(vault.backingCollateral);
+        const issuedAmount = vault.issuedTokens.add(vault.toBeIssuedTokens);
+        const issuableAmountExcludingFees = wrappedTokenCapacity.sub(issuedAmount);
+        const fees = await this.getFeesToPay(issuableAmountExcludingFees);
+        return issuableAmountExcludingFees.sub(fees);
     }
 }

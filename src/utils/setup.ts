@@ -16,18 +16,13 @@ import { createPolkadotAPI } from "../factory";
 import { issueSingle, setNumericStorage } from ".";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import {
-    DefaultNominationAPI,
-    DefaultOracleAPI,
-    DefaultRedeemAPI,
     NominationAPI,
     OracleAPI,
     RedeemAPI,
     TransactionAPI,
 } from "../parachain";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
-import { DefaultElectrsAPI, ElectrsAPI } from "../external";
 import { KeyringPair } from "@polkadot/keyring/types";
-import * as bitcoinjs from "bitcoinjs-lib";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
@@ -46,8 +41,9 @@ import {
     USER_1_URI,
     VAULT_1_URI,
 } from "../../test/config";
-import { CollateralCurrency, CollateralUnit, WrappedCurrency } from "../types";
+import { CollateralUnit, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
+import { DefaultInterBTCAPI } from "../interbtc-api";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -189,21 +185,17 @@ export async function initializeVaultNomination(enabled: boolean, nominationAPI:
 
 export async function initializeIssue(
     api: ApiPromise,
-    electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amountToIssue: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    collateralCurrency: CollateralCurrency,
     vaultAccountId: InterbtcPrimitivesVaultId
 ): Promise<void> {
     console.log("Initializing an issue...");
     await issueSingle(
         api,
-        electrsAPI,
         bitcoinCoreClient,
         issuingAccount,
         amountToIssue,
-        collateralCurrency,
         vaultAccountId
     );
 }
@@ -231,7 +223,6 @@ async function main(params: InitializationParams): Promise<void> {
     const sudoAccount = keyring.addFromUri(SUDO_URI);
     const oracleAccount = keyring.addFromUri(ORACLE_URI);
 
-    const electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
     const bitcoinCoreClient = new BitcoinCoreClient(
         BITCOIN_CORE_NETWORK,
         BITCOIN_CORE_HOST,
@@ -240,23 +231,15 @@ async function main(params: InitializationParams): Promise<void> {
         BITCOIN_CORE_PORT,
         BITCOIN_CORE_WALLET
     );
-    const oracleAPI = new DefaultOracleAPI(api, InterBtc, oracleAccount);
-    // initialize the nomination API with Alice in order to make sudo calls
-    const nominationAPI = new DefaultNominationAPI(
-        api,
-        bitcoinjs.networks.regtest,
-        electrsAPI,
-        InterBtc,
-        Polkadot,
-        sudoAccount
-    );
+    const oracleAccountInterBtcApi = new DefaultInterBTCAPI(api, "regtest", InterBtc, oracleAccount, ESPLORA_BASE_PATH);
+    const sudoAccountInterBtcApi = new DefaultInterBTCAPI(api, "regtest", InterBtc, sudoAccount, ESPLORA_BASE_PATH);
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
             params.setStableConfirmations === true
                 ? (defaultInitializationParams.setStableConfirmations as ChainConfirmations)
                 : params.setStableConfirmations;
-        await initializeStableConfirmations(api, stableConfirmationsToSet, nominationAPI, bitcoinCoreClient);
+        await initializeStableConfirmations(api, stableConfirmationsToSet, sudoAccountInterBtcApi.nomination, bitcoinCoreClient);
     }
 
     if (params.setExchangeRate !== undefined) {
@@ -269,16 +252,16 @@ async function main(params: InitializationParams): Promise<void> {
                       PolkadotUnit
                   >)
                 : params.setExchangeRate;
-        await initializeExchangeRate(exchangeRateToSet, oracleAPI);
+        await initializeExchangeRate(exchangeRateToSet, oracleAccountInterBtcApi.oracle);
     }
 
     if (params.btcTxFees !== undefined) {
         const btcTxFees = params.btcTxFees === true ? (defaultInitializationParams.btcTxFees as Big) : params.btcTxFees;
-        await initializeBtcTxFees(btcTxFees, oracleAPI);
+        await initializeBtcTxFees(btcTxFees, oracleAccountInterBtcApi.oracle);
     }
 
     if (params.enableNomination === true) {
-        initializeVaultNomination(params.enableNomination, nominationAPI);
+        initializeVaultNomination(params.enableNomination, sudoAccountInterBtcApi.nomination);
     }
 
     if (params.issue !== undefined) {
@@ -289,11 +272,9 @@ async function main(params: InitializationParams): Promise<void> {
         const vaultId = newVaultId(api, issueParams.vaultAddress, Polkadot, InterBtc);
         await initializeIssue(
             api,
-            electrsAPI,
             bitcoinCoreClient,
             issueParams.issuingAccount,
             issueParams.amount,
-            Polkadot,
             vaultId
         );
     }
@@ -303,16 +284,8 @@ async function main(params: InitializationParams): Promise<void> {
             params.redeem === true
                 ? (defaultInitializationParams.redeem as InitializeRedeem)
                 : (params.redeem as InitializeRedeem);
-        const redeemAPI = new DefaultRedeemAPI(
-            api,
-            bitcoinjs.networks.regtest,
-            electrsAPI,
-            InterBtc,
-            Polkadot,
-            redeemParams.redeemingAccount
-        );
-
-        await initializeRedeem(redeemAPI, redeemParams.amount, redeemParams.redeemingBTCAddress);
+        const redeemingAccountInterBtcApi = new DefaultInterBTCAPI(api, "regtest", InterBtc, sudoAccount);
+        await initializeRedeem(redeemingAccountInterBtcApi.redeem, redeemParams.amount, redeemParams.redeemingBTCAddress);
     }
     api.disconnect();
 }

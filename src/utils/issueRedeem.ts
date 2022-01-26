@@ -7,15 +7,11 @@ import { BitcoinAmount, BitcoinUnit, Currency, InterBtcAmount, MonetaryAmount } 
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import { newAccountId } from "../utils";
-import { getBitcoinNetwork } from "../interbtc-api";
-import { DefaultElectrsAPI, ElectrsAPI } from "../external/electrs";
-import { DefaultIssueAPI } from "../parachain/issue";
-import { DefaultTokensAPI } from "../parachain/tokens";
+import { DefaultInterBTCAPI } from "../interbtc-api";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
-import { BTCRelayAPI, DefaultBTCRelayAPI, DefaultRedeemAPI } from "../parachain";
+import { BTCRelayAPI } from "../parachain";
 import {
-    CollateralCurrency,
     currencyIdToLiteral,
     Issue,
     IssueStatus,
@@ -112,11 +108,9 @@ export function allocateAmountsToVaults<U extends BitcoinUnit>(
 
 export async function issueSingle(
     api: ApiPromise,
-    electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    collateralCurrency: CollateralCurrency,
     vaultId?: InterbtcPrimitivesVaultId,
     autoExecute = true,
     triggerRefund = false,
@@ -124,24 +118,14 @@ export async function issueSingle(
     atomic = true
 ): Promise<IssueResult<BitcoinUnit>> {
     try {
-        const bitcoinjsNetwork = getBitcoinNetwork(network);
-        const issueAPI = new DefaultIssueAPI(
-            api,
-            bitcoinjsNetwork,
-            new DefaultElectrsAPI(network),
-            amount.currency,
-            collateralCurrency
-        );
-        const btcRelayAPI = new DefaultBTCRelayAPI(api, electrsAPI);
-        const tokensAPI = new DefaultTokensAPI(api);
+        const interBtcApi = new DefaultInterBTCAPI(api, network, amount.currency, issuingAccount);
 
-        issueAPI.setAccount(issuingAccount);
         const requesterAccountId = newAccountId(api, issuingAccount.address);
-        const initialWrappedTokenBalance = await tokensAPI.balance(amount.currency, requesterAccountId);
+        const initialWrappedTokenBalance = await interBtcApi.tokens.balance(amount.currency, requesterAccountId);
         const blocksToMine = 3;
 
         const collateralIdLiteral = vaultId ? currencyIdToLiteral(vaultId.currencies.collateral) : undefined;
-        const rawRequestResult = await issueAPI.request(amount, vaultId?.accountId, collateralIdLiteral, atomic);
+        const rawRequestResult = await interBtcApi.issue.request(amount, vaultId?.accountId, collateralIdLiteral, atomic);
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
@@ -168,18 +152,18 @@ export async function issueSingle(
 
         if (autoExecute === false) {
             console.log("Manually executing, waiting for relay to catchup");
-            await waitForBlockFinalization(bitcoinCoreClient, btcRelayAPI);
+            await waitForBlockFinalization(bitcoinCoreClient, interBtcApi.btcRelay);
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            await issueAPI.execute(issueRequest.id, txData.txid);
+            await interBtcApi.issue.execute(issueRequest.id, txData.txid);
         } else {
             console.log("Auto-executing, waiting for vault to submit proof");
             // wait for vault to execute issue
-            while ((await issueAPI.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
+            while ((await interBtcApi.issue.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
                 await sleep(SLEEP_TIME_MS);
             }
         }
 
-        const finalWrappedTokenBalance = await tokensAPI.balance(amount.currency, requesterAccountId);
+        const finalWrappedTokenBalance = await interBtcApi.tokens.balance(amount.currency, requesterAccountId);
         return {
             request: issueRequest,
             initialWrappedTokenBalance,
@@ -197,12 +181,10 @@ export function sleep(ms: number): Promise<void> {
 
 export async function redeem(
     api: ApiPromise,
-    electrsAPI: ElectrsAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     btcRelayAPI: BTCRelayAPI,
     redeemingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
-    collateralCurrency: CollateralCurrency,
     vaultId?: InterbtcPrimitivesVaultId,
     autoExecute = ExecuteRedeem.Auto,
     network: BitcoinNetwork = "regtest",
@@ -210,12 +192,9 @@ export async function redeem(
     timeout = 5 * 60 * 1000,
     retries: number = 0
 ): Promise<Redeem> {
-    const bitcoinjsNetwork = getBitcoinNetwork(network);
-    const redeemAPI = new DefaultRedeemAPI(api, bitcoinjsNetwork, electrsAPI, amount.currency, collateralCurrency);
-    redeemAPI.setAccount(redeemingAccount);
-
+    const interBtcApi = new DefaultInterBTCAPI(api, network, amount.currency, redeemingAccount);
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-    const [redeemRequest] = await redeemAPI.request(
+    const [redeemRequest] = await interBtcApi.redeem.request(
         amount,
         btcAddress,
         vaultId,
@@ -226,19 +205,19 @@ export async function redeem(
     switch (autoExecute) {
         case ExecuteRedeem.Manually: {
             const opreturnData = stripHexPrefix(redeemRequest.id.toString());
-            const btcTxId = await electrsAPI.waitForOpreturn(opreturnData, timeout, 5000).catch((_) => {
+            const btcTxId = await interBtcApi.electrsAPI.waitForOpreturn(opreturnData, timeout, 5000).catch((_) => {
                 throw new Error("Redeem request was not executed, timeout expired");
             });
             // Even if the tx was found, the block needs to be relayed to the parachain before `execute` can be called.
             await waitForBlockFinalization(bitcoinCoreClient, btcRelayAPI);
 
             // manually execute issue
-            await redeemAPI.execute(redeemRequest.id.toString(), btcTxId);
+            await interBtcApi.redeem.execute(redeemRequest.id.toString(), btcTxId);
             break;
         }
         case ExecuteRedeem.Auto: {
             // wait for vault to execute issue
-            while ((await redeemAPI.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
+            while ((await interBtcApi.redeem.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
                 await sleep(SLEEP_TIME_MS);
             }
             break;
@@ -249,11 +228,9 @@ export async function redeem(
 
 export async function issueAndRedeem(
     api: ApiPromise,
-    electrsAPI: ElectrsAPI,
     btcRelayAPI: BTCRelayAPI,
     bitcoinCoreClient: BitcoinCoreClient,
     account: KeyringPair,
-    collateralCurrency: CollateralCurrency,
     vaultId?: InterbtcPrimitivesVaultId,
     issueAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.1),
     redeemAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.009),
@@ -265,11 +242,9 @@ export async function issueAndRedeem(
 ): Promise<[Issue, Redeem]> {
     const issueResult = await issueSingle(
         api,
-        electrsAPI,
         bitcoinCoreClient,
         account,
         issueAmount,
-        collateralCurrency,
         vaultId,
         autoExecuteIssue,
         triggerRefund,
@@ -279,12 +254,10 @@ export async function issueAndRedeem(
 
     const redeemRequest = await redeem(
         api,
-        electrsAPI,
         bitcoinCoreClient,
         btcRelayAPI,
         account,
         redeemAmount,
-        collateralCurrency,
         issueResult.request.vaultId,
         autoExecuteRedeem,
         network,
