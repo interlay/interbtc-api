@@ -1,11 +1,10 @@
-import { Network } from "bitcoinjs-lib";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Index } from "@polkadot/types/interfaces";
 import { Currency, MonetaryAmount, BitcoinUnit } from "@interlay/monetary-js";
 import type { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
-import { DefaultVaultsAPI, VaultsAPI } from "./vaults";
+import { VaultsAPI } from "./vaults";
 import {
     decodeFixedPointType,
     newCurrencyId,
@@ -16,7 +15,6 @@ import {
     storageKeyToNthInner,
 } from "../utils";
 import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
-import { ElectrsAPI } from "../external";
 import {
     CollateralCurrency,
     CollateralIdLiteral,
@@ -30,7 +28,7 @@ import {
     WrappedCurrency,
     WrappedIdLiteral,
 } from "../types";
-import { DefaultRewardsAPI, RewardsAPI } from "./rewards";
+import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
 
 export enum NominationAmountType {
@@ -153,20 +151,14 @@ export interface NominationAPI extends TransactionAPI {
 }
 
 export class DefaultNominationAPI extends DefaultTransactionAPI implements NominationAPI {
-    vaultsAPI: VaultsAPI;
-    rewardsAPI: RewardsAPI;
-
     constructor(
         api: ApiPromise,
-        btcNetwork: Network,
-        electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        private collateralCurrency: CollateralCurrency,
+        private vaultsAPI: VaultsAPI,
+        private rewardsAPI: RewardsAPI,
         account?: AddressOrPair
     ) {
         super(api, account);
-        this.vaultsAPI = new DefaultVaultsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
-        this.rewardsAPI = new DefaultRewardsAPI(api, btcNetwork, electrsAPI, wrappedCurrency, collateralCurrency);
     }
 
     async depositCollateral<C extends CollateralUnit>(
@@ -276,7 +268,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         const rawList = await this.listAllNominations();
         return await Promise.all(
             rawList.map(async (rawNomination): Promise<NominationReward> => {
-                const reward = await this.rewardsAPI.computeReward(
+                const reward = await this.vaultsAPI.computeReward(
                     rawNomination.vaultId.accountId,
                     rawNomination.nominatorId,
                     currencyIdToLiteral(rawNomination.vaultId.currencies.collateral) as CollateralIdLiteral,
@@ -306,7 +298,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         collateralCurrencyId: CollateralIdLiteral,
         nominatorId: AccountId,
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-        return await this.rewardsAPI.computeReward(
+        return await this.vaultsAPI.computeReward(
             vaultId,
             nominatorId,
             collateralCurrencyId,
@@ -338,15 +330,11 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         });
         return await Promise.all(
             rawNominations.map(async (rawNomination): Promise<Nomination> => {
-                const nominationCurrencyId = tickerToCurrencyIdLiteral(
-                    rawNomination.amount.currency.ticker
-                ) as CollateralIdLiteral;
                 return {
                     ...rawNomination,
                     amount: await this.rewardsAPI.computeCollateralInStakingPool(
-                        rawNomination.vaultId.accountId,
+                        rawNomination.vaultId,
                         rawNomination.nominatorId,
-                        nominationCurrencyId
                     ),
                     type: NominationAmountType.Parsed,
                 };

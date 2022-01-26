@@ -5,4 +5,4 @@ export const FIXEDI128_SCALING_FACTOR = 18;
 // already auto-executed the issuance
 export const IGNORED_ERROR_MESSAGES = ["issue.IssueCompleted"];
 
-export const ACCOUNT_NOT_SET_ERROR_MESSAGE = "cannot request without setting account";
+export const ACCOUNT_NOT_SET_ERROR_MESSAGE = "cannot sign transaction without setting account";

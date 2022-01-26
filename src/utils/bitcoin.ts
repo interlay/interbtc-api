@@ -2,9 +2,8 @@ import * as bitcoinjs from "bitcoinjs-lib";
 export { bitcoinjs as bitcoin };
 
 import { H160 } from "@polkadot/types/interfaces";
-import { Bytes } from "@polkadot/types";
 import { BitcoinAddress } from "@polkadot/types/lookup";
-import { TypeRegistry } from "@polkadot/types";
+import { TypeRegistry, Bytes } from "@polkadot/types";
 
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
@@ -84,17 +83,13 @@ export function decodeBtcAddress(
 
 export async function getTxProof(
     electrsAPI: ElectrsAPI,
-    btcTxId?: string,
-    merkleProof?: Bytes,
-    rawTx?: Bytes
-): Promise<[Bytes, Bytes]> {
-    if (!merkleProof || !rawTx) {
-        if (!btcTxId) {
-            throw new Error("Either the `btcTxId` or both `merkleProof` and `rawTx` must be defined to execute.");
-        }
-        [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
-    }
-    return [merkleProof, rawTx];
+    btcTxId: string
+): Promise<{ merkleProof: Bytes, rawTx: Bytes}> {
+    const [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
+    return {
+        merkleProof,
+        rawTx
+    };
 }
 
 export async function waitForBlockRelaying(

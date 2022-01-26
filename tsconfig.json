@@ -34,6 +34,10 @@
         "src"
     ],
     "exclude": [
-        "./node_modules/*"
+        "./node_modules/*",
+        "./src/utils/hrmp-setup.ts",
+        "./src/utils/xcm-cross-chain-transfer.ts",
+        "./src/utils/setup.ts",
+
     ]
 }

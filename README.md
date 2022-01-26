@@ -246,7 +246,7 @@ If you are searching for a place to start or would like to discuss features, rea
 
 ## License
 
-(C) Copyright 2021 [Interlay](https://www.interlay.io) Ltd
+(C) Copyright 2022 [Interlay](https://www.interlay.io) Ltd
 
 interbtc-js is licensed under the terms of the Apache License (Version 2.0). See [LICENSE](LICENSE).
 
