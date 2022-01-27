@@ -33,6 +33,24 @@ export interface TokensAPI extends TransactionAPI {
         id: AccountId
     ): Promise<MonetaryAmount<Currency<U>, U>>;
     /**
+     * @param currency The currency specification, a `Monetary.js` object
+     * @param id The AccountId of a user
+     * @returns The user's frozen balance
+     */
+    balanceFrozen<U extends CurrencyUnit>(
+        currency: Currency<U>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<U>, U>>;
+    /**
+     * @param currency The currency specification, a `Monetary.js` object
+     * @param id The AccountId of a user
+     * @returns The user's transferable balance (free - frozen)
+     */
+    balanceTransferable<U extends CurrencyUnit>(
+        currency: Currency<U>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<U>, U>>;
+    /**
      * @param destination The address of a user
      * @param amount The amount to transfer, as a `Monetary.js` object
      */
@@ -96,6 +114,25 @@ export class DefaultTokensAPI extends DefaultTransactionAPI implements TokensAPI
     ): Promise<MonetaryAmount<Currency<U>, U>> {
         const accountData = await this.getAccountData(currency, id);
         return newMonetaryAmount(accountData.reserved.toString(), currency);
+    }
+
+    async balanceFrozen<U extends CurrencyUnit>(
+        currency: Currency<U>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<U>, U>> {
+        const accountData = await this.getAccountData(currency, id);
+        return newMonetaryAmount(accountData.frozen.toString(), currency);
+    }
+
+    async balanceTransferable<U extends CurrencyUnit>(
+        currency: Currency<U>,
+        id: AccountId
+    ): Promise<MonetaryAmount<Currency<U>, U>> {
+        const [free, frozen] = await Promise.all([
+            this.balance(currency, id),
+            this.balanceLocked(currency, id)
+        ]);
+        return free.sub(frozen);
     }
 
     async subscribeToBalance<U extends CurrencyUnit>(
