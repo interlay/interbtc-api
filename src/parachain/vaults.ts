@@ -29,7 +29,6 @@ import {
     SystemVaultExt,
     VaultStatusExt,
     currencyIdToMonetaryCurrency,
-    CurrencyUnit,
     CollateralCurrency,
     WrappedCurrency,
     CurrencyIdLiteral,
@@ -257,7 +256,7 @@ export interface VaultsAPI extends TransactionAPI {
      * Compute the total reward, including the staking (local) pool and the rewards (global) pool
      * @param vaultAccountId The vault ID whose reward pool to check
      * @param nominatorId The account ID of the staking pool nominator
-     * @param vaultCollateralIdLiteral Collateral used by the vault. This is the currency used as 
+     * @param vaultCollateralIdLiteral Collateral used by the vault. This is the currency used as
      * stake in the `staking` and `rewards` pools.
      * @param rewardCurrencyIdLiteral The reward currency, e.g. kBTC, KINT, interBTC, INTR
      * @returns A Monetary.js amount object, representing the total reward in the given currency
@@ -543,7 +542,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             currencyIdToMonetaryCurrency(vaultId.currencies.wrapped)
         );
         return collateralInWrapped.toBig().div(issuedTokens.toBig());
-    } 
+    }
 
     async getSystemCollateralization(): Promise<Big | undefined> {
         // TODO: Implement once method of calculation is decided on
@@ -588,21 +587,31 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     }
 
     async getTotalIssuableAmount(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-        const perCollateralIssuableAmounts = await Promise.all(
-            CollateralCurrency.map(
-                (currency) =>
-                    new Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>((resolve) => {
-                        this.tokensAPI.total(currency as Currency<CurrencyUnit>).then(async (nomination) => {
-                            const capacity = await this.calculateCapacity(
-                                nomination as MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>
-                            );
-                            resolve(capacity);
-                        });
-                    })
-            )
-        );
-        const totalIssuableAmount = perCollateralIssuableAmounts.reduce((acc, v) => acc.add(v));
-        const issuedAmountBtc = await this.getTotalIssuedAmount();
+        // get [[wrapped, collateral], amount][] map
+        const perCurrencyPairCollateralAmounts = await this.api.query.vaultRegistry.totalUserVaultCollateral.entries();
+        // filter for wrapped === this.wrapped, as only one wrapped currency is handled at a time currently
+        const perWrappedCurrencyCollateralAmounts = perCurrencyPairCollateralAmounts.filter(([key, _val]) =>
+            currencyIdToMonetaryCurrency(key.args[0].wrapped).name === this.wrappedCurrency.name);
+        // reduce from [[this.wrapped, collateral], amount][] pairs to [collateral, sumAmount][] map
+        const perCollateralCurrencyCollateralAmounts = perWrappedCurrencyCollateralAmounts.reduce((amounts, [key, amount]) => {
+            const collateralCurrency = currencyIdToMonetaryCurrency<CollateralUnit>(key.args[0].collateral);
+            let collateralAmount = newMonetaryAmount(amount.toString(), collateralCurrency);
+            if (amounts.has(collateralCurrency)) {
+                // .has() is true, hence non-null
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                collateralAmount = collateralAmount.add(amounts.get(collateralCurrency)!);
+            }
+            amounts.set(collateralCurrency, collateralAmount);
+            return amounts;
+        }, new Map<Currency<CollateralUnit>, MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>());
+        // finally convert the CollateralAmount sums to issuable amounts and sum those to get the total
+        const [perCollateralCurrencyIssuableAmounts, issuedAmountBtc] = await Promise.all([
+            Promise.all(
+                [...perCollateralCurrencyCollateralAmounts.values()].map((collateralAmount) => this.calculateCapacity(collateralAmount))
+            ),
+            this.getTotalIssuedAmount()
+        ]);
+        const totalIssuableAmount = perCollateralCurrencyIssuableAmounts.reduce((acc, v) => acc.add(v));
         return totalIssuableAmount.sub(issuedAmountBtc);
     }
 
@@ -782,7 +791,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             {
                 amount: this.api.createType("u128", amount.toString()),
                 currencyId: newCurrencyId(this.api, tickerToCurrencyIdLiteral(amount.currency.ticker))
-            }    
+            }
         );
     }
 

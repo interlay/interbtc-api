@@ -24,7 +24,7 @@ describe("vaultsAPI", () => {
     let vault_3_id: InterbtcPrimitivesVaultId;
     let api: ApiPromise;
     let bitcoinCoreClient: BitcoinCoreClient;
-    
+
     let wrappedCurrency: WrappedCurrency;
 
     let interBtcAPI: InterBTCAPI;
@@ -71,7 +71,7 @@ describe("vaultsAPI", () => {
 
     it("should get issuable", async () => {
         const issuableInterBTC = await interBtcAPI.vaults.getTotalIssuableAmount();
-        const minExpectedIssuableInterBTC = InterBtcAmount.from.BTC(1);
+        const minExpectedIssuableInterBTC = InterBtcAmount.from.BTC(0.005);
         assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
@@ -134,7 +134,7 @@ describe("vaultsAPI", () => {
                 encodeVaultId(vault_3_id),
                 "Premium redeem vault is not the expected one"
             );
-    
+
             const premiumRedeemAmount = premiumRedeemVaults.values().next().value as InterBtcAmount;
             assert.isTrue(
                 premiumRedeemAmount.gte(issuableAmount),
