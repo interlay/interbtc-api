@@ -589,7 +589,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async getTotalIssuableAmount(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
         // get [[wrapped, collateral], amount][] map
         const perCurrencyPairCollateralAmounts = await this.api.query.vaultRegistry.totalUserVaultCollateral.entries();
-        // filter for wrapped === this.wrapped (as only one wrapped currency is handled at a time currently?)
+        // filter for wrapped === this.wrapped, as only one wrapped currency is handled at a time currently
         const perWrappedCurrencyCollateralAmounts = perCurrencyPairCollateralAmounts.filter(([key, _val]) =>
             currencyIdToMonetaryCurrency(key.args[0].wrapped).name === this.wrappedCurrency.name);
         // reduce from [[this.wrapped, collateral], amount][] pairs to [collateral, sumAmount][] map
@@ -605,10 +605,13 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             return amounts;
         }, new Map<Currency<CollateralUnit>, MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>());
         // finally convert the CollateralAmount sums to issuable amounts and sum those to get the total
-        const perCollateralCurrencyIssuableAmounts = await Promise.all(
-            [...perCollateralCurrencyCollateralAmounts.values()].map((collateralAmount) => this.calculateCapacity(collateralAmount)));
+        const [perCollateralCurrencyIssuableAmounts, issuedAmountBtc] = await Promise.all([
+            Promise.all(
+                [...perCollateralCurrencyCollateralAmounts.values()].map((collateralAmount) => this.calculateCapacity(collateralAmount))
+            ),
+            this.getTotalIssuedAmount()
+        ]);
         const totalIssuableAmount = perCollateralCurrencyIssuableAmounts.reduce((acc, v) => acc.add(v));
-        const issuedAmountBtc = await this.getTotalIssuedAmount();
         return totalIssuableAmount.sub(issuedAmountBtc);
     }
 
