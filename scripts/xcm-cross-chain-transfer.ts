@@ -1,9 +1,9 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { createPolkadotAPI } from "../factory";
+import { createPolkadotAPI } from "../src/factory";
 import { Keyring } from "@polkadot/api";
 import {
     DefaultTransactionAPI,
-} from "../parachain";
+} from "../src/parachain";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
 import { XcmV1MultiLocation } from "@polkadot/types/lookup";
