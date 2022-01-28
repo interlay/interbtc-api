@@ -2,7 +2,7 @@ import { InterBtcAmount, InterBtc, Polkadot, Currency } from "@interlay/monetary
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import { CollateralUnit, DefaultInterBTCAPI, InterBTCAPI, InterbtcPrimitivesVaultId } from "../../../../src/index";
+import { CollateralUnit, DefaultInterBTCAPI, InterBTCAPI, InterbtcPrimitivesVaultId, tickerToCurrencyIdLiteral } from "../../../../src/index";
 
 import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, FeeAPI, newAccountId, newVaultId, NominationAPI, RewardsAPI, tickerToMonetaryCurrency, VaultsAPI, WrappedCurrency } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
@@ -115,6 +115,7 @@ describe("NominationAPI", () => {
                 await userInterBtcAPI.nomination.getNominatorReward(
                     vault_1_id.accountId,
                     collateralCurrencyIdLiteral,
+                    tickerToCurrencyIdLiteral(wrappedCurrency.ticker),
                     newAccountId(api, userAccount.address),
                 )
             ).toBig();

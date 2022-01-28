@@ -23,6 +23,8 @@ import {
     WrappedCurrency,
     WrappedIdLiteral,
     currencyIdToLiteral,
+    CurrencyUnit,
+    currencyIdLiteralToMonetaryCurrency,
 } from "../types";
 
 export interface RewardsAPI {
@@ -38,7 +40,7 @@ export interface RewardsAPI {
         collateralCurrencyId: CollateralIdLiteral,
         rewardCurrencyId?: CurrencyIdLiteral,
         nonce?: number
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
     /**
      * @param collateralCurrencyId The staked currency
      * @param vaultId The account ID of the staking pool nominee
@@ -90,7 +92,7 @@ export interface RewardsAPI {
         rewardCurrencyIdLiteral: CurrencyIdLiteral,
         vaultCollateralIdLiteral: CollateralIdLiteral,
         vaultAccountId: AccountId
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
     /**
      * @param vaultId The account ID of the staking pool nominee
      * @param nominatorId The account ID of the staking pool nominator
@@ -163,7 +165,7 @@ export class DefaultRewardsAPI extends DefaultTransactionAPI implements RewardsA
         collateralCurrencyId: CollateralIdLiteral,
         rewardCurrencyId?: CurrencyIdLiteral,
         nonce?: number
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
         const wrappedCurrencyId = tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker) as WrappedIdLiteral;
         rewardCurrencyId = (rewardCurrencyId ? rewardCurrencyId : wrappedCurrencyId) as CurrencyIdLiteral;
         const [stake, rewardPerToken, rewardTally] = await Promise.all([
@@ -172,7 +174,10 @@ export class DefaultRewardsAPI extends DefaultTransactionAPI implements RewardsA
             this.getStakingPoolRewardTally(rewardCurrencyId, vaultAccountId, nominatorId, collateralCurrencyId, nonce),
         ]);
         const rawLazyDistribution = computeLazyDistribution(stake, rewardPerToken, rewardTally);
-        return newMonetaryAmount(rawLazyDistribution, this.wrappedCurrency);
+        return newMonetaryAmount(
+            rawLazyDistribution,
+            currencyIdLiteralToMonetaryCurrency(this.api, rewardCurrencyId)
+        );
     }
 
     async getStakingPoolNonce(
@@ -300,7 +305,7 @@ export class DefaultRewardsAPI extends DefaultTransactionAPI implements RewardsA
         rewardCurrencyIdLiteral: CurrencyIdLiteral,
         vaultCollateralIdLiteral: CollateralIdLiteral,
         vaultAccountId: AccountId
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
         const currencyId = tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker);
         const stake = await this.getRewardsPoolStake(vaultCollateralIdLiteral, vaultAccountId);
         const rewardPerToken = await this.getRewardsPoolRewardPerToken(currencyId);
@@ -310,7 +315,10 @@ export class DefaultRewardsAPI extends DefaultTransactionAPI implements RewardsA
             vaultAccountId
         );
         const rawLazyDistribution = computeLazyDistribution(stake, rewardPerToken, rewardTally);
-        return newMonetaryAmount(rawLazyDistribution, this.wrappedCurrency);
+        return newMonetaryAmount(
+            rawLazyDistribution,
+            currencyIdLiteralToMonetaryCurrency(this.api, rewardCurrencyIdLiteral)
+        );
     }
 
     async getRewardsPoolStake(vaultCollateralIdLiteral: CollateralIdLiteral, vaultAccountId: AccountId): Promise<Big> {
