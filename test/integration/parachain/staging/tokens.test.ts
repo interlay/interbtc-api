@@ -1,26 +1,29 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { Currency, Interlay, MonetaryAmount } from "@interlay/monetary-js";
 
 import { createPolkadotAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ESPLORA_BASE_PATH } from "../../../config";
-import { CollateralCurrency, CurrencyUnit, DefaultInterBTCAPI, InterBTCAPI, newAccountId, newMonetaryAmount, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { ChainBalance, CollateralCurrency, CurrencyUnit, DefaultEscrowAPI, DefaultInterBTCAPI, DefaultSystemAPI, EscrowAPI, GovernanceCurrency, GovernanceUnit, InterBTCAPI, newAccountId, newMonetaryAmount, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
     let user1Account: KeyringPair;
     let user2Account: KeyringPair;
     let interBtcAPI: InterBTCAPI;
+    let escrowAPI: EscrowAPI;
 
     before(async () => {
         api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         user1Account = keyring.addFromUri(USER_1_URI);
         user2Account = keyring.addFromUri(USER_2_URI);
-
         const wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         interBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, user1Account, ESPLORA_BASE_PATH);
+        
+        // TODO: Remove this once escrowAPI is exposed in interBtcAPI
+        escrowAPI = new DefaultEscrowAPI(api, Interlay, interBtcAPI.system, user2Account);
     });
 
     after(() => {
@@ -28,20 +31,20 @@ describe("TokensAPI", () => {
     });
 
     it("should subscribe to balance updates", async () => {
-        for (const currency of [...CollateralCurrency, ...WrappedCurrency]) {
+        for (const currency of [...CollateralCurrency, ...WrappedCurrency, Interlay]) {
             await testBalanceSubscription(currency as Currency<CurrencyUnit>);
         }
     });
 
     async function testBalanceSubscription<U extends CurrencyUnit>(currency: Currency<U>): Promise<void> {
         // Subscribe and receive two balance updates
-        let updatedBalance = newMonetaryAmount(0, currency);
+        let updatedBalance = new ChainBalance<U>(currency);
         let updatedAccount = "";
-        function balanceUpdateCallback(account: string, newBalance: MonetaryAmount<Currency<U>, U>) {
+        function balanceUpdateCallback(account: string, newBalance:  ChainBalance<U>) {
             updatedBalance = newBalance;
             updatedAccount = account;
         }
-        const amountToUpdateUser2sAccountBy = newMonetaryAmount(0.00000001, currency);
+        const amountToUpdateUser2sAccountBy = newMonetaryAmount(600, currency, true);
         const user2BalanceBeforeTransfer =
             await interBtcAPI.tokens.balance<typeof currency.units>(currency, newAccountId(api, user2Account.address));
         const unsubscribe = await interBtcAPI.tokens.subscribeToBalance(currency, user2Account.address, balanceUpdateCallback);
@@ -49,17 +52,45 @@ describe("TokensAPI", () => {
         // Send the first transfer, expect the callback to be called with correct values
         await interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy);
         assert.equal(updatedAccount, user2Account.address);
-        const expectedUser2BalanceAfterFirstTransfer = user2BalanceBeforeTransfer.add(amountToUpdateUser2sAccountBy);
+        const expectedUser2BalanceAfterFirstTransfer = new ChainBalance<U>(
+            currency,
+            user2BalanceBeforeTransfer.free.add(amountToUpdateUser2sAccountBy).toBig(),
+            user2BalanceBeforeTransfer.transferable.add(amountToUpdateUser2sAccountBy).toBig(),
+            user2BalanceBeforeTransfer.reserved.toBig()
+        );
         assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterFirstTransfer.toString());
 
         // Send the second transfer, expect the callback to be called with correct values
         await interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy);
         assert.equal(updatedAccount, user2Account.address);
-        const expectedUser2BalanceAfterSecondTransfer = expectedUser2BalanceAfterFirstTransfer.add(amountToUpdateUser2sAccountBy);
+        const expectedUser2BalanceAfterSecondTransfer = new ChainBalance<U>(
+            currency,
+            expectedUser2BalanceAfterFirstTransfer.free.add(amountToUpdateUser2sAccountBy).toBig(),
+            expectedUser2BalanceAfterFirstTransfer.transferable.add(amountToUpdateUser2sAccountBy).toBig(),
+            expectedUser2BalanceAfterFirstTransfer.reserved.toBig()
+        );
         assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterSecondTransfer.toString());
 
+        if (currency.name === Interlay.name) {
+            const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
+            const unlockHeightDiff = (await escrowAPI.getSpan()).toNumber();
+
+            const amountToFreeze = newMonetaryAmount(600, currency as Currency<U>, true);
+            await escrowAPI.createLock(
+                amountToFreeze as unknown as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
+                currentBlockNumber + unlockHeightDiff
+            );
+
+            const expectedUser2BalanceAfterEscrowLock = new ChainBalance<U>(
+                currency,
+                expectedUser2BalanceAfterSecondTransfer.free.toBig(),
+                expectedUser2BalanceAfterSecondTransfer.transferable.sub(amountToFreeze).toBig(),
+                expectedUser2BalanceAfterSecondTransfer.reserved.toBig()
+            );
+
+            assert.equal(updatedAccount, user2Account.address);
+            assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterEscrowLock.toString());
+        }
         unsubscribe();
     }
-
 });
-

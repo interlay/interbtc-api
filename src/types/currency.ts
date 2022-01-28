@@ -16,12 +16,14 @@ import {
     Kintsugi,
     Interlay,
     VoteInterlay,
-    VoteKintsugi
+    VoteKintsugi,
+    MonetaryAmount
 } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
-import { EscrowPoint, InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
+import { EscrowPoint, InterbtcPrimitivesCurrencyId, OrmlTokensAccountData } from "@polkadot/types/lookup";
+import { BigSource } from "big.js";
 import BN from "bn.js";
-import { newCurrencyId } from "../utils";
+import { newCurrencyId, newMonetaryAmount } from "../utils";
 
 export enum CurrencyIdLiteral {
     DOT = "DOT",
@@ -146,4 +148,46 @@ export function parseEscrowPoint(e: EscrowPoint): RWEscrowPoint {
         slope: e.slope.toBn(),
         ts: e.ts.toBn()
     };
+}
+
+export class ChainBalance<U extends CurrencyUnit> {
+    free: MonetaryAmount<Currency<U>, U>;
+    transferable: MonetaryAmount<Currency<U>, U>;
+    reserved: MonetaryAmount<Currency<U>, U>;
+    currency: Currency<U>;
+
+    constructor(
+        currency: Currency<U>,
+        free?: BigSource,
+        transferable?: BigSource,
+        reserved?: BigSource
+    ) {
+        this.currency = currency;
+        this.free = newMonetaryAmount(free || 0, currency);
+        this.transferable = newMonetaryAmount(transferable || 0, currency);
+        this.reserved = newMonetaryAmount(reserved || 0, currency);
+    }
+
+    /*
+        First stringifies the `MonetaryAmount`s, then the entire object.
+        Allows for simple comparison in tests.
+    */
+    toString(base?: U[keyof U]): string {
+        const stringifiedChainBalance = Object.fromEntries(
+            Object.entries(this).map(([k, v]) => [k, v.toString(base || this.currency.base)])
+        );
+        return JSON.stringify(stringifiedChainBalance);
+    }
+}
+
+export function parseOrmlTokensAccountData<U extends CurrencyUnit>(
+    data: OrmlTokensAccountData,
+    currency: Currency<U>
+): ChainBalance<U> {
+    return new ChainBalance(
+        currency,
+        data.free.toString(),
+        data.free.sub(data.frozen).toString(),
+        data.reserved.toString()
+    );
 }

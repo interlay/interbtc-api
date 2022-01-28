@@ -771,10 +771,10 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
                 vaultAccountId,
                 collateralCurrency,
             ),
-            await this.tokensAPI.balanceLocked(
+            (await this.tokensAPI.balance(
                 currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
                 vaultAccountId
-            ),
+            )).reserved,
         ]);
         return this.feeAPI.calculateAPY(feesWrapped, lockedCollateral);
     }
