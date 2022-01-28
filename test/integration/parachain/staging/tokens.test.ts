@@ -31,7 +31,7 @@ describe("TokensAPI", () => {
     });
 
     it("should subscribe to balance updates", async () => {
-        for (const currency of [...CollateralCurrency, ...WrappedCurrency, Interlay]) {
+        for (const currency of [...CollateralCurrency, Interlay]) {
             await testBalanceSubscription(currency as Currency<CurrencyUnit>);
         }
     });
