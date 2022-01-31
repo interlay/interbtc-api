@@ -37,6 +37,8 @@ import {
     currencyIdToLiteral,
     tickerToMonetaryCurrency,
     currencyIdLiteralToMonetaryCurrency,
+    GovernanceUnit,
+    CurrencyUnit,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
@@ -261,19 +263,20 @@ export interface VaultsAPI extends TransactionAPI {
      * @param rewardCurrencyIdLiteral The reward currency, e.g. kBTC, KINT, interBTC, INTR
      * @returns A Monetary.js amount object, representing the total reward in the given currency
      */
-    computeReward(
+     computeReward(
         vaultAccountId: AccountId,
         nominatorId: AccountId,
-        vaultCollateralIdLiteral: CollateralIdLiteral,
-        rewardCurrencyIdLiteral: CurrencyIdLiteral
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
+        collateralCurrencyId: CollateralIdLiteral,
+        rewardCurrencyIdLiteral: CurrencyIdLiteral,
+        nonce?: number
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
     /**
      * @param vaultAccountId The vault ID whose reward pool to check
      * @param vaultCollateralIdLiteral Collateral used by the vault
      * @param rewardCurrencyIdLiteral The fee reward currency, representing a wrapped token.
      * @returns The total wrapped token reward collected by the vault
      */
-    getFeesWrapped(
+    getWrappedReward(
         vaultAccountId: AccountId,
         vaultCollateralIdLiteral: CollateralIdLiteral,
         rewardCurrencyIdLiteral: WrappedIdLiteral
@@ -415,11 +418,11 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         vaultAccountId: AccountId,
         nominatorId: AccountId,
         collateralCurrencyId: CollateralIdLiteral,
-        rewardCurrencyId: WrappedIdLiteral,
+        rewardCurrencyIdLiteral: CurrencyIdLiteral,
         nonce?: number
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
         const [totalGlobalReward, globalRewardShare] = await Promise.all([
-            this.rewardsAPI.computeRewardInRewardsPool(rewardCurrencyId, collateralCurrencyId, vaultAccountId),
+            this.rewardsAPI.computeRewardInRewardsPool(rewardCurrencyIdLiteral, collateralCurrencyId, vaultAccountId),
             this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrencyId),
         ]);
         const ownGlobalReward = totalGlobalReward.mul(globalRewardShare);
@@ -427,13 +430,13 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             vaultAccountId,
             nominatorId,
             collateralCurrencyId,
-            rewardCurrencyId,
+            rewardCurrencyIdLiteral,
             nonce
         );
         return ownGlobalReward.add(localReward);
     }
 
-    async getFeesWrapped(
+    async getWrappedReward(
         vaultAccountId: AccountId,
         collateralCurrency: CollateralIdLiteral
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
@@ -441,8 +444,21 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             vaultAccountId,
             vaultAccountId,
             collateralCurrency,
-            tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker) as WrappedIdLiteral
-        );
+            tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker)
+        ) as MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>;
+    }
+
+    async getGovernanceReward(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralIdLiteral,
+        governanceCurrency: CollateralIdLiteral
+    ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+        return await this.computeReward(
+            vaultAccountId,
+            vaultAccountId,
+            collateralCurrency,
+            governanceCurrency
+        ) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>;
     }
 
     async getStakingCapacity(
@@ -767,14 +783,14 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     async getAPY(vaultAccountId: AccountId, collateralCurrency: CollateralIdLiteral): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrency);
         const [feesWrapped, lockedCollateral] = await Promise.all([
-            await this.getFeesWrapped(
+            await this.getWrappedReward(
                 vaultAccountId,
                 collateralCurrency,
             ),
-            await this.tokensAPI.balanceLocked(
+            (await this.tokensAPI.balance(
                 currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
                 vaultAccountId
-            ),
+            )).reserved,
         ]);
         return this.feeAPI.calculateAPY(feesWrapped, lockedCollateral);
     }

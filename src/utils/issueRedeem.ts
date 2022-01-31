@@ -121,7 +121,7 @@ export async function issueSingle(
         const interBtcApi = new DefaultInterBTCAPI(api, network, amount.currency, issuingAccount);
 
         const requesterAccountId = newAccountId(api, issuingAccount.address);
-        const initialWrappedTokenBalance = await interBtcApi.tokens.balance(amount.currency, requesterAccountId);
+        const initialWrappedTokenBalance = (await interBtcApi.tokens.balance(amount.currency, requesterAccountId)).free;
         const blocksToMine = 3;
 
         const collateralIdLiteral = vaultId ? currencyIdToLiteral(vaultId.currencies.collateral) : undefined;
@@ -163,7 +163,7 @@ export async function issueSingle(
             }
         }
 
-        const finalWrappedTokenBalance = await interBtcApi.tokens.balance(amount.currency, requesterAccountId);
+        const finalWrappedTokenBalance = (await interBtcApi.tokens.balance(amount.currency, requesterAccountId)).free;
         return {
             request: issueRequest,
             initialWrappedTokenBalance,

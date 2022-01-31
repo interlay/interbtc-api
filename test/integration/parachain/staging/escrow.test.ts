@@ -69,7 +69,8 @@ describe("escrow", () => {
         escrowAPI.setAccount(userAccount_1);
         await escrowAPI.createLock(user1_intrAmount, currentBlockNumber + unlockHeightDiff);
 
-        const votingBalance = await escrowAPI.votingBalance(newAccountId(api, userAccount_1.address), currentBlockNumber + 0.4 * unlockHeightDiff);
+        const votingBalance = 
+            await escrowAPI.votingBalance(newAccountId(api, userAccount_1.address), currentBlockNumber + 0.4 * unlockHeightDiff);
         const votingSupply = await escrowAPI.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
         assert.equal(votingBalance.toString(votingBalance.currency.base), votingSupply.toString(votingSupply.currency.base));
 

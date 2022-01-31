@@ -44,7 +44,7 @@ export type NominationData<U extends CurrencyUnit> = {
 
 export type RawNomination = NominationData<CollateralUnit> & { type: NominationAmountType.Raw };
 export type Nomination = NominationData<CollateralUnit> & { type: NominationAmountType.Parsed };
-export type NominationReward = NominationData<BitcoinUnit>;
+export type NominationReward = NominationData<CurrencyUnit>;
 
 /**
  * @category InterBTC Bridge
@@ -136,14 +136,16 @@ export interface NominationAPI extends TransactionAPI {
     /**
      * @param vaultAccountId Id of nominated vault
      * @param collateralCurrencyId The currency towards whose issuance the nomination was made
+     * @param rewardCurrencyId The reward currency, e.g. kBTC, KINT, interBTC, INTR
      * @param nominatorId Id of user who nominated to one or more vaults
      * @returns The rewards a (possibly inactive) nominator has accumulated
      */
     getNominatorReward(
-        vaultAccountId: AccountId,
+        vaultId: AccountId,
         collateralCurrencyId: CollateralIdLiteral,
+        rewardCurrencyId: CurrencyIdLiteral,
         nominatorId: AccountId,
-    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
     /**
      * @returns A map (vaultId => nonce), representing the nonces for each reward pool with the given currency
      */
@@ -296,13 +298,14 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
     async getNominatorReward(
         vaultId: AccountId,
         collateralCurrencyId: CollateralIdLiteral,
+        rewardCurrencyId: CurrencyIdLiteral,
         nominatorId: AccountId,
-    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
         return await this.vaultsAPI.computeReward(
             vaultId,
             nominatorId,
             collateralCurrencyId,
-            tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker) as WrappedIdLiteral
+            rewardCurrencyId
         );
     }
 
