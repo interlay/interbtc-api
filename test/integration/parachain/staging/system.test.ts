@@ -5,23 +5,21 @@ import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { SUDO_URI, PARACHAIN_ENDPOINT, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ESPLORA_BASE_PATH, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
+import { SUDO_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { sudo } from "../../../utils/helpers";
-import { CollateralCurrency, DefaultBridgeAPI, BridgeAPI, tickerToMonetaryCurrency, WrappedCurrency, GovernanceCurrency } from "../../../../src";
+import { DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
 describe("systemAPI", () => {
     let api: ApiPromise;
     let sudoAccount: KeyringPair;
-    let interBtcAPI: BridgeAPI;
+    let interBtcAPI: InterBtcApi;
     let keyring: Keyring;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
-        const wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, sudoAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
     });
 
     after(async () => {

@@ -1,7 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { Option, Bool } from "@polkadot/types";
 import { Moment } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { SecurityErrorCode, InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
@@ -18,7 +17,7 @@ import {
     unwrapRawExchangeRate,
 } from "../utils";
 import { UnsignedFixedPoint } from "../interfaces/default";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { CurrencyUnit, WrappedCurrency } from "../types/currency";
 import { FeeEstimationType } from "../types/oracleTypes";
 

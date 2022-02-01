@@ -2,7 +2,7 @@ import { InterBtcAmount, InterBtc, Polkadot, Currency } from "@interlay/monetary
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import { CollateralUnit, DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
+import { CollateralUnit, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
 
 import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, FeeAPI, newAccountId, newVaultId, NominationAPI, RewardsAPI, tickerToMonetaryCurrency, VaultsAPI, WrappedCurrency } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
@@ -13,8 +13,8 @@ import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
     let api: ApiPromise;
-    let userInterBtcAPI: BridgeAPI;
-    let sudoInterBtcAPI: BridgeAPI;
+    let userInterBtcAPI: InterBtcApi;
+    let sudoInterBtcAPI: InterBtcApi;
     let sudoAccount: KeyringPair;
     let userAccount: KeyringPair;
     let vault_1: KeyringPair;
@@ -28,10 +28,10 @@ describe("NominationAPI", () => {
         const keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
+        // TODO: remove all uses of config currencies and query the chain instead
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
-        sudoInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, sudoAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
+        sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
 

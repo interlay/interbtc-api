@@ -6,11 +6,11 @@ import Big from "big.js";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { COLLATERAL_CURRENCY_TICKER, ESPLORA_BASE_PATH, GOVERNANCE_CURRENCY_TICKER, ORACLE_URI, PARACHAIN_ENDPOINT, WRAPPED_CURRENCY_TICKER } from "../../../config";
-import { CollateralCurrency, DefaultBridgeAPI, BridgeAPI, tickerToMonetaryCurrency, WrappedCurrency, GovernanceCurrency } from "../../../../src";
+import { CollateralCurrency, DefaultInterBtcApi, InterBtcApi, tickerToMonetaryCurrency, WrappedCurrency, GovernanceCurrency } from "../../../../src";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
-    let interBtcAPI: BridgeAPI;
+    let interBtcAPI: InterBtcApi;
     let wrappedCurrency: WrappedCurrency;
     let oracleAccount: KeyringPair;
 
@@ -19,8 +19,7 @@ describe("OracleAPI", () => {
         const keyring = new Keyring({ type: "sr25519" });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, oracleAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
     });
 
     after(() => {

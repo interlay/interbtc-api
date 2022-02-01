@@ -5,11 +5,10 @@ import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { TypeRegistry } from "@polkadot/types";
 import { RegistryTypes } from "@polkadot/types/types";
 import { DefinitionRpc, DefinitionRpcSub } from "@polkadot/types/types";
-import { InterBtc, Interlay } from "@interlay/monetary-js";
 
 import * as definitions from "./interfaces/definitions";
-import { BridgeAPI, DefaultBridgeAPI } from "./interbtc-api";
-import { BitcoinNetwork, GovernanceCurrency, WrappedCurrency } from "./types";
+import { InterBtcApi, DefaultInterBtcApi } from "./interbtc-api";
+import { BitcoinNetwork } from "./types";
 
 export function createProvider(endpoint: string, autoConnect?: number | false | undefined): ProviderInterface {
     if (/https?:\/\//.exec(endpoint)) {
@@ -26,16 +25,14 @@ export function createSubstrateAPI(endpoint: string, autoConnect?: number | fals
     return ApiPromise.create({ provider });
 }
 
-export async function createBridgeAPI(
+export async function createInterBtcApi(
     endpoint: string,
     network: BitcoinNetwork = "mainnet",
-    wrappedCurrency: WrappedCurrency = InterBtc,
-    governanceCurrency: GovernanceCurrency = Interlay,
     account?: AddressOrPair,
     autoConnect?: number | false | undefined
-): Promise<BridgeAPI> {
+): Promise<InterBtcApi> {
     const api = await createSubstrateAPI(endpoint, autoConnect);
-    return new DefaultBridgeAPI(api, network, wrappedCurrency, governanceCurrency, account);
+    return new DefaultInterBtcApi(api, network, account);
 }
 
 export function getAPITypes(): RegistryTypes {

@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama } from "@interlay/monetary-js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
-import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency } from "../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
@@ -27,8 +27,8 @@ describe("vaultsAPI", () => {
     
     let wrappedCurrency: WrappedCurrency;
 
-    let interBtcAPI: BridgeAPI;
-    let oracleInterBtcAPI: BridgeAPI;
+    let interBtcAPI: InterBtcApi;
+    let oracleInterBtcAPI: InterBtcApi;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -45,8 +45,8 @@ describe("vaultsAPI", () => {
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
 
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, undefined, ESPLORA_BASE_PATH);
-        oracleInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, oracleAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
+        oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

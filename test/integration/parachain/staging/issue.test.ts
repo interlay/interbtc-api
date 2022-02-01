@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { InterBtcAmount, BitcoinUnit, Polkadot, Kusama } from "@interlay/monetary-js";
-import { currencyIdToLiteral, DefaultElectrsAPI, DefaultBridgeAPI, ElectrsAPI, BridgeAPI, InterbtcPrimitivesVaultId, IssueStatus, newAccountId, GovernanceCurrency } from "../../../../src/index";
+import { currencyIdToLiteral, DefaultElectrsAPI, DefaultInterBtcApi, ElectrsAPI, InterBtcApi, InterbtcPrimitivesVaultId, IssueStatus, newAccountId, GovernanceCurrency } from "../../../../src/index";
 
 import { DefaultIssueAPI, IssueAPI } from "../../../../src/parachain/issue";
 import { createSubstrateAPI } from "../../../../src/factory";
@@ -17,7 +17,7 @@ describe("issue", () => {
     let api: ApiPromise;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
-    let userInterBtcAPI: BridgeAPI;
+    let userInterBtcAPI: InterBtcApi;
     let electrsAPI: ElectrsAPI;
 
     let userAccount: KeyringPair;
@@ -34,7 +34,6 @@ describe("issue", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
@@ -50,7 +49,7 @@ describe("issue", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
     });
 
     after(async () => {

@@ -4,14 +4,14 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ESPLORA_BASE_PATH, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
-import { CollateralCurrency, CurrencyUnit, DefaultBridgeAPI, BridgeAPI, newAccountId, newMonetaryAmount, tickerToMonetaryCurrency, WrappedCurrency, GovernanceCurrency } from "../../../../src";
+import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
+import { CollateralCurrency, CurrencyUnit, DefaultInterBtcApi, InterBtcApi, newAccountId, newMonetaryAmount, WrappedCurrency } from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
     let user1Account: KeyringPair;
     let user2Account: KeyringPair;
-    let interBtcAPI: BridgeAPI;
+    let interBtcAPI: InterBtcApi;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -19,9 +19,7 @@ describe("TokensAPI", () => {
         user1Account = keyring.addFromUri(USER_1_URI);
         user2Account = keyring.addFromUri(USER_2_URI);
 
-        const wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, user1Account, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", user1Account, ESPLORA_BASE_PATH);
     });
 
     after(() => {

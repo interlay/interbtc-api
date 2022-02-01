@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { InterBtcAmount, Polkadot } from "@interlay/monetary-js";
-import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, VaultRegistryVault, GovernanceCurrency } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, VaultRegistryVault, GovernanceCurrency } from "../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, ORACLE_URI, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
@@ -26,8 +26,8 @@ describe("redeem", () => {
     let vaultToBanId: InterbtcPrimitivesVaultId;
     let userBitcoinCoreClient: BitcoinCoreClient;
     let bitcoinCoreClient: BitcoinCoreClient;
-    let userInterBtcAPI: BridgeAPI;
-    let oracleInterBtcAPI: BridgeAPI;
+    let userInterBtcAPI: InterBtcApi;
+    let oracleInterBtcAPI: InterBtcApi;
 
     let collateralCurrency: CollateralCurrency;
     let wrappedCurrency: WrappedCurrency;
@@ -38,7 +38,6 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         collateralCurrency = tickerToMonetaryCurrency(api, COLLATERAL_CURRENCY_TICKER) as CollateralCurrency;
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         vaultToLiquidateId = newVaultId(api, vaultToLiquidate.address, Polkadot, wrappedCurrency);
         vaultToBan = keyring.addFromUri(VAULT_TO_BAN_URI);
@@ -46,8 +45,8 @@ describe("redeem", () => {
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
-        oracleInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, oracleAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
+        oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
 
         userBitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

@@ -3,7 +3,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { BitcoinCoreClient, BridgeAPI, CollateralCurrency, CollateralUnit, OracleAPI } from "../../src";
+import { BitcoinCoreClient, InterBtcApi, CollateralCurrency, CollateralUnit, OracleAPI } from "../../src";
 import { TransactionAPI } from "../../src/parachain/transaction";
 import { SUDO_URI } from "../config";
 
@@ -45,32 +45,32 @@ export async function callWithExchangeRate<C extends CollateralUnit>(
 }
 
 /*
-    Assumption: the `call` argument uses one of the APIs in `bridgeAPI`.
-    Since `bridgeAPI` is passed by reference, modifying the account before
+    Assumption: the `call` argument uses one of the APIs in `InterBtcApi`.
+    Since `InterBtcApi` is passed by reference, modifying the account before
     the call means `call` uses that account.
 */
 export async function callWith(
-    bridgeAPI: BridgeAPI,
+    InterBtcApi: InterBtcApi,
     key: KeyringPair,
     call: Function
 ): Promise<any> {
-    const prevKey = bridgeAPI.account;
-    bridgeAPI.setAccount(key);
+    const prevKey = InterBtcApi.account;
+    InterBtcApi.setAccount(key);
     let result;
     try {
         result = await call();
     } catch (error) {
         throw error;
     } finally {
-        if (prevKey) bridgeAPI.setAccount(prevKey);
+        if (prevKey) InterBtcApi.setAccount(prevKey);
     }
     return result;
 }
 
-export function sudo(bridgeAPI: BridgeAPI, call: Function): Promise<any> {
+export function sudo(InterBtcApi: InterBtcApi, call: Function): Promise<any> {
     const keyring = new Keyring({ type: "sr25519" });
     const rootKey = keyring.addFromUri(SUDO_URI);
-    return callWith(bridgeAPI, rootKey, call);
+    return callWith(InterBtcApi, rootKey, call);
 }
 
 export function makeRandomBitcoinAddress(): string {

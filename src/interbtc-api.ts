@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { InterBtc, Interlay } from "@interlay/monetary-js";
+import { Currency, InterBtc, Interlay } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
@@ -21,7 +21,7 @@ import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
 import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
-import { GovernanceCurrency, WrappedCurrency } from "./types";
+import { currencyIdToMonetaryCurrency, CurrencyUnit, GovernanceCurrency, WrappedCurrency } from "./types";
 import { DefaultEscrowAPI, EscrowAPI } from ".";
 
 export * from "./factory";
@@ -38,7 +38,7 @@ export function getBitcoinNetwork(network: BitcoinNetwork = "mainnet"): Network 
     }
 }
 
-export interface BridgeAPI {
+export interface InterBtcApi {
     readonly api: ApiPromise;
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
@@ -61,7 +61,7 @@ export interface BridgeAPI {
 /**
  * @category BTC Bridge
  */
-export class DefaultBridgeAPI implements BridgeAPI {
+export class DefaultInterBtcApi implements InterBtcApi {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
@@ -82,11 +82,12 @@ export class DefaultBridgeAPI implements BridgeAPI {
     constructor(
         readonly api: ApiPromise,
         bitcoinNetwork: BitcoinNetwork = "mainnet",
-        wrappedCurrency: WrappedCurrency = InterBtc,
-        governanceCurrency: GovernanceCurrency = Interlay,
         _account?: AddressOrPair,
         esploraNetwork?: string,
     ) {
+        const wrappedCurrency = this.getWrappedCurrency() as WrappedCurrency;
+        const nativeCurrency = this.getNativeCurrency() as GovernanceCurrency;
+
         const btcNetwork = getBitcoinNetwork(bitcoinNetwork);
         this.electrsAPI = new DefaultElectrsAPI(esploraNetwork || bitcoinNetwork);
         this.transactionAPI = new DefaultTransactionAPI(api, _account);
@@ -96,7 +97,7 @@ export class DefaultBridgeAPI implements BridgeAPI {
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency, this.transactionAPI);
         this.fee = new DefaultFeeAPI(api, this.oracle);
         this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, this.transactionAPI);
-        this.escrow = new DefaultEscrowAPI(api, governanceCurrency, this.system, this.transactionAPI);
+        this.escrow = new DefaultEscrowAPI(api, nativeCurrency, this.system, this.transactionAPI);
 
         this.vaults = new DefaultVaultsAPI(
             api,
@@ -154,5 +155,15 @@ export class DefaultBridgeAPI implements BridgeAPI {
 
     get account(): AddressOrPair | undefined {
         return this.transactionAPI.getAccount();
+    }
+
+    private getNativeCurrency(): Currency<CurrencyUnit> {
+        const currencyId = this.api.consts.escrowRewards.getNativeCurrencyId;
+        return currencyIdToMonetaryCurrency(currencyId);
+    }
+
+    private  getWrappedCurrency(): Currency<CurrencyUnit> {
+        const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
+        return currencyIdToMonetaryCurrency(currencyId);
     }
 }

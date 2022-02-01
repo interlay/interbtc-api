@@ -7,7 +7,7 @@ import { BitcoinAmount, BitcoinUnit, Currency, InterBtcAmount, MonetaryAmount } 
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import { newAccountId } from "../utils";
-import { DefaultBridgeAPI } from "../interbtc-api";
+import { DefaultInterBtcApi } from "../interbtc-api";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
 import { BTCRelayAPI } from "../parachain";
@@ -23,7 +23,7 @@ import {
 import { BitcoinNetwork } from "../types/bitcoinTypes";
 import { waitForBlockFinalization } from "./bitcoin";
 import { newMonetaryAmount } from "./currency";
-import { BridgeAPI } from "..";
+import { InterBtcApi } from "..";
 
 export const SLEEP_TIME_MS = 1000;
 
@@ -109,7 +109,7 @@ export function allocateAmountsToVaults<U extends BitcoinUnit>(
 }
 
 export async function issueSingle(
-    bridgeAPI: BridgeAPI,
+    InterBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
@@ -118,15 +118,15 @@ export async function issueSingle(
     triggerRefund = false,
     atomic = true
 ): Promise<IssueResult<BitcoinUnit>> {
-    const prevAccount = bridgeAPI.account;
+    const prevAccount = InterBtcApi.account;
     try {
-        bridgeAPI.setAccount(issuingAccount);
-        const requesterAccountId = newAccountId(bridgeAPI.api, issuingAccount.address);
-        const initialWrappedTokenBalance = await bridgeAPI.tokens.balance(amount.currency, requesterAccountId);
+        InterBtcApi.setAccount(issuingAccount);
+        const requesterAccountId = newAccountId(InterBtcApi.api, issuingAccount.address);
+        const initialWrappedTokenBalance = await InterBtcApi.tokens.balance(amount.currency, requesterAccountId);
         const blocksToMine = 3;
 
         const collateralIdLiteral = vaultId ? currencyIdToLiteral(vaultId.currencies.collateral) : undefined;
-        const rawRequestResult = await bridgeAPI.issue.request(amount, vaultId?.accountId, collateralIdLiteral, atomic);
+        const rawRequestResult = await InterBtcApi.issue.request(amount, vaultId?.accountId, collateralIdLiteral, atomic);
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
@@ -153,18 +153,18 @@ export async function issueSingle(
 
         if (autoExecute === false) {
             console.log("Manually executing, waiting for relay to catchup");
-            await waitForBlockFinalization(bitcoinCoreClient, bridgeAPI.btcRelay);
+            await waitForBlockFinalization(bitcoinCoreClient, InterBtcApi.btcRelay);
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            await bridgeAPI.issue.execute(issueRequest.id, txData.txid);
+            await InterBtcApi.issue.execute(issueRequest.id, txData.txid);
         } else {
             console.log("Auto-executing, waiting for vault to submit proof");
             // wait for vault to execute issue
-            while ((await bridgeAPI.issue.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
+            while ((await InterBtcApi.issue.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
                 await sleep(SLEEP_TIME_MS);
             }
         }
 
-        const finalWrappedTokenBalance = await bridgeAPI.tokens.balance(amount.currency, requesterAccountId);
+        const finalWrappedTokenBalance = await InterBtcApi.tokens.balance(amount.currency, requesterAccountId);
         return {
             request: issueRequest,
             initialWrappedTokenBalance,
@@ -175,7 +175,7 @@ export async function issueSingle(
         return Promise.reject(new Error(`Issuing failed: ${e}`));
     } finally {
         if (prevAccount) {
-            bridgeAPI.setAccount(prevAccount);
+            InterBtcApi.setAccount(prevAccount);
         }
     }
 }
@@ -185,7 +185,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export async function redeem(
-    bridgeAPI: BridgeAPI,
+    InterBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     redeemingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
@@ -195,10 +195,10 @@ export async function redeem(
     timeout = 5 * 60 * 1000,
     retries: number = 0
 ): Promise<Redeem> {
-    const prevAccount = bridgeAPI.account;
-    bridgeAPI.setAccount(redeemingAccount);
+    const prevAccount = InterBtcApi.account;
+    InterBtcApi.setAccount(redeemingAccount);
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-    const [redeemRequest] = await bridgeAPI.redeem.request(
+    const [redeemRequest] = await InterBtcApi.redeem.request(
         amount,
         btcAddress,
         vaultId,
@@ -209,19 +209,19 @@ export async function redeem(
     switch (autoExecute) {
         case ExecuteRedeem.Manually: {
             const opreturnData = stripHexPrefix(redeemRequest.id.toString());
-            const btcTxId = await bridgeAPI.electrsAPI.waitForOpreturn(opreturnData, timeout, 5000).catch((_) => {
+            const btcTxId = await InterBtcApi.electrsAPI.waitForOpreturn(opreturnData, timeout, 5000).catch((_) => {
                 throw new Error("Redeem request was not executed, timeout expired");
             });
             // Even if the tx was found, the block needs to be relayed to the parachain before `execute` can be called.
-            await waitForBlockFinalization(bitcoinCoreClient, bridgeAPI.btcRelay);
+            await waitForBlockFinalization(bitcoinCoreClient, InterBtcApi.btcRelay);
 
             // manually execute issue
-            await bridgeAPI.redeem.execute(redeemRequest.id.toString(), btcTxId);
+            await InterBtcApi.redeem.execute(redeemRequest.id.toString(), btcTxId);
             break;
         }
         case ExecuteRedeem.Auto: {
             // wait for vault to execute issue
-            while ((await bridgeAPI.redeem.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
+            while ((await InterBtcApi.redeem.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
                 await sleep(SLEEP_TIME_MS);
             }
             break;
@@ -231,7 +231,7 @@ export async function redeem(
 }
 
 export async function issueAndRedeem(
-    bridgeAPI: BridgeAPI,
+    InterBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     account: KeyringPair,
     vaultId?: InterbtcPrimitivesVaultId,
@@ -243,7 +243,7 @@ export async function issueAndRedeem(
     atomic = true
 ): Promise<[Issue, Redeem]> {
     const issueResult = await issueSingle(
-        bridgeAPI,
+        InterBtcApi,
         bitcoinCoreClient,
         account,
         issueAmount,
@@ -254,7 +254,7 @@ export async function issueAndRedeem(
     );
 
     const redeemRequest = await redeem(
-        bridgeAPI,
+        InterBtcApi,
         bitcoinCoreClient,
         account,
         redeemAmount,

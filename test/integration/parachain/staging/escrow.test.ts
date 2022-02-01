@@ -1,8 +1,8 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { ESPLORA_BASE_PATH, GOVERNANCE_CURRENCY_TICKER, PARACHAIN_ENDPOINT, USER_1_URI, USER_2_URI, VAULT_TO_BAN_URI, WRAPPED_CURRENCY_TICKER } from "../../../config";
-import { DefaultBridgeAPI, GovernanceCurrency, newAccountId, newMonetaryAmount, SystemAPI, tickerToMonetaryCurrency, TokensAPI, WrappedCurrency } from "../../../../src";
+import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, USER_1_URI, USER_2_URI, VAULT_TO_BAN_URI } from "../../../config";
+import { DefaultInterBtcApi, newAccountId, newMonetaryAmount } from "../../../../src";
 import { assert } from "chai";
 import { Interlay } from "@interlay/monetary-js";
 import { KeyringPair } from "@polkadot/keyring/types";
@@ -10,7 +10,7 @@ import { sudo } from "../../../utils/helpers";
 
 describe("escrow", () => {
     let api: ApiPromise;
-    let interBtcAPI: DefaultBridgeAPI;
+    let interBtcAPI: DefaultInterBtcApi;
 
     let userAccount_1: KeyringPair;
     let userAccount_2: KeyringPair;
@@ -24,9 +24,7 @@ describe("escrow", () => {
         userAccount_2 = keyring.addFromUri(USER_2_URI);
         userAccount_3 = keyring.addFromUri(VAULT_TO_BAN_URI);
         
-        let wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        let governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount_1, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount_1, ESPLORA_BASE_PATH);
     });
 
     after(async () => {

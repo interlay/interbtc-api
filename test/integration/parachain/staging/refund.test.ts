@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { InterBtc, InterBtcAmount, Polkadot } from "@interlay/monetary-js";
 
-import { DefaultBridgeAPI, BridgeAPI, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { USER_1_URI, VAULT_3_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER, COLLATERAL_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
@@ -18,7 +18,7 @@ describe("refund", () => {
     let vault_3: KeyringPair;
     let vault_3_id: InterbtcPrimitivesVaultId;
     let wrappedCurrency: WrappedCurrency;
-    let interBtcAPI: BridgeAPI;
+    let interBtcAPI: InterBtcApi;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -32,9 +32,8 @@ describe("refund", () => {
             BITCOIN_CORE_WALLET
         );
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         userAccount = keyring.addFromUri(USER_1_URI);
-        interBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_id = newVaultId(api, vault_3.address, Polkadot, wrappedCurrency);
     });

@@ -1,19 +1,19 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { assert } from "../chai";
 import sinon from "sinon";
-import { createAPIRegistry, DefaultBridgeAPI, BridgeAPI } from "../../src/interbtc-api";
+import { createAPIRegistry, DefaultInterBtcApi, InterBtcApi } from "../../src/interbtc-api";
 import { SingleAccountSigner } from "../utils/SingleAccountSigner";
 
-describe("BridgeAPI", () => {
+describe("InterBtcApi", () => {
     const keyring = new Keyring();
     const keyringPair = keyring.addFromUri("//Bob");
-    let interBTC: BridgeAPI;
+    let interBTC: InterBtcApi;
     const registry = createAPIRegistry();
 
     before(async () => {
         const api = sinon.createStubInstance(ApiPromise);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        interBTC = new DefaultBridgeAPI(<any>api);
+        interBTC = new DefaultInterBtcApi(<any>api);
     });
 
     describe("setAccount", () => {

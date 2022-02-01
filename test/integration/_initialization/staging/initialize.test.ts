@@ -15,8 +15,8 @@ import {
     newVaultId,
     WrappedCurrency,
     tickerToMonetaryCurrency,
-    BridgeAPI,
-    DefaultBridgeAPI,
+    InterBtcApi,
+    DefaultInterBtcApi,
     GovernanceCurrency,
 } from "../../../../src";
 import {
@@ -50,8 +50,8 @@ import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
-    let userInterBtcAPI: BridgeAPI;
-    let sudoInterBtcAPI: BridgeAPI;
+    let userInterBtcAPI: InterBtcApi;
+    let sudoInterBtcAPI: InterBtcApi;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
 
@@ -105,8 +105,8 @@ describe("Initialize parachain state", () => {
             BITCOIN_CORE_WALLET
         );
 
-        userInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, userAccount, ESPLORA_BASE_PATH);
-        sudoInterBtcAPI = new DefaultBridgeAPI(api, "regtest", wrappedCurrency, governanceCurrency, sudoAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
+        sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
         const vaultCollateralPairs: [KeyringPair, CurrencyIdLiteral][] = [
             [vault_1, CurrencyIdLiteral.DOT],

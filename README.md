@@ -25,17 +25,17 @@ The library assumes you have a version of the [Interlay or Kintsugi networks](ht
 ### Creating an API Instance
 
 To use the library, you will first need to create a PolkadotJS `APIPromise` instance,
-and then instantiate a `BridgeAPI` instance.
+and then instantiate a `InterBtcApi` instance.
 
 ```ts
-import { createInterbtcAPI } from "@interlay/interbtc";
+import { createInterBtcApi } from "@interlay/interbtc";
 
 // If you are using a local development environment
 // const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
 // if you want to use the Interlay-hosted beta network
 const PARACHAIN_ENDPOINT = "wss://api.interlay.io/parachain";
 const isMainnet = false;
-const interBTC = await createInterbtcAPI(PARACHAIN_ENDPOINT, isMainnet);
+const interBTC = await createInterBtcApi(PARACHAIN_ENDPOINT, isMainnet);
 ```
 
 ### Attaching an Account
@@ -53,7 +53,7 @@ const keypair = keyring.getPairs()[0];
 interBTC.setAccount(keypair);
 ```
 
-The different functionalities are then exposed through the `BridgeAPI` instance.
+The different functionalities are then exposed through the `InterBtcApi` instance.
 
 ### Issuing interBTC
 
@@ -96,7 +96,7 @@ There are plenty more examples how to use this library. Best is to take a look a
 
 ## API Documentation
 
-Please check the documentation at https://docs.interlay.io/interbtc-api/#/classes/DefaultBridgeAPI
+Please check the documentation at https://docs.interlay.io/interbtc-api/#/classes/DefaultInterBtcApi
 
 ## Development
 

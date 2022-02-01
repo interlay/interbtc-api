@@ -45,7 +45,7 @@ import {
 } from "../../test/config";
 import { CollateralUnit, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
-import { BridgeAPI, DefaultBridgeAPI } from "..";
+import { InterBtcApi, DefaultInterBtcApi } from "..";
 import { AddressOrPair } from "@polkadot/api/types";
 
 // Command line arguments of the initialization script
@@ -187,7 +187,7 @@ export async function initializeVaultNomination(enabled: boolean, nominationAPI:
 }
 
 export async function initializeIssue(
-    bridgeAPI: BridgeAPI,
+    InterBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amountToIssue: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
@@ -195,7 +195,7 @@ export async function initializeIssue(
 ): Promise<void> {
     console.log("Initializing an issue...");
     await issueSingle(
-        bridgeAPI,
+        InterBtcApi,
         bitcoinCoreClient,
         issuingAccount,
         amountToIssue,
@@ -234,8 +234,8 @@ async function main(params: InitializationParams): Promise<void> {
         BITCOIN_CORE_PORT,
         BITCOIN_CORE_WALLET
     );
-    const oracleAccountInterBtcApi = new DefaultBridgeAPI(api, "regtest", InterBtc, Interlay, oracleAccount, ESPLORA_BASE_PATH);
-    const sudoAccountInterBtcApi = new DefaultBridgeAPI(api, "regtest", InterBtc, Interlay, sudoAccount, ESPLORA_BASE_PATH);
+    const oracleAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
+    const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
@@ -287,7 +287,7 @@ async function main(params: InitializationParams): Promise<void> {
             params.redeem === true
                 ? (defaultInitializationParams.redeem as InitializeRedeem)
                 : (params.redeem as InitializeRedeem);
-        const redeemingAccountInterBtcApi = new DefaultBridgeAPI(api, "regtest", InterBtc, Interlay, sudoAccount);
+        const redeemingAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount);
         await initializeRedeem(redeemingAccountInterBtcApi.redeem, redeemParams.amount, redeemParams.redeemingBTCAddress);
     }
     api.disconnect();
