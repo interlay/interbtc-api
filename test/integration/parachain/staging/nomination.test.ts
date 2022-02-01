@@ -2,14 +2,15 @@ import { InterBtcAmount, Polkadot, Currency } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import { CollateralUnit, InterbtcPrimitivesVaultId, tickerToCurrencyIdLiteral } from "../../../../src/index";
+import { CollateralUnit, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, tickerToCurrencyIdLiteral } from "../../../../src/index";
 
 import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, newAccountId, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
+import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
+import { Nomination } from "../../../../src/parachain/nomination";
 
 describe("NominationAPI", () => {
     let api: ApiPromise;
@@ -100,7 +101,7 @@ describe("NominationAPI", () => {
             const userAddress = userAccount.address;
             const vault_1Address = vault_1.address;
 
-            const nomination = nominationPairs.find((nominarion) => userAddress == nominarion.nominatorId.toString())!;
+            const nomination = nominationPairs.find((nomination) => userAddress == nomination.nominatorId.toString()) as Nomination;
 
             assert.equal(userAddress, nomination.nominatorId.toString());
             assert.equal(vault_1Address, nomination.vaultId.accountId.toString());
