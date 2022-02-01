@@ -175,10 +175,12 @@ describe("Initialize parachain state", () => {
         const interBtcToIssue = InterBtcAmount.from.BTC(0.00007);
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(interBtcToIssue);
         const userAccountId = newAccountId(api, userAccount.address);
-        const userInterBTCBefore = await userInterBtcAPI.tokens.balance(InterBtc, userAccountId);
+        const userInterBTCBefore = (await userInterBtcAPI.tokens.balance(InterBtc, userAccountId)).free;
 
-        await initializeIssue(userInterBtcAPI, bitcoinCoreClient, userAccount, interBtcToIssue, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency));
-        const userInterBTCAfter = await userInterBtcAPI.tokens.balance(InterBtc, userAccountId);
+        await initializeIssue(
+            userInterBtcAPI, bitcoinCoreClient, userAccount, interBtcToIssue, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency)
+        );
+        const userInterBTCAfter = (await userInterBtcAPI.tokens.balance(InterBtc, userAccountId)).free;
         assert.equal(
             userInterBTCBefore.add(interBtcToIssue).sub(feesToPay).toString(),
             userInterBTCAfter.toString(),

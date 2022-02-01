@@ -7,20 +7,16 @@ import { BitcoinAmount, BitcoinUnit, Currency, InterBtcAmount, MonetaryAmount } 
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import { newAccountId } from "../utils";
-import { DefaultInterBtcApi } from "../interbtc-api";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
-import { BTCRelayAPI } from "../parachain";
 import {
     currencyIdToLiteral,
-    GovernanceCurrency,
     Issue,
     IssueStatus,
     Redeem,
     RedeemStatus,
     WrappedCurrency,
 } from "../types";
-import { BitcoinNetwork } from "../types/bitcoinTypes";
 import { waitForBlockFinalization } from "./bitcoin";
 import { newMonetaryAmount } from "./currency";
 import { InterBtcApi } from "..";
@@ -109,7 +105,7 @@ export function allocateAmountsToVaults<U extends BitcoinUnit>(
 }
 
 export async function issueSingle(
-    InterBtcApi: InterBtcApi,
+    interBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
@@ -118,15 +114,14 @@ export async function issueSingle(
     triggerRefund = false,
     atomic = true
 ): Promise<IssueResult<BitcoinUnit>> {
-    const prevAccount = InterBtcApi.account;
+    const prevAccount = interBtcApi.account;
     try {
-        InterBtcApi.setAccount(issuingAccount);
-        const requesterAccountId = newAccountId(InterBtcApi.api, issuingAccount.address);
-        const initialWrappedTokenBalance = await InterBtcApi.tokens.balance(amount.currency, requesterAccountId);
+        const requesterAccountId = newAccountId(interBtcApi.api, issuingAccount.address);
+        const initialWrappedTokenBalance = (await interBtcApi.tokens.balance(amount.currency, requesterAccountId)).free;
         const blocksToMine = 3;
 
         const collateralIdLiteral = vaultId ? currencyIdToLiteral(vaultId.currencies.collateral) : undefined;
-        const rawRequestResult = await InterBtcApi.issue.request(amount, vaultId?.accountId, collateralIdLiteral, atomic);
+        const rawRequestResult = await interBtcApi.issue.request(amount, vaultId?.accountId, collateralIdLiteral, atomic);
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
@@ -153,18 +148,18 @@ export async function issueSingle(
 
         if (autoExecute === false) {
             console.log("Manually executing, waiting for relay to catchup");
-            await waitForBlockFinalization(bitcoinCoreClient, InterBtcApi.btcRelay);
+            await waitForBlockFinalization(bitcoinCoreClient, interBtcApi.btcRelay);
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
-            await InterBtcApi.issue.execute(issueRequest.id, txData.txid);
+            await interBtcApi.issue.execute(issueRequest.id, txData.txid);
         } else {
             console.log("Auto-executing, waiting for vault to submit proof");
             // wait for vault to execute issue
-            while ((await InterBtcApi.issue.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
+            while ((await interBtcApi.issue.getRequestById(issueRequest.id)).status !== IssueStatus.Completed) {
                 await sleep(SLEEP_TIME_MS);
             }
         }
 
-        const finalWrappedTokenBalance = await InterBtcApi.tokens.balance(amount.currency, requesterAccountId);
+        const finalWrappedTokenBalance = (await interBtcApi.tokens.balance(amount.currency, requesterAccountId)).free;
         return {
             request: issueRequest,
             initialWrappedTokenBalance,
@@ -175,7 +170,7 @@ export async function issueSingle(
         return Promise.reject(new Error(`Issuing failed: ${e}`));
     } finally {
         if (prevAccount) {
-            InterBtcApi.setAccount(prevAccount);
+            interBtcApi.setAccount(prevAccount);
         }
     }
 }

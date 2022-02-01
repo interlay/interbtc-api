@@ -4,7 +4,7 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
 import { TransactionAPI } from "./transaction";
-import { CurrencyUnit, tickerToCurrencyIdLiteral } from "../types";
+import { ChainBalance, CurrencyUnit, parseOrmlTokensAccountData, tickerToCurrencyIdLiteral } from "../types";
 import { OrmlTokensAccountData } from "@polkadot/types/lookup";
 
 /**
@@ -19,18 +19,12 @@ export interface TokensAPI {
     /**
      * @param currency The currency specification, a `Monetary.js` object
      * @param id The AccountId of a user
-     * @returns The user's free balance
+     * @returns The user's balance
      */
-    balance<U extends CurrencyUnit>(currency: Currency<U>, id: AccountId): Promise<MonetaryAmount<Currency<U>, U>>;
-    /**
-     * @param currency The currency specification, a `Monetary.js` object
-     * @param id The AccountId of a user
-     * @returns The user's locked balance
-     */
-    balanceLocked<U extends CurrencyUnit>(
+     balance<U extends CurrencyUnit>(
         currency: Currency<U>,
         id: AccountId
-    ): Promise<MonetaryAmount<Currency<U>, U>>;
+    ): Promise<ChainBalance<U>>;
     /**
      * @param destination The address of a user
      * @param amount The amount to transfer, as a `Monetary.js` object
@@ -43,11 +37,14 @@ export interface TokensAPI {
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)
      */
-    subscribeToBalance<U extends CurrencyUnit>(
+     subscribeToBalance<U extends CurrencyUnit>(
         currency: Currency<U>,
         account: string,
-        callback: (account: string, balance: MonetaryAmount<Currency<U>, U>) => void
-    ): Promise<() => void>;
+        callback: (
+            account: string,
+            balance: ChainBalance<U>
+        ) => void
+    ): Promise<() => void>
     /**
      * @param accountId Account whose balance to set
      * @param freeBalance Free balance to set, as a Monetary.js object
@@ -82,23 +79,18 @@ export class DefaultTokensAPI implements TokensAPI {
     async balance<U extends CurrencyUnit>(
         currency: Currency<U>,
         id: AccountId
-    ): Promise<MonetaryAmount<Currency<U>, U>> {
+    ): Promise<ChainBalance<U>> {
         const accountData = await this.getAccountData(currency, id);
-        return newMonetaryAmount(accountData.free.toString(), currency);
-    }
-
-    async balanceLocked<U extends CurrencyUnit>(
-        currency: Currency<U>,
-        id: AccountId
-    ): Promise<MonetaryAmount<Currency<U>, U>> {
-        const accountData = await this.getAccountData(currency, id);
-        return newMonetaryAmount(accountData.reserved.toString(), currency);
+        return parseOrmlTokensAccountData(accountData, currency);
     }
 
     async subscribeToBalance<U extends CurrencyUnit>(
         currency: Currency<U>,
         account: string,
-        callback: (account: string, balance: MonetaryAmount<Currency<U>, U>) => void
+        callback: (
+            account: string,
+            accountData: ChainBalance<U>
+        ) => void
     ): Promise<() => void> {
         try {
             const accountId = newAccountId(this.api, account);
@@ -106,8 +98,11 @@ export class DefaultTokensAPI implements TokensAPI {
             const unsubscribe = await this.api.query.tokens.accounts(
                 accountId,
                 newCurrencyId(this.api, currencyIdLiteral),
-                (balance) => {
-                    callback(account, newMonetaryAmount(balance.free.toString(), currency));
+                (accountData) => {
+                    callback(
+                        account,
+                        parseOrmlTokensAccountData(accountData, currency),
+                    );
                 }
             );
             return unsubscribe;

@@ -68,8 +68,10 @@ describe("escrow", () => {
         interBtcAPI.setAccount(userAccount_1);
         await interBtcAPI.escrow.createLock(user1_intrAmount.sub(chargedFees), currentBlockNumber + unlockHeightDiff);
 
-        const votingBalance = await interBtcAPI.escrow.votingBalance(newAccountId(api, userAccount_1.address), currentBlockNumber + 0.4 * unlockHeightDiff);
-        const votingSupply = await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
+        const votingBalance = 
+            await interBtcAPI.escrow.votingBalance(newAccountId(api, userAccount_1.address), currentBlockNumber + 0.4 * unlockHeightDiff);
+        const votingSupply = 
+            await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
         assert.equal(votingBalance.toString(votingBalance.currency.base), votingSupply.toString(votingSupply.currency.base));
 
         // Hardcoded value here to match the parachain

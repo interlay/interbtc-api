@@ -1,14 +1,14 @@
-import { InterBtcAmount, InterBtc, Polkadot, Currency } from "@interlay/monetary-js";
+import { InterBtcAmount, Polkadot, Currency } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import { CollateralUnit, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
+import { CollateralUnit, InterbtcPrimitivesVaultId, tickerToCurrencyIdLiteral } from "../../../../src/index";
 
-import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, FeeAPI, newAccountId, newVaultId, NominationAPI, RewardsAPI, tickerToMonetaryCurrency, VaultsAPI, WrappedCurrency } from "../../../../src";
+import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, newAccountId, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, COLLATERAL_CURRENCY_TICKER, WRAPPED_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
+import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
 import { callWith, sudo } from "../../../utils/helpers";
 
 describe("NominationAPI", () => {
@@ -111,6 +111,7 @@ describe("NominationAPI", () => {
                 await userInterBtcAPI.nomination.getNominatorReward(
                     vault_1_id.accountId,
                     collateralCurrencyIdLiteral,
+                    tickerToCurrencyIdLiteral(wrappedCurrency.ticker),
                     newAccountId(api, userAccount.address),
                 )
             ).toBig();

@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama } from "@interlay/monetary-js";
+import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, Interlay } from "@interlay/monetary-js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency } from "../../../../src/index";
@@ -24,7 +24,7 @@ describe("vaultsAPI", () => {
     let vault_3_id: InterbtcPrimitivesVaultId;
     let api: ApiPromise;
     let bitcoinCoreClient: BitcoinCoreClient;
-    
+
     let wrappedCurrency: WrappedCurrency;
 
     let interBtcAPI: InterBtcApi;
@@ -72,7 +72,7 @@ describe("vaultsAPI", () => {
 
     it("should get issuable", async () => {
         const issuableInterBTC = await interBtcAPI.vaults.getTotalIssuableAmount();
-        const minExpectedIssuableInterBTC = InterBtcAmount.from.BTC(1);
+        const minExpectedIssuableInterBTC = InterBtcAmount.from.BTC(0.005);
         assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
@@ -80,9 +80,11 @@ describe("vaultsAPI", () => {
     it("should deposit and withdraw collateral", async () => {
         interBtcAPI.setAccount(vault_1);
         const amount = PolkadotAmount.from.DOT(100);
-        const collateralizationBeforeDeposit = await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
+        const collateralizationBeforeDeposit = 
+            await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
         await interBtcAPI.vaults.depositCollateral(amount);
-        const collateralizationAfterDeposit = await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
+        const collateralizationAfterDeposit = 
+            await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
         if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
             throw new Error("Collateralization is undefined");
         }
@@ -92,7 +94,8 @@ describe("vaultsAPI", () => {
         );
 
         await interBtcAPI.vaults.withdrawCollateral(amount);
-        const collateralizationAfterWithdrawal = await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
+        const collateralizationAfterWithdrawal = 
+            await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
         if (collateralizationAfterWithdrawal === undefined) {
             throw new Error("Collateralization is undefined");
         }
@@ -112,7 +115,8 @@ describe("vaultsAPI", () => {
         const issuableAmount = await vault.getIssuableTokens();
         await issueSingle(interBtcAPI, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3_id);
 
-        const currentVaultCollateralization = await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_3.address), collateralCurrencyIdLiteral);
+        const currentVaultCollateralization = 
+            await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_3.address), collateralCurrencyIdLiteral);
         if (currentVaultCollateralization === undefined) {
             throw new Error("Collateralization is undefined");
         }
@@ -135,7 +139,7 @@ describe("vaultsAPI", () => {
                 encodeVaultId(vault_3_id),
                 "Premium redeem vault is not the expected one"
             );
-    
+
             const premiumRedeemAmount = premiumRedeemVaults.values().next().value as InterBtcAmount;
             assert.isTrue(
                 premiumRedeemAmount.gte(issuableAmount),
@@ -192,16 +196,29 @@ describe("vaultsAPI", () => {
 
     it("should getFees", async () => {
         const vault1Id = newAccountId(api, vault_1.address);
-        const feesWrapped = await interBtcAPI.vaults.getFeesWrapped(
+        const feesWrapped = await interBtcAPI.vaults.getWrappedReward(
             vault1Id,
             currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral,
             currencyIdToLiteral(vault_1_id.currencies.wrapped) as WrappedIdLiteral
         );
-        assert.isTrue(feesWrapped.gte(InterBtcAmount.zero));
+        assert.isTrue(feesWrapped.gt(InterBtcAmount.zero));
+
+        const kintReward = await interBtcAPI.vaults.computeReward(
+            vault1Id,
+            vault1Id,
+            currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral,
+            CurrencyIdLiteral.INTR
+        );
+        console.log(`kint rwad: ${kintReward.toString()}`);
+        console.log(`wrapped rwd: ${feesWrapped}`);
+        assert.isTrue(feesWrapped.gt(InterBtcAmount.zero));
     });
 
     it("should getAPY", async () => {
-        const apy = await interBtcAPI.vaults.getAPY(newAccountId(api, vault_1.address), currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral);
+        const apy = 
+            await interBtcAPI.vaults.getAPY(
+                newAccountId(api, vault_1.address), currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral
+            );
         const apyBig = new Big(apy);
         const apyBenchmark = new Big("0");
         assert.isTrue(apyBig.gte(apyBenchmark));
