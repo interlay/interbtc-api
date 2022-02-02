@@ -13,11 +13,10 @@ jobs:
             - name: setup node
               uses: actions/setup-node@v2
               with:
-                  node-version: "14.x"
+                  node-version: "16"
                   registry-url: "https://registry.npmjs.org"
                   always-auth: true
-            - name: Install Yarn
-              run: npm i -g corepack
+            - run: corepack enable
             - run: yarn install
             - run: yarn build
             - run: echo "RELEASE_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
