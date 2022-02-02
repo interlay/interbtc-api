@@ -1,7 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { createPolkadotAPI } from "../../../../src/factory";
+import { createSubstrateAPI } from "../../../../src/factory";
 import { BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { BitcoinAmount } from "@interlay/monetary-js";
@@ -15,7 +15,7 @@ describe("ElectrsAPI regtest", function () {
     let bitcoinCoreClient: BitcoinCoreClient;
 
     before(async () => {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

@@ -1,19 +1,19 @@
-import { ApiPromise, Keyring } from "@polkadot/api";
-import { assert } from "../chai";
-import sinon from "sinon";
-import { createAPIRegistry, DefaultInterBTCAPI, InterBTCAPI } from "../../src/interbtc-api";
-import { SingleAccountSigner } from "../utils/SingleAccountSigner";
+import { Keyring } from "@polkadot/api";
+import { assert } from "chai";
 
-describe("InterBTCAPI", () => {
+import { createAPIRegistry, createSubstrateAPI, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
+import { SingleAccountSigner } from "../../../utils/SingleAccountSigner";
+import { PARACHAIN_ENDPOINT } from "../../../config";
+
+describe("InterBtcApi", () => {
     const keyring = new Keyring();
     const keyringPair = keyring.addFromUri("//Bob");
-    let interBTC: InterBTCAPI;
+    let interBTC: InterBtcApi;
     const registry = createAPIRegistry();
 
     before(async () => {
-        const api = sinon.createStubInstance(ApiPromise);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        interBTC = new DefaultInterBTCAPI(<any>api);
+        const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+        interBTC = new DefaultInterBtcApi(api);
     });
 
     describe("setAccount", () => {

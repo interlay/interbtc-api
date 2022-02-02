@@ -12,7 +12,7 @@ export enum GriefingCollateralType {
 }
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
 export interface FeeAPI {
     /**

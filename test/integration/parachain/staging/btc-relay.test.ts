@@ -1,22 +1,18 @@
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
-import { BTCRelayAPI } from "../../../../src/parachain";
-import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { DefaultBTCRelayAPI } from "../../../../src/parachain/btc-relay";
-import { createPolkadotAPI } from "../../../../src/factory";
-import { COLLATERAL_CURRENCY_TICKER, ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, WRAPPED_CURRENCY_TICKER } from "../../../config";
-import { CollateralCurrency, DefaultInterBTCAPI, InterBTCAPI, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { createSubstrateAPI } from "../../../../src/factory";
+import { PARACHAIN_ENDPOINT } from "../../../config";
+import { DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
 describe("BTCRelay", function () {
     this.timeout(10000); // API can be slightly slow
 
     let api: ApiPromise;
-    let interBtcAPI: InterBTCAPI;
+    let interBtcAPI: InterBtcApi;
 
     before(async () => {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-        let wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        interBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, undefined, "testnet");
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, "testnet");
     });
 
     after(async () => {

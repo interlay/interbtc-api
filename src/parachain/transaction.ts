@@ -31,20 +31,33 @@ export class DefaultTransactionAPI {
         transaction: SubmittableExtrinsic<"promise">,
         successEventType?: AugmentedEvent<ApiTypes, T>
     ): Promise<ISubmittableResult> {
-        const { unsubscribe, result } = await new Promise((resolve, reject) => {
-            if (this.account === undefined) {
-                return reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
-            }
+        if (this.account === undefined) {
+            return Promise.reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
+        }
+        return DefaultTransactionAPI.sendLogged(
+            this.api,
+            this.account,
+            transaction,
+            successEventType
+        );
+    }
 
+    static async sendLogged<T extends AnyTuple>(
+        api: ApiPromise,
+        account: AddressOrPair,
+        transaction: SubmittableExtrinsic<"promise">,
+        successEventType?: AugmentedEvent<ApiTypes, T>
+    ): Promise<ISubmittableResult> {
+        const { unsubscribe, result } = await new Promise((resolve, reject) => {
             let unsubscribe: () => void;
             // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
             transaction
-                .signAndSend(this.account, { nonce: -1 }, (result: ISubmittableResult) =>
-                    callback(this.api, { unsubscribe, result })
+                .signAndSend(account, { nonce: -1 }, (result: ISubmittableResult) =>
+                    callback(api, { unsubscribe, result })
                 )
                 .then((u: () => void) => (unsubscribe = u))
                 .catch((error) => reject(error));
-
+    
             function callback(api: ApiPromise, callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
                 if (status.isFinalized) {
@@ -64,11 +77,11 @@ export class DefaultTransactionAPI {
                 }
             }
         });
-
+    
         console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         unsubscribe(result);
-        DefaultTransactionAPI.printEvents(this.api, result.events);
-
+        DefaultTransactionAPI.printEvents(api, result.events);
+    
         if (successEventType && !DefaultTransactionAPI.doesArrayContainEvent(result.events, successEventType)) {
             return Promise.reject(new Error("Transaction failed: Expected event was not emitted"));
         }

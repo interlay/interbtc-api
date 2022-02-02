@@ -3,11 +3,11 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, Interlay } from "@interlay/monetary-js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
-import { DefaultInterBTCAPI, InterBTCAPI, InterbtcPrimitivesVaultId, WrappedIdLiteral } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency } from "../../../../src/index";
 
-import { createPolkadotAPI } from "../../../../src/factory";
+import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
-import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER, COLLATERAL_CURRENCY_TICKER } from "../../../config";
+import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER, COLLATERAL_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
 import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, CollateralCurrency, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral, tickerToMonetaryCurrency, CurrencyIdLiteral } from "../../../../src/";
 import { encodeVaultId, issueSingle } from "../../../../src/utils";
 import { callWithExchangeRate } from "../../../utils/helpers";
@@ -27,12 +27,13 @@ describe("vaultsAPI", () => {
 
     let wrappedCurrency: WrappedCurrency;
 
-    let interBtcAPI: InterBTCAPI;
-    let oracleInterBtcAPI: InterBTCAPI;
+    let interBtcAPI: InterBtcApi;
+    let oracleInterBtcAPI: InterBtcApi;
 
     before(async () => {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
+        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         const keyring = new Keyring({ type: "sr25519" });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
@@ -44,8 +45,8 @@ describe("vaultsAPI", () => {
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
 
-        interBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, undefined, ESPLORA_BASE_PATH);
-        oracleInterBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, oracleAccount, ESPLORA_BASE_PATH);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
+        oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -77,7 +78,7 @@ describe("vaultsAPI", () => {
 
     // WARNING: this test is not idempotent
     it("should deposit and withdraw collateral", async () => {
-        interBtcAPI.vaults.setAccount(vault_1);
+        interBtcAPI.setAccount(vault_1);
         const amount = PolkadotAmount.from.DOT(100);
         const collateralizationBeforeDeposit = 
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
@@ -112,7 +113,7 @@ describe("vaultsAPI", () => {
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
         const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrencyIdLiteral);
         const issuableAmount = await vault.getIssuableTokens();
-        await issueSingle(api, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3_id);
+        await issueSingle(interBtcAPI, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3_id);
 
         const currentVaultCollateralization = 
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_3.address), collateralCurrencyIdLiteral);

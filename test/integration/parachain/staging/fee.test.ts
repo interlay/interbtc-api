@@ -3,22 +3,21 @@ import { Bitcoin, BitcoinUnit, ExchangeRate, InterBtcAmount, Polkadot, PolkadotU
 import { assert } from "chai";
 import Big from "big.js";
 
-import { createPolkadotAPI } from "../../../../src/factory";
-import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT, WRAPPED_CURRENCY_TICKER } from "../../../config";
-import { DefaultInterBTCAPI, InterBTCAPI, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { createSubstrateAPI } from "../../../../src/factory";
+import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
+import { DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 import { GriefingCollateralType } from "../../../../src/parachain/fee";
 import { callWithExchangeRate } from "../../../utils/helpers";
 
 describe("fee", () => {
     let api: ApiPromise;
-    let userInterBtcAPI: InterBTCAPI;
+    let userInterBtcAPI: InterBtcApi;
 
     before(async function () {
         const keyring = new Keyring({ type: "sr25519" });
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
-        const wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        userInterBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, oracleAccount, ESPLORA_BASE_PATH);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+        userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
     });
 
     after(async () => {

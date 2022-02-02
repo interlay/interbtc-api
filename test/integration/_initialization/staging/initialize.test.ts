@@ -7,7 +7,7 @@ import Big from "big.js";
 
 import {
     BitcoinCoreClient,
-    createPolkadotAPI,
+    createSubstrateAPI,
     VaultsAPI,
     newAccountId,
     CollateralUnit,
@@ -15,8 +15,9 @@ import {
     newVaultId,
     WrappedCurrency,
     tickerToMonetaryCurrency,
-    DefaultInterBTCAPI,
-    InterBTCAPI,
+    InterBtcApi,
+    DefaultInterBtcApi,
+    GovernanceCurrency,
 } from "../../../../src";
 import {
     initializeVaultNomination,
@@ -42,14 +43,15 @@ import {
     VAULT_TO_BAN_URI,
     USER_1_URI,
     ESPLORA_BASE_PATH,
-    WRAPPED_CURRENCY_TICKER
+    WRAPPED_CURRENCY_TICKER,
+    GOVERNANCE_CURRENCY_TICKER
 } from "../../../config";
 import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
-    let userInterBtcAPI: InterBTCAPI;
-    let sudoInterBtcAPI: InterBTCAPI;
+    let userInterBtcAPI: InterBtcApi;
+    let sudoInterBtcAPI: InterBtcApi;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
 
@@ -64,6 +66,7 @@ describe("Initialize parachain state", () => {
     let vault_to_liquidate: KeyringPair;
 
     let wrappedCurrency: WrappedCurrency;
+    let governanceCurrency: GovernanceCurrency;
 
     function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
         return newAccountId(api, keyPair.address);
@@ -80,7 +83,7 @@ describe("Initialize parachain state", () => {
     }
 
     before(async function () {
-        api = await createPolkadotAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         oracleAccount = keyring.addFromUri(ORACLE_URI);
@@ -91,6 +94,7 @@ describe("Initialize parachain state", () => {
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
+        governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -101,8 +105,8 @@ describe("Initialize parachain state", () => {
             BITCOIN_CORE_WALLET
         );
 
-        userInterBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, userAccount, ESPLORA_BASE_PATH);
-        sudoInterBtcAPI = new DefaultInterBTCAPI(api, "regtest", wrappedCurrency, sudoAccount, ESPLORA_BASE_PATH);
+        userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
+        sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
         const vaultCollateralPairs: [KeyringPair, CurrencyIdLiteral][] = [
             [vault_1, CurrencyIdLiteral.DOT],
@@ -124,8 +128,6 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the stable confirmations and ready the BTC-Relay", async () => {
-        const previousIssueApiAccount = userInterBtcAPI.issue.getAccount();
-        userInterBtcAPI.issue.setAccount(sudoAccount);
         // Speed up the process by only requiring 0 parachain and 0 bitcoin confirmations
         const stableBitcoinConfirmationsToSet = 0;
         const stableParachainConfirmationsToSet = 0;
@@ -135,16 +137,13 @@ describe("Initialize parachain state", () => {
                 bitcoinConfirmations: stableBitcoinConfirmationsToSet,
                 parachainConfirmations: stableParachainConfirmationsToSet
             },
-            userInterBtcAPI.issue,
+            sudoAccount,
             bitcoinCoreClient
         );
         const stableBitcoinConfirmations = await userInterBtcAPI.btcRelay.getStableBitcoinConfirmations();
         const stableParachainConfirmations = await userInterBtcAPI.btcRelay.getStableParachainConfirmations();
         assert.equal(stableBitcoinConfirmationsToSet, stableBitcoinConfirmations, "Setting the Bitcoin confirmations failed");
         assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
-        if (previousIssueApiAccount) {
-            userInterBtcAPI.issue.setAccount(previousIssueApiAccount);
-        }
     });
 
     it("should set the exchange rate", async () => {
@@ -179,7 +178,7 @@ describe("Initialize parachain state", () => {
         const userInterBTCBefore = (await userInterBtcAPI.tokens.balance(InterBtc, userAccountId)).free;
 
         await initializeIssue(
-            api, bitcoinCoreClient, userAccount, interBtcToIssue, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency)
+            userInterBtcAPI, bitcoinCoreClient, userAccount, interBtcToIssue, newVaultId(api, vault_1.address, Polkadot, wrappedCurrency)
         );
         const userInterBTCAfter = (await userInterBtcAPI.tokens.balance(InterBtc, userAccountId)).free;
         assert.equal(

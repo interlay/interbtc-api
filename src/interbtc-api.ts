@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { InterBtc } from "@interlay/monetary-js";
+import { Currency, InterBtc, Interlay } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
@@ -20,7 +20,9 @@ import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
-import { CollateralCurrency, WrappedCurrency } from ".";
+import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
+import { currencyIdToMonetaryCurrency, CurrencyUnit, GovernanceCurrency, WrappedCurrency } from "./types";
+import { DefaultEscrowAPI, EscrowAPI } from ".";
 
 export * from "./factory";
 export * from "./parachain/transaction";
@@ -36,7 +38,7 @@ export function getBitcoinNetwork(network: BitcoinNetwork = "mainnet"): Network 
     }
 }
 
-export interface InterBTCAPI {
+export interface InterBtcApi {
     readonly api: ApiPromise;
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
@@ -57,9 +59,9 @@ export interface InterBTCAPI {
 }
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
-export class DefaultInterBTCAPI implements InterBTCAPI {
+export class DefaultInterBtcApi implements InterBtcApi {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
@@ -74,21 +76,28 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
     public readonly fee: FeeAPI;
     public readonly nomination: NominationAPI;
     public readonly rewards: RewardsAPI;
+    public readonly escrow: EscrowAPI;
+    private transactionAPI: TransactionAPI;
 
     constructor(
         readonly api: ApiPromise,
         bitcoinNetwork: BitcoinNetwork = "mainnet",
-        wrappedCurrency: WrappedCurrency = InterBtc,
-        private _account?: AddressOrPair,
+        _account?: AddressOrPair,
         esploraNetwork?: string,
     ) {
+        const wrappedCurrency = this.getWrappedCurrency() as WrappedCurrency;
+        const nativeCurrency = this.getNativeCurrency() as GovernanceCurrency;
+
         const btcNetwork = getBitcoinNetwork(bitcoinNetwork);
         this.electrsAPI = new DefaultElectrsAPI(esploraNetwork || bitcoinNetwork);
+        this.transactionAPI = new DefaultTransactionAPI(api, _account);
 
-        this.tokens = new DefaultTokensAPI(api, _account);
-        this.oracle = new DefaultOracleAPI(api, wrappedCurrency, _account);
+        this.tokens = new DefaultTokensAPI(api, this.transactionAPI);
+        this.system = new DefaultSystemAPI(api, this.transactionAPI);
+        this.oracle = new DefaultOracleAPI(api, wrappedCurrency, this.transactionAPI);
         this.fee = new DefaultFeeAPI(api, this.oracle);
-        this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, _account);
+        this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, this.transactionAPI);
+        this.escrow = new DefaultEscrowAPI(api, nativeCurrency, this.system, this.transactionAPI);
 
         this.vaults = new DefaultVaultsAPI(
             api,
@@ -99,13 +108,13 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
             this.oracle,
             this.fee,
             this.rewards,
-            _account
+            this.system,
+            this.transactionAPI
         );
         this.faucet = new FaucetClient(api, "");
-        this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, _account);
+        this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.transactionAPI);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
         
-        this.system = new DefaultSystemAPI(api);
         this.replace = new DefaultReplaceAPI(
             api,
             btcNetwork,
@@ -113,9 +122,9 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
             wrappedCurrency,
             this.fee,
             this.vaults,
-            _account
+            this.transactionAPI
         );
-        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.fee, this.vaults, _account);
+        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.fee, this.vaults, this.transactionAPI);
         this.redeem = new DefaultRedeemAPI(
             api,
             btcNetwork,
@@ -123,14 +132,14 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
             wrappedCurrency,
             this.vaults,
             this.oracle,
-            _account
+            this.transactionAPI
         );
         this.nomination = new DefaultNominationAPI(
             api,
             wrappedCurrency,
             this.vaults,
             this.rewards,
-            _account
+            this.transactionAPI
         );
     }
 
@@ -141,17 +150,20 @@ export class DefaultInterBTCAPI implements InterBTCAPI {
         if (signer) {
             this.api.setSigner(signer);
         }
-        this._account = account;
-        this.vaults.setAccount(account);
-        this.refund.setAccount(account);
-        this.tokens.setAccount(account);
-        this.replace.setAccount(account);
-        this.issue.setAccount(account);
-        this.redeem.setAccount(account);
-        this.nomination.setAccount(account);
+        this.transactionAPI.setAccount(account);
     }
 
     get account(): AddressOrPair | undefined {
-        return this._account;
+        return this.transactionAPI.getAccount();
+    }
+
+    private getNativeCurrency(): Currency<CurrencyUnit> {
+        const currencyId = this.api.consts.escrowRewards.getNativeCurrencyId;
+        return currencyIdToMonetaryCurrency(currencyId);
+    }
+
+    private  getWrappedCurrency(): Currency<CurrencyUnit> {
+        const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
+        return currencyIdToMonetaryCurrency(currencyId);
     }
 }

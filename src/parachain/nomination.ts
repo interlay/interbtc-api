@@ -1,5 +1,4 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { AccountId, Index } from "@polkadot/types/interfaces";
 import { Currency, MonetaryAmount, BitcoinUnit } from "@interlay/monetary-js";
 import type { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
@@ -14,7 +13,7 @@ import {
     queryNominationsMap,
     storageKeyToNthInner,
 } from "../utils";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import {
     CollateralCurrency,
     CollateralIdLiteral,
@@ -47,9 +46,9 @@ export type Nomination = NominationData<CollateralUnit> & { type: NominationAmou
 export type NominationReward = NominationData<CurrencyUnit>;
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
-export interface NominationAPI extends TransactionAPI {
+export interface NominationAPI {
     /**
      * @param vaultAccountId Vault to nominate collateral to
      * @param amount Amount to deposit, as a `Monetary.js` object
@@ -152,16 +151,14 @@ export interface NominationAPI extends TransactionAPI {
     getNonces(): Promise<Map<InterbtcPrimitivesVaultId, number>>;
 }
 
-export class DefaultNominationAPI extends DefaultTransactionAPI implements NominationAPI {
+export class DefaultNominationAPI implements NominationAPI {
     constructor(
-        api: ApiPromise,
+        private api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
         private vaultsAPI: VaultsAPI,
         private rewardsAPI: RewardsAPI,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private transactionAPI: TransactionAPI
+    ) {}
 
     async depositCollateral<C extends CollateralUnit>(
         vaultAccountId: AccountId,
@@ -175,7 +172,7 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         );
         const amountAsPlanck = this.api.createType("Balance", amount.toString());
         const tx = this.api.tx.nomination.depositCollateral(vaultId, amountAsPlanck);
-        await this.sendLogged(tx, this.api.events.nomination.DepositCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.DepositCollateral);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(
@@ -196,24 +193,24 @@ export class DefaultNominationAPI extends DefaultTransactionAPI implements Nomin
         const amountAsPlanck = this.api.createType("Balance", amount.toString());
         const parsedNonce = this.api.createType("Index", definedNonce);
         const tx = this.api.tx.nomination.withdrawCollateral(vaultId, amountAsPlanck, parsedNonce);
-        await this.sendLogged(tx, this.api.events.nomination.WithdrawCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.WithdrawCollateral);
     }
 
     async optIn(collateralCurrency: CollateralCurrency): Promise<void> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const tx = this.api.tx.nomination.optInToNomination(vaultCurrencyPair);
-        await this.sendLogged(tx, this.api.events.nomination.NominationOptIn);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptIn);
     }
 
     async optOut(collateralCurrency: CollateralCurrency): Promise<void> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const tx = this.api.tx.nomination.optOutOfNomination(vaultCurrencyPair);
-        await this.sendLogged(tx, this.api.events.nomination.NominationOptOut);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptOut);
     }
 
     async setNominationEnabled(enabled: boolean): Promise<void> {
         const tx = this.api.tx.sudo.sudo(this.api.tx.nomination.setNominationEnabled(enabled));
-        await this.sendLogged(tx);
+        await this.transactionAPI.sendLogged(tx);
     }
 
     async isNominationEnabled(): Promise<boolean> {

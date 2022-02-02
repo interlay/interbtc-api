@@ -28,9 +28,9 @@ import {
 import { VaultsAPI } from "../parachain";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
-export interface ReplaceAPI extends TransactionAPI {
+export interface ReplaceAPI {
     /**
      * @returns The minimum amount of btc that is accepted for replace requests; any lower values would
      * risk the bitcoin client to reject the payment
@@ -104,27 +104,24 @@ export interface ReplaceAPI extends TransactionAPI {
     mapReplaceRequests(vaultAccountId: AccountId): Promise<ReplaceRequestExt[]>;
 }
 
-export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceAPI {
+export class DefaultReplaceAPI implements ReplaceAPI {
     constructor(
-        api: ApiPromise,
+        private api: ApiPromise,
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private transactionAPI: TransactionAPI
+    ) {}
 
     async request(
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
         collateralCurrency: CollateralCurrency
     ): Promise<void> {
-        const castCollateralCurrency = collateralCurrency as Currency<CollateralUnit>;
         const amountAtomicUnit = this.api.createType("Balance", amount.str.Satoshi());
         // Assumes the calling account is the `vaultId`
-        const vaultAccount = this.getAccount();
+        const vaultAccount = this.transactionAPI.getAccount();
         if (vaultAccount === undefined) {
             return Promise.reject("Vault account must be set in the replace API");
         }
@@ -143,7 +140,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
             amountAtomicUnit,
             griefingCollateralAtomicUnit
         );
-        await this.sendLogged(requestTx, this.api.events.replace.RequestReplace);
+        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.RequestReplace);
     }
 
     async withdraw(
@@ -153,7 +150,7 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
         const amountAtomicUnit = this.api.createType("Balance", amount.str.Satoshi());
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const requestTx = this.api.tx.replace.withdrawReplace(vaultCurrencyPair, amountAtomicUnit);
-        await this.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
+        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
     }
 
     async accept(
@@ -177,14 +174,14 @@ export class DefaultReplaceAPI extends DefaultTransactionAPI implements ReplaceA
             collateralAtomicUnit,
             parsedBtcAddress
         );
-        await this.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
+        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
     }
 
     async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.replace.executeReplace(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.sendLogged(tx, this.api.events.replace.ExecuteReplace);
+        await this.transactionAPI.sendLogged(tx, this.api.events.replace.ExecuteReplace);
     }
 
     async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {

@@ -42,11 +42,12 @@ import {
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
+import { SystemAPI } from ".";
 
 /**
- * @category InterBTC Bridge
+ * @category BTC Bridge
  */
-export interface VaultsAPI extends TransactionAPI {
+export interface VaultsAPI {
     /**
      * @returns An array containing the vaults with non-zero backing collateral
      */
@@ -283,9 +284,9 @@ export interface VaultsAPI extends TransactionAPI {
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
 }
 
-export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI {
+export class DefaultVaultsAPI implements VaultsAPI {
     constructor(
-        api: ApiPromise,
+        private api: ApiPromise,
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
@@ -293,10 +294,9 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         private oracleAPI: OracleAPI,
         private feeAPI: FeeAPI,
         private rewardsAPI: RewardsAPI,
-        account?: AddressOrPair
-    ) {
-        super(api, account);
-    }
+        private systemAPI: SystemAPI,
+        private transactionAPI: TransactionAPI
+    ) {}
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
@@ -310,7 +310,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit, publicKey);
-        await this.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -321,7 +321,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
-        await this.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
     }
 
     async depositCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -332,7 +332,7 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAsPlanck);
-        await this.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
     }
 
     async list(atBlock?: BlockHash): Promise<VaultExt<BitcoinUnit>[]> {
@@ -839,6 +839,8 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
         const backingCollateral = await this.computeBackingCollateral(vault.id);
         return new VaultExt<BitcoinUnit>(
             this.api,
+            this.oracleAPI,
+            this.systemAPI,
             parseWallet(vault.wallet, network),
             backingCollateral,
             vault.id,
@@ -859,6 +861,6 @@ export class DefaultVaultsAPI extends DefaultTransactionAPI implements VaultsAPI
     ): Promise<void> {
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.relay.reportVaultTheft(vaultAccountId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.sendLogged(tx, this.api.events.relay.VaultTheft);
+        await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft);
     }
 }
