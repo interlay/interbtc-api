@@ -4,7 +4,7 @@ import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "../utils/encoding";
-import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit, WrappedCurrency } from "../types";
+import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit } from "../types";
 
 export enum GriefingCollateralType {
     Issue,
