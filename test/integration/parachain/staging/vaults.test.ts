@@ -26,6 +26,7 @@ describe("vaultsAPI", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
 
     let wrappedCurrency: WrappedCurrency;
+    let collateralCurrency: Currency<CollateralUnit>;
 
     let interBtcAPI: InterBtcApi;
     let oracleInterBtcAPI: InterBtcApi;
@@ -35,6 +36,7 @@ describe("vaultsAPI", () => {
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
         const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         const keyring = new Keyring({ type: "sr25519" });
+        collateralCurrency = tickerToMonetaryCurrency(api, COLLATERAL_CURRENCY_TICKER) as Currency<CollateralUnit>;
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
@@ -76,10 +78,22 @@ describe("vaultsAPI", () => {
         assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
+    it.only("should get the required collateral for the vault", async () => {
+        interBtcAPI.setAccount(vault_1);
+        const vault1Id = newAccountId(api, vault_1.address);
+
+        const requiredCollateralForVault =
+            await interBtcAPI.vaults.getRequiredCollateralForVault(vault1Id, collateralCurrency);
+            
+        console.log("requiredCollateralForVault", requiredCollateralForVault);
+        assert.exists(requiredCollateralForVault);
+    });
+
     // WARNING: this test is not idempotent
     it("should deposit and withdraw collateral", async () => {
         interBtcAPI.setAccount(vault_1);
         const amount = PolkadotAmount.from.DOT(100);
+
         const collateralizationBeforeDeposit = 
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
         await interBtcAPI.vaults.depositCollateral(amount);
