@@ -1,9 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, Interlay } from "@interlay/monetary-js";
+import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, Interlay, Currency } from "@interlay/monetary-js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
-import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency, currencyIdToMonetaryCurrency, CollateralUnit } from "../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
@@ -26,7 +26,6 @@ describe("vaultsAPI", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
 
     let wrappedCurrency: WrappedCurrency;
-    let collateralCurrency: Currency<CollateralUnit>;
 
     let interBtcAPI: InterBtcApi;
     let oracleInterBtcAPI: InterBtcApi;
@@ -34,9 +33,7 @@ describe("vaultsAPI", () => {
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         const keyring = new Keyring({ type: "sr25519" });
-        collateralCurrency = tickerToMonetaryCurrency(api, COLLATERAL_CURRENCY_TICKER) as Currency<CollateralUnit>;
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, Polkadot, wrappedCurrency);
@@ -78,15 +75,16 @@ describe("vaultsAPI", () => {
         assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
-    it.only("should get the required collateral for the vault", async () => {
-        interBtcAPI.setAccount(vault_1);
-        const vault1Id = newAccountId(api, vault_1.address);
-
+    it("should get the required collateral for the vault", async () => {
+        const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as Currency<CollateralUnit>;
         const requiredCollateralForVault =
-            await interBtcAPI.vaults.getRequiredCollateralForVault(vault1Id, collateralCurrency);
+            await interBtcAPI.vaults.getRequiredCollateralForVault(vault_1_id.accountId, collateralCurrency);
             
-        console.log("requiredCollateralForVault", requiredCollateralForVault);
-        assert.exists(requiredCollateralForVault);
+        const vault = await interBtcAPI.vaults.get(vault_1_id.accountId, currencyIdToLiteral(vault_1_id.currencies.collateral));
+
+        // The numeric value of the required collateral should be greater than that of issued tokens.
+        // e.g. we require `0.8096` KSM for `0.00014` kBTC
+        assert.isTrue(requiredCollateralForVault.toBig().gt(vault.getBackedTokens().toBig()));
     });
 
     // WARNING: this test is not idempotent
