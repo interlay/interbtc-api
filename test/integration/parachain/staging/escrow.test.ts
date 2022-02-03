@@ -115,6 +115,6 @@ describe("escrow", () => {
         await interBtcAPI.escrow.createLock(user_intrAmount.sub(chargedFees), currentBlockNumber + unlockHeightDiff);
         await interBtcAPI.escrow.increaseAmount(user_intrAmount);
         await interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff);
-    }).timeout(100000);
+    }).timeout(200000);
 
 });
