@@ -10,14 +10,6 @@ import { TransactionAPI } from "..";
 export interface DemocracyAPI {
     /**
      * @param proposalHash
-     * @param referendumIndex
-     */
-    enactProposal(
-        proposalHash: string,
-        referendumIndex: number
-    ): Promise<void>;
-    /**
-     * @param proposalHash
      * @param delay
      */
     fastTrack(
@@ -60,15 +52,6 @@ export class DefaultDemocracyAPI implements DemocracyAPI {
         private api: ApiPromise, 
         private transactionAPI: TransactionAPI
     ) {}
-
-    async enactProposal(
-        proposalHash: string,
-        referendumIndex: number
-    ): Promise<void> {
-        const parsedHash = this.api.createType("H256", addHexPrefix(proposalHash));
-        const tx = this.api.tx.democracy.enactProposal(parsedHash, referendumIndex);
-        await this.transactionAPI.sendLogged(tx, this.api.events.democracy.Passed);
-    }
 
     async fastTrack(
         proposalIndex: number,
