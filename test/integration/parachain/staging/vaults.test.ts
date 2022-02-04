@@ -1,9 +1,8 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, Interlay, InterlayAmount, MonetaryAmount } from "@interlay/monetary-js";
-import * as bitcoinjs from "bitcoinjs-lib";
+import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, InterlayAmount, Currency } from "@interlay/monetary-js";
 import Big from "big.js";
-import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, currencyIdToMonetaryCurrency, CollateralUnit } from "../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
@@ -75,10 +74,23 @@ describe("vaultsAPI", () => {
         assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
     });
 
+    it("should get the required collateral for the vault", async () => {
+        const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as Currency<CollateralUnit>;
+        const requiredCollateralForVault =
+            await interBtcAPI.vaults.getRequiredCollateralForVault(vault_1_id.accountId, collateralCurrency);
+            
+        const vault = await interBtcAPI.vaults.get(vault_1_id.accountId, currencyIdToLiteral(vault_1_id.currencies.collateral));
+
+        // The numeric value of the required collateral should be greater than that of issued tokens.
+        // e.g. we require `0.8096` KSM for `0.00014` kBTC
+        assert.isTrue(requiredCollateralForVault.toBig().gt(vault.getBackedTokens().toBig()));
+    });
+
     // WARNING: this test is not idempotent
     it("should deposit and withdraw collateral", async () => {
         interBtcAPI.setAccount(vault_1);
         const amount = PolkadotAmount.from.DOT(100);
+
         const collateralizationBeforeDeposit = 
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), CurrencyIdLiteral.DOT);
         await interBtcAPI.vaults.depositCollateral(amount);

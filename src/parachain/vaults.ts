@@ -581,24 +581,24 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultAccountId: AccountId,
         currency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>> {
-        const vaultId = newVaultId(
-            this.api,
-            vaultAccountId.toString(),
-            currency as unknown as CollateralCurrency,
-            this.wrappedCurrency
+        const vault = await this.get(
+            vaultAccountId,
+            tickerToCurrencyIdLiteral(currency.ticker) as CollateralIdLiteral
         );
-        try {
-            // TODO: Decide whether to keep using RPC or duplicate logic
-            // RPC decoration in polkadot-js/api is broken at the moment, disable linter
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const amountWrapper: BalanceWrapper = await (this.api.rpc as any).vaultRegistry.getRequiredCollateralForVault(
-                vaultId
-            );
-            const amountUnwrapped = this.unwrapCurrency(amountWrapper);
-            return newMonetaryAmount(amountUnwrapped.toString(), currency);
-        } catch (e) {
-            return Promise.reject(e);
-        }
+        const issuedTokens = vault.getBackedTokens();
+        return await this.getRequiredCollateralForWrapped(
+            issuedTokens,
+            currency
+        );
+    }
+
+    async getRequiredCollateralForWrapped<C extends CollateralUnit>(
+        wrappedAmount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
+        currency: Currency<C>,
+    ): Promise<MonetaryAmount<Currency<C>, C>> {
+        const secureCollateralThreshold = await this.getSecureCollateralThreshold(currency as unknown as CollateralCurrency);
+        const requiredCollateralInWrappedCurrency = wrappedAmount.mul(secureCollateralThreshold);
+        return await this.oracleAPI.convertWrappedToCurrency(requiredCollateralInWrappedCurrency, currency);
     }
 
     async getIssuedAmount(
