@@ -9,38 +9,41 @@ import { TransactionAPI } from "..";
  */
 export interface DemocracyAPI {
     /**
-     * @param proposalHash
-     * @param delay
+     * @param proposalHash The hash of the current external proposal
+     * @param delay The number of block after voting has ended in approval
+     * and this should be enacted. This doesn't have a minimum amount
      */
     fastTrack(
-        proposalIndex: number,
+        proposalHash: string,
         delay: number
     ): Promise<void>;
     /**
-     * @param proposalHash
-     * @param delay
+     * @param proposalHash the hash of the proposal preimage
+     * @param value the amount of deposit (must be at least `MinimumDeposit`)
      */
     propose(
         proposalHash: string,
-        delay: number
+        value: number
     ): Promise<void>;
     /**
-     * @param proposalHash
-     * @param delay
+     * @param proposal the index of the proposal to second
+     * @param upperBound an upper bound on the current number of seconds on this
+     * proposal. Extrinsic is weighted according to this value with no refund
      */
     second(
-        proposalHash: string,
+        proposal: string,
         upperBound: number
     ): Promise<void>;
     /**
-     * @param referendumIndex
+     * @param referendumIndex the index of the referendum to vote for
+     * @param vote the vote configuration
      */
     vote(
         referendumIndex: number,
         vote: DemocracyVote
     ): Promise<void>;
     /**
-     * @param referendumIndex
+     * @param referendumIndex the index of referendum of the vote to be removed
      */
     removeVote(
         referendumIndex: number
@@ -54,27 +57,28 @@ export class DefaultDemocracyAPI implements DemocracyAPI {
     ) {}
 
     async fastTrack(
-        proposalIndex: number,
+        proposalHash: string,
         delay: number
     ): Promise<void> {
-        const tx = this.api.tx.democracy.fastTrack(proposalIndex, delay);
+        const parsedHash = this.api.createType("H256", addHexPrefix(proposalHash));
+        const tx = this.api.tx.democracy.fastTrack(parsedHash, delay);
         await this.transactionAPI.sendLogged(tx, this.api.events.democracy.Passed);
     }
 
     async propose(
         proposalHash: string,
-        delay: number
+        value: number
     ): Promise<void> {
         const parsedHash = this.api.createType("H256", addHexPrefix(proposalHash));
-        const tx = this.api.tx.democracy.propose(parsedHash, delay);
+        const tx = this.api.tx.democracy.propose(parsedHash, value);
         await this.transactionAPI.sendLogged(tx, this.api.events.democracy.Passed);
     }
 
     async second(
-        proposalHash: string,
+        proposal: string,
         upperBound: number
     ): Promise<void> {
-        const parsedHash = this.api.createType("H256", addHexPrefix(proposalHash));
+        const parsedHash = this.api.createType("H256", addHexPrefix(proposal));
         const tx = this.api.tx.democracy.second(parsedHash, upperBound);
         await this.transactionAPI.sendLogged(tx, this.api.events.democracy.Passed);
     }
