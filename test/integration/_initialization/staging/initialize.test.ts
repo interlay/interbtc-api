@@ -17,7 +17,6 @@ import {
     tickerToMonetaryCurrency,
     InterBtcApi,
     DefaultInterBtcApi,
-    GovernanceCurrency,
 } from "../../../../src";
 import {
     initializeVaultNomination,
@@ -28,7 +27,6 @@ import {
 } from "../../../../src/utils/setup";
 import {
     SUDO_URI,
-    ORACLE_URI,
     VAULT_1_URI,
     VAULT_2_URI,
     BITCOIN_CORE_HOST,
@@ -44,7 +42,6 @@ import {
     USER_1_URI,
     ESPLORA_BASE_PATH,
     WRAPPED_CURRENCY_TICKER,
-    GOVERNANCE_CURRENCY_TICKER
 } from "../../../config";
 import { sleep, SLEEP_TIME_MS } from "../../../utils/helpers";
 
@@ -56,7 +53,6 @@ describe("Initialize parachain state", () => {
     let keyring: Keyring;
 
     let sudoAccount: KeyringPair;
-    let oracleAccount: KeyringPair;
     let userAccount: KeyringPair;
 
     let vault_1: KeyringPair;
@@ -66,7 +62,6 @@ describe("Initialize parachain state", () => {
     let vault_to_liquidate: KeyringPair;
 
     let wrappedCurrency: WrappedCurrency;
-    let governanceCurrency: GovernanceCurrency;
 
     function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
         return newAccountId(api, keyPair.address);
@@ -86,7 +81,6 @@ describe("Initialize parachain state", () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
-        oracleAccount = keyring.addFromUri(ORACLE_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
@@ -94,7 +88,6 @@ describe("Initialize parachain state", () => {
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

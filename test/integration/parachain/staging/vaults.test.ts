@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, InterBtc, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, Interlay } from "@interlay/monetary-js";
+import { Bitcoin, InterBtcAmount, BitcoinUnit, ExchangeRate, Polkadot, PolkadotAmount, PolkadotUnit, Kusama, Interlay, InterlayAmount, MonetaryAmount } from "@interlay/monetary-js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import Big from "big.js";
 import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, GovernanceCurrency } from "../../../../src/index";
@@ -8,7 +8,7 @@ import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLi
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH, WRAPPED_CURRENCY_TICKER, COLLATERAL_CURRENCY_TICKER, GOVERNANCE_CURRENCY_TICKER } from "../../../config";
-import { BitcoinCoreClient, DefaultVaultsAPI, DefaultElectrsAPI, DefaultOracleAPI, ElectrsAPI, newAccountId, CollateralCurrency, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral, tickerToMonetaryCurrency, CurrencyIdLiteral } from "../../../../src/";
+import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral, tickerToMonetaryCurrency, CurrencyIdLiteral } from "../../../../src/";
 import { encodeVaultId, issueSingle } from "../../../../src/utils";
 import { callWithExchangeRate } from "../../../utils/helpers";
 
@@ -33,7 +33,6 @@ describe("vaultsAPI", () => {
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        const governanceCurrency = tickerToMonetaryCurrency(api, GOVERNANCE_CURRENCY_TICKER) as GovernanceCurrency;
         const keyring = new Keyring({ type: "sr25519" });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
@@ -203,15 +202,13 @@ describe("vaultsAPI", () => {
         );
         assert.isTrue(feesWrapped.gt(InterBtcAmount.zero));
 
-        const kintReward = await interBtcAPI.vaults.computeReward(
-            vault1Id,
+        const intrReward = await interBtcAPI.vaults.getGovernanceReward(
             vault1Id,
             currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral,
             CurrencyIdLiteral.INTR
-        );
-        console.log(`kint rwad: ${kintReward.toString()}`);
-        console.log(`wrapped rwd: ${feesWrapped}`);
+        ) as InterlayAmount;
         assert.isTrue(feesWrapped.gt(InterBtcAmount.zero));
+        assert.isTrue(intrReward.gt(InterlayAmount.zero));
     });
 
     it("should getAPY", async () => {
