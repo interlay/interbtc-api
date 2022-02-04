@@ -20,7 +20,7 @@ import {
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
 import { FeeAPI } from "./fee";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
 import {
     CollateralUnit,
@@ -39,6 +39,7 @@ import {
     currencyIdLiteralToMonetaryCurrency,
     GovernanceUnit,
     CurrencyUnit,
+    GovernanceIdLiteral,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
@@ -264,7 +265,7 @@ export interface VaultsAPI {
      * @param rewardCurrencyIdLiteral The reward currency, e.g. kBTC, KINT, interBTC, INTR
      * @returns A Monetary.js amount object, representing the total reward in the given currency
      */
-     computeReward(
+    computeReward(
         vaultAccountId: AccountId,
         nominatorId: AccountId,
         collateralCurrencyId: CollateralIdLiteral,
@@ -274,14 +275,25 @@ export interface VaultsAPI {
     /**
      * @param vaultAccountId The vault ID whose reward pool to check
      * @param vaultCollateralIdLiteral Collateral used by the vault
-     * @param rewardCurrencyIdLiteral The fee reward currency, representing a wrapped token.
-     * @returns The total wrapped token reward collected by the vault
+     * @param rewardCurrencyIdLiteral The fee reward currency
+     * @returns The total reward collected by the vault
      */
     getWrappedReward(
         vaultAccountId: AccountId,
         vaultCollateralIdLiteral: CollateralIdLiteral,
         rewardCurrencyIdLiteral: WrappedIdLiteral
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
+    /**
+     * @param vaultAccountId The vault ID whose reward pool to check
+     * @param vaultCollateralIdLiteral Collateral used by the vault
+     * @param governanceCurrencyIdLiteral The fee reward currency
+     * @returns The total reward collected by the vault
+     */
+    getGovernanceReward(
+        vaultAccountId: AccountId,
+        vaultCollateralIdLiteral: CollateralIdLiteral,
+        governanceCurrencyIdLiteral: GovernanceIdLiteral
+    ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
 }
 
 export class DefaultVaultsAPI implements VaultsAPI {
@@ -450,14 +462,14 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getGovernanceReward(
         vaultAccountId: AccountId,
-        collateralCurrency: CollateralIdLiteral,
-        governanceCurrency: CollateralIdLiteral
+        vaultCollateralIdLiteral: CollateralIdLiteral,
+        governanceCurrencyIdLiteral: GovernanceIdLiteral
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
         return await this.computeReward(
             vaultAccountId,
             vaultAccountId,
-            collateralCurrency,
-            governanceCurrency
+            vaultCollateralIdLiteral,
+            governanceCurrencyIdLiteral
         ) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>;
     }
 

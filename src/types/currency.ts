@@ -35,6 +35,7 @@ export enum CurrencyIdLiteral {
 }
 
 export type WrappedIdLiteral = CurrencyIdLiteral.INTERBTC | CurrencyIdLiteral.KBTC;
+export type GovernanceIdLiteral = CurrencyIdLiteral.INTR | CurrencyIdLiteral.KINT;
 export type CollateralIdLiteral =
     | CurrencyIdLiteral.DOT
     | CurrencyIdLiteral.KSM
