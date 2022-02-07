@@ -54,6 +54,7 @@ export interface InterBtcApi {
     readonly fee: FeeAPI;
     readonly nomination: NominationAPI;
     readonly rewards: RewardsAPI;
+    readonly escrow: EscrowAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
 }
