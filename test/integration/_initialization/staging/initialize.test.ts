@@ -164,7 +164,7 @@ describe("Initialize parachain state", () => {
         assert.isTrue(isNominationEnabled);
     });
 
-    it("should issue 0.00007 InterBtc", async () => {
+    it.only("should issue 0.00007 InterBtc", async () => {
         const interBtcToIssue = InterBtcAmount.from.BTC(0.00007);
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(interBtcToIssue);
         const userAccountId = newAccountId(api, userAccount.address);
