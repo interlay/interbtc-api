@@ -115,6 +115,7 @@ export async function issueSingle(
     atomic = true
 ): Promise<IssueResult<BitcoinUnit>> {
     const prevAccount = interBtcApi.account;
+    interBtcApi.setAccount(issuingAccount);
     try {
         const requesterAccountId = newAccountId(interBtcApi.api, issuingAccount.address);
         const initialWrappedTokenBalance = (await interBtcApi.tokens.balance(amount.currency, requesterAccountId)).free;
@@ -180,7 +181,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export async function redeem(
-    InterBtcApi: InterBtcApi,
+    interBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     redeemingAccount: KeyringPair,
     amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
@@ -190,10 +191,10 @@ export async function redeem(
     timeout = 5 * 60 * 1000,
     retries: number = 0
 ): Promise<Redeem> {
-    const prevAccount = InterBtcApi.account;
-    InterBtcApi.setAccount(redeemingAccount);
+    const prevAccount = interBtcApi.account;
+    interBtcApi.setAccount(redeemingAccount);
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-    const [redeemRequest] = await InterBtcApi.redeem.request(
+    const [redeemRequest] = await interBtcApi.redeem.request(
         amount,
         btcAddress,
         vaultId,
@@ -204,23 +205,26 @@ export async function redeem(
     switch (autoExecute) {
         case ExecuteRedeem.Manually: {
             const opreturnData = stripHexPrefix(redeemRequest.id.toString());
-            const btcTxId = await InterBtcApi.electrsAPI.waitForOpreturn(opreturnData, timeout, 5000).catch((_) => {
+            const btcTxId = await interBtcApi.electrsAPI.waitForOpreturn(opreturnData, timeout, 5000).catch((_) => {
                 throw new Error("Redeem request was not executed, timeout expired");
             });
             // Even if the tx was found, the block needs to be relayed to the parachain before `execute` can be called.
-            await waitForBlockFinalization(bitcoinCoreClient, InterBtcApi.btcRelay);
+            await waitForBlockFinalization(bitcoinCoreClient, interBtcApi.btcRelay);
 
             // manually execute issue
-            await InterBtcApi.redeem.execute(redeemRequest.id.toString(), btcTxId);
+            await interBtcApi.redeem.execute(redeemRequest.id.toString(), btcTxId);
             break;
         }
         case ExecuteRedeem.Auto: {
             // wait for vault to execute issue
-            while ((await InterBtcApi.redeem.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
+            while ((await interBtcApi.redeem.getRequestById(redeemRequest.id)).status !== RedeemStatus.Completed) {
                 await sleep(SLEEP_TIME_MS);
             }
             break;
         }
+    }
+    if (prevAccount) {
+        interBtcApi.setAccount(prevAccount);
     }
     return redeemRequest;
 }

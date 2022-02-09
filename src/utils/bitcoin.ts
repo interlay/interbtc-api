@@ -12,21 +12,21 @@ import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreCl
 export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
     try {
-        if (address.isP2Pkh) {
+        if (address.isP2pkh) {
             const result = bitcoinjs.payments.p2pkh({
-                hash: Buffer.from(address.asP2Pkh.buffer),
+                hash: Buffer.from(address.asP2pkh.buffer),
                 network,
             });
             btcAddress = result.address;
-        } else if (address.isP2Sh) {
+        } else if (address.isP2sh) {
             const result = bitcoinjs.payments.p2sh({
-                hash: Buffer.from(address.asP2Sh.buffer),
+                hash: Buffer.from(address.asP2sh.buffer),
                 network,
             });
             btcAddress = result.address;
-        } else if (address.isP2WpkHv0) {
+        } else if (address.isP2wpkHv0) {
             const result = bitcoinjs.payments.p2wpkh({
-                hash: Buffer.from(address.asP2WpkHv0.buffer),
+                hash: Buffer.from(address.asP2wpkHv0.buffer),
                 network,
             });
             btcAddress = result.address;
