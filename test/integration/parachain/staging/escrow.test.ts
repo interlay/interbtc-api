@@ -22,7 +22,7 @@ describe("escrow", () => {
         const keyring = new Keyring({ type: "sr25519" });
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         
-        // User vaults account as they are not involved in other tests but are prefunded with governance tokens
+        // Use vault accounts as they are not involved in other tests but are prefunded with governance tokens
         userAccount_1 = keyring.addFromUri(VAULT_3_URI);
         userAccount_2 = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         userAccount_3 = keyring.addFromUri(VAULT_TO_BAN_URI);
