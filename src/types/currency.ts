@@ -20,7 +20,7 @@ import {
     MonetaryAmount
 } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
-import { EscrowPoint, InterbtcPrimitivesCurrencyId, OrmlTokensAccountData } from "@polkadot/types/lookup";
+import { EscrowLockedBalance, EscrowPoint, InterbtcPrimitivesCurrencyId, OrmlTokensAccountData } from "@polkadot/types/lookup";
 import { BigSource } from "big.js";
 import BN from "bn.js";
 import { newCurrencyId, newMonetaryAmount } from "../utils";
@@ -71,6 +71,11 @@ export type VotingCurrency = typeof VotingCurrency[number];
 
 export const VoteUnit = GovernanceUnit;
 export type VoteUnit = GovernanceUnit;
+
+export type StakedBalance<U extends GovernanceUnit> = {
+    amount: MonetaryAmount<Currency<U>, U>,
+    endBlock: number
+};
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     switch (ticker) {
@@ -191,4 +196,14 @@ export function parseOrmlTokensAccountData<U extends CurrencyUnit>(
         data.free.sub(data.frozen).toString(),
         data.reserved.toString()
     );
+}
+
+export function parseEscrowLockedBalance(
+    governanceCurrency: Currency<GovernanceUnit>,
+    escrowLockedBalance: EscrowLockedBalance
+): StakedBalance<GovernanceUnit> {
+    return {
+        amount: newMonetaryAmount(escrowLockedBalance.amount.toString(), governanceCurrency),
+        endBlock: escrowLockedBalance.end.toNumber()
+    };
 }

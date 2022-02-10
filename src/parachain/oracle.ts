@@ -119,7 +119,7 @@ export class DefaultOracleAPI implements OracleAPI {
         const head = await this.api.rpc.chain.getFinalizedHead();
         const encodedRawRate = unwrapRawExchangeRate(await this.api.query.oracle.aggregate.at(head, oracleKey));
         if (encodedRawRate === undefined) {
-            return Promise.reject("No exchange rate for given currency");
+            return Promise.reject(`No exchange rate for given currency: ${collateralCurrency.ticker}`);
         }
         const decodedRawRate = decodeFixedPointType(encodedRawRate);
         return new ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>(

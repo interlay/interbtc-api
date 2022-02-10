@@ -4,7 +4,15 @@ import { AccountId } from "@polkadot/types/interfaces";
 import BN from "bn.js";
 
 import { newMonetaryAmount, storageKeyToNthInner, toVoting } from "../utils";
-import { GovernanceCurrency, GovernanceUnit, parseEscrowPoint, RWEscrowPoint, VoteUnit } from "../types";
+import {
+    GovernanceCurrency,
+    GovernanceUnit,
+    parseEscrowLockedBalance,
+    parseEscrowPoint,
+    RWEscrowPoint,
+    StakedBalance,
+    VoteUnit
+} from "../types";
 import { SystemAPI } from "./system";
 import { TransactionAPI } from ".";
 
@@ -18,7 +26,7 @@ export interface EscrowAPI {
      * @returns The voting balance
      * @remarks Logic is duplicated from Escrow pallet in the parachain
      */
-     votingBalance(
+    votingBalance(
         accountId: AccountId,
         blockNumber?: number
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
@@ -36,11 +44,17 @@ export interface EscrowAPI {
     /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
      * @param unlockHeight Block number to lock until
+     * @remarks The amount can't be less than the max period (`getMaxPeriod` getter) to prevent rounding errors
      */
     createLock<U extends GovernanceUnit>(
         amount: MonetaryAmount<Currency<U>, U>,
         unlockHeight: number
     ): Promise<void>;
+    /**
+     * @param accountId ID of the user whose stake to fetch
+     * @returns The staked amount and end block
+     */
+    getStakedBalance(accountId: AccountId): Promise<StakedBalance<GovernanceUnit>>;
     /**
      * @remarks Withdraws all locked governance currency
      */
@@ -49,7 +63,6 @@ export interface EscrowAPI {
      * @returns All future times are rounded by this.
      */
     getSpan(): Promise<BN>;
-
     /**
      * @returns The maximum time for locks.
      */
@@ -70,6 +83,18 @@ export interface EscrowAPI {
     increaseUnlockHeight(
         unlockHeight: number
     ): Promise<void>;
+    /**
+     * @param accountId User account ID
+     * @param amountToLock New amount to add to the current stake
+     * @returns The estimated reward, as amount and percentage (APY)
+     */
+    getRewardEstimate<U extends GovernanceUnit>(
+        accountId: AccountId,
+        amountToLock?: MonetaryAmount<Currency<U>, U>
+    ): Promise<{
+            amount: MonetaryAmount<Currency<U>, U>,
+            apy: number
+    }>;
 }
 
 export class DefaultEscrowAPI implements EscrowAPI {
@@ -107,6 +132,66 @@ export class DefaultEscrowAPI implements EscrowAPI {
     async increaseUnlockHeight(unlockHeight: number): Promise<void> {
         const tx = this.api.tx.escrow.increaseUnlockHeight(unlockHeight);
         await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit);
+    }
+
+    async getRewardEstimate<U extends GovernanceUnit>(
+        accountId: AccountId,
+        amountToLock?: MonetaryAmount<Currency<U>, U>
+    ): Promise<{
+            amount: MonetaryAmount<Currency<U>, U>,
+            apy: number
+    }> {
+        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber] = await Promise.all([
+            this.getEscrowStake(accountId),
+            this.getEscrowTotalStake(),
+            this.getRewardPerBlock(),
+            this.getStakedBalance(accountId),
+            this.systemAPI.getCurrentBlockNumber()
+        ]);
+        const definedAmountToLock = 
+            (
+                amountToLock
+                || newMonetaryAmount(0, this.governanceCurrency as Currency<GovernanceUnit>)
+            ) as typeof userStake;
+        const newUserStake = userStake.add(definedAmountToLock);
+
+        const newAmountLocked = stakedBalance.amount.add(definedAmountToLock);
+        const newTotalStake = totalStake.add(definedAmountToLock);
+        const lockDuration = stakedBalance.endBlock - currentBlockNumber;
+
+        const rewardAmount = newUserStake
+            .div(newTotalStake.toBig())
+            .mul(blockReward.toBig())
+            .mul(lockDuration) as unknown as MonetaryAmount<Currency<U>, U>;
+        
+        return {
+            amount: rewardAmount,
+            apy: rewardAmount.toBig().div(newAmountLocked.toBig()).toNumber()
+        };
+    }
+
+    async getEscrowStake(accountId: AccountId): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const rawStake = await this.api.query.escrowRewards.stake.at(head, accountId);
+        return newMonetaryAmount(rawStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
+    }
+
+    async getEscrowTotalStake(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const rawTotalStake = await this.api.query.escrowRewards.totalStake.at(head);
+        return newMonetaryAmount(rawTotalStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
+    }
+
+    async getRewardPerBlock(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const rawRewardPerBlock = await this.api.query.escrowAnnuity.rewardPerBlock.at(head);
+        return newMonetaryAmount(rawRewardPerBlock.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
+    }
+
+    async getStakedBalance(accountId: AccountId): Promise<StakedBalance<GovernanceUnit>> {
+        const head = await this.api.rpc.chain.getFinalizedHead();
+        const rawStakedBalance = await this.api.query.escrow.locked.at(head, accountId);
+        return parseEscrowLockedBalance(this.governanceCurrency as Currency<GovernanceUnit>, rawStakedBalance);
     }
 
     async votingBalance(

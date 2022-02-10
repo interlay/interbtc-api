@@ -1,4 +1,4 @@
-import { Keyring } from "@polkadot/api";
+import { ApiPromise, Keyring } from "@polkadot/api";
 import { assert } from "chai";
 
 import { createAPIRegistry, createSubstrateAPI, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
@@ -10,10 +10,15 @@ describe("InterBtcApi", () => {
     const keyringPair = keyring.addFromUri("//Bob");
     let interBTC: InterBtcApi;
     const registry = createAPIRegistry();
+    let api: ApiPromise;
 
     before(async () => {
-        const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         interBTC = new DefaultInterBtcApi(api);
+    });
+
+    after(async () => {
+        await api.disconnect();
     });
 
     describe("setAccount", () => {

@@ -1,3 +1,6 @@
+import "./interfaces/augment-api";
+import "./interfaces/augment-types";
+
 export * from "./factory";
 export * from "./interbtc-api";
 export * from "./parachain";

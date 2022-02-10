@@ -158,12 +158,12 @@ export class DefaultInterBtcApi implements InterBtcApi {
         return this.transactionAPI.getAccount();
     }
 
-    private getNativeCurrency(): Currency<CurrencyUnit> {
+    public getNativeCurrency(): Currency<CurrencyUnit> {
         const currencyId = this.api.consts.escrowRewards.getNativeCurrencyId;
         return currencyIdToMonetaryCurrency(currencyId);
     }
 
-    private  getWrappedCurrency(): Currency<CurrencyUnit> {
+    public  getWrappedCurrency(): Currency<CurrencyUnit> {
         const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
         return currencyIdToMonetaryCurrency(currencyId);
     }

@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import { InterBtcAmount, Kusama, Polkadot } from "@interlay/monetary-js";
 
-import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, VaultRegistryVault, GovernanceCurrency } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import {
@@ -19,13 +19,11 @@ import {
     VAULT_1_URI,
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
-    COLLATERAL_CURRENCY_TICKER,
     WRAPPED_CURRENCY_TICKER,
-    GOVERNANCE_CURRENCY_TICKER
 } from "../../../config";
 import { issueAndRedeem } from "../../../../src/utils";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { BTCRelayAPI, ElectrsAPI, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
+import { ElectrsAPI, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
 import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
 
