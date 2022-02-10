@@ -5,7 +5,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, USER_1_URI, USER_2_URI, VAULT_TO_BAN_URI } from "../../../config";
+import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_3_URI, VAULT_TO_BAN_URI, VAULT_TO_LIQUIDATE_URI } from "../../../config";
 import { DefaultInterBtcApi, newAccountId, newMonetaryAmount, setNumericStorage } from "../../../../src";
 import { sudo } from "../../../utils/helpers";
 
@@ -22,8 +22,9 @@ describe("escrow", () => {
         const keyring = new Keyring({ type: "sr25519" });
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         
-        userAccount_1 = keyring.addFromUri(USER_1_URI);
-        userAccount_2 = keyring.addFromUri(USER_2_URI);
+        // User vaults account as they are not involved in other tests but are prefunded with governance tokens
+        userAccount_1 = keyring.addFromUri(VAULT_3_URI);
+        userAccount_2 = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         userAccount_3 = keyring.addFromUri(VAULT_TO_BAN_URI);
         sudoAccount = keyring.addFromUri(SUDO_URI);
         
