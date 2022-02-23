@@ -22,7 +22,7 @@ import { TransactionAPI } from ".";
 export interface EscrowAPI {
     /**
      * @param accountId Account whose voting balance to fetch
-     * @param blockNumber The number of block to query state at 
+     * @param blockNumber The number of block to query state at
      * @returns The voting balance
      * @remarks Logic is duplicated from Escrow pallet in the parachain
      */
@@ -31,9 +31,9 @@ export interface EscrowAPI {
         blockNumber?: number
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
     /**
-     * @param blockNumber The number of block to query state at 
+     * @param blockNumber The number of block to query state at
      * @returns The voting balance
-     * @remarks 
+     * @remarks
      * - Expect poor performance from this function as more blocks are appended to the parachain.
      * It is not recommended to call this directly, but rather to query through the indexer (currently `interbtc-index`).
      * - Logic is duplicated from Escrow pallet in the parachain
@@ -148,7 +148,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
             this.getStakedBalance(accountId),
             this.systemAPI.getCurrentBlockNumber()
         ]);
-        const definedAmountToLock = 
+        const definedAmountToLock =
             (
                 amountToLock
                 || newMonetaryAmount(0, this.governanceCurrency as Currency<GovernanceUnit>)
@@ -159,11 +159,23 @@ export class DefaultEscrowAPI implements EscrowAPI {
         const newTotalStake = totalStake.add(definedAmountToLock);
         const lockDuration = stakedBalance.endBlock - currentBlockNumber;
 
+        // If there is nothing staked in the system or
+        // no rewards are paid, the rewards are 0
+        if (newTotalStake.isZero() || blockReward.isZero()) {
+            return {
+                amount: newMonetaryAmount(
+                    0,
+                    this.governanceCurrency as Currency<GovernanceUnit>
+                ) as unknown as MonetaryAmount<Currency<U>, U>,
+                apy: 0
+            };
+        }
+
         const rewardAmount = newUserStake
             .div(newTotalStake.toBig())
             .mul(blockReward.toBig())
             .mul(lockDuration) as unknown as MonetaryAmount<Currency<U>, U>;
-        
+
         return {
             amount: rewardAmount,
             apy: rewardAmount.toBig().div(newAmountLocked.toBig()).toNumber()
