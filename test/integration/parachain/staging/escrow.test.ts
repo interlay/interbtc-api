@@ -21,13 +21,13 @@ describe("escrow", () => {
     before(async function () {
         const keyring = new Keyring({ type: "sr25519" });
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        
+
         // Use vault accounts as they are not involved in other tests but are prefunded with governance tokens
         userAccount_1 = keyring.addFromUri(VAULT_3_URI);
         userAccount_2 = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         userAccount_3 = keyring.addFromUri(VAULT_TO_BAN_URI);
         sudoAccount = keyring.addFromUri(SUDO_URI);
-        
+
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount_1, ESPLORA_BASE_PATH);
     });
 
@@ -44,6 +44,14 @@ describe("escrow", () => {
             "Voting supply balance should be zero before any tokens are locked"
         );
     }).timeout(100000);
+
+    // PRECONDITION: This test must run second, so no tokens are locked.
+    it("should return 0 reward and apy estimate", async () => {
+        const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
+
+        assert.equal(rewardsEstimate.apy, 0, "APY should be 0");
+        assert.isTrue(rewardsEstimate.amount.isZero(), "Rewards should be 0");
+    });
 
     it("should compute voting balance and total supply", async () => {
         const user1_intrAmount = newMonetaryAmount(1000, Interlay, true);
@@ -72,9 +80,9 @@ describe("escrow", () => {
         interBtcAPI.setAccount(userAccount_1);
         await interBtcAPI.escrow.createLock(user1_intrAmount, currentBlockNumber + unlockHeightDiff);
 
-        const votingBalance = 
+        const votingBalance =
             await interBtcAPI.escrow.votingBalance(newAccountId(api, userAccount_1.address), currentBlockNumber + 0.4 * unlockHeightDiff);
-        const votingSupply = 
+        const votingSupply =
             await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
         assert.equal(votingBalance.toString(votingBalance.currency.base), votingSupply.toString(votingSupply.currency.base));
 
@@ -90,7 +98,7 @@ describe("escrow", () => {
 
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
         const expectedRewards = newMonetaryAmount(firstYearRewards / blocksPerYear * unlockHeightDiff, interBtcAPI.getNativeCurrency());
-        
+
         assert.isTrue(
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).lt(1.1) &&
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
@@ -132,5 +140,4 @@ describe("escrow", () => {
         await interBtcAPI.escrow.increaseAmount(user_intrAmount);
         await interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff);
     }).timeout(200000);
-
 });
