@@ -45,6 +45,14 @@ describe("escrow", () => {
         );
     }).timeout(100000);
 
+    // PRECONDITION: This test must run second, so no tokens are locked.
+    it("should return 0 reward and apy estimate", async () => {
+        const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
+
+        assert.equal(rewardsEstimate.apy, 0, "APY should be 0");
+        assert.isTrue(rewardsEstimate.amount.isZero(), "Rewards should be 0");
+    });
+
     it("should compute voting balance and total supply", async () => {
         const user1_intrAmount = newMonetaryAmount(1000, Interlay, true);
         const user2_intrAmount = newMonetaryAmount(600, Interlay, true);
@@ -132,11 +140,4 @@ describe("escrow", () => {
         await interBtcAPI.escrow.increaseAmount(user_intrAmount);
         await interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff);
     }).timeout(200000);
-
-    it("should return 0 reward and apy estimate", async () => {
-        const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
-
-        assert.equal(rewardsEstimate.apy, 0, "APY should be 0");
-        assert.isTrue(rewardsEstimate.amount.isZero(), "Rewards should be 0");
-    });
 });
