@@ -15,6 +15,7 @@ import {
 } from "../types";
 import { SystemAPI } from "./system";
 import { TransactionAPI } from ".";
+import Big from "big.js";
 
 /**
  * @category BTC Bridge
@@ -78,19 +79,25 @@ export interface EscrowAPI {
         amount: MonetaryAmount<Currency<U>, U>,
     ): Promise<void>;
     /**
-     * @param amount Governance token amount to lock (e.g. KINT or INTR)
+     * @param unlockHeight Block number to lock until
      */
     increaseUnlockHeight(
         unlockHeight: number
     ): Promise<void>;
     /**
      * @param accountId User account ID
-     * @param amountToLock New amount to add to the current stake
+     * @param amountToLock Optional: New amount to add to the current stake
+     * @param unlockHeight Optional: New block number to lock until
      * @returns The estimated reward, as amount and percentage (APY)
+     * @remarks The function takes two optional arguments: the amountToUnlock and unlockHeight
+     * to calculate the estimated increase in rewards
+     * @remarks The estimate rewards in tokens is determined by the `stake` in the governance
+     * system measured by the `amount * unlockHeight`
      */
     getRewardEstimate<U extends GovernanceUnit>(
         accountId: AccountId,
-        amountToLock?: MonetaryAmount<Currency<U>, U>
+        amountToLock?: MonetaryAmount<Currency<U>, U>,
+        unlockHeight?: number
     ): Promise<{
             amount: MonetaryAmount<Currency<U>, U>,
             apy: number
@@ -136,7 +143,8 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
     async getRewardEstimate<U extends GovernanceUnit>(
         accountId: AccountId,
-        amountToLock?: MonetaryAmount<Currency<U>, U>
+        amountToLock?: MonetaryAmount<Currency<U>, U>,
+        unlockHeight?: number
     ): Promise<{
             amount: MonetaryAmount<Currency<U>, U>,
             apy: number
@@ -148,16 +156,51 @@ export class DefaultEscrowAPI implements EscrowAPI {
             this.getStakedBalance(accountId),
             this.systemAPI.getCurrentBlockNumber()
         ]);
-        const definedAmountToLock =
-            (
-                amountToLock
-                || newMonetaryAmount(0, this.governanceCurrency as Currency<GovernanceUnit>)
-            ) as typeof userStake;
-        const newUserStake = userStake.add(definedAmountToLock);
+        // Note: the parachain uses the balance_at which combines the staked amount
+        // and staked time to calculate the share in the reward pool
+        // like `amountLocked * unlockHeight`
+        // https://github.com/interlay/interbtc/blob/1.7.3/crates/escrow/src/lib.rs#L525
+        // We need to differentiate four cases:
+        // 1. The user does not add any new stake/extend their lock time
+        // 2. The user extends only the locktime
+        // 3. The user increases only their stake
+        // 4. The user extends the locktime and increases the stake
 
-        const newAmountLocked = stakedBalance.amount.add(definedAmountToLock);
-        const newTotalStake = totalStake.add(definedAmountToLock);
-        const lockDuration = stakedBalance.endBlock - currentBlockNumber;
+        // Case 1: no change
+        let newUserStake = userStake;
+        let newTotalStake = totalStake;
+        const newStakedBalance = stakedBalance;
+        // Case 2 - 4
+        if (amountToLock || unlockHeight) {
+            // Maybe update the staked balance and the endBlock
+            const monetaryAddedStakedBalance = newMonetaryAmount(
+                amountToLock ? amountToLock.toBig() : 0,
+                this.governanceCurrency as Currency<GovernanceUnit>
+            );
+            newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStakedBalance);
+            newStakedBalance.endBlock = unlockHeight ? unlockHeight : stakedBalance.endBlock;
+
+            let addedStake = new Big(0);
+            // Case 2: user only plans to extend the lock
+            if ((amountToLock === undefined || amountToLock.isZero()) && unlockHeight) {
+                // Note: unlockHeight - currentBlockNumber should not be <0
+                addedStake.add(unlockHeight - currentBlockNumber);
+            // Case 3: user only plans to increase their stake
+            } else if ((unlockHeight === undefined || 0) && amountToLock) {
+                addedStake.add(amountToLock.toBig());
+            // Case 4: user extends both locktime and increases stake
+            } else if (amountToLock && unlockHeight) {
+                addedStake = amountToLock.toBig().mul(unlockHeight - currentBlockNumber);
+            }
+            const monetaryAddedStake = newMonetaryAmount(addedStake, this.governanceCurrency as Currency<GovernanceUnit>);
+
+            // Increase stake as in `amountLocked * unlockHeight`
+            newUserStake = userStake.add(monetaryAddedStake);
+            // Increase total stake as in `amountLocked * unlockHeight`
+            newTotalStake = totalStake.add(monetaryAddedStake);
+        }
+
+        const newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
 
         // If there is nothing staked in the system or
         // no rewards are paid, the rewards are 0
@@ -165,44 +208,42 @@ export class DefaultEscrowAPI implements EscrowAPI {
             return {
                 amount: newMonetaryAmount(
                     0,
-                    this.governanceCurrency as Currency<GovernanceUnit>
-                ) as unknown as MonetaryAmount<Currency<U>, U>,
+                    this.governanceCurrency as unknown as Currency<U>
+                ),
                 apy: 0
             };
         }
 
+        // Calculate the rewards by the share of stake (`amountLocked * unlockHeight`)
+        // of the user in comparison to the rest of the system
         const rewardAmount = newUserStake
             .div(newTotalStake.toBig())
             .mul(blockReward.toBig())
-            .mul(lockDuration) as unknown as MonetaryAmount<Currency<U>, U>;
+            .mul(newLockDuration) as unknown as MonetaryAmount<Currency<U>, U>;
 
         return {
             amount: rewardAmount,
-            apy: rewardAmount.toBig().div(newAmountLocked.toBig()).toNumber()
+            apy: rewardAmount.toBig().div(newStakedBalance.amount.toBig()).toNumber()
         };
     }
 
     async getEscrowStake(accountId: AccountId): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawStake = await this.api.query.escrowRewards.stake.at(head, accountId);
+        const rawStake = await this.api.query.escrowRewards.stake(accountId);
         return newMonetaryAmount(rawStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getEscrowTotalStake(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawTotalStake = await this.api.query.escrowRewards.totalStake.at(head);
+        const rawTotalStake = await this.api.query.escrowRewards.totalStake();
         return newMonetaryAmount(rawTotalStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getRewardPerBlock(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawRewardPerBlock = await this.api.query.escrowAnnuity.rewardPerBlock.at(head);
+        const rawRewardPerBlock = await this.api.query.escrowAnnuity.rewardPerBlock();
         return newMonetaryAmount(rawRewardPerBlock.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getStakedBalance(accountId: AccountId): Promise<StakedBalance<GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawStakedBalance = await this.api.query.escrow.locked.at(head, accountId);
+        const rawStakedBalance = await this.api.query.escrow.locked(accountId);
         return parseEscrowLockedBalance(this.governanceCurrency as Currency<GovernanceUnit>, rawStakedBalance);
     }
 
