@@ -38,10 +38,8 @@
     "watch:build": "tsc -p tsconfig.json -w",
     "watch:test": "mocha --watch test/**/*.test.ts",
     "local-meta": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json",
-    "docker-standalone-start": "docker-compose -f docker-compose-standalone.yml up",
-    "docker-standalone-stop": "docker-compose -f docker-compose-standalone.yml down -v",
-    "docker-parachain-start": "docker-compose -f docker-compose-parachain.yml up",
-    "docker-parachain-stop": "docker-compose -f docker-compose-parachain.yml down -v"
+    "docker-parachain-start": "ts-node scripts/setup-parachain-docker.ts",
+    "docker-parachain-stop": "docker-compose -f local-setup/docker-compose.yml down -v"
   },
   "engines": {
     "node": ">=11"
@@ -85,7 +83,9 @@
     "ts-node": "10.4.0",
     "typedoc": "^0.22.9",
     "typedoc-plugin-markdown": "^3.11.6",
-    "typescript": "^4.3.2"
+    "typescript": "^4.3.2",
+    "shelljs": "^0.8.4",
+    "@types/shelljs": "^0.8.8"
   },
   "resolutions":{
     "bn.js": "4.12.0"

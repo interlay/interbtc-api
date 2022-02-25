@@ -362,11 +362,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<VaultExt<BitcoinUnit>> {
         try {
-            const head = await this.api.rpc.chain.getFinalizedHead();
             const collateralCurrency = currencyIdLiteralToMonetaryCurrency(this.api, collateralCurrencyIdLiteral) as CollateralCurrency;
             const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
-            const api = await this.api.at(head);
-            const vault = await api.query.vaultRegistry.vaults<Option<VaultRegistryVault>>(vaultId);
+            const vault = await this.api.query.vaultRegistry.vaults<Option<VaultRegistryVault>>(vaultId);
             if (!vault.isSome) {
                 return Promise.reject(`No vault registered with id ${vaultId}`);
             }
