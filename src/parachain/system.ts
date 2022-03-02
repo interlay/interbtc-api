@@ -1,9 +1,8 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/types";
 import { Header, BlockHash } from "@polkadot/types/interfaces";
 import { SecurityStatusCode } from "@polkadot/types/lookup";
 
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 
 /**
  * @category BTC Bridge

@@ -1,7 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { H256, AccountId } from "@polkadot/types/interfaces";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
-import { AddressOrPair } from "@polkadot/api/types";
 import { Network } from "bitcoinjs-lib";
 import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { isKeyringPair } from "@polkadot/api/util";
@@ -17,7 +16,7 @@ import {
     newVaultId
 } from "../utils";
 import { FeeAPI, GriefingCollateralType } from "./fee";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
 import {
     CollateralCurrency,

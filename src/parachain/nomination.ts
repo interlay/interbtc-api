@@ -1,6 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, Index } from "@polkadot/types/interfaces";
-import { Currency, MonetaryAmount, BitcoinUnit } from "@interlay/monetary-js";
+import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import type { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import { VaultsAPI } from "./vaults";

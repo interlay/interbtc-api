@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
+import { SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Option } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
@@ -23,7 +23,7 @@ import {
 } from "../utils";
 import { FeeAPI, GriefingCollateralType } from "./fee";
 import { ElectrsAPI } from "../external";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import {
     CollateralCurrency,
     CollateralIdLiteral,

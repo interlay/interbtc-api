@@ -4,7 +4,7 @@ import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "../utils/encoding";
-import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit, WrappedCurrency } from "../types";
+import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit } from "../types";
 
 export enum GriefingCollateralType {
     Issue,
@@ -18,7 +18,7 @@ export interface FeeAPI {
     /**
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
-     * @param collateralCurrency Currency for determining the griefing collateral 
+     * @param collateralCurrency Currency for determining the griefing collateral
      * @param type Type of griefing collateral to compute (e.g. for issuing, replacing)
      * @returns The griefing collateral
      */
@@ -53,7 +53,7 @@ export interface FeeAPI {
 
 export class DefaultFeeAPI implements FeeAPI {
     constructor(
-        private api: ApiPromise, 
+        private api: ApiPromise,
         private oracleAPI: OracleAPI,
     ) {}
 

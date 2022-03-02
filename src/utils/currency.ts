@@ -14,7 +14,13 @@ import {
     VoteKintsugi
 } from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import { CurrencyUnit, tickerToCurrencyIdLiteral, GovernanceCurrency, GovernanceUnit, CurrencyIdLiteral, CollateralUnit, CollateralCurrency } from "../types/currency";
+import {
+    CurrencyUnit,
+    tickerToCurrencyIdLiteral,
+    GovernanceCurrency,
+    GovernanceUnit,
+    CollateralCurrency
+} from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId } from "./encoding";

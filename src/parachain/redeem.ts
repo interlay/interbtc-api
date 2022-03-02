@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
+import { SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Hash, H256 } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types";
@@ -27,7 +27,7 @@ import {
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
 import {
     CollateralCurrency,

@@ -1,6 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, BlockNumber, BlockHash } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import { MonetaryAmount, Currency, BitcoinUnit } from "@interlay/monetary-js";

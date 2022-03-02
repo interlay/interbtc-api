@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BitcoinUnit, Currency, InterBtc, Interlay } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
@@ -21,7 +21,7 @@ import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
 import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
-import { currencyIdToMonetaryCurrency, CurrencyUnit, GovernanceCurrency, GovernanceUnit, WrappedCurrency } from "./types";
+import { currencyIdToMonetaryCurrency, GovernanceCurrency, GovernanceUnit, WrappedCurrency } from "./types";
 import { DefaultEscrowAPI, EscrowAPI } from ".";
 
 export * from "./factory";
@@ -117,7 +117,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         this.faucet = new FaucetClient(api, "");
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.transactionAPI);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
-        
+
         this.replace = new DefaultReplaceAPI(
             api,
             btcNetwork,

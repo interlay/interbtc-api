@@ -4,7 +4,7 @@ import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
 
 import { UnsignedFixedPoint } from "../interfaces";
-import { DefaultOracleAPI, DefaultSystemAPI, OracleAPI, SystemAPI } from "../parachain";
+import { OracleAPI, SystemAPI } from "../parachain";
 import { decodeFixedPointType, newMonetaryAmount } from "../utils";
 import { CollateralUnit, currencyIdToMonetaryCurrency } from "./currency";
 

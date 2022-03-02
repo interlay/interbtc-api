@@ -1,8 +1,7 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
-import { AddressOrPair } from "@polkadot/api/types";
 
 import {
     computeLazyDistribution,
@@ -12,7 +11,7 @@ import {
     newVaultId,
 } from "../utils";
 import { InterbtcPrimitivesVaultId } from "../parachain";
-import { DefaultTransactionAPI, TransactionAPI } from "../parachain/transaction";
+import { TransactionAPI } from "../parachain/transaction";
 import {
     tickerToCurrencyIdLiteral,
     CurrencyIdLiteral,
