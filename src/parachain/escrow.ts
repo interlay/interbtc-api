@@ -184,10 +184,10 @@ export class DefaultEscrowAPI implements EscrowAPI {
             // Case 2: user only plans to extend the lock
             if ((amountToLock === undefined || amountToLock.isZero()) && unlockHeight) {
                 // Note: unlockHeight - currentBlockNumber should not be <0
-                addedStake.add(unlockHeight - currentBlockNumber);
+                addedStake = new Big(unlockHeight - currentBlockNumber);
             // Case 3: user only plans to increase their stake
             } else if ((unlockHeight === undefined || 0) && amountToLock) {
-                addedStake.add(amountToLock.toBig());
+                addedStake = amountToLock.toBig();
             // Case 4: user extends both locktime and increases stake
             } else if (amountToLock && unlockHeight) {
                 addedStake = amountToLock.toBig().mul(unlockHeight - currentBlockNumber);

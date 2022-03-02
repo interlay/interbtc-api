@@ -53,7 +53,7 @@ describe("escrow", () => {
         assert.isTrue(rewardsEstimate.amount.isZero(), "Rewards should be 0");
     });
 
-    it("should compute voting balance and total supply", async () => {
+    it.only("should compute voting balance and total supply", async () => {
         const user1_intrAmount = newMonetaryAmount(1000, Interlay, true);
         const user2_intrAmount = newMonetaryAmount(600, Interlay, true);
         const chargedFees = newMonetaryAmount(1, Interlay, true);
