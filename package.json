@@ -29,6 +29,8 @@
     "initialize": "run-s build && ts-node src/utils/setup --initialize",
     "hrmp-setup": "ts-node scripts/hrmp-setup",
     "xcm-cross-chain-transfer": "ts-node scripts/xcm-cross-chain-transfer",
+    "xcm-return-unknown-tokens": "ts-node scripts/xcm-return-unknown-tokens",
+    "democracy": "ts-node scripts/democracy",
     "test": "run-s build test:*",
     "test:lint": "eslint src --ext .ts",
     "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts",
