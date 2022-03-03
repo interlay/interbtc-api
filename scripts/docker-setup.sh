@@ -1,5 +1,5 @@
 #!/bin/bash
-if ! [ -d "local-setup" ] 
+if ! [ -d "local-setup" ]
 then
     git clone https://github.com/interlay/parachain-launch/
     cd parachain-launch && yarn install
@@ -9,4 +9,4 @@ then
     rm -rf parachain-launch
 fi
 
-cd local-setup && docker-compose up --build
+cd local-setup && docker-compose up --build --detach
