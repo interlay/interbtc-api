@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { createPolkadotAPI } from "../src/factory";
+import { createSubstrateAPI } from "../src/factory";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import {
     DefaultTransactionAPI,
@@ -103,7 +103,7 @@ function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
         })
     });
 
-    return api.tx.ormlXcm.sendAsSovereign(dest, message);
+    return api.tx.polkadotXcm.send(dest, message);
 }
 
 async function main(): Promise<void> {
@@ -127,17 +127,23 @@ async function main(): Promise<void> {
     
     // transactions used for rococo-local test
     const rococoRequestXcmTx = construct_xcm(api, 2000, "0x1700b80b00000800000000900100");
+    const rococoAcceptXcmTx = construct_xcm(api, 2000, "0x1701d0070000");
 
     // transactions to be used on kintsugi
     const kinstugiRequestXcmTx = construct_xcm(api, 2092, "0x3c00d0070000e803000000900100");
 
-    console.log(kinstugiRequestXcmTx.toHex());
+    // note: very important to use `.method`, otherwise it includes signing info. The polkadot.js
+    // app strips the signing info when you try to decode it, but if you use the call data in
+    // an extrinsic (e.g. in democracy), it will fail.
+    console.log('Call data: ' + rococoRequestXcmTx.method.toHex());
+    console.log('Call hash: ' + rococoRequestXcmTx.method.hash.toHex());
 
     const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
+
     console.log("Constructed the tx, broadcasting first...");
     await transactionAPI.sendLogged(setupTx, undefined);
     console.log("broadcasting second...");
-    await transactionAPI.sendLogged(api.tx.sudo.sudo(rococoRequestXcmTx), undefined);
+    await transactionAPI.sendLogged(api.tx.sudo.sudo(rococoAcceptXcmTx), undefined);
 
     api.disconnect();
 }
