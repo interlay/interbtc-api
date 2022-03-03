@@ -9,7 +9,7 @@ import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrency,
 import { GriefingCollateralType } from "../../../../src/parachain/fee";
 import { callWithExchangeRate } from "../../../utils/helpers";
 
-describe.only("fee", () => {
+describe("fee", () => {
     let api: ApiPromise;
     let oracleInterBtcAPI: InterBtcApi;
     let collateralCurrency: Currency<CollateralUnit>;
@@ -31,9 +31,9 @@ describe.only("fee", () => {
     it("should check getReplaceGriefingCollateralRate", async () => {
         const replaceGriefingCollateralRate = await oracleInterBtcAPI.fee.getReplaceGriefingCollateralRate();
         assert.equal(replaceGriefingCollateralRate.toString(), "0.1");
-    }).timeout(1000000);
+    }).timeout(2000000);
 
-    it.only("should getGriefingCollateral for issue", async () => {
+    it("should getGriefingCollateral for issue", async () => {
         const exchangeRateValue = new Big("3855.23187");
         const exchangeRate = new ExchangeRate<
             Bitcoin,
@@ -46,7 +46,7 @@ describe.only("fee", () => {
             const griefingCollateral = await oracleInterBtcAPI.fee.getGriefingCollateral(amountBtc, GriefingCollateralType.Issue);
             assert.equal(griefingCollateral.toBig(griefingCollateral.currency.base).round(5, 0).toString(), "0.00001");
         });
-    }).timeout(100000);
+    }).timeout(200000);
 
     it("should getGriefingCollateral for replace", async () => {
         const exchangeRateValue = new Big("3855.23187");
@@ -61,5 +61,5 @@ describe.only("fee", () => {
             const griefingCollateral = await oracleInterBtcAPI.fee.getGriefingCollateral(amountToReplace, GriefingCollateralType.Replace);
             assert.equal(griefingCollateral.toString(griefingCollateral.currency.base), "16.744");
         });
-    }).timeout(100000);
+    }).timeout(200000);
 });
