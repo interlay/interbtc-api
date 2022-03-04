@@ -46,7 +46,7 @@ describe("redeem", () => {
         vaultToBan = keyring.addFromUri(VAULT_TO_BAN_URI);
         vaultToBanId = newVaultId(api, vaultToBan.address, collateralCurrency, wrappedCurrency);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
-        
+
 
         userBitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -138,8 +138,8 @@ describe("redeem", () => {
 
     it("should issue and auto-execute redeem", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
-            const issueAmount = newMonetaryAmount(0.001, wrappedCurrency, true);
-            const redeemAmount = newMonetaryAmount(0.0009, wrappedCurrency, true);
+            const issueAmount = newMonetaryAmount(0.000013, wrappedCurrency, true);
+            const redeemAmount = newMonetaryAmount(0.000011, wrappedCurrency, true);
             await issueAndRedeem(userInterBtcAPI, bitcoinCoreClient, userAccount, undefined, issueAmount, redeemAmount, false);
         });
         // The `ExecuteRedeem` event has been emitted at this point.
@@ -148,8 +148,8 @@ describe("redeem", () => {
 
     it("should issue and manually execute redeem", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
-            const issueAmount = newMonetaryAmount(0.001, wrappedCurrency, true);
-            const redeemAmount = newMonetaryAmount(0.0009, wrappedCurrency, true);
+            const issueAmount = newMonetaryAmount(0.000013, wrappedCurrency, true);
+            const redeemAmount = newMonetaryAmount(0.000011, wrappedCurrency, true);
             await issueAndRedeem(userInterBtcAPI, bitcoinCoreClient, userAccount, undefined, issueAmount, redeemAmount, false, ExecuteRedeem.Manually);
         });
         // The `ExecuteRedeem` event has been emitted at this point.

@@ -90,7 +90,7 @@ describe("replace", () => {
             assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
             assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
             assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
-        }).timeout(200000);
+        }).timeout(400000);
     });
 
     it("should getDustValue", async () => {
