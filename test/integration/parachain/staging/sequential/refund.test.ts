@@ -61,17 +61,14 @@ describe("refund", () => {
             interBtcAPI,
             bitcoinCoreClient,
             userAccount,
-            newMonetaryAmount(0.00005, wrappedCurrency, true),
+            newMonetaryAmount(0.000012, wrappedCurrency, true),
             vault_3_id,
             true,
             true
         );
         const refund = await interBtcAPI.refund.getRequestByIssueId(issueResult.request.id);
         assert.notEqual(refund.amountBtc.toString(), "0");
-    }).timeout(1000000);
-
-    it("should list a single refund request", async () => {
         const refundRequests = await interBtcAPI.refund.list();
         assert.equal(refundRequests.length, 1);
-    }).timeout(100000);
+    }).timeout(1000000);
 });

@@ -64,8 +64,8 @@ describe("replace", () => {
 
     describe("request", () => {
         it("should request vault replacement", async () => {
-            const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
-            const replaceAmount = newMonetaryAmount(0.00004, wrappedCurrency, true);
+            const issueAmount = newMonetaryAmount(0.000012, wrappedCurrency, true);
+            const replaceAmount = newMonetaryAmount(0.00001, wrappedCurrency, true);
             await issueSingle(
                 interBtcAPI,
                 bitcoinCoreClient,
@@ -78,14 +78,6 @@ describe("replace", () => {
 
             interBtcAPI.setAccount(vault_2);
             await interBtcAPI.replace.request(replaceAmount, currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency);
-        }).timeout(200000);
-
-        // This test assumes the request replace test was successful
-        it("should list/map a single replace request", async () => {
-            // wait for request to be finalized so list/map below works
-            while ((await interBtcAPI.replace.list()).length == 0) {
-                await sleep(SLEEP_TIME_MS);
-            }
 
             const requestsList = await interBtcAPI.replace.list();
             const requestsMap = await interBtcAPI.replace.map();
@@ -98,8 +90,7 @@ describe("replace", () => {
             assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
             assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
             assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
-        }).timeout(50000);
-
+        }).timeout(200000);
     });
 
     it("should getDustValue", async () => {

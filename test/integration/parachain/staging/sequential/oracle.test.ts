@@ -3,10 +3,10 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinAmount, BitcoinUnit, Currency, ExchangeRate } from "@interlay/monetary-js";
 import Big from "big.js";
 
-import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
-import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
-import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, WrappedCurrency } from "../../../../src";
+import { createSubstrateAPI } from "../../../../../src/factory";
+import { assert } from "../../../../chai";
+import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
+import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, WrappedCurrency } from "../../../../../src";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;

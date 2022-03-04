@@ -108,7 +108,8 @@ describe("vaultsAPI", () => {
         }
         assert.isTrue(
             collateralizationAfterDeposit > collateralizationBeforeDeposit,
-            "Depositing did not increase collateralization"
+            `Depositing did not increase collateralization,
+            expected ${collateralizationAfterDeposit} greater than ${collateralizationBeforeDeposit}`
         );
 
         await interBtcAPI.vaults.withdrawCollateral(amount);
@@ -119,7 +120,8 @@ describe("vaultsAPI", () => {
         }
         assert.isTrue(
             collateralizationAfterDeposit > collateralizationAfterWithdrawal,
-            "Withdrawing did not decrease collateralization"
+            `Withdrawing did not decrease collateralization, expected
+            ${collateralizationAfterDeposit} greater than ${collateralizationAfterWithdrawal}`
         );
         assert.equal(
             collateralizationBeforeDeposit.toString(), collateralizationAfterWithdrawal.toString(),

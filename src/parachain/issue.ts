@@ -331,7 +331,6 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async getFeeRate(): Promise<Big> {
-
         const issueFee = await this.api.query.fee.issueFee();
         return decodeFixedPointType(issueFee);
     }

@@ -12,7 +12,7 @@ import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../../src";
 import { runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
 
-describe.only("issue", () => {
+describe("issue", () => {
     let api: ApiPromise;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
@@ -133,7 +133,7 @@ describe.only("issue", () => {
         );
     }).timeout(500000);
 
-    it.only("should request and manually execute issue", async () => {
+    it("should request and manually execute issue", async () => {
         // Unlike the other `issue` tests that involve DOT, this one locks KSM
         // covering the multi-collateral feature
         const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);

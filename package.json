@@ -33,7 +33,7 @@
     "test:lint": "eslint src --ext .ts",
     "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts",
     "test:integration": "run-s test:integration:staging test:integration:release",
-    "test:integration:staging": "run-s test:integration:setup test:integration:sequential",
+    "test:integration:staging": "run-s test:integration:setup test:integration:parallel test:integration:sequential",
     "test:integration:setup": "mocha test/integration/**/staging/setup/initialize.test.ts --timeout 10000000",
     "test:integration:parallel": "mocha test/integration/**/staging/*.test.ts --timeout 10000000 --parallel",
     "test:integration:sequential": "mocha test/integration/**/staging/sequential/*.test.ts --timeout 10000000",
