@@ -71,7 +71,7 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
     }
 
     async isBlockInRelay(blockHash: string): Promise<boolean> {
-        const value = await this.api.query.btcRelay.blockHeaders.at<BtcRelayRichBlockHeader>(addHexPrefix(blockHash));
+        const value = await this.api.query.btcRelay.blockHeaders<BtcRelayRichBlockHeader>(addHexPrefix(blockHash));
         return !value.isEmpty;
     }
 }

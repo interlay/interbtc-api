@@ -136,7 +136,7 @@ describe.only("issue", () => {
     it.only("should request and manually execute issue", async () => {
         // Unlike the other `issue` tests that involve DOT, this one locks KSM
         // covering the multi-collateral feature
-        const amount = newMonetaryAmount(0.0001, wrappedCurrency, true);
+        const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
         const oneSatoshi = newMonetaryAmount(1, wrappedCurrency, false);
         const issueResult = await issueSingle(
