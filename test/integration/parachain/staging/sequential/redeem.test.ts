@@ -2,9 +2,9 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 
-import { CollateralCurrency, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../src/index";
-import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
+import { CollateralCurrency, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../../src/index";
+import { createSubstrateAPI } from "../../../../../src/factory";
+import { assert } from "../../../../chai";
 import {
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,
@@ -18,12 +18,12 @@ import {
     VAULT_1_URI,
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
-} from "../../../config";
-import { getCorrespondingCollateralCurrency, issueAndRedeem, newMonetaryAmount } from "../../../../src/utils";
-import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { ElectrsAPI, newVaultId, WrappedCurrency } from "../../../../src";
-import { ExecuteRedeem } from "../../../../src/utils/issueRedeem";
-import { DefaultElectrsAPI } from "../../../../src/external/electrs";
+} from "../../../../config";
+import { getCorrespondingCollateralCurrency, issueAndRedeem, newMonetaryAmount } from "../../../../../src/utils";
+import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
+import { ElectrsAPI, newVaultId, WrappedCurrency } from "../../../../../src";
+import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
+import { DefaultElectrsAPI } from "../../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -111,6 +111,12 @@ describe("redeem", () => {
             1,
             "Error in initialization setup. Should have at least 1 issue request"
         );
+    });
+
+    // TODO: maybe add this to redeem API
+    it("should get redeemBtcDustValue", async () => {
+        const dust = await interBtcAPI.api.query.redeem.redeemBtcDustValue();
+        assert.equal(dust.toString(), "1000");
     });
 
     it("should getFeesToPay", async () => {

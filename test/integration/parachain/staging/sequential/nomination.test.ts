@@ -2,17 +2,18 @@ import { Currency } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import { CollateralUnit, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, tickerToCurrencyIdLiteral } from "../../../../src/index";
+import { CollateralUnit, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, tickerToCurrencyIdLiteral } from "../../../../../src/index";
 
-import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, newAccountId, newVaultId, WrappedCurrency } from "../../../../src";
-import { setNumericStorage, issueSingle, newMonetaryAmount, getCorrespondingCollateralCurrency } from "../../../../src/utils";
-import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
-import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
-import { callWith, sudo } from "../../../utils/helpers";
-import { Nomination } from "../../../../src/parachain/nomination";
+import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
+import { setNumericStorage, issueSingle, newMonetaryAmount, getCorrespondingCollateralCurrency } from "../../../../../src/utils";
+import { createSubstrateAPI } from "../../../../../src/factory";
+import { assert } from "../../../../chai";
+import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../../config";
+import { callWith, sudo } from "../../../../utils/helpers";
+import { Nomination } from "../../../../../src/parachain/nomination";
 
-describe("NominationAPI", () => {
+// TODO: readd this once we want to activate nomination
+describe.skip("NominationAPI", () => {
     let api: ApiPromise;
     let userInterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
@@ -37,12 +38,12 @@ describe("NominationAPI", () => {
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
-        
+
         if (!(await sudoInterBtcAPI.nomination.isNominationEnabled())) {
             console.log("Enabling nomination...");
             await sudo(sudoInterBtcAPI, () => sudoInterBtcAPI.nomination.setNominationEnabled(true));
         }
-        
+
         // The account of a vault from docker-compose
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         bitcoinCoreClient = new BitcoinCoreClient(

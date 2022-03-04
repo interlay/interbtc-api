@@ -28,13 +28,6 @@ describe("OracleAPI", () => {
         return api.disconnect();
     });
 
-    it("exchange rate should be set", async () => {
-        // just check that this is set, don't hardcode anything
-        // as the oracle client may change the exchange rate
-        const exchangeRate = await interBtcAPI.oracle.getExchangeRate(collateralCurrency);
-        assert.isDefined(exchangeRate);
-    });
-
     it("should set exchange rate", async () => {
         const exchangeRateValue = new Big("3913.7424920372646687827621");
         const newExchangeRate = new ExchangeRate<

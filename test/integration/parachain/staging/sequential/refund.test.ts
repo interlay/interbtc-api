@@ -1,13 +1,13 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
-import { CollateralCurrency, DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, InterbtcPrimitivesVaultId, newMonetaryAmount } from "../../../../src/index";
-import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { createSubstrateAPI } from "../../../../src/factory";
-import { USER_1_URI, VAULT_3_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
-import { assert } from "../../../chai";
-import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { newVaultId, WrappedCurrency } from "../../../../src";
+import { CollateralCurrency, DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, InterbtcPrimitivesVaultId, newMonetaryAmount } from "../../../../../src/index";
+import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
+import { createSubstrateAPI } from "../../../../../src/factory";
+import { USER_1_URI, VAULT_3_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../../config";
+import { assert } from "../../../../chai";
+import { issueSingle } from "../../../../../src/utils/issueRedeem";
+import { newVaultId, WrappedCurrency } from "../../../../../src";
 
 describe("refund", () => {
     let api: ApiPromise;

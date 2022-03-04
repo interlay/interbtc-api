@@ -62,9 +62,8 @@ export class DefaultTokensAPI implements TokensAPI {
     constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
     async total<U extends CurrencyUnit>(currency: Currency<U>): Promise<MonetaryAmount<Currency<U>, U>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const currencyId = newCurrencyId(this.api, tickerToCurrencyIdLiteral(currency.ticker));
-        const rawAmount = await this.api.query.tokens.totalIssuance.at(head, currencyId);
+        const rawAmount = await this.api.query.tokens.totalIssuance(currencyId);
         return newMonetaryAmount(rawAmount.toString(), currency);
     }
 
@@ -123,7 +122,7 @@ export class DefaultTokensAPI implements TokensAPI {
             newCurrencyId(this.api, currencyIdLiteral),
             amountAtomicUnit
         );
-        await this.transactionAPI.sendLogged(transferTransaction, this.api.events.tokens.Transfer);
+        await this.transactionAPI.sendLogged(transferTransaction, this.api.events.tokens.Transfer, true);
     }
 
     async setBalance<U extends CurrencyUnit>(
@@ -140,6 +139,6 @@ export class DefaultTokensAPI implements TokensAPI {
                 lockedBalance.toString(lockedBalance.currency.rawBase),
             )
         );
-        await this.transactionAPI.sendLogged(tx, this.api.events.tokens.BalanceSet);
+        await this.transactionAPI.sendLogged(tx, this.api.events.tokens.BalanceSet, true);
     }
 }

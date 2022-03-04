@@ -16,9 +16,9 @@ describe("fee", () => {
     let wrappedCurrency: WrappedCurrency;
 
     before(async function () {
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
-        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         collateralCurrency = getCorrespondingCollateralCurrency(oracleInterBtcAPI.getGovernanceCurrency()) as Currency<CollateralUnit>;
         wrappedCurrency = oracleInterBtcAPI.getWrappedCurrency();

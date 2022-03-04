@@ -116,10 +116,10 @@ export class DefaultOracleAPI implements OracleAPI {
         collateralCurrency: Currency<C>
     ): Promise<ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>> {
         const oracleKey = createExchangeRateOracleKey(this.api, collateralCurrency);
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const encodedRawRate = unwrapRawExchangeRate(await this.api.query.oracle.aggregate.at(head, oracleKey));
+
+        const encodedRawRate = unwrapRawExchangeRate(await this.api.query.oracle.aggregate(oracleKey));
         if (encodedRawRate === undefined) {
-            return Promise.reject(`No exchange rate for given currency: ${collateralCurrency.ticker}`);
+            return Promise.reject(new Error(`No exchange rate for given currency: ${collateralCurrency.ticker}`));
         }
         const decodedRawRate = decodeFixedPointType(encodedRawRate);
         return new ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>(
@@ -147,8 +147,7 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async getOnlineTimeout(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const moment = await this.api.query.oracle.maxDelay.at(head);
+        const moment = await this.api.query.oracle.maxDelay();
         return moment.toNumber();
     }
 
@@ -164,13 +163,12 @@ export class DefaultOracleAPI implements OracleAPI {
         );
         const oracleKey = createExchangeRateOracleKey(this.api, exchangeRate.counter);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedExchangeRate]]);
-        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues);
+        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
     }
 
     async getBitcoinFees(): Promise<Big> {
         const fast = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const fees = await this.api.query.oracle.aggregate.at(head, fast);
+        const fees = await this.api.query.oracle.aggregate(fast);
 
         const parseFees = (fee: Option<UnsignedFixedPoint>): Big => {
             const inner = unwrapRawExchangeRate(fee);
@@ -193,12 +191,11 @@ export class DefaultOracleAPI implements OracleAPI {
         const oracleKey = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
         const encodedFee = encodeUnsignedFixedPoint(this.api, fees);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedFee]]);
-        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues);
+        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
     }
 
     async getSourcesById(): Promise<Map<string, string>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const oracles = await this.api.query.oracle.authorizedOracles.entriesAt(head);
+        const oracles = await this.api.query.oracle.authorizedOracles.entries();
         const nameMap = new Map<string, string>();
         oracles.forEach((oracle) => nameMap.set(storageKeyToNthInner(oracle[0]).toString(), oracle[1].toUtf8()));
         return nameMap;
@@ -206,20 +203,17 @@ export class DefaultOracleAPI implements OracleAPI {
 
     async getValidUntil<U extends CurrencyUnit>(counterCurrency: Currency<U>): Promise<Date> {
         const oracleKey = createExchangeRateOracleKey(this.api, counterCurrency);
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const validUntil = await this.api.query.oracle.validUntil.at(head, oracleKey);
+        const validUntil = await this.api.query.oracle.validUntil(oracleKey);
         return validUntil.isSome ? convertMoment(validUntil.value as Moment) : Promise.reject("No such oracle key");
     }
 
     async isOnline(): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const errors = await this.api.query.security.errors.at(head);
+        const errors = await this.api.query.security.errors();
         return !this.hasOracleError(errors.toArray());
     }
 
     async getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const isSet = await this.api.query.oracle.rawValuesUpdated.at<Option<Bool>>(head, key);
+        const isSet = await this.api.query.oracle.rawValuesUpdated<Option<Bool>>(key);
         return isSet.unwrap().isTrue;
     }
 

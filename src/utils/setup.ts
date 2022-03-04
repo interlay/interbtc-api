@@ -226,10 +226,10 @@ async function main<U extends CurrencyUnit>(
     const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
     const sudoAccount = keyring.addFromUri(SUDO_URI);
     const oracleAccount = keyring.addFromUri(ORACLE_URI);
-    
+
     const oracleAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
     const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
-    
+
     const wrappedCurrency = sudoAccountInterBtcApi.getWrappedCurrency();
     const collateralCurrency = getCorrespondingCollateralCurrency(
         sudoAccountInterBtcApi.getGovernanceCurrency()

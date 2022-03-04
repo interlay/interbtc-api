@@ -172,7 +172,7 @@ export class DefaultNominationAPI implements NominationAPI {
         );
         const amountAsPlanck = this.api.createType("Balance", amount.toString());
         const tx = this.api.tx.nomination.depositCollateral(vaultId, amountAsPlanck);
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.DepositCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.DepositCollateral, true);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(
@@ -193,29 +193,28 @@ export class DefaultNominationAPI implements NominationAPI {
         const amountAsPlanck = this.api.createType("Balance", amount.toString());
         const parsedNonce = this.api.createType("Index", definedNonce);
         const tx = this.api.tx.nomination.withdrawCollateral(vaultId, amountAsPlanck, parsedNonce);
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.WithdrawCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.WithdrawCollateral, true);
     }
 
     async optIn(collateralCurrency: CollateralCurrency): Promise<void> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const tx = this.api.tx.nomination.optInToNomination(vaultCurrencyPair);
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptIn);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptIn, true);
     }
 
     async optOut(collateralCurrency: CollateralCurrency): Promise<void> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const tx = this.api.tx.nomination.optOutOfNomination(vaultCurrencyPair);
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptOut);
+        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptOut, true);
     }
 
     async setNominationEnabled(enabled: boolean): Promise<void> {
         const tx = this.api.tx.sudo.sudo(this.api.tx.nomination.setNominationEnabled(enabled));
-        await this.transactionAPI.sendLogged(tx);
+        await this.transactionAPI.sendLogged(tx, undefined, true);
     }
 
     async isNominationEnabled(): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const isNominationEnabled = await this.api.query.nomination.nominationEnabled.at(head);
+        const isNominationEnabled = await this.api.query.nomination.nominationEnabled();
         return isNominationEnabled.isTrue;
     }
 
@@ -234,8 +233,8 @@ export class DefaultNominationAPI implements NominationAPI {
     }
 
     async listAllNominations(): Promise<RawNomination[]> {
-        const [head, nonces] = await Promise.all([this.api.rpc.chain.getFinalizedHead(), this.getNonces()]);
-        const stakesMap = await this.api.query.vaultStaking.stake.entriesAt(head);
+        const nonces = await this.getNonces();
+        const stakesMap = await this.api.query.vaultStaking.stake.entries();
         return stakesMap
             .map((v): RawNomination => {
                 const nonce = storageKeyToNthInner(v[0], 0) as Index;
@@ -384,8 +383,7 @@ export class DefaultNominationAPI implements NominationAPI {
     }
 
     async listVaults(): Promise<InterbtcPrimitivesVaultId[]> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const nominatorMap = await this.api.query.nomination.vaults.entriesAt(head);
+        const nominatorMap = await this.api.query.nomination.vaults.entries();
         return nominatorMap.filter((v) => v[1]).map((v) => storageKeyToNthInner(v[0]));
     }
 

@@ -1,9 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, InterbtcPrimitivesVaultId, newMonetaryAmount } from "../../../../src/index";
+import { DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, InterbtcPrimitivesVaultId, newMonetaryAmount } from "../../../../../src/index";
 
-import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { createSubstrateAPI } from "../../../../src/factory";
+import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
+import { createSubstrateAPI } from "../../../../../src/factory";
 import {
     USER_1_URI,
     VAULT_2_URI,
@@ -16,11 +16,11 @@ import {
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
     ESPLORA_BASE_PATH,
-} from "../../../config";
-import { assert } from "../../../chai";
-import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../src";
-import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
+} from "../../../../config";
+import { assert } from "../../../../chai";
+import { issueSingle } from "../../../../../src/utils/issueRedeem";
+import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
+import { SLEEP_TIME_MS, sleep } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -47,7 +47,7 @@ describe("replace", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        
+
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();

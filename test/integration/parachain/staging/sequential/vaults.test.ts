@@ -2,14 +2,14 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinUnit, ExchangeRate, Currency } from "@interlay/monetary-js";
 import Big from "big.js";
-import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, currencyIdToMonetaryCurrency, CollateralUnit, CollateralCurrency, tickerToCurrencyIdLiteral, GovernanceUnit, GovernanceIdLiteral } from "../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, currencyIdToMonetaryCurrency, CollateralUnit, CollateralCurrency, tickerToCurrencyIdLiteral, GovernanceUnit, GovernanceIdLiteral } from "../../../../../src/index";
 
-import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
-import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH } from "../../../config";
-import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../src/";
-import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../src/utils";
-import { callWithExchangeRate } from "../../../utils/helpers";
+import { createSubstrateAPI } from "../../../../../src/factory";
+import { assert } from "../../../../chai";
+import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH } from "../../../../config";
+import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../../src";
+import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
+import { callWithExchangeRate } from "../../../../utils/helpers";
 
 describe("vaultsAPI", () => {
     let oracleAccount: KeyringPair;
@@ -72,17 +72,18 @@ describe("vaultsAPI", () => {
             vaultAddress === vault_to_liquidate.address;
     }
 
+    // FIXME: this should be tested in a way that in doesn't use magic numbers
     it("should get issuable", async () => {
         const issuableInterBTC = await interBtcAPI.vaults.getTotalIssuableAmount();
-        const minExpectedIssuableInterBTC = newMonetaryAmount(0.005, wrappedCurrency, true);
-        assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC));
+        const minExpectedIssuableInterBTC = newMonetaryAmount(0.002, wrappedCurrency, true);
+        assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC), `Issuable ${issuableInterBTC.toHuman()}`);
     });
 
     it("should get the required collateral for the vault", async () => {
         const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as Currency<CollateralUnit>;
         const requiredCollateralForVault =
             await interBtcAPI.vaults.getRequiredCollateralForVault(vault_1_id.accountId, collateralCurrency);
-            
+
         const vault = await interBtcAPI.vaults.get(vault_1_id.accountId, currencyIdToLiteral(vault_1_id.currencies.collateral));
 
         // The numeric value of the required collateral should be greater than that of issued tokens.
@@ -97,10 +98,10 @@ describe("vaultsAPI", () => {
         const amount = newMonetaryAmount(100, collateralCurrency as Currency<CollateralUnit>, true);
         const collateralCurrencyIdLiteral = tickerToCurrencyIdLiteral(collateralCurrency.ticker) as CollateralIdLiteral;
 
-        const collateralizationBeforeDeposit = 
+        const collateralizationBeforeDeposit =
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), collateralCurrencyIdLiteral);
         await interBtcAPI.vaults.depositCollateral(amount);
-        const collateralizationAfterDeposit = 
+        const collateralizationAfterDeposit =
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), collateralCurrencyIdLiteral);
         if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
             throw new Error("Collateralization is undefined");
@@ -111,7 +112,7 @@ describe("vaultsAPI", () => {
         );
 
         await interBtcAPI.vaults.withdrawCollateral(amount);
-        const collateralizationAfterWithdrawal = 
+        const collateralizationAfterWithdrawal =
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), collateralCurrencyIdLiteral);
         if (collateralizationAfterWithdrawal === undefined) {
             throw new Error("Collateralization is undefined");
@@ -138,7 +139,7 @@ describe("vaultsAPI", () => {
         console.log(`issuableAmount: ${issuableAmount.toString()}`);
         await issueSingle(interBtcAPI, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3_id);
 
-        const currentVaultCollateralization = 
+        const currentVaultCollateralization =
             await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_3.address), collateralCurrencyIdLiteral);
         if (currentVaultCollateralization === undefined) {
             throw new Error("Collateralization is undefined");
@@ -244,7 +245,7 @@ describe("vaultsAPI", () => {
     });
 
     it("should getAPY", async () => {
-        const apy = 
+        const apy =
             await interBtcAPI.vaults.getAPY(
                 newAccountId(api, vault_1.address), currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral
             );
