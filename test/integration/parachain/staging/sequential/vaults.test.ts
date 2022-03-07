@@ -132,7 +132,7 @@ describe("vaultsAPI", () => {
         }
     });
 
-    it("should getPremiumRedeemVaults after a price crash", async () => {
+    it.skip("should getPremiumRedeemVaults after a price crash", async () => {
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
         const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrencyIdLiteral);
         let issuableAmount = await vault.getIssuableTokens();
