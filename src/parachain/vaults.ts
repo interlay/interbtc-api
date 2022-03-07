@@ -1,6 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, BlockNumber, BlockHash } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import { MonetaryAmount, Currency, BitcoinUnit } from "@interlay/monetary-js";
@@ -322,7 +321,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit, publicKey);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault, true);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -333,7 +332,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral, true);
     }
 
     async depositCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -344,7 +343,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAsPlanck);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral, true);
     }
 
     async list(atBlock?: BlockHash): Promise<VaultExt<BitcoinUnit>[]> {
@@ -362,11 +361,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<VaultExt<BitcoinUnit>> {
         try {
-            const head = await this.api.rpc.chain.getFinalizedHead();
             const collateralCurrency = currencyIdLiteralToMonetaryCurrency(this.api, collateralCurrencyIdLiteral) as CollateralCurrency;
             const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
-            const api = await this.api.at(head);
-            const vault = await api.query.vaultRegistry.vaults<Option<VaultRegistryVault>>(vaultId);
+            const vault = await this.api.query.vaultRegistry.vaults<Option<VaultRegistryVault>>(vaultId);
             if (!vault.isSome) {
                 return Promise.reject(`No vault registered with id ${vaultId}`);
             }
@@ -489,8 +486,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getLiquidationVault(collateralCurrency: CollateralCurrency): Promise<SystemVaultExt<BitcoinUnit>> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const liquidationVault = await this.api.query.vaultRegistry.liquidationVault.at(head, vaultCurrencyPair);
+        const liquidationVault = await this.api.query.vaultRegistry.liquidationVault(vaultCurrencyPair);
         if (!liquidationVault.isSome) {
             return Promise.reject("System vault could not be fetched");
         }
@@ -753,7 +749,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral,
         btcTxId: string
     ): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const collateralCurrencyId = newCurrencyId(this.api, collateralCurrencyIdLiteral);
         const vaultId = newVaultId(
             this.api,
@@ -761,14 +756,13 @@ export class DefaultVaultsAPI implements VaultsAPI {
             currencyIdToMonetaryCurrency(collateralCurrencyId) as CollateralCurrency,
             this.wrappedCurrency
         );
-        const theftReports = await this.api.query.relay.theftReports.at(head, vaultId, { content: btcTxId });
+        const theftReports = await this.api.query.relay.theftReports(vaultId, { content: btcTxId });
         return theftReports.isEmpty;
     }
 
     async getLiquidationCollateralThreshold(collateralCurrency: CollateralCurrency): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold.at(head, vaultCurrencyPair);
+        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold(vaultCurrencyPair);
         if (!threshold.isSome) {
             return Promise.reject(`No liquidation threshold for currency ${collateralCurrency.ticker}`);
         }
@@ -776,9 +770,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getPremiumRedeemThreshold(collateralCurrency: CollateralCurrency): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold.at(head, vaultCurrencyPair);
+        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold(vaultCurrencyPair);
         if (!threshold.isSome) {
             return Promise.reject(`No premium redeem threshold for currency ${collateralCurrency.ticker}`);
         }
@@ -786,9 +779,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getSecureCollateralThreshold(collateralCurrency: CollateralCurrency): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold.at(head, vaultCurrencyPair);
+        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold(vaultCurrencyPair);
         return decodeFixedPointType(threshold.value as UnsignedFixedPoint);
     }
 
@@ -808,8 +800,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getPunishmentFee(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const fee = await this.api.query.fee.punishmentFee.at(head);
+        const fee = await this.api.query.fee.punishmentFee();
         return decodeFixedPointType(fee);
     }
 
@@ -873,6 +864,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
     ): Promise<void> {
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.relay.reportVaultTheft(vaultAccountId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft);
+        await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft, true);
     }
 }

@@ -111,27 +111,27 @@ export class DefaultEscrowAPI implements EscrowAPI {
         unlockHeight: number
     ): Promise<void> {
         const tx = this.api.tx.escrow.createLock(amount.toString(amount.currency.rawBase), unlockHeight);
-        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
     }
 
     async withdraw(): Promise<void> {
         const tx = this.api.tx.escrow.withdraw();
-        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Withdraw);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Withdraw, true);
     }
 
     async withdrawRewards(): Promise<void> {
         const tx = this.api.tx.escrowAnnuity.withdrawRewards();
-        await this.transactionAPI.sendLogged(tx, this.api.events.escrowRewards.WithdrawReward);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrowRewards.WithdrawReward, true);
     }
 
     async increaseAmount<U extends GovernanceUnit>(amount: MonetaryAmount<Currency<U>, U>): Promise<void> {
         const tx = this.api.tx.escrow.increaseAmount(amount.toString(amount.currency.rawBase));
-        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
     }
 
     async increaseUnlockHeight(unlockHeight: number): Promise<void> {
         const tx = this.api.tx.escrow.increaseUnlockHeight(unlockHeight);
-        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit);
+        await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
     }
 
     async getRewardEstimate<U extends GovernanceUnit>(
@@ -183,26 +183,22 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async getEscrowStake(accountId: AccountId): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawStake = await this.api.query.escrowRewards.stake.at(head, accountId);
+        const rawStake = await this.api.query.escrowRewards.stake(accountId);
         return newMonetaryAmount(rawStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getEscrowTotalStake(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawTotalStake = await this.api.query.escrowRewards.totalStake.at(head);
+        const rawTotalStake = await this.api.query.escrowRewards.totalStake();
         return newMonetaryAmount(rawTotalStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getRewardPerBlock(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawRewardPerBlock = await this.api.query.escrowAnnuity.rewardPerBlock.at(head);
+        const rawRewardPerBlock = await this.api.query.escrowAnnuity.rewardPerBlock();
         return newMonetaryAmount(rawRewardPerBlock.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getStakedBalance(accountId: AccountId): Promise<StakedBalance<GovernanceUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawStakedBalance = await this.api.query.escrow.locked.at(head, accountId);
+        const rawStakedBalance = await this.api.query.escrow.locked(accountId);
         return parseEscrowLockedBalance(this.governanceCurrency as Currency<GovernanceUnit>, rawStakedBalance);
     }
 

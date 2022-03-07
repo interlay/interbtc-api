@@ -1,7 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { H256, AccountId } from "@polkadot/types/interfaces";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
-import { AddressOrPair } from "@polkadot/api/types";
 import { Network } from "bitcoinjs-lib";
 import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { isKeyringPair } from "@polkadot/api/util";
@@ -17,7 +16,7 @@ import {
     newVaultId
 } from "../utils";
 import { FeeAPI, GriefingCollateralType } from "./fee";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
 import {
     CollateralCurrency,
@@ -150,7 +149,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         const amountAtomicUnit = this.api.createType("Balance", amount.str.Satoshi());
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const requestTx = this.api.tx.replace.withdrawReplace(vaultCurrencyPair, amountAtomicUnit);
-        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.WithdrawReplace);
+        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.WithdrawReplace, true);
     }
 
     async accept(
@@ -174,25 +173,25 @@ export class DefaultReplaceAPI implements ReplaceAPI {
             collateralAtomicUnit,
             parsedBtcAddress
         );
-        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.AcceptReplace);
+        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.AcceptReplace, true);
     }
 
     async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.replace.executeReplace(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.transactionAPI.sendLogged(tx, this.api.events.replace.ExecuteReplace);
+        await this.transactionAPI.sendLogged(tx, this.api.events.replace.ExecuteReplace, true);
     }
 
     async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const dustSatoshi = await this.api.query.replace.replaceBtcDustValue.at(head);
+
+        const dustSatoshi = await this.api.query.replace.replaceBtcDustValue();
         return newMonetaryAmount(dustSatoshi.toString(), this.wrappedCurrency);
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.replace.replacePeriod.at(head);
+
+        return await this.api.query.replace.replacePeriod();
     }
 
     async list(): Promise<ReplaceRequestExt[]> {

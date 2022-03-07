@@ -49,5 +49,5 @@ async function setStorage(
     const storageKey = api.createType("StorageKey", key);
     const storageData = api.createType("StorageData", data);
     const tx = api.tx.sudo.sudo(api.tx.system.setStorage([[storageKey, storageData] as ITuple<[StorageKey, Bytes]>]));
-    await DefaultTransactionAPI.sendLogged(api, account, tx);
+    await DefaultTransactionAPI.sendLogged(api, account, tx, undefined, true);
 }

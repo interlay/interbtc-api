@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Currency, InterBtc, Interlay } from "@interlay/monetary-js";
+import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
@@ -21,7 +21,7 @@ import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
 import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
-import { currencyIdToMonetaryCurrency, CurrencyUnit, GovernanceCurrency, WrappedCurrency } from "./types";
+import { currencyIdToMonetaryCurrency, GovernanceCurrency, GovernanceUnit, WrappedCurrency } from "./types";
 import { DefaultEscrowAPI, EscrowAPI } from ".";
 
 export * from "./factory";
@@ -57,6 +57,8 @@ export interface InterBtcApi {
     readonly escrow: EscrowAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     readonly account: AddressOrPair | undefined;
+    getGovernanceCurrency(): Currency<GovernanceUnit>;
+    getWrappedCurrency(): Currency<BitcoinUnit>;
 }
 
 /**
@@ -87,7 +89,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         esploraNetwork?: string,
     ) {
         const wrappedCurrency = this.getWrappedCurrency() as WrappedCurrency;
-        const nativeCurrency = this.getNativeCurrency() as GovernanceCurrency;
+        const governanceCurrency = this.getGovernanceCurrency() as GovernanceCurrency;
 
         const btcNetwork = getBitcoinNetwork(bitcoinNetwork);
         this.electrsAPI = new DefaultElectrsAPI(esploraNetwork || bitcoinNetwork);
@@ -98,7 +100,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency, this.transactionAPI);
         this.fee = new DefaultFeeAPI(api, this.oracle);
         this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, this.transactionAPI);
-        this.escrow = new DefaultEscrowAPI(api, nativeCurrency, this.system, this.transactionAPI);
+        this.escrow = new DefaultEscrowAPI(api, governanceCurrency, this.system, this.transactionAPI);
 
         this.vaults = new DefaultVaultsAPI(
             api,
@@ -115,7 +117,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         this.faucet = new FaucetClient(api, "");
         this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.transactionAPI);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
-        
+
         this.replace = new DefaultReplaceAPI(
             api,
             btcNetwork,
@@ -158,12 +160,12 @@ export class DefaultInterBtcApi implements InterBtcApi {
         return this.transactionAPI.getAccount();
     }
 
-    public getNativeCurrency(): Currency<CurrencyUnit> {
+    public getGovernanceCurrency(): Currency<GovernanceUnit> {
         const currencyId = this.api.consts.escrowRewards.getNativeCurrencyId;
         return currencyIdToMonetaryCurrency(currencyId);
     }
 
-    public  getWrappedCurrency(): Currency<CurrencyUnit> {
+    public getWrappedCurrency(): Currency<BitcoinUnit> {
         const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
         return currencyIdToMonetaryCurrency(currencyId);
     }

@@ -1,11 +1,10 @@
 import { ApiPromise } from "@polkadot/api";
 import { H256 } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
-import { AddressOrPair } from "@polkadot/api/types";
 
 import { ensureHashEncoded, getTxProof, parseRefundRequest } from "../utils";
 import { ElectrsAPI } from "../external";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { RefundRequestExt, WrappedCurrency } from "../types";
 
 /**
@@ -49,7 +48,7 @@ export class DefaultRefundAPI implements RefundAPI {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const requestTx = this.api.tx.refund.executeRefund(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.transactionAPI.sendLogged(requestTx, this.api.events.refund.ExecuteRefund);
+        await this.transactionAPI.sendLogged(requestTx, this.api.events.refund.ExecuteRefund, true);
     }
 
     async list(): Promise<RefundRequestExt[]> {
