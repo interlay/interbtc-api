@@ -70,7 +70,8 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    it("should liquidate a vault that committed theft", async () => {
+    // TODO: discuss where to test this. Should be tested in the vault client rather than on the lib
+    it.skip("should liquidate a vault that committed theft", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency as Currency<CollateralUnit>);
             // There should be no burnable tokens
@@ -136,7 +137,8 @@ describe("redeem", () => {
         });
     }).timeout(5 * 60 * 1000);
 
-    it("should issue and auto-execute redeem", async () => {
+    // TODO: discuss if we need this test ehre since it tests vault behavior
+    it.skip("should issue and auto-execute redeem", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const issueAmount = newMonetaryAmount(0.000013, wrappedCurrency, true);
             const redeemAmount = newMonetaryAmount(0.000011, wrappedCurrency, true);
@@ -148,8 +150,8 @@ describe("redeem", () => {
 
     it("should issue and manually execute redeem", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
-            const issueAmount = newMonetaryAmount(0.000013, wrappedCurrency, true);
-            const redeemAmount = newMonetaryAmount(0.000011, wrappedCurrency, true);
+            const issueAmount = newMonetaryAmount(0.00013, wrappedCurrency, true);
+            const redeemAmount = newMonetaryAmount(0.00011, wrappedCurrency, true);
             await issueAndRedeem(userInterBtcAPI, bitcoinCoreClient, userAccount, undefined, issueAmount, redeemAmount, false, ExecuteRedeem.Manually);
         });
         // The `ExecuteRedeem` event has been emitted at this point.
