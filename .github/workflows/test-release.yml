@@ -10,7 +10,7 @@ on:
 
 jobs:
     build:
-        runs-on: [self-hosted, linux]
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v2
             - name: setup node
@@ -20,5 +20,5 @@ jobs:
             - run: corepack enable
             - run: yarn install
             - name: Run and set up the parachain, oracle, staked relayer and vault
-              run: yarn docker-parachain-start
+              run: yarn docker-parachain-start -- -d
             - run: yarn ci:test
