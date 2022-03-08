@@ -39,7 +39,6 @@ export class DefaultSystemAPI {
     constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
     async getCurrentBlockNumber(): Promise<number> {
-
         return (await this.api.query.system.number()).toNumber();
     }
 

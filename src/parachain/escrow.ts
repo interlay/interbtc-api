@@ -162,7 +162,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
         // If there is nothing staked in the system or
         // no rewards are paid, the rewards are 0
-        if (newTotalStake.isZero() || blockReward.isZero()) {
+        if (newUserStake.isZero() || blockReward.isZero()) {
             return {
                 amount: newMonetaryAmount(
                     0,

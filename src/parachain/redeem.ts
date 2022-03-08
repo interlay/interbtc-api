@@ -334,19 +334,16 @@ export class DefaultRedeemAPI implements RedeemAPI {
     }
 
     async getFeeRate(): Promise<Big> {
-
         const redeemFee = await this.api.query.fee.redeemFee();
         return decodeFixedPointType(redeemFee);
     }
 
     async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-
         const dustValueSat = await this.api.query.redeem.redeemBtcDustValue();
         return newMonetaryAmount(dustValueSat.toString(), this.wrappedCurrency);
     }
 
     async getPremiumRedeemFeeRate(): Promise<Big> {
-
         const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee();
         return decodeFixedPointType(premiumRedeemFee);
     }
