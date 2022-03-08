@@ -96,12 +96,13 @@ export interface EscrowAPI {
     /**
      * @param accountId User account ID
      * @param amountToLock New amount to add to the current stake
+     * @param blockLockTimeExtension Amount of blocks the stake will be locked for
      * @returns The estimated reward, as amount and percentage (APY)
      */
     getRewardEstimate<U extends GovernanceUnit>(
         accountId: AccountId,
         amountToLock?: MonetaryAmount<Currency<U>, U>,
-        unlockHeight?: number
+        blockLockTimeExtension?: number
     ): Promise<{
             amount: MonetaryAmount<Currency<U>, U>,
             apy: Big
@@ -164,7 +165,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
     async getRewardEstimate<U extends GovernanceUnit>(
         accountId: AccountId,
         amountToLock?: MonetaryAmount<Currency<U>, U>,
-        unlockHeight?: number
+        blockLockTimeExtension?: number
     ): Promise<{
             amount: MonetaryAmount<Currency<U>, U>,
             apy: Big
@@ -194,19 +195,20 @@ export class DefaultEscrowAPI implements EscrowAPI {
         let newUserStake = userStake;
         // total_staked_tokens * unlock_heights
         let newTotalStake = totalStake;
-        let newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
+        let newLockDuration = (stakedBalance.endBlock - currentBlockNumber) > 0 ?
+            stakedBalance.endBlock - currentBlockNumber : 0;
         // Case 2: update stake an unlock height
-        if (amountToLock && unlockHeight) {
+        if (amountToLock && blockLockTimeExtension) {
             const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>);
             newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStake);
-            newStakedBalance.endBlock = unlockHeight;
+            newStakedBalance.endBlock = stakedBalance.endBlock + blockLockTimeExtension;
 
             newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
             const newStake = amountToLock.toBig().mul(newLockDuration);
             newUserStake = userStake.add(newStake);
             newTotalStake = totalStake.add(newStake);
         // Case 3: update stake only
-        } else if (amountToLock && !unlockHeight) {
+        } else if (amountToLock && !blockLockTimeExtension) {
             const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>);
             newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStake);
 
@@ -214,7 +216,9 @@ export class DefaultEscrowAPI implements EscrowAPI {
             newUserStake = userStake.add(newStake);
             newTotalStake = totalStake.add(newStake);
         // Case 4: update unlock height only
-        } else if (!amountToLock && unlockHeight) {
+        } else if (!amountToLock && blockLockTimeExtension) {
+            newStakedBalance.endBlock = stakedBalance.endBlock + blockLockTimeExtension;
+
             newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
             const newStake = new Big(newLockDuration);
             newUserStake = userStake.add(newStake);
