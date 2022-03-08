@@ -1,8 +1,7 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
-import { AddressOrPair } from "@polkadot/api/types";
 
 import {
     computeLazyDistribution,
@@ -12,7 +11,7 @@ import {
     newVaultId,
 } from "../utils";
 import { InterbtcPrimitivesVaultId } from "../parachain";
-import { DefaultTransactionAPI, TransactionAPI } from "../parachain/transaction";
+import { TransactionAPI } from "../parachain/transaction";
 import {
     tickerToCurrencyIdLiteral,
     CurrencyIdLiteral,
@@ -25,6 +24,8 @@ import {
     currencyIdToLiteral,
     CurrencyUnit,
     currencyIdLiteralToMonetaryCurrency,
+    GovernanceUnit,
+    GovernanceIdLiteral,
 } from "../types";
 
 export interface RewardsAPI {
@@ -134,6 +135,12 @@ export interface RewardsAPI {
         vaultId: InterbtcPrimitivesVaultId,
         nonce?: number,
     ): Promise<void>;
+
+    /**
+     * Gets the vault annuity systemwide per-block reward.
+     * @param governanceCurrency The ID of the currency the reward is paid out in.
+     */
+    getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
 }
 
 export class DefaultRewardsAPI implements RewardsAPI {
@@ -174,39 +181,6 @@ export class DefaultRewardsAPI implements RewardsAPI {
         const rawLazyDistribution = computeLazyDistribution(stake, rewardPerToken, rewardTally);
         return newMonetaryAmount(
             rawLazyDistribution,
-            currencyIdLiteralToMonetaryCurrency(this.api, rewardCurrencyId)
-        );
-    }
-
-    async getBlockRewards(
-        vaultAccountId: AccountId,
-        collateralCurrencyId: CollateralIdLiteral,
-        rewardCurrencyId: CurrencyIdLiteral,
-        nominatorId?: AccountId, // defaults to vaultAccountId if undefined
-        nonce?: number
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
-        // Step 1. Get amount in reward pool for vault ID
-        const [rewardsStake, rewardsRewardPerToken, rewardsRewardTally] = await Promise.all([
-            this.getRewardsPoolStake(collateralCurrencyId, vaultAccountId),
-            this.getRewardsPoolRewardPerToken(collateralCurrencyId),
-            this.getRewardsPoolRewardTally(rewardCurrencyId, collateralCurrencyId, vaultAccountId),
-        ]);
-        const rewardsRawLazyDistribution = computeLazyDistribution(rewardsStake, rewardsRewardPerToken, rewardsRewardTally);
-        // Step 2. Get info from staking pool for vault
-        nominatorId = nominatorId || vaultAccountId;
-        const [totalStakingStake, stakingStake, previousStakingRewardPerToken, stakingRewardTally] = await Promise.all([
-            this.getStakingPoolTotalStake(collateralCurrencyId, vaultAccountId, nonce),
-            this.getStakingPoolStake(collateralCurrencyId, vaultAccountId, nominatorId, nonce),
-            this.getStakingPoolRewardPerToken(rewardCurrencyId, vaultAccountId, collateralCurrencyId, nonce),
-            this.getStakingPoolRewardTally(rewardCurrencyId, vaultAccountId, nominatorId, collateralCurrencyId, nonce),
-        ]);
-        // Step 3. Simluate distributing the rewardsRawLazyDistribution into the staking pool
-        const extraRewardPerToken = rewardsRawLazyDistribution.div(totalStakingStake);
-        const newStakingRewardsPerToken = previousStakingRewardPerToken.add(extraRewardPerToken);
-        // Step 4. Get payout
-        const stakingRawLazyDistribution = computeLazyDistribution(stakingStake, newStakingRewardsPerToken, stakingRewardTally);
-        return newMonetaryAmount(
-            stakingRawLazyDistribution,
             currencyIdLiteralToMonetaryCurrency(this.api, rewardCurrencyId)
         );
     }
@@ -254,8 +228,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
             newCurrencyId(this.api, collateralCurrencyIdLiteral)
         ) as CollateralCurrency;
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawTotalStake = await this.api.query.vaultStaking.totalCurrentStake.at(head, nonce, vaultId);
+        const rawTotalStake = await this.api.query.vaultStaking.totalCurrentStake(nonce, vaultId);
         return decodeFixedPointType(rawTotalStake);
     }
 
@@ -397,6 +370,14 @@ export class DefaultRewardsAPI implements RewardsAPI {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return decodeFixedPointType(
             await this.api.query.vaultRewards.rewardPerToken.at(head, newCurrencyId(this.api, currencyId))
+        );
+    }
+
+    async getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+        const rawRewardPerBlock = await this.api.query.vaultAnnuity.rewardPerBlock();
+        return newMonetaryAmount(
+            rawRewardPerBlock.toString(),
+            currencyIdLiteralToMonetaryCurrency(this.api, governanceCurrency) as Currency<GovernanceUnit>
         );
     }
 }

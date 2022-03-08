@@ -426,6 +426,35 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return nominatorCollateral.toBig().div(vault.backingCollateral.toBig());
     }
 
+    async getBlockRewardAPY(
+        vaultAccountId: AccountId,
+        nominatorId: AccountId,
+        collateralCurrency: CollateralIdLiteral,
+        governanceCurrency: GovernanceIdLiteral
+    ): Promise<Big> {
+        const vault = await this.get(vaultAccountId, collateralCurrency);
+        const [globalRewardPerBlock, globalStake, vaultStake, vaultRewardShare, lockedCollateral] = await Promise.all([
+            this.rewardsAPI.getRewardPerBlock(governanceCurrency),
+            this.getTotalIssuedAmount(),
+            this.getIssuedAmount(vaultAccountId, collateralCurrency),
+            this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
+            (await this.tokensAPI.balance(
+                currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
+                vaultAccountId
+            )).reserved,
+            this.oracleAPI.getExchangeRate(currencyIdLiteralToMonetaryCurrency(this.api, governanceCurrency)),
+        ]);
+        const globalRewardShare = vaultStake.toBig().div(globalStake.toBig());
+        const vaultRewardPerBlock = globalRewardPerBlock.mul(globalRewardShare);
+        const ownRewardPerBlock = vaultRewardPerBlock.mul(vaultRewardShare);
+        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(ownRewardPerBlock, this.wrappedCurrency);
+        // TODO: this gives PER-BLOCK YIELD, and NOT annual yield.
+        // Should get block duration to multiply by number of blocks in a year and hence Annual PY.
+        // Should also somehow account for emmision changes year on year? Or display APY assuming indefinite yield at
+        // current block rates?
+        return this.feeAPI.calculateAPY(rewardAsWrapped, lockedCollateral);
+    }
+
     async computeReward(
         vaultAccountId: AccountId,
         nominatorId: AccountId,
