@@ -128,6 +128,11 @@ export interface IssueAPI {
      */
     getRequestsByIds(issueIds: (H256 | string)[]): Promise<Issue[]>;
     /**
+     * @returns The minimum amount of wrapped tokens that is accepted for issue requests; any lower values would
+     * risk the bitcoin client to reject the payment
+     */
+    getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    /**
      * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
     getFeeRate(): Promise<Big>;
@@ -328,6 +333,11 @@ export class DefaultIssueAPI implements IssueAPI {
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
         const feePercentage = await this.getFeeRate();
         return amount.mul(feePercentage);
+    }
+
+    async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
+        const dustValueSat = await this.api.query.issue.issueBtcDustValue();
+        return newMonetaryAmount(dustValueSat.toString(), this.wrappedCurrency);
     }
 
     async getFeeRate(): Promise<Big> {
