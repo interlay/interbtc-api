@@ -2,6 +2,7 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
 import BN from "bn.js";
+import Big from "big.js";
 
 import { newMonetaryAmount, storageKeyToNthInner, toVoting } from "../utils";
 import {
@@ -93,7 +94,7 @@ export interface EscrowAPI {
         amountToLock?: MonetaryAmount<Currency<U>, U>
     ): Promise<{
             amount: MonetaryAmount<Currency<U>, U>,
-            apy: number
+            apy: Big
     }>;
 }
 
@@ -139,7 +140,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         amountToLock?: MonetaryAmount<Currency<U>, U>
     ): Promise<{
             amount: MonetaryAmount<Currency<U>, U>,
-            apy: number
+            apy: Big
     }> {
         const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber] = await Promise.all([
             this.getEscrowStake(accountId),
@@ -167,7 +168,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
                     0,
                     this.governanceCurrency as Currency<GovernanceUnit>
                 ) as unknown as MonetaryAmount<Currency<U>, U>,
-                apy: 0
+                apy: new Big(0)
             };
         }
 
@@ -178,7 +179,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
         return {
             amount: rewardAmount,
-            apy: rewardAmount.toBig().div(newAmountLocked.toBig()).toNumber()
+            apy: rewardAmount.toBig().div(newAmountLocked.toBig()).mul(100)
         };
     }
 

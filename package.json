@@ -1,10 +1,10 @@
 {
-  "name": "@interlay/interbtc-api",
-  "version": "1.6.1",
+  "name": "@interlay/interbtc",
+  "version": "1.7.0",
   "description": "JavaScript library to interact with interBTC and kBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
-  "repository": "https://github.com/interlay/interbtc-js",
+  "repository": "https://github.com/interlay/interbtc-api",
   "license": "Apache-2.0",
   "keywords": [
     "Polkadot",

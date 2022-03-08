@@ -3,6 +3,7 @@ import { assert } from "chai";
 import { Currency } from "@interlay/monetary-js";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
+import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_3_URI, VAULT_TO_BAN_URI, VAULT_TO_LIQUIDATE_URI } from "../../../config";
@@ -52,8 +53,8 @@ describe("escrow", () => {
     it("should return 0 reward and apy estimate", async () => {
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
 
-        assert.equal(rewardsEstimate.apy, 0, "APY should be 0");
-        assert.isTrue(rewardsEstimate.amount.isZero(), "Rewards should be 0");
+        assert.equal(rewardsEstimate.apy, new Big(0), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
+        assert.isTrue(rewardsEstimate.amount.isZero(), `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`);
     });
 
     it("should compute voting balance and total supply", async () => {
@@ -108,7 +109,7 @@ describe("escrow", () => {
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
             "The estimate should be within 10% of the actual first year rewards"
         );
-        assert.isAbove(rewardsEstimate.apy, 1);
+        assert.isTrue(rewardsEstimate.apy.gte(100), `Expected more than 100% APY, got ${rewardsEstimate.apy.toString()}`);
 
         // Lock the tokens of a second user, to ensure total voting supply is still correct
         interBtcAPI.setAccount(userAccount_2);
