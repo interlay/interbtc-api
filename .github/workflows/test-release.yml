@@ -3,14 +3,14 @@ name: integration test
 on:
   pull_request:
     branches:
-      - master
+      - '*'
   push:
     branches:
-      - master
+      - '*'
 
 jobs:
     build:
-        runs-on: ubuntu-latest
+        runs-on: [self-hosted, linux]
         steps:
             - uses: actions/checkout@v2
             - name: setup node
