@@ -5,7 +5,7 @@ import { EventRecord } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinAmount, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import {
@@ -281,7 +281,13 @@ export class DefaultRedeemAPI implements RedeemAPI {
         collateralCurrency: CollateralCurrency
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault(collateralCurrency);
-        return liquidationVault.issuedTokens;
+        // This should never be below 0, but still...
+        const burnableTokens = liquidationVault.issuedTokens.sub(liquidationVault.toBeRedeemedTokens);
+        if (burnableTokens.lte(BitcoinAmount.zero)) {
+            return BitcoinAmount.zero;
+        } else {
+            return burnableTokens;
+        }
     }
 
     async getBurnExchangeRate<C extends CollateralUnit>(
