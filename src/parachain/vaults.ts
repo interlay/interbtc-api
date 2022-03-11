@@ -703,7 +703,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getPremiumRedeemVaults(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
-    > {
+        > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const vaults = await this.list();
         const premiumRedeemVaultPredicates = await Promise.all(
@@ -726,7 +726,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getVaultsWithIssuableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
-    > {
+        > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const [vaults, activeBlockNumber] = await Promise.all([
             this.list(),
@@ -750,7 +750,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getVaultsWithRedeemableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
-    > {
+        > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const [vaults, activeBlockNumber] = await Promise.all([
             this.list(),
