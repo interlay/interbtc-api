@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
+import { SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Option } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
@@ -23,7 +23,7 @@ import {
 } from "../utils";
 import { FeeAPI, GriefingCollateralType } from "./fee";
 import { ElectrsAPI } from "../external";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import {
     CollateralCurrency,
     CollateralIdLiteral,
@@ -127,6 +127,11 @@ export interface IssueAPI {
      * @returns The issue request objects
      */
     getRequestsByIds(issueIds: (H256 | string)[]): Promise<Issue[]>;
+    /**
+     * @returns The minimum amount of wrapped tokens that is accepted for issue requests; any lower values would
+     * risk the bitcoin client to reject the payment
+     */
+    getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
     /**
      * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
@@ -291,19 +296,19 @@ export class DefaultIssueAPI implements IssueAPI {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.issue.executeIssue(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.transactionAPI.sendLogged(tx, this.api.events.issue.ExecuteIssue);
+        await this.transactionAPI.sendLogged(tx, this.api.events.issue.ExecuteIssue, true);
     }
 
     async cancel(requestId: string): Promise<void> {
         const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
         const cancelIssueTx = this.api.tx.issue.cancelIssue(parsedRequestId);
-        await this.transactionAPI.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue);
+        await this.transactionAPI.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue, true);
     }
 
     async setIssuePeriod(blocks: number): Promise<void> {
         const period = this.api.createType("BlockNumber", blocks);
         const tx = this.api.tx.sudo.sudo(this.api.tx.issue.setIssuePeriod(period));
-        await this.transactionAPI.sendLogged(tx);
+        await this.transactionAPI.sendLogged(tx, undefined, true);
     }
 
     async getIssuePeriod(): Promise<number> {
@@ -312,8 +317,7 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async list(): Promise<Issue[]> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const issueRequests = await this.api.query.issue.issueRequests.entriesAt(head);
+        const issueRequests = await this.api.query.issue.issueRequests.entries();
         return await Promise.all(
             issueRequests
                 .filter(([_, req]) => req.isSome.valueOf())
@@ -331,9 +335,13 @@ export class DefaultIssueAPI implements IssueAPI {
         return amount.mul(feePercentage);
     }
 
+    async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
+        const dustValueSat = await this.api.query.issue.issueBtcDustValue();
+        return newMonetaryAmount(dustValueSat.toString(), this.wrappedCurrency);
+    }
+
     async getFeeRate(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const issueFee = await this.api.query.fee.issueFee.at(head);
+        const issueFee = await this.api.query.fee.issueFee();
         return decodeFixedPointType(issueFee);
     }
 

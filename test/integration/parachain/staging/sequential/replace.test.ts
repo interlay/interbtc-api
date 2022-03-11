@@ -1,10 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { InterBtcAmount, Kusama, Polkadot } from "@interlay/monetary-js";
-import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, GovernanceCurrency } from "../../../../src/index";
+import { DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, InterbtcPrimitivesVaultId, newMonetaryAmount } from "../../../../../src/index";
 
-import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { createSubstrateAPI } from "../../../../src/factory";
+import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
+import { createSubstrateAPI } from "../../../../../src/factory";
 import {
     USER_1_URI,
     VAULT_2_URI,
@@ -17,13 +16,11 @@ import {
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
     ESPLORA_BASE_PATH,
-    WRAPPED_CURRENCY_TICKER,
-    GOVERNANCE_CURRENCY_TICKER
-} from "../../../config";
-import { assert } from "../../../chai";
-import { issueSingle } from "../../../../src/utils/issueRedeem";
-import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../src";
-import { SLEEP_TIME_MS, sleep } from "../../../utils/helpers";
+} from "../../../../config";
+import { assert } from "../../../../chai";
+import { issueSingle } from "../../../../../src/utils/issueRedeem";
+import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
+import { SLEEP_TIME_MS, sleep } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -37,6 +34,7 @@ describe("replace", () => {
     let interBtcAPI: InterBtcApi;
 
     let wrappedCurrency: WrappedCurrency;
+    let collateralCurrency: CollateralCurrency;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -49,14 +47,15 @@ describe("replace", () => {
             BITCOIN_CORE_PORT,
             BITCOIN_CORE_WALLET
         );
-        wrappedCurrency = tickerToMonetaryCurrency(api, WRAPPED_CURRENCY_TICKER) as WrappedCurrency;
-        
+
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
+        wrappedCurrency = interBtcAPI.getWrappedCurrency();
+        collateralCurrency = getCorrespondingCollateralCurrency(interBtcAPI.getGovernanceCurrency());
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_3_id = newVaultId(api, vault_3.address, Polkadot, wrappedCurrency);
+        vault_3_id = newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-        vault_2_id = newVaultId(api, vault_2.address, Kusama, wrappedCurrency);
+        vault_2_id = newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency);
     });
 
     after(async () => {
@@ -65,8 +64,8 @@ describe("replace", () => {
 
     describe("request", () => {
         it("should request vault replacement", async () => {
-            const issueAmount = InterBtcAmount.from.BTC(0.00005);
-            const replaceAmount = InterBtcAmount.from.BTC(0.00004);
+            const issueAmount = newMonetaryAmount(0.000012, wrappedCurrency, true);
+            const replaceAmount = newMonetaryAmount(0.00001, wrappedCurrency, true);
             await issueSingle(
                 interBtcAPI,
                 bitcoinCoreClient,
@@ -79,14 +78,6 @@ describe("replace", () => {
 
             interBtcAPI.setAccount(vault_2);
             await interBtcAPI.replace.request(replaceAmount, currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency);
-        }).timeout(200000);
-
-        // This test assumes the request replace test was successful
-        it("should list/map a single replace request", async () => {
-            // wait for request to be finalized so list/map below works
-            while ((await interBtcAPI.replace.list()).length == 0) {
-                await sleep(SLEEP_TIME_MS);
-            }
 
             const requestsList = await interBtcAPI.replace.list();
             const requestsMap = await interBtcAPI.replace.map();
@@ -99,8 +90,7 @@ describe("replace", () => {
             assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
             assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
             assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
-        }).timeout(50000);
-
+        }).timeout(400000);
     });
 
     it("should getDustValue", async () => {
@@ -110,7 +100,7 @@ describe("replace", () => {
 
     it("should getReplacePeriod", async () => {
         const replacePeriod = await interBtcAPI.replace.getReplacePeriod();
-        assert.equal(replacePeriod.toString(), "14400");
+        assert.equal(replacePeriod.toString(), "7200");
     }).timeout(500);
 
     it("should list replace request by a vault", async () => {

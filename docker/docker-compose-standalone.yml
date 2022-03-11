@@ -1,0 +1,162 @@
+version: "3.8"
+services:
+    interbtc:
+        image: "interlayhq/interbtc:interbtc-standalone-1.7.1"
+        command:
+            - interbtc-standalone
+            - --rpc-external
+            - --ws-external
+            - --rpc-methods
+            - Unsafe
+            - --dev
+        ports:
+            - "9933:9933"
+            - "9944:9944"
+    bitcoind:
+        image: "ruimarinho/bitcoin-core:0.20"
+        command:
+            - -regtest
+            - -server
+            - -rpcbind=0.0.0.0
+            - -rpcallowip=0.0.0.0/0
+            - -rpcuser=rpcuser
+            - -rpcpassword=rpcpassword
+            - -fallbackfee=0.0002
+        ports:
+            - "18443:18443"
+    bitcoin-cli:
+        image: "ruimarinho/bitcoin-core:0.20"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Alice
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Bob
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Charlie
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Dave
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Eve
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Ferdie
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Alice
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Bob
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Charlie
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Dave
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Eve
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword loadwallet Ferdie
+                ALICE_ADDRESS=$$(bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword -rpcwallet=Alice getnewaddress)
+                # coins need 100 confirmations to be spendable
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword generatetoaddress 101 $${ALICE_ADDRESS}
+    electrs:
+        image: "interlayhq/electrs:latest"
+        command:
+            - electrs
+            - -vvvv
+            - --network
+            - regtest
+            - --jsonrpc-import
+            - --cors
+            - "*"
+            - --cookie
+            - "rpcuser:rpcpassword"
+            - --daemon-rpc-addr
+            - "bitcoind:18443"
+            - --http-addr
+            - "[::0]:3002"
+            - --index-unspendables
+        ports:
+            - "3002:3002"
+        restart: always
+    oracle:
+        image: "interlayhq/interbtc-clients:oracle-standalone-metadata-1-5-6"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                oracle-standalone-metadata --keyring charlie --btc-parachain-url 'ws://interbtc:9944' --currency-id DOT KSM KINT INTR --exchange-rate 230 230 230 230
+        environment:
+            RUST_LOG: info
+    vault_1:
+        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                # charlie_stash
+                echo '{"vault_1": "0x66256c4e2f90e273bf387923a9a7860f2e9f47a1848d6263de512f7fb110fc08"}' > keyfile.json
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Charlie wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                vault-standalone-metadata --keyfile="keyfile.json" --keyname="vault_1" --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+        environment: &client-env
+            BITCOIN_RPC_URL: http://bitcoind:18443
+            BITCOIN_RPC_USER: rpcuser
+            BITCOIN_RPC_PASS: rpcpassword
+            RUST_LOG: info
+    vault_2:
+        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                # dave_stash
+                echo '{"vault_2": "0x8766312742c2ebdc78713dab36f8eb328d30d053d702da8167e4672d615f421e"}' > keyfile.json
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Dave wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                # KSM atomic units for registration must be 100x those for DOT, because of the difference in max currency granularity
+                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_2 --auto-register-with-collateral 1000000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'KSM' --wrapped-currency-id 'INTERBTC'
+        environment:
+            <<: *client-env
+    vault_3:
+        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                # eve_stash
+                echo '{"vault_3": "0x26eda5da160bf8e1810336f97a31d3271fe8b386c4e5b7b4367e55ea33f297d0"}' > keyfile.json
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Eve wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_3 --auto-register-with-collateral 1000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+        environment:
+            <<: *client-env
+    vault_to_liquidate:
+        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                # ferdie_stash
+                echo '{"vault_to_liquidate": "0x32a1ce8b76ea5820c59663458a0f5dd90b70d9c69beff048ddcdb6daa451afd9"}' > keyfile.json
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Ferdie wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_to_liquidate --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+        environment:
+            <<: *client-env
+    vault_to_ban:
+        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                # ferdie
+                echo '{"vault_to_ban": "0x42438b7883391c05512a938e36c2df0131e088b3756d6aa7a755fbff19d2f842"}' > keyfile.json
+                echo "Sleeping..."
+                # sleep for 30s to wait for bitcoin to create the Ferdie wallet
+                # and also to ensure that the issue period and redeem period are set
+                sleep 30
+                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_to_ban --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+        environment:
+            <<: *client-env
+    postgres:
+        image: 'postgres:13'
+        environment:
+            POSTGRES_USER: 'user'
+            POSTGRES_PASSWORD: 'password'
+        ports:
+            - '5432:5432'

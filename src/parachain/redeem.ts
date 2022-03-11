@@ -1,11 +1,11 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/submittable/types";
+import { SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Hash, H256 } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinAmount, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import {
@@ -27,7 +27,7 @@ import {
 } from "../utils";
 import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
 import {
     CollateralCurrency,
@@ -247,13 +247,13 @@ export class DefaultRedeemAPI implements RedeemAPI {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.redeem.executeRedeem(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.transactionAPI.sendLogged(tx, this.api.events.redeem.ExecuteRedeem);
+        await this.transactionAPI.sendLogged(tx, this.api.events.redeem.ExecuteRedeem, true);
     }
 
     async cancel(requestId: string, reimburse = false): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
-        await this.transactionAPI.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem);
+        await this.transactionAPI.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem, true);
     }
 
     async burn(
@@ -263,13 +263,13 @@ export class DefaultRedeemAPI implements RedeemAPI {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const amountAtomicUnit = this.api.createType("Balance", amount.str.Satoshi());
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(vaultCurrencyPair, amountAtomicUnit);
-        await this.transactionAPI.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem);
+        await this.transactionAPI.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem, true);
     }
 
     async setRedeemPeriod(blocks: number): Promise<void> {
         const period = this.api.createType("BlockNumber", blocks);
         const tx = this.api.tx.sudo.sudo(this.api.tx.redeem.setRedeemPeriod(period));
-        await this.transactionAPI.sendLogged(tx);
+        await this.transactionAPI.sendLogged(tx, undefined, true);
     }
 
     async getRedeemPeriod(): Promise<number> {
@@ -281,7 +281,13 @@ export class DefaultRedeemAPI implements RedeemAPI {
         collateralCurrency: CollateralCurrency
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault(collateralCurrency);
-        return liquidationVault.issuedTokens;
+        // This should never be below 0, but still...
+        const burnableTokens = liquidationVault.issuedTokens.sub(liquidationVault.toBeRedeemedTokens);
+        if (burnableTokens.lte(BitcoinAmount.zero)) {
+            return BitcoinAmount.zero;
+        } else {
+            return burnableTokens;
+        }
     }
 
     async getBurnExchangeRate<C extends CollateralUnit>(
@@ -304,9 +310,9 @@ export class DefaultRedeemAPI implements RedeemAPI {
     }
 
     async getCurrentInclusionFee(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
+
         const [size, satoshiFees] = await Promise.all([
-            this.api.query.redeem.redeemTransactionSize.at(head),
+            this.api.query.redeem.redeemTransactionSize(),
             this.oracleAPI.getBitcoinFees(),
         ]);
         const btcFees = newMonetaryAmount(satoshiFees, this.wrappedCurrency);
@@ -334,20 +340,17 @@ export class DefaultRedeemAPI implements RedeemAPI {
     }
 
     async getFeeRate(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const redeemFee = await this.api.query.fee.redeemFee.at(head);
+        const redeemFee = await this.api.query.fee.redeemFee();
         return decodeFixedPointType(redeemFee);
     }
 
     async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const dustValueSat = await this.api.query.redeem.redeemBtcDustValue.at(head);
+        const dustValueSat = await this.api.query.redeem.redeemBtcDustValue();
         return newMonetaryAmount(dustValueSat.toString(), this.wrappedCurrency);
     }
 
     async getPremiumRedeemFeeRate(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee.at(head);
+        const premiumRedeemFee = await this.api.query.fee.premiumRedeemFee();
         return decodeFixedPointType(premiumRedeemFee);
     }
 
@@ -357,13 +360,11 @@ export class DefaultRedeemAPI implements RedeemAPI {
     }
 
     async getRequestsByIds(redeemIds: (H256 | string)[]): Promise<Redeem[]> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const redeemRequestData = await Promise.all(
             redeemIds.map(
                 async (redeemId): Promise<[Option<InterbtcPrimitivesRedeemRedeemRequest>, H256 | string]> =>
                     new Promise((resolve, reject) => {
-                        this.api.query.redeem.redeemRequests
-                            .at(head, ensureHashEncoded(this.api, redeemId))
+                        this.api.query.redeem.redeemRequests(ensureHashEncoded(this.api, redeemId))
                             .then((request) => resolve([request, redeemId]))
                             .catch(reject);
                     })

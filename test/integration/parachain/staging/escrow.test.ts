@@ -1,12 +1,13 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { assert } from "chai";
-import { Interlay } from "@interlay/monetary-js";
+import { Currency } from "@interlay/monetary-js";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
+import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_3_URI, VAULT_TO_BAN_URI, VAULT_TO_LIQUIDATE_URI } from "../../../config";
-import { DefaultInterBtcApi, newAccountId, newMonetaryAmount, setNumericStorage } from "../../../../src";
+import { DefaultInterBtcApi, GovernanceUnit, newAccountId, newMonetaryAmount, setNumericStorage } from "../../../../src";
 import { sudo } from "../../../utils/helpers";
 
 describe("escrow", () => {
@@ -17,6 +18,8 @@ describe("escrow", () => {
     let userAccount_2: KeyringPair;
     let userAccount_3: KeyringPair;
     let sudoAccount: KeyringPair;
+
+    let governanceCurrency: Currency<GovernanceUnit>;
 
     before(async function () {
         const keyring = new Keyring({ type: "sr25519" });
@@ -29,6 +32,7 @@ describe("escrow", () => {
         sudoAccount = keyring.addFromUri(SUDO_URI);
 
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount_1, ESPLORA_BASE_PATH);
+        governanceCurrency = interBtcAPI.getGovernanceCurrency();
     });
 
     after(async () => {
@@ -49,14 +53,14 @@ describe("escrow", () => {
     it("should return 0 reward and apy estimate", async () => {
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
 
-        assert.equal(rewardsEstimate.apy, 0, "APY should be 0");
-        assert.isTrue(rewardsEstimate.amount.isZero(), "Rewards should be 0");
+        assert.equal(rewardsEstimate.apy, new Big(0), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
+        assert.isTrue(rewardsEstimate.amount.isZero(), `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`);
     });
 
     it("should compute voting balance and total supply", async () => {
-        const user1_intrAmount = newMonetaryAmount(1000, Interlay, true);
-        const user2_intrAmount = newMonetaryAmount(600, Interlay, true);
-        const chargedFees = newMonetaryAmount(1, Interlay, true);
+        const user1_intrAmount = newMonetaryAmount(1000, governanceCurrency, true);
+        const user2_intrAmount = newMonetaryAmount(600, governanceCurrency, true);
+        const chargedFees = newMonetaryAmount(2, governanceCurrency, true);
 
         const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
         const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
@@ -66,13 +70,14 @@ describe("escrow", () => {
             [userAccount_2, user2_intrAmount],
         ];
 
+        // FIXME: remove magic multiplier
         for (const [userKeyring, amount] of userIntrPairs) {
             const userAccount = newAccountId(api, userKeyring.address);
             await sudo(
                 interBtcAPI,
                 () => interBtcAPI.tokens.setBalance(
                     userAccount,
-                    amount.add(chargedFees.mul(2))
+                    amount.mul(2).add((chargedFees).mul(3))
                 )
             );
         }
@@ -89,7 +94,7 @@ describe("escrow", () => {
         // Hardcoded value here to match the parachain
         assert.equal(
             votingSupply.toBig(votingSupply.currency.base).round(1, 0).toString(),
-            "2.8"
+            "6.2"
         );
         const firstYearRewards = 125000000000000000;
         const blocksPerYear = 5256000;
@@ -97,14 +102,14 @@ describe("escrow", () => {
         await setNumericStorage(api, "EscrowAnnuity", "RewardPerBlock", new BN(firstYearRewards / blocksPerYear), sudoAccount, 128);
 
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
-        const expectedRewards = newMonetaryAmount(firstYearRewards / blocksPerYear * unlockHeightDiff, interBtcAPI.getNativeCurrency());
+        const expectedRewards = newMonetaryAmount(firstYearRewards / blocksPerYear * unlockHeightDiff, interBtcAPI.getGovernanceCurrency());
 
         assert.isTrue(
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).lt(1.1) &&
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
             "The estimate should be within 10% of the actual first year rewards"
         );
-        assert.isAbove(rewardsEstimate.apy, 230);
+        assert.isTrue(rewardsEstimate.apy.gte(100), `Expected more than 100% APY, got ${rewardsEstimate.apy.toString()}`);
 
         // Lock the tokens of a second user, to ensure total voting supply is still correct
         interBtcAPI.setAccount(userAccount_2);
@@ -112,21 +117,22 @@ describe("escrow", () => {
         const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
         assert.equal(
             votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(1, 0).toString(),
-            "4.6"
+            "9.9"
         );
-    }).timeout(200000);
+    }).timeout(500000);
 
     // TODO: Unskip and implement once instant-seal is added to interbtc-standalone. Otherwise this test would take a week.
     it.skip("should withdraw locked funds", async () => {}).timeout(100000);
 
     it("should increase amount and unlock height", async () => {
-        const user_intrAmount = newMonetaryAmount(1000, Interlay, true);
+        const user_intrAmount = newMonetaryAmount(1000, governanceCurrency, true);
         const userAccount = newAccountId(api, userAccount_3.address);
-        const chargedFees = newMonetaryAmount(2, Interlay, true);
+        const chargedFees = newMonetaryAmount(2, governanceCurrency, true);
 
         const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
         const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
 
+        // FIXME: remove magic multiplier
         await sudo(
             interBtcAPI,
             () => interBtcAPI.tokens.setBalance(

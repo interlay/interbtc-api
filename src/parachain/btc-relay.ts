@@ -45,23 +45,19 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
     constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) {}
 
     async getStableBitcoinConfirmations(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.btcRelay.stableBitcoinConfirmations.at(head).then((param) => param.toNumber());
+        return this.api.query.btcRelay.stableBitcoinConfirmations().then((param) => param.toNumber());
     }
 
     async getStableParachainConfirmations(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return this.api.query.btcRelay.stableParachainConfirmations.at(head).then((param) => param.toNumber());
+        return this.api.query.btcRelay.stableParachainConfirmations().then((param) => param.toNumber());
     }
 
     async getLatestBlock(): Promise<BitcoinH256Le> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.btcRelay.bestBlock.at(head);
+        return await this.api.query.btcRelay.bestBlock();
     }
 
     async getLatestBlockHeight(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return (await this.api.query.btcRelay.bestBlockHeight.at(head)).toNumber();
+        return (await this.api.query.btcRelay.bestBlockHeight()).toNumber();
     }
 
     async verifyTransactionInclusion(
@@ -75,8 +71,7 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
     }
 
     async isBlockInRelay(blockHash: string): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const value = await this.api.query.btcRelay.blockHeaders.at<BtcRelayRichBlockHeader>(head, addHexPrefix(blockHash));
+        const value = await this.api.query.btcRelay.blockHeaders<BtcRelayRichBlockHeader>(addHexPrefix(blockHash));
         return !value.isEmpty;
     }
 }

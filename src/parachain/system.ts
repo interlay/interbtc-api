@@ -1,9 +1,8 @@
 import { ApiPromise } from "@polkadot/api";
-import { AddressOrPair } from "@polkadot/api/types";
 import { Header, BlockHash } from "@polkadot/types/interfaces";
 import { SecurityStatusCode } from "@polkadot/types/lookup";
 
-import { DefaultTransactionAPI, TransactionAPI } from "./transaction";
+import { TransactionAPI } from "./transaction";
 
 /**
  * @category BTC Bridge
@@ -40,8 +39,7 @@ export class DefaultSystemAPI {
     constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
     async getCurrentBlockNumber(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return (await this.api.query.system.number.at(head)).toNumber();
+        return (await this.api.query.system.number()).toNumber();
     }
 
     async getCurrentActiveBlockNumber(atBlock?: BlockHash): Promise<number> {
@@ -57,12 +55,12 @@ export class DefaultSystemAPI {
     }
 
     async getStatusCode(): Promise<SecurityStatusCode> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        return await this.api.query.security.parachainStatus.at(head);
+
+        return await this.api.query.security.parachainStatus();
     }
 
     async setCode(code: string): Promise<void> {
         const tx = this.api.tx.sudo.sudoUncheckedWeight(this.api.tx.system.setCode(code), 0);
-        await this.transactionAPI.sendLogged(tx, this.api.events.system.CodeUpdated);
+        await this.transactionAPI.sendLogged(tx, this.api.events.system.CodeUpdated, true);
     }
 }

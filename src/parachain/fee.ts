@@ -4,7 +4,7 @@ import { ApiPromise } from "@polkadot/api";
 import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "../utils/encoding";
-import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit, WrappedCurrency } from "../types";
+import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit } from "../types";
 
 export enum GriefingCollateralType {
     Issue,
@@ -18,7 +18,7 @@ export interface FeeAPI {
     /**
      * @param amount Amount, in BTC, for which to compute the required
      * griefing collateral
-     * @param collateralCurrency Currency for determining the griefing collateral 
+     * @param collateralCurrency Currency for determining the griefing collateral
      * @param type Type of griefing collateral to compute (e.g. for issuing, replacing)
      * @returns The griefing collateral
      */
@@ -53,7 +53,7 @@ export interface FeeAPI {
 
 export class DefaultFeeAPI implements FeeAPI {
     constructor(
-        private api: ApiPromise, 
+        private api: ApiPromise,
         private oracleAPI: OracleAPI,
     ) {}
 
@@ -82,20 +82,17 @@ export class DefaultFeeAPI implements FeeAPI {
     }
 
     async getIssueGriefingCollateralRate(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral.at(head);
+        const griefingCollateralRate = await this.api.query.fee.issueGriefingCollateral();
         return decodeFixedPointType(griefingCollateralRate);
     }
 
     async getReplaceGriefingCollateralRate(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral.at(head);
+        const griefingCollateralRate = await this.api.query.fee.replaceGriefingCollateral();
         return decodeFixedPointType(griefingCollateralRate);
     }
 
     async getIssueFee(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const issueFee = await this.api.query.fee.issueFee.at(head);
+        const issueFee = await this.api.query.fee.issueFee();
         return decodeFixedPointType(issueFee);
     }
 

@@ -7,12 +7,20 @@ import {
     ExchangeRate,
     Interlay,
     Kintsugi,
+    Kusama,
     MonetaryAmount,
+    Polkadot,
     VoteInterlay,
     VoteKintsugi
 } from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import { CurrencyUnit, tickerToCurrencyIdLiteral, GovernanceCurrency, GovernanceUnit } from "../types/currency";
+import {
+    CurrencyUnit,
+    tickerToCurrencyIdLiteral,
+    GovernanceCurrency,
+    GovernanceUnit,
+    CollateralCurrency
+} from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId } from "./encoding";
@@ -88,6 +96,17 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency<Gover
             return VoteInterlay as Currency<GovernanceUnit>;
         case (Kintsugi):
             return VoteKintsugi as Currency<GovernanceUnit>;
+        default:
+            throw new Error("Provided currency is not a governance currency");
+    }
+}
+
+export function getCorrespondingCollateralCurrency(governanceCurrency: Currency<GovernanceUnit>): CollateralCurrency {
+    switch (governanceCurrency.ticker) {
+        case "KINT":
+            return Kusama;
+        case "INTR":
+            return Polkadot;
         default:
             throw new Error("Provided currency is not a governance currency");
     }

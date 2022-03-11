@@ -1,11 +1,15 @@
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, BlockNumber, BlockHash } from "@polkadot/types/interfaces";
-import { AddressOrPair } from "@polkadot/api/types";
 import Big from "big.js";
 import { Network } from "bitcoinjs-lib";
 import { MonetaryAmount, Currency, BitcoinUnit } from "@interlay/monetary-js";
 import { Option } from "@polkadot/types";
-import { VaultRegistryVaultStatus, VaultRegistrySystemVault, InterbtcPrimitivesVaultId, VaultRegistryVault } from "@polkadot/types/lookup";
+import {
+    VaultRegistryVaultStatus,
+    VaultRegistrySystemVault,
+    InterbtcPrimitivesVaultId,
+    VaultRegistryVault,
+} from "@polkadot/types/lookup";
 
 import {
     decodeFixedPointType,
@@ -73,7 +77,7 @@ export interface VaultsAPI {
      * should only include the issued tokens, leaving out unsettled ("to-be-issued") tokens
      * @returns the vault collateralization
      */
-     getVaultCollateralization<C extends CollateralUnit>(
+    getVaultCollateralization<C extends CollateralUnit>(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral,
         newCollateral?: MonetaryAmount<Currency<C>, C>,
@@ -140,20 +144,25 @@ export interface VaultsAPI {
      */
     getPremiumRedeemVaults(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
     /**
-     * @returns Vaults with issuable tokens
+     * @returns Vaults with issuable tokens, not sorted in any particular order.
+     * @remarks The result is not sorted as an attempt to randomize the assignment of requests to vaults.
      */
-    getVaultsWithIssuableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
+    getVaultsWithIssuableTokens(): Promise<
+        Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+    >;
     /**
-     * @returns Vaults with redeemable tokens
+     * @returns Vaults with redeemable tokens, sorted in descending order.
      */
-    getVaultsWithRedeemableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>>;
+    getVaultsWithRedeemableTokens(): Promise<
+        Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+    >;
     /**
      * @param vaultAccountId The vault account ID
      * @param collateralCurrency The currency specification, a `Monetary.js` object
      * @param btcTxId ID of the Bitcoin transaction to check
      * @returns A bollean value
      */
-     isVaultFlaggedForTheft(
+    isVaultFlaggedForTheft(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral,
         btcTxId: string
@@ -262,10 +271,7 @@ export interface VaultsAPI {
      * @param vaultId The account of the vault to check.
      * @param btcTxId Bitcoin transaction ID
      */
-    reportVaultTheft(
-        vaultAccountId: AccountId,
-        btcTxId: string
-    ): Promise<void>;
+    reportVaultTheft(vaultAccountId: AccountId, btcTxId: string): Promise<void>;
     /**
      * @returns The wrapped currency issued by the vaults
      */
@@ -336,7 +342,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit, publicKey);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault, true);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -347,7 +353,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral, true);
     }
 
     async depositCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -358,7 +364,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.wrappedCurrency
         );
         const tx = this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAsPlanck);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral);
+        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral, true);
     }
 
     async list(atBlock?: BlockHash): Promise<VaultExt<BitcoinUnit>[]> {
@@ -376,11 +382,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<VaultExt<BitcoinUnit>> {
         try {
-            const head = await this.api.rpc.chain.getFinalizedHead();
-            const collateralCurrency = currencyIdLiteralToMonetaryCurrency(this.api, collateralCurrencyIdLiteral) as CollateralCurrency;
+            const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
+                this.api,
+                collateralCurrencyIdLiteral
+            ) as CollateralCurrency;
             const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
-            const api = await this.api.at(head);
-            const vault = await api.query.vaultRegistry.vaults<Option<VaultRegistryVault>>(vaultId);
+            const vault = await this.api.query.vaultRegistry.vaults<Option<VaultRegistryVault>>(vaultId);
             if (!vault.isSome) {
                 return Promise.reject(`No vault registered with id ${vaultId}`);
             }
@@ -394,7 +401,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
-        const collateralCurrency = currencyIdLiteralToMonetaryCurrency(this.api, collateralCurrencyIdLiteral) as CollateralCurrency;
+        const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
+            this.api,
+            collateralCurrencyIdLiteral
+        ) as CollateralCurrency;
         return this.rewardsAPI.computeCollateralInStakingPool(
             newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency),
             vaultAccountId
@@ -432,10 +442,13 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrencyIdLiteral);
-        const collateralCurrency = currencyIdLiteralToMonetaryCurrency(this.api, collateralCurrencyIdLiteral) as CollateralCurrency;
+        const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
+            this.api,
+            collateralCurrencyIdLiteral
+        ) as CollateralCurrency;
         const nominatorCollateral = await this.rewardsAPI.computeCollateralInStakingPool(
             newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency),
-            nominatorId,
+            nominatorId
         );
         return nominatorCollateral.toBig().div(vault.backingCollateral.toBig());
     }
@@ -497,12 +510,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultAccountId: AccountId,
         collateralCurrency: CollateralIdLiteral
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
-        return await this.computeReward(
+        return (await this.computeReward(
             vaultAccountId,
             vaultAccountId,
             collateralCurrency,
             tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker)
-        ) as MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>;
+        )) as MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>;
     }
 
     async getGovernanceReward(
@@ -510,12 +523,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultCollateralIdLiteral: CollateralIdLiteral,
         governanceCurrencyIdLiteral: GovernanceIdLiteral
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        return await this.computeReward(
+        return (await this.computeReward(
             vaultAccountId,
             vaultAccountId,
             vaultCollateralIdLiteral,
             governanceCurrencyIdLiteral
-        ) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>;
+        )) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>;
     }
 
     async getStakingCapacity(
@@ -527,19 +540,22 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.getCollateral(vaultAccountId, collateralCurrency),
             this.getMaxNominationRatio(
                 currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as CollateralCurrency
-            )
+            ),
         ]);
         return collateral.mul(maxNominationRatio).sub(vault.backingCollateral);
     }
 
     async getLiquidationVault(collateralCurrency: CollateralCurrency): Promise<SystemVaultExt<BitcoinUnit>> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const liquidationVault = await this.api.query.vaultRegistry.liquidationVault.at(head, vaultCurrencyPair);
+        const liquidationVault = await this.api.query.vaultRegistry.liquidationVault(vaultCurrencyPair);
         if (!liquidationVault.isSome) {
             return Promise.reject("System vault could not be fetched");
         }
-        return parseSystemVault(liquidationVault.value as VaultRegistrySystemVault, this.wrappedCurrency, collateralCurrency);
+        return parseSystemVault(
+            liquidationVault.value as VaultRegistrySystemVault,
+            this.wrappedCurrency,
+            collateralCurrency
+        );
     }
 
     private isNoTokensIssuedError(e: Error): boolean {
@@ -551,7 +567,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.getPremiumRedeemThreshold(
                 currencyIdToMonetaryCurrency(vaultId.currencies.collateral) as CollateralCurrency
             ),
-            this.getCollateralizationFromVault(vaultId)
+            this.getCollateralizationFromVault(vaultId),
         ]);
         return vaultCollateralization.lt(premiumRedeemThreshold);
     }
@@ -592,10 +608,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return collateralization;
     }
 
-    async getCollateralizationFromVault(
-        vaultId: InterbtcPrimitivesVaultId,
-        onlyIssued = false
-    ): Promise<Big> {
+    async getCollateralizationFromVault(vaultId: InterbtcPrimitivesVaultId, onlyIssued = false): Promise<Big> {
         const collateral = await this.computeBackingCollateral(vaultId);
         return this.getCollateralizationFromVaultAndCollateral(vaultId, collateral, onlyIssued);
     }
@@ -605,7 +618,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
         newCollateral: MonetaryAmount<Currency<C>, C>,
         onlyIssued: boolean
     ): Promise<Big> {
-        const vault = await this.get(vaultId.accountId, currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral);
+        const vault = await this.get(
+            vaultId.accountId,
+            currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral
+        );
         const issuedTokens = await (onlyIssued ? Promise.resolve(vault.issuedTokens) : vault.getBackedTokens());
         if (issuedTokens.isZero()) {
             return Promise.reject("No tokens issued");
@@ -626,22 +642,18 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultAccountId: AccountId,
         currency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>> {
-        const vault = await this.get(
-            vaultAccountId,
-            tickerToCurrencyIdLiteral(currency.ticker) as CollateralIdLiteral
-        );
+        const vault = await this.get(vaultAccountId, tickerToCurrencyIdLiteral(currency.ticker) as CollateralIdLiteral);
         const issuedTokens = vault.getBackedTokens();
-        return await this.getRequiredCollateralForWrapped(
-            issuedTokens,
-            currency
-        );
+        return await this.getRequiredCollateralForWrapped(issuedTokens, currency);
     }
 
     async getRequiredCollateralForWrapped<C extends CollateralUnit>(
         wrappedAmount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        currency: Currency<C>,
+        currency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>> {
-        const secureCollateralThreshold = await this.getSecureCollateralThreshold(currency as unknown as CollateralCurrency);
+        const secureCollateralThreshold = await this.getSecureCollateralThreshold(
+            currency as unknown as CollateralCurrency
+        );
         const requiredCollateralInWrappedCurrency = wrappedAmount.mul(secureCollateralThreshold);
         return await this.oracleAPI.convertWrappedToCurrency(requiredCollateralInWrappedCurrency, currency);
     }
@@ -663,26 +675,32 @@ export class DefaultVaultsAPI implements VaultsAPI {
         // get [[wrapped, collateral], amount][] map
         const perCurrencyPairCollateralAmounts = await this.api.query.vaultRegistry.totalUserVaultCollateral.entries();
         // filter for wrapped === this.wrapped, as only one wrapped currency is handled at a time currently
-        const perWrappedCurrencyCollateralAmounts = perCurrencyPairCollateralAmounts.filter(([key, _val]) =>
-            currencyIdToMonetaryCurrency(key.args[0].wrapped).name === this.wrappedCurrency.name);
+        const perWrappedCurrencyCollateralAmounts = perCurrencyPairCollateralAmounts.filter(
+            ([key, _val]) => currencyIdToMonetaryCurrency(key.args[0].wrapped).name === this.wrappedCurrency.name
+        );
         // reduce from [[this.wrapped, collateral], amount][] pairs to [collateral, sumAmount][] map
-        const perCollateralCurrencyCollateralAmounts = perWrappedCurrencyCollateralAmounts.reduce((amounts, [key, amount]) => {
-            const collateralCurrency = currencyIdToMonetaryCurrency<CollateralUnit>(key.args[0].collateral);
-            let collateralAmount = newMonetaryAmount(amount.toString(), collateralCurrency);
-            if (amounts.has(collateralCurrency)) {
-                // .has() is true, hence non-null
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                collateralAmount = collateralAmount.add(amounts.get(collateralCurrency)!);
-            }
-            amounts.set(collateralCurrency, collateralAmount);
-            return amounts;
-        }, new Map<Currency<CollateralUnit>, MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>());
+        const perCollateralCurrencyCollateralAmounts = perWrappedCurrencyCollateralAmounts.reduce(
+            (amounts, [key, amount]) => {
+                const collateralCurrency = currencyIdToMonetaryCurrency<CollateralUnit>(key.args[0].collateral);
+                let collateralAmount = newMonetaryAmount(amount.toString(), collateralCurrency);
+                if (amounts.has(collateralCurrency)) {
+                    // .has() is true, hence non-null
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    collateralAmount = collateralAmount.add(amounts.get(collateralCurrency)!);
+                }
+                amounts.set(collateralCurrency, collateralAmount);
+                return amounts;
+            },
+            new Map<Currency<CollateralUnit>, MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>()
+        );
         // finally convert the CollateralAmount sums to issuable amounts and sum those to get the total
         const [perCollateralCurrencyIssuableAmounts, issuedAmountBtc] = await Promise.all([
             Promise.all(
-                [...perCollateralCurrencyCollateralAmounts.values()].map((collateralAmount) => this.calculateCapacity(collateralAmount))
+                [...perCollateralCurrencyCollateralAmounts.values()].map((collateralAmount) =>
+                    this.calculateCapacity(collateralAmount)
+                )
             ),
-            this.getTotalIssuedAmount()
+            this.getTotalIssuedAmount(),
         ]);
         const totalIssuableAmount = perCollateralCurrencyIssuableAmounts.reduce((acc, v) => acc.add(v));
         return totalIssuableAmount.sub(issuedAmountBtc);
@@ -703,7 +721,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async selectRandomVaultIssue(amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<InterbtcPrimitivesVaultId> {
+    async selectRandomVaultIssue(
+        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
+    ): Promise<InterbtcPrimitivesVaultId> {
         const vaults = await this.getVaultsWithIssuableTokens();
         for (const [id, issuableAmount] of vaults) {
             if (issuableAmount.gte(amount)) {
@@ -713,7 +733,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return Promise.reject(new Error("Did not find vault with sufficient collateral"));
     }
 
-    async selectRandomVaultRedeem(amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<InterbtcPrimitivesVaultId> {
+    async selectRandomVaultRedeem(
+        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
+    ): Promise<InterbtcPrimitivesVaultId> {
         // Selects the first vault with sufficient tokens
         const vaults = await this.list();
         for (const vault of vaults) {
@@ -724,14 +746,16 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return Promise.reject(new Error("Did not find vault with sufficient locked BTC"));
     }
 
-    async getPremiumRedeemVaults(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>> {
+    async getPremiumRedeemVaults(): Promise<
+        Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
+        > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const vaults = await this.list();
         const premiumRedeemVaultPredicates = await Promise.all(
-            vaults.map(vault => {
+            vaults.map((vault) => {
                 return new Promise((resolve, reject) => {
                     const redemableTokens = vault.getRedeemableTokens();
-                    if(redemableTokens.isZero()) {
+                    if (redemableTokens.isZero()) {
                         resolve(false);
                     } else {
                         this.isBelowPremiumThreshold(vault.id).then(resolve).catch(reject);
@@ -741,47 +765,51 @@ export class DefaultVaultsAPI implements VaultsAPI {
         );
         vaults
             .filter((_, index) => premiumRedeemVaultPredicates[index])
-            .forEach(vault => map.set(vault.id, vault.getRedeemableTokens()));
+            .forEach((vault) => map.set(vault.id, vault.getRedeemableTokens()));
         return map;
     }
 
-    async getVaultsWithIssuableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>> {
+    async getVaultsWithIssuableTokens(): Promise<
+        Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
+        > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
-        const vaults = await this.list();
+        const [vaults, activeBlockNumber] = await Promise.all([
+            this.list(),
+            this.systemAPI.getCurrentActiveBlockNumber(),
+        ]);
         const issuableTokens = await Promise.all(
             vaults
-                .map(
-                    vault => {
-                        return new Promise<[
-                    MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-                    InterbtcPrimitivesVaultId
-                ]>((resolve, _) => {
-                    if (vault.status !== VaultStatusExt.Active) {
-                        resolve(
-                            [
-                                newMonetaryAmount(0, currencyIdToMonetaryCurrency(vault.id.currencies.wrapped)),
-                                vault.id
-                            ]
-                        );
-                    }
-                    vault.getIssuableTokens().then((amount) => resolve([amount, vault.id]));
-                });
-                    }
-                ));
-        issuableTokens.forEach(([amount, vaultId]) => {
-            if (!amount.isZero()) {
-                map.set(vaultId, amount);
-            }
-        });
+                .filter((vault) => {
+                    const bannedUntilBlockNumber = vault.bannedUntil || 0;
+                    return vault.status === VaultStatusExt.Active && bannedUntilBlockNumber < activeBlockNumber;
+                })
+                .map((vault) => {
+                    return new Promise<[MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>, InterbtcPrimitivesVaultId]>(
+                        (resolve, _) => vault.getIssuableTokens().then((amount) => resolve([amount, vault.id]))
+                    );
+                })
+        );
+        issuableTokens.forEach(([amount, vaultId]) => map.set(vaultId, amount));
         return map;
     }
 
-    async getVaultsWithRedeemableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>> {
+    async getVaultsWithRedeemableTokens(): Promise<
+        Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+        > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
-        (await this.list())
-            .filter(vault => {
+        const [vaults, activeBlockNumber] = await Promise.all([
+            this.list(),
+            this.systemAPI.getCurrentActiveBlockNumber(),
+        ]);
+        vaults
+            .filter((vault) => {
+                const bannedUntilBlockNumber = vault.bannedUntil || 0;
                 // issuedTokens - toBeRedeemedTokens > 0
-                return vault.issuedTokens.gt(vault.toBeRedeemedTokens);
+                return (
+                    vault.issuedTokens.gt(vault.toBeRedeemedTokens) &&
+                    vault.status === VaultStatusExt.Active &&
+                    bannedUntilBlockNumber < activeBlockNumber
+                );
             })
             .sort((vault1, vault2) => {
                 // Descending order
@@ -789,7 +817,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
                 const vault2Redeemable = vault2.getRedeemableTokens().toBig();
                 return vault2Redeemable.sub(vault1Redeemable).toNumber();
             })
-            .forEach(vault => map.set(vault.id, vault.getRedeemableTokens()));
+            .forEach((vault) => map.set(vault.id, vault.getRedeemableTokens()));
         return map;
     }
 
@@ -798,7 +826,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral,
         btcTxId: string
     ): Promise<boolean> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const collateralCurrencyId = newCurrencyId(this.api, collateralCurrencyIdLiteral);
         const vaultId = newVaultId(
             this.api,
@@ -806,14 +833,13 @@ export class DefaultVaultsAPI implements VaultsAPI {
             currencyIdToMonetaryCurrency(collateralCurrencyId) as CollateralCurrency,
             this.wrappedCurrency
         );
-        const theftReports = await this.api.query.relay.theftReports.at(head, vaultId, { content: btcTxId });
+        const theftReports = await this.api.query.relay.theftReports(vaultId, { content: btcTxId });
         return theftReports.isEmpty;
     }
 
     async getLiquidationCollateralThreshold(collateralCurrency: CollateralCurrency): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold.at(head, vaultCurrencyPair);
+        const threshold = await this.api.query.vaultRegistry.liquidationCollateralThreshold(vaultCurrencyPair);
         if (!threshold.isSome) {
             return Promise.reject(`No liquidation threshold for currency ${collateralCurrency.ticker}`);
         }
@@ -821,9 +847,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getPremiumRedeemThreshold(collateralCurrency: CollateralCurrency): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold.at(head, vaultCurrencyPair);
+        const threshold = await this.api.query.vaultRegistry.premiumRedeemThreshold(vaultCurrencyPair);
         if (!threshold.isSome) {
             return Promise.reject(`No premium redeem threshold for currency ${collateralCurrency.ticker}`);
         }
@@ -831,49 +856,41 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getSecureCollateralThreshold(collateralCurrency: CollateralCurrency): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
-        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold.at(head, vaultCurrencyPair);
+        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold(vaultCurrencyPair);
         return decodeFixedPointType(threshold.value as UnsignedFixedPoint);
     }
 
     async getAPY(vaultAccountId: AccountId, collateralCurrency: CollateralIdLiteral): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrency);
         const [feesWrapped, lockedCollateral] = await Promise.all([
-            await this.getWrappedReward(
-                vaultAccountId,
-                collateralCurrency,
-            ),
-            (await this.tokensAPI.balance(
-                currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
-                vaultAccountId
-            )).reserved,
+            await this.getWrappedReward(vaultAccountId, collateralCurrency),
+            (
+                await this.tokensAPI.balance(
+                    currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
+                    vaultAccountId
+                )
+            ).reserved,
         ]);
         return this.feeAPI.calculateAPY(feesWrapped, lockedCollateral);
     }
 
     async getPunishmentFee(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const fee = await this.api.query.fee.punishmentFee.at(head);
+        const fee = await this.api.query.fee.punishmentFee();
         return decodeFixedPointType(fee);
     }
 
     private wrapCurrency<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): BalanceWrapper {
-        return this.api.createType(
-            "BalanceWrapper",
-            {
-                amount: this.api.createType("u128", amount.toString()),
-                currencyId: newCurrencyId(this.api, tickerToCurrencyIdLiteral(amount.currency.ticker))
-            }
-        );
+        return this.api.createType("BalanceWrapper", {
+            amount: this.api.createType("u128", amount.toString()),
+            currencyId: newCurrencyId(this.api, tickerToCurrencyIdLiteral(amount.currency.ticker)),
+        });
     }
 
     private unwrapCurrency<C extends CollateralUnit>(wrappedBalance: BalanceWrapper): MonetaryAmount<Currency<C>, C> {
         return newMonetaryAmount(
             wrappedBalance.amount.toString(),
-            currencyIdToMonetaryCurrency(
-                wrappedBalance.currencyId
-            )
+            currencyIdToMonetaryCurrency(wrappedBalance.currencyId)
         );
     }
 
@@ -908,16 +925,17 @@ export class DefaultVaultsAPI implements VaultsAPI {
             newMonetaryAmount(vault.toBeRedeemedTokens.toString(), this.wrappedCurrency),
             newMonetaryAmount(vault.toBeReplacedTokens.toString(), this.wrappedCurrency),
             replaceCollateral,
-            liquidatedCollateral,
+            liquidatedCollateral
         );
     }
 
-    async reportVaultTheft(
-        vaultAccountId: AccountId,
-        btcTxId: string
-    ): Promise<void> {
+    async reportVaultTheft(vaultAccountId: AccountId, btcTxId: string): Promise<void> {
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        const tx = this.api.tx.relay.reportVaultTheft(vaultAccountId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
-        await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft);
+        const tx = this.api.tx.relay.reportVaultTheft(
+            vaultAccountId,
+            txInclusionDetails.merkleProof,
+            txInclusionDetails.rawTx
+        );
+        await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft, true);
     }
 }

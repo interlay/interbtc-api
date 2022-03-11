@@ -3,13 +3,8 @@ import {
     ExchangeRate,
     Bitcoin,
     BitcoinUnit,
-    Polkadot,
-    PolkadotUnit,
     Currency,
     MonetaryAmount,
-    InterBtcAmount,
-    InterBtc,
-    Interlay,
 } from "@interlay/monetary-js";
 import { Big } from "big.js";
 import BN from "bn.js";
@@ -43,9 +38,9 @@ import {
     USER_1_URI,
     VAULT_1_URI,
 } from "../../test/config";
-import { CollateralUnit, WrappedCurrency } from "../types";
+import { CollateralCurrency, CollateralUnit, CurrencyUnit, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
-import { InterBtcApi, DefaultInterBtcApi } from "..";
+import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrency } from "..";
 import { AddressOrPair } from "@polkadot/api/types";
 
 // Command line arguments of the initialization script
@@ -108,7 +103,7 @@ export interface InitializeRedeem {
 export interface InitializationParams {
     initialize?: boolean;
     setStableConfirmations?: true | ChainConfirmations;
-    setExchangeRate?: true | ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>;
+    setExchangeRate?: true | ExchangeRate<Bitcoin, BitcoinUnit, Currency<CollateralUnit>, CollateralUnit>;
     btcTxFees?: true | Big;
     enableNomination?: boolean;
     issue?: true | InitializeIssue;
@@ -116,26 +111,31 @@ export interface InitializationParams {
     delayMs: number;
 }
 
-function getDefaultInitializationParams(keyring: Keyring, vaultAddress: string): InitializationParams {
+function getDefaultInitializationParams<U extends CurrencyUnit>(
+    keyring: Keyring,
+    vaultAddress: string,
+    wrappedCurrency: WrappedCurrency,
+    collateralCurrency: Currency<U>
+): InitializationParams {
     return {
         setStableConfirmations: {
             bitcoinConfirmations: 0,
             parachainConfirmations: 0,
         },
-        setExchangeRate: new ExchangeRate<Bitcoin, BitcoinUnit, Polkadot, PolkadotUnit>(
+        setExchangeRate: new ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U>(
             Bitcoin,
-            Polkadot,
+            collateralCurrency,
             new Big("3855.23187")
-        ),
+        ) as unknown as ExchangeRate<Bitcoin, BitcoinUnit, Currency<CollateralUnit>, CollateralUnit>,
         btcTxFees: new Big(1),
         enableNomination: true,
         issue: {
-            amount: InterBtcAmount.from.BTC(0.00007),
+            amount: newMonetaryAmount(0.00007, wrappedCurrency),
             issuingAccount: keyring.addFromUri(USER_1_URI),
             vaultAddress,
         },
         redeem: {
-            amount: InterBtcAmount.from.BTC(0.00005),
+            amount: newMonetaryAmount(0.00005, wrappedCurrency),
             redeemingAccount: keyring.addFromUri(USER_1_URI),
             redeemingBTCAddress: REDEEM_ADDRESS,
         },
@@ -167,8 +167,8 @@ export async function initializeStableConfirmations(
     await bitcoinCoreClient.mineBlocks(3);
 }
 
-export async function initializeExchangeRate<C extends CollateralUnit>(
-    exchangeRateToSet: ExchangeRate<Bitcoin, BitcoinUnit, Currency<C>, C>,
+export async function initializeExchangeRate<U extends CurrencyUnit>(
+    exchangeRateToSet: ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U>,
     oracleAPI: OracleAPI
 ): Promise<void> {
     console.log("Initializing the exchange rate...");
@@ -212,7 +212,9 @@ export async function initializeRedeem(
     await redeemAPI.request(amountToRedeem, redeemBTCAddress);
 }
 
-async function main(params: InitializationParams): Promise<void> {
+async function main<U extends CurrencyUnit>(
+    params: InitializationParams,
+): Promise<void> {
     if (!params.initialize) {
         return Promise.resolve();
     }
@@ -220,12 +222,24 @@ async function main(params: InitializationParams): Promise<void> {
     console.log("Running initialization script...");
     const keyring = new Keyring({ type: "sr25519" });
     const vault_1 = keyring.addFromUri(VAULT_1_URI);
-    const defaultInitializationParams = getDefaultInitializationParams(keyring, vault_1.address);
 
     const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
     const sudoAccount = keyring.addFromUri(SUDO_URI);
     const oracleAccount = keyring.addFromUri(ORACLE_URI);
 
+    const oracleAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
+    const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
+
+    const wrappedCurrency = sudoAccountInterBtcApi.getWrappedCurrency();
+    const collateralCurrency = getCorrespondingCollateralCurrency(
+        sudoAccountInterBtcApi.getGovernanceCurrency()
+    ) as unknown as Currency<U>;
+    const defaultInitializationParams = getDefaultInitializationParams<U>(
+        keyring,
+        vault_1.address,
+        wrappedCurrency,
+        collateralCurrency
+    );
     const bitcoinCoreClient = new BitcoinCoreClient(
         BITCOIN_CORE_NETWORK,
         BITCOIN_CORE_HOST,
@@ -234,8 +248,6 @@ async function main(params: InitializationParams): Promise<void> {
         BITCOIN_CORE_PORT,
         BITCOIN_CORE_WALLET
     );
-    const oracleAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
-    const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
     if (params.setStableConfirmations !== undefined) {
         const stableConfirmationsToSet =
@@ -248,12 +260,9 @@ async function main(params: InitializationParams): Promise<void> {
     if (params.setExchangeRate !== undefined) {
         const exchangeRateToSet =
             params.setExchangeRate === true
-                ? (defaultInitializationParams.setExchangeRate as ExchangeRate<
-                      Bitcoin,
-                      BitcoinUnit,
-                      Polkadot,
-                      PolkadotUnit
-                  >)
+                ? (defaultInitializationParams.setExchangeRate as unknown as ExchangeRate<
+                    Bitcoin, BitcoinUnit, Currency<CollateralUnit>, CollateralUnit
+                >)
                 : params.setExchangeRate;
         await initializeExchangeRate(exchangeRateToSet, oracleAccountInterBtcApi.oracle);
     }
@@ -272,7 +281,12 @@ async function main(params: InitializationParams): Promise<void> {
             params.issue === true
                 ? (defaultInitializationParams.issue as InitializeIssue)
                 : (params.issue as InitializeIssue);
-        const vaultId = newVaultId(api, issueParams.vaultAddress, Polkadot, InterBtc);
+        const vaultId = newVaultId(
+            api,
+            issueParams.vaultAddress,
+            collateralCurrency as unknown as CollateralCurrency,
+            wrappedCurrency
+        );
         await initializeIssue(
             sudoAccountInterBtcApi,
             bitcoinCoreClient,

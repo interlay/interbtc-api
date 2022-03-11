@@ -4,7 +4,7 @@ import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
 
 import { UnsignedFixedPoint } from "../interfaces";
-import { DefaultOracleAPI, DefaultSystemAPI, OracleAPI, SystemAPI } from "../parachain";
+import { OracleAPI, SystemAPI } from "../parachain";
 import { decodeFixedPointType, newMonetaryAmount } from "../utils";
 import { CollateralUnit, currencyIdToMonetaryCurrency } from "./currency";
 
@@ -117,8 +117,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     // are refactored to the builder pattern
 
     async getSecureCollateralThreshold(): Promise<Big> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold.at(head, this.id.currencies);
+        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold(this.id.currencies);
         return decodeFixedPointType(threshold.value as UnsignedFixedPoint);
     }
 
@@ -137,8 +136,8 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     }
 
     async getStakingPoolNonce(): Promise<number> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
-        const rawNonce = await this.api.query.vaultStaking.nonce.at(head, this.id);
+
+        const rawNonce = await this.api.query.vaultStaking.nonce(this.id);
         return rawNonce.toNumber();
     }
 }

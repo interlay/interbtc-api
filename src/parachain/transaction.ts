@@ -12,7 +12,8 @@ export interface TransactionAPI {
     getAccount(): AddressOrPair | undefined;
     sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
-        successEventType?: AugmentedEvent<ApiTypes, T>
+        successEventType?: AugmentedEvent<ApiTypes, T>,
+        onlyInBlock?: boolean
     ): Promise<ISubmittableResult>;
 }
 
@@ -29,7 +30,8 @@ export class DefaultTransactionAPI {
 
     async sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
-        successEventType?: AugmentedEvent<ApiTypes, T>
+        successEventType?: AugmentedEvent<ApiTypes, T>,
+        onlyInBlock?: boolean
     ): Promise<ISubmittableResult> {
         if (this.account === undefined) {
             return Promise.reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
@@ -38,7 +40,8 @@ export class DefaultTransactionAPI {
             this.api,
             this.account,
             transaction,
-            successEventType
+            successEventType,
+            onlyInBlock
         );
     }
 
@@ -46,44 +49,64 @@ export class DefaultTransactionAPI {
         api: ApiPromise,
         account: AddressOrPair,
         transaction: SubmittableExtrinsic<"promise">,
-        successEventType?: AugmentedEvent<ApiTypes, T>
+        successEventType?: AugmentedEvent<ApiTypes, T>,
+        onlyInBlock?: boolean
     ): Promise<ISubmittableResult> {
         const { unsubscribe, result } = await new Promise((resolve, reject) => {
             let unsubscribe: () => void;
             // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
             transaction
                 .signAndSend(account, { nonce: -1 }, (result: ISubmittableResult) =>
-                    callback(api, { unsubscribe, result })
+                    callback({ unsubscribe, result })
                 )
                 .then((u: () => void) => (unsubscribe = u))
                 .catch((error) => reject(error));
-    
-            function callback(api: ApiPromise, callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
+
+            function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
-                if (status.isFinalized) {
-                    const dispatchError = callbackObject.result.dispatchError;
-                    if (dispatchError) {
-                        if (dispatchError.isModule) {
-                            // for module errors, we have the section indexed, lookup
-                            const decoded = api.registry.findMetaError(dispatchError.asModule);
-                            const { docs, name, section } = decoded;
-                            console.log(`Error: ${section}.${name} ${docs.join(" ")}`);
-                        } else {
-                            // Other, CannotLookup, BadOrigin, no extra info
-                            console.log(dispatchError.toString());
-                        }
+                if (onlyInBlock) {
+                    if (status.isInBlock) {
+                        resolve(callbackObject);
                     }
-                    resolve(callbackObject);
+                } else {
+                    if (status.isFinalized) {
+                        resolve(callbackObject);
+                    }
                 }
             }
         });
-    
-        console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+
+        if (onlyInBlock) {
+            console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+        } else {
+            console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+        }
         unsubscribe(result);
-        DefaultTransactionAPI.printEvents(api, result.events);
-    
-        if (successEventType && !DefaultTransactionAPI.doesArrayContainEvent(result.events, successEventType)) {
-            return Promise.reject(new Error("Transaction failed: Expected event was not emitted"));
+
+        const dispatchError = result.dispatchError;
+        if (dispatchError) {
+            // Print all events for debugging
+            DefaultTransactionAPI.printEvents(api, result.events);
+
+            // Construct error message
+            let message = "The transaction failed.";
+            // Runtime error in one of the parachain modules
+            if (dispatchError.isModule) {
+                // for module errors, we have the section indexed, lookup
+                const decoded = api.registry.findMetaError(dispatchError.asModule);
+                const { docs, name, section } = decoded;
+                message = message.concat(` The error code is ${section}.${name}. ${docs.join(" ")}`);
+            // Bad origin
+            } else if (dispatchError.isBadOrigin) {
+                message = message.concat(` The error is caused by using an incorrect account.
+                The error code is BadOrigin ${dispatchError}.`);
+            }
+            // Other, CannotLookup, no extra info
+            else {
+                message = message.concat(` The error is ${dispatchError}.`);
+            }
+            console.log(message);
+            return Promise.reject(new Error(message));
         }
         return result;
     }
