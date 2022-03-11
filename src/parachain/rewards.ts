@@ -299,9 +299,8 @@ export class DefaultRewardsAPI implements RewardsAPI {
         vaultCollateralIdLiteral: CollateralIdLiteral,
         vaultAccountId: AccountId
     ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
-        const currencyId = tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker);
         const stake = await this.getRewardsPoolStake(vaultCollateralIdLiteral, vaultAccountId);
-        const rewardPerToken = await this.getRewardsPoolRewardPerToken(currencyId);
+        const rewardPerToken = await this.getRewardsPoolRewardPerToken(rewardCurrencyIdLiteral);
         const rewardTally = await this.getRewardsPoolRewardTally(
             rewardCurrencyIdLiteral,
             vaultCollateralIdLiteral,
