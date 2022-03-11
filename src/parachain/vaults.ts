@@ -433,7 +433,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         governanceCurrency: GovernanceIdLiteral
     ): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrency);
-        const [globalRewardPerBlock, globalStake, vaultStake, vaultRewardShare, lockedCollateral] = await Promise.all([
+        const [globalRewardPerBlock, globalStake, vaultStake, vaultRewardShare, lockedCollateral, minimumBlockPeriod] = await Promise.all([
             this.rewardsAPI.getRewardPerBlock(governanceCurrency),
             this.getTotalIssuedAmount(),
             this.getIssuedAmount(vaultAccountId, collateralCurrency),
@@ -442,17 +442,19 @@ export class DefaultVaultsAPI implements VaultsAPI {
                 currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
                 vaultAccountId
             )).reserved,
-            this.oracleAPI.getExchangeRate(currencyIdLiteralToMonetaryCurrency(this.api, governanceCurrency)),
+            this.api.consts.timestamp.minimumPeriod
         ]);
         const globalRewardShare = vaultStake.toBig().div(globalStake.toBig());
         const vaultRewardPerBlock = globalRewardPerBlock.mul(globalRewardShare);
         const ownRewardPerBlock = vaultRewardPerBlock.mul(vaultRewardShare);
         const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(ownRewardPerBlock, this.wrappedCurrency);
-        // TODO: this gives PER-BLOCK YIELD, and NOT annual yield.
-        // Should get block duration to multiply by number of blocks in a year and hence Annual PY.
-        // Should also somehow account for emmision changes year on year? Or display APY assuming indefinite yield at
-        // current block rates?
-        return this.feeAPI.calculateAPY(rewardAsWrapped, lockedCollateral);
+        const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
+        const blocksPerYear = (86400 * 365 * 1000) / blockTime;
+        const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
+        // TODO: Should also somehow account for emmision changes year on year?
+        // (i.e. first 4 years falling 40% -> 30% -> 20% -> 10%, and next years 2% compounding every year)
+        // Or just display estimated APY assuming yield at current block rates?
+        return this.feeAPI.calculateAPY(annualisedReward, lockedCollateral);
     }
 
     async computeReward(
