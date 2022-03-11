@@ -189,6 +189,20 @@ export interface VaultsAPI {
      */
     getAPY(vaultAccountId: AccountId, collateralCurrency: CurrencyIdLiteral): Promise<Big>;
     /**
+     * Gets the estimated APY for just the block rewards (in governance tokens).
+     * @param vaultAccountId: the vault account ID
+     * @param nominatorId: an account nominating this vault
+     * @param collateralCurrency: the vault's collateral currency
+     * @param governanceCurrency: the governance token that block rewards are paid in
+     * @returns the APY as a percentage string
+     */
+    getBlockRewardAPY(
+        vaultAccountId: AccountId,
+        nominatorId: AccountId,
+        collateralCurrency: CollateralIdLiteral,
+        governanceCurrency: GovernanceIdLiteral
+    ): Promise<Big>;
+    /**
      * @returns Fee that a Vault has to pay, as a percentage, if it fails to execute
      * redeem or replace requests (for redeem, on top of the slashed wrapped-token-to-collateral
      * value of the request). The fee is paid in collateral currency based on the wrapped token
