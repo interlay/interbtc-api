@@ -50,6 +50,18 @@ export interface RewardsAPI {
      */
     getStakingPoolStake(collateralCurrencyId: CollateralIdLiteral, vaultId: AccountId, nominatorId: AccountId): Promise<Big>;
     /**
+     * Total stake for a vault
+     * @param collateralCurrencyIdLiteral The vault's collateral
+     * @param vaultAccountId The vault's accountID
+     * @param nonce The nonce of the rewards pool
+     * @returns The stake, as a Big object
+     */
+    getStakingPoolTotalStake(
+        collateralCurrencyIdLiteral: CollateralIdLiteral,
+        vaultAccountId: AccountId,
+        nonce?: number
+    ): Promise<Big>;
+    /**
      * @param rewardCurrencyId The reward currency, e.g. kBTC, KINT, interBTC, INTR
      * @param vaultId The account ID of the staking pool nominee
      * @param nominatorId The account ID of the staking pool nominator

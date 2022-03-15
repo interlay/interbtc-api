@@ -44,6 +44,7 @@ import {
     GovernanceUnit,
     CurrencyUnit,
     GovernanceIdLiteral,
+    GovernanceCurrency,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
@@ -194,6 +195,7 @@ export interface VaultsAPI {
      *
      * @param vaultAccountId The vault account ID
      * @param collateralCurrency The currency specification, a `Monetary.js` object
+     * @param governanceCurrency The governance currency we're using for block rewards
      * @returns the APY as a percentage string
      */
     getAPY(vaultAccountId: AccountId, collateralCurrency: CurrencyIdLiteral): Promise<Big>;
@@ -322,6 +324,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
+        private governanceCurrency: GovernanceCurrency,
         private tokensAPI: TokensAPI,
         private oracleAPI: OracleAPI,
         private feeAPI: FeeAPI,
@@ -478,9 +481,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
         const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
-        // TODO: Should also somehow account for emmision changes year on year?
-        // (i.e. first 4 years falling 40% -> 30% -> 20% -> 10%, and next years 2% compounding every year)
-        // Or just display estimated APY assuming yield at current block rates?
         return this.feeAPI.calculateAPY(annualisedReward, lockedCollateral);
     }
 
@@ -863,7 +863,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getAPY(vaultAccountId: AccountId, collateralCurrency: CollateralIdLiteral): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrency);
-        const [feesWrapped, lockedCollateral] = await Promise.all([
+        const [feesWrapped, lockedCollateral, blockRewardsAPY] = await Promise.all([
             await this.getWrappedReward(vaultAccountId, collateralCurrency),
             (
                 await this.tokensAPI.balance(
@@ -871,8 +871,14 @@ export class DefaultVaultsAPI implements VaultsAPI {
                     vaultAccountId
                 )
             ).reserved,
+            this.getBlockRewardAPY(
+                vaultAccountId,
+                vaultAccountId,
+                collateralCurrency,
+                tickerToCurrencyIdLiteral(this.governanceCurrency.ticker) as GovernanceIdLiteral
+            )
         ]);
-        return this.feeAPI.calculateAPY(feesWrapped, lockedCollateral);
+        return (await this.feeAPI.calculateAPY(feesWrapped, lockedCollateral)).add(blockRewardsAPY);
     }
 
     async getPunishmentFee(): Promise<Big> {

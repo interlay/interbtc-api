@@ -107,6 +107,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             btcNetwork,
             this.electrsAPI,
             wrappedCurrency,
+            governanceCurrency,
             this.tokens,
             this.oracle,
             this.fee,
