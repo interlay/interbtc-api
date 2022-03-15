@@ -24,6 +24,8 @@ import {
     currencyIdToLiteral,
     CurrencyUnit,
     currencyIdLiteralToMonetaryCurrency,
+    GovernanceUnit,
+    GovernanceIdLiteral,
 } from "../types";
 
 export interface RewardsAPI {
@@ -47,6 +49,18 @@ export interface RewardsAPI {
      * @returns The stake, as a Big object
      */
     getStakingPoolStake(collateralCurrencyId: CollateralIdLiteral, vaultId: AccountId, nominatorId: AccountId): Promise<Big>;
+    /**
+     * Total stake for a vault
+     * @param collateralCurrencyIdLiteral The vault's collateral
+     * @param vaultAccountId The vault's accountID
+     * @param nonce The nonce of the rewards pool
+     * @returns The stake, as a Big object
+     */
+    getStakingPoolTotalStake(
+        collateralCurrencyIdLiteral: CollateralIdLiteral,
+        vaultAccountId: AccountId,
+        nonce?: number
+    ): Promise<Big>;
     /**
      * @param rewardCurrencyId The reward currency, e.g. kBTC, KINT, interBTC, INTR
      * @param vaultId The account ID of the staking pool nominee
@@ -133,6 +147,12 @@ export interface RewardsAPI {
         vaultId: InterbtcPrimitivesVaultId,
         nonce?: number,
     ): Promise<void>;
+
+    /**
+     * Gets the vault annuity systemwide per-block reward.
+     * @param governanceCurrency The ID of the currency the reward is paid out in.
+     */
+    getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
 }
 
 export class DefaultRewardsAPI implements RewardsAPI {
@@ -204,6 +224,22 @@ export class DefaultRewardsAPI implements RewardsAPI {
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         const rawStake = await this.api.query.vaultStaking.stake(nonce, [vaultId, nominatorId]);
         return decodeFixedPointType(rawStake);
+    }
+
+    async getStakingPoolTotalStake(
+        collateralCurrencyIdLiteral: CollateralIdLiteral,
+        vaultAccountId: AccountId,
+        nonce?: number
+    ): Promise<Big> {
+        if (nonce === undefined) {
+            nonce = await this.getStakingPoolNonce(collateralCurrencyIdLiteral, vaultAccountId);
+        }
+        const collateralCurrency = currencyIdToMonetaryCurrency(
+            newCurrencyId(this.api, collateralCurrencyIdLiteral)
+        ) as CollateralCurrency;
+        const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
+        const rawTotalStake = await this.api.query.vaultStaking.totalCurrentStake(nonce, vaultId);
+        return decodeFixedPointType(rawTotalStake);
     }
 
     async getStakingPoolRewardTally(
@@ -341,6 +377,14 @@ export class DefaultRewardsAPI implements RewardsAPI {
 
         return decodeFixedPointType(
             await this.api.query.vaultRewards.rewardPerToken(newCurrencyId(this.api, currencyId))
+        );
+    }
+
+    async getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+        const rawRewardPerBlock = await this.api.query.vaultAnnuity.rewardPerBlock();
+        return newMonetaryAmount(
+            rawRewardPerBlock.toString(),
+            currencyIdLiteralToMonetaryCurrency(this.api, governanceCurrency) as Currency<GovernanceUnit>
         );
     }
 }
