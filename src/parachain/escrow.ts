@@ -237,10 +237,10 @@ export class DefaultEscrowAPI implements EscrowAPI {
             };
         }
 
+        // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward
         const rewardAmount = newUserStake
             .div(newTotalStake)
             .mul(blockReward.toBig())
-            .mul(newLockDuration);
 
         const monetaryRewardAmount = newMonetaryAmount(rewardAmount, this.governanceCurrency as unknown as Currency<U>);
 
