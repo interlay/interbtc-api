@@ -170,12 +170,13 @@ export class DefaultEscrowAPI implements EscrowAPI {
             amount: MonetaryAmount<Currency<U>, U>,
             apy: Big
     }> {
-        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber] = await Promise.all([
+        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber, minimumBlockPeriod] = await Promise.all([
             this.getEscrowStake(accountId),
             this.getEscrowTotalStake(),
             this.getRewardPerBlock(),
             this.getStakedBalance(accountId),
-            this.systemAPI.getCurrentBlockNumber()
+            this.systemAPI.getCurrentBlockNumber(),
+            this.api.consts.timestamp.minimumPeriod
         ]);
 
         // Note: the parachain uses the balance_at which combines the staked amount
@@ -237,16 +238,29 @@ export class DefaultEscrowAPI implements EscrowAPI {
             };
         }
 
-        // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward
+        // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward * lock duration
         const rewardAmount = newUserStake
             .div(newTotalStake)
             .mul(blockReward.toBig())
+            .mul(newLockDuration);
 
         const monetaryRewardAmount = newMonetaryAmount(rewardAmount, this.governanceCurrency as unknown as Currency<U>);
 
+        // TODO: move this to a util function so we can use it across the codebase
+        // normalize APY to 1 year
+        const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
+        const blocksPerYear = (86400 * 365 * 1000) / blockTime;
+        const annualisedReward = rewardAmount
+            .div(newLockDuration)
+            .mul(blocksPerYear);
+
+        const apy = annualisedReward
+            .div(newStakedBalance.amount.toBig())
+            .mul(100);
+
         return {
             amount: monetaryRewardAmount,
-            apy: rewardAmount.div(newStakedBalance.amount.toBig()).mul(100)
+            apy: apy
         };
     }
 
