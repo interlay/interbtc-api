@@ -170,18 +170,47 @@ export class DefaultEscrowAPI implements EscrowAPI {
             amount: MonetaryAmount<Currency<U>, U>,
             apy: Big
     }> {
-        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber, minimumBlockPeriod] = await Promise.all([
+        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber, minimumBlockPeriod, maxPeriod] = await Promise.all([
             this.getEscrowStake(accountId),
             this.getEscrowTotalStake(),
             this.getRewardPerBlock(),
             this.getStakedBalance(accountId),
             this.systemAPI.getCurrentBlockNumber(),
-            this.api.consts.timestamp.minimumPeriod
+            this.api.consts.timestamp.minimumPeriod,
+            this.getMaxPeriod()
         ]);
 
+        return this._computeRewardEstimate<U>(
+            userStake,
+            totalStake,
+            blockReward,
+            stakedBalance,
+            currentBlockNumber,
+            minimumBlockPeriod.toNumber(),
+            maxPeriod.toNumber(),
+            amountToLock,
+            blockLockTimeExtension
+        );
+
+    }
+
+    _computeRewardEstimate<U extends GovernanceUnit>(
+        userStake: Big,
+        totalStake: Big,
+        blockReward: MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
+        stakedBalance: StakedBalance<GovernanceUnit>,
+        currentBlockNumber: number,
+        minimumBlockPeriod: number,
+        maxPeriod: number,
+        amountToLock: MonetaryAmount<Currency<U>, U> = newMonetaryAmount(0, this.governanceCurrency as unknown as Currency<U>),
+        blockLockTimeExtension: number = 0
+    ): {
+        amount: MonetaryAmount<Currency<U>, U>,
+        apy: Big
+    } {
         // Note: the parachain uses the balance_at which combines the staked amount
-        // and staked time to calculate the share in the reward pool
-        // like `amountLocked * unlockHeight`
+        // and staked time divided by the maximum period to calculate the share in the reward pool
+        // like `amountLocked * unlockHeight / maxPeriod`
         // https://github.com/interlay/interbtc/blob/1.7.3/crates/escrow/src/lib.rs#L525
         // We need to differentiate four cases:
         // 1. The user does not add any new stake/extend their lock time
@@ -189,46 +218,41 @@ export class DefaultEscrowAPI implements EscrowAPI {
         // 3. The user increases only their stake
         // 4. The user extends only the locktime
 
-        // Case 1: no change
-        // actual tokens staked and unlock height
-        const newStakedBalance = stakedBalance;
-        // user_staked_tokens * unlock_height
-        let newUserStake = userStake;
-        // total_staked_tokens * unlock_heights
-        let newTotalStake = totalStake;
-        let newLockDuration = (stakedBalance.endBlock - currentBlockNumber) > 0 ?
-            stakedBalance.endBlock - currentBlockNumber : 0;
-        // Case 2: update stake an unlock height
-        if (amountToLock && blockLockTimeExtension) {
-            const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>);
+        // Note: on first time staking the user has to provide both a increased stake and a locktime
+        // otherwise, the rewards will be 0.
+        let newStakedBalance = {
+            amount: stakedBalance.amount,
+            endBlock: stakedBalance.endBlock
+        };
+
+        const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>)
+        // User staking for the first time; only case 2 relevant otherwise rewards should be 0
+        if (stakedBalance.amount.isZero()) {
+            newStakedBalance.amount = monetaryAddedStake;
+            newStakedBalance.endBlock = currentBlockNumber + blockLockTimeExtension;
+        // User increasing stake or locking amount or none (cases 1 - 4)
+        } else {
+            // might add 0 to either amount or endBlock
             newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStake);
             newStakedBalance.endBlock = stakedBalance.endBlock + blockLockTimeExtension;
-
+        };
+        let newLockDuration = 0;
+        if (newStakedBalance.endBlock - currentBlockNumber > 0) {
             newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
-            const newStake = amountToLock.toBig().mul(newLockDuration);
-            newUserStake = userStake.add(newStake);
-            newTotalStake = totalStake.add(newStake);
-        // Case 3: update stake only
-        } else if (amountToLock && !blockLockTimeExtension) {
-            const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>);
-            newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStake);
+        };
 
-            const newStake = amountToLock.toBig();
-            newUserStake = userStake.add(newStake);
-            newTotalStake = totalStake.add(newStake);
-        // Case 4: update unlock height only
-        } else if (!amountToLock && blockLockTimeExtension) {
-            newStakedBalance.endBlock = stakedBalance.endBlock + blockLockTimeExtension;
+        const newUserStake = newStakedBalance.amount.toBig()
+            .mul(newLockDuration)
+            .div(maxPeriod);
+        const userStakeDifference = newUserStake.sub(userStake);
+        const newTotalStake = totalStake.add(userStakeDifference);
 
-            newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
-            const newStake = new Big(newLockDuration);
-            newUserStake = userStake.add(newStake);
-            newTotalStake = totalStake.add(newStake);
-        }
-
-        // If there is nothing staked in the system or
-        // no rewards are paid, the rewards are 0
-        if (newUserStake.eq(0) || blockReward.isZero()) {
+        // Catch 0 values
+        if (
+            newLockDuration == 0 ||
+            newTotalStake.eq(0) ||
+            newStakedBalance.amount.isZero()
+        ) {
             return {
                 amount: newMonetaryAmount(
                     0,
@@ -236,8 +260,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
                 ),
                 apy: new Big(0)
             };
-        }
-
+        };
         // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward * lock duration
         const rewardAmount = newUserStake
             .div(newTotalStake)
@@ -248,7 +271,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
         // TODO: move this to a util function so we can use it across the codebase
         // normalize APY to 1 year
-        const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
+        const blockTime = minimumBlockPeriod * 2; // ms
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
         const annualisedReward = rewardAmount
             .div(newLockDuration)
