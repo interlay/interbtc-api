@@ -902,7 +902,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     private parseVaultStatus(status: VaultRegistryVaultStatus): VaultStatusExt {
         if (status.isActive) {
-            return status.asActive ? VaultStatusExt.Active : VaultStatusExt.Inactive;
+            return status.asActive.isTrue ? VaultStatusExt.Active : VaultStatusExt.Inactive;
         } else if (status.isLiquidated) {
             return VaultStatusExt.Liquidated;
         } else if (status.isCommittedTheft) {
