@@ -15,7 +15,7 @@ import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
 import { BitcoinAmount } from "@interlay/monetary-js";
 
-export const MAINNET_ESPLORA_BASE_PATH = "https://blockstream.info/api";
+export const MAINNET_ESPLORA_BASE_PATH = "https://btc-mainnet.interlay.io";
 export const TESTNET_ESPLORA_BASE_PATH = "https://btc-testnet.interlay.io";
 export const REGTEST_ESPLORA_BASE_PATH = "http://localhost:3002";
 
