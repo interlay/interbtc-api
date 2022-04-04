@@ -235,11 +235,11 @@ export class DefaultEscrowAPI implements EscrowAPI {
             // might add 0 to either amount or endBlock
             newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStake);
             newStakedBalance.endBlock = stakedBalance.endBlock + blockLockTimeExtension;
-        };
+        }
         let newLockDuration = 0;
         if (newStakedBalance.endBlock - currentBlockNumber > 0) {
             newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
-        };
+        }
 
         const newUserStake = newStakedBalance.amount.toBig()
             .mul(newLockDuration)
