@@ -220,12 +220,12 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
         // Note: on first time staking the user has to provide both a increased stake and a locktime
         // otherwise, the rewards will be 0.
-        let newStakedBalance = {
+        const newStakedBalance = {
             amount: stakedBalance.amount,
             endBlock: stakedBalance.endBlock
         };
 
-        const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>)
+        const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>);
         // User staking for the first time; only case 2 relevant otherwise rewards should be 0
         if (stakedBalance.amount.isZero()) {
             newStakedBalance.amount = monetaryAddedStake;
@@ -260,7 +260,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
                 ),
                 apy: new Big(0)
             };
-        };
+        }
         // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward * lock duration
         const rewardAmount = newUserStake
             .div(newTotalStake)
@@ -295,6 +295,11 @@ export class DefaultEscrowAPI implements EscrowAPI {
     async getEscrowTotalStake(): Promise<Big> {
         const rawTotalStake = await this.api.query.escrowRewards.totalStake();
         return decodeFixedPointType(rawTotalStake);
+    }
+
+    async getEscrowTotalStakeAsGovernanceToken(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>  {
+        const rawTotalStake = await this.api.query.escrowRewards.totalStake();
+        return newMonetaryAmount(rawTotalStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getRewardTally(accountId: AccountId): Promise<Big> {
