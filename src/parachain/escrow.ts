@@ -108,7 +108,7 @@ export interface EscrowAPI {
             apy: Big
     }>;
     /**
-     * @remarks Returns total stake as governance token amount (e.g. KINT or INTR)
+     * @returns Returns total stake as governance token amount (e.g. KINT or INTR)
      */
     getEscrowTotalStakeAsGovernanceToken(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
 
