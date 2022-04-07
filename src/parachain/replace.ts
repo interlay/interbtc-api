@@ -201,7 +201,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
             replaceRequests
                 .filter((v) => v[1].isSome.valueOf)
                 // Can be unwrapped because the filter removes `None` values
-                .map((v) => parseReplaceRequest(this.vaultsAPI, v[1].unwrap(), this.btcNetwork, this.wrappedCurrency))
+                .map(([id, req]) =>
+                    parseReplaceRequest(this.vaultsAPI, req.unwrap(), this.btcNetwork, this.wrappedCurrency, storageKeyToNthInner(id)))
         );
     }
 
@@ -214,15 +215,16 @@ export class DefaultReplaceAPI implements ReplaceAPI {
                 .filter((v) => v[1].isSome.valueOf)
                 // Can be unwrapped because the filter removes `None` values
                 .map(
-                    (v) =>
+                    ([id, req]) =>
                         new Promise<void>((resolve) => {
                             parseReplaceRequest(
                                 this.vaultsAPI,
-                                v[1].unwrap(),
+                                req.unwrap(),
                                 this.btcNetwork,
-                                this.wrappedCurrency
+                                this.wrappedCurrency,
+                                storageKeyToNthInner(id)
                             ).then((replaceRequest) => {
-                                replaceRequestMap.set(storageKeyToNthInner(v[0]), replaceRequest);
+                                replaceRequestMap.set(storageKeyToNthInner(id), replaceRequest);
                                 resolve();
                             });
                         })
@@ -237,7 +239,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
             this.vaultsAPI,
             await this.api.query.replace.replaceRequests.at(head, ensureHashEncoded(this.api, replaceId)),
             this.btcNetwork,
-            this.wrappedCurrency
+            this.wrappedCurrency,
+            replaceId
         );
     }
 
@@ -266,7 +269,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
             requestPairs.map(
                 ([id, req]) =>
                     new Promise<[H256, ReplaceRequestExt]>((resolve) => {
-                        parseReplaceRequest(this.vaultsAPI, req, this.btcNetwork, this.wrappedCurrency).then(
+                        parseReplaceRequest(this.vaultsAPI, req, this.btcNetwork, this.wrappedCurrency, id).then(
                             (replaceRequest) => {
                                 resolve([id, replaceRequest]);
                             }

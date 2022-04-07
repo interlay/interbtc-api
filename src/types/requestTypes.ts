@@ -83,6 +83,7 @@ export interface RefundRequestExt {
 }
 
 export interface ReplaceRequestExt {
+    id: string;
     btcAddress: string;
     newVault: InterbtcPrimitivesVaultId;
     oldVault: InterbtcPrimitivesVaultId;

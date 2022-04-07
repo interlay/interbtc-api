@@ -226,12 +226,14 @@ export async function parseReplaceRequest(
     vaultsAPI: VaultsAPI,
     req: InterbtcPrimitivesReplaceReplaceRequest,
     network: Network,
-    wrappedCurrency: WrappedCurrency
+    wrappedCurrency: WrappedCurrency,
+    id: H256 | string
 ): Promise<ReplaceRequestExt> {
     const currencyIdLiteral = currencyIdToLiteral(req.oldVault.currencies.collateral);
     const oldVault = await vaultsAPI.get(req.oldVault.accountId, currencyIdLiteral);
     const collateralCurrency = currencyIdToMonetaryCurrency(oldVault.id.currencies.collateral) as Currency<CollateralUnit>;
     return {
+        id: stripHexPrefix(id.toString()),
         btcAddress: encodeBtcAddress(req.btcAddress, network),
         newVault: req.newVault,
         oldVault: req.oldVault,
