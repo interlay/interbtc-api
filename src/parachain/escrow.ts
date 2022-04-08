@@ -110,7 +110,7 @@ export interface EscrowAPI {
     /**
      * @returns Returns total stake as governance token amount (e.g. KINT or INTR)
      */
-    getEscrowTotalStakeAsGovernanceToken(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
+    getEscrowTotalStake(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
 
 }
 
@@ -154,7 +154,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
     async getRewards<U extends GovernanceUnit>(accountId: AccountId): Promise<MonetaryAmount<Currency<U>, U>> {
         // Step 1. Get amount in reward pool for the account ID
         const [rewardStake, rewardPerToken, rewardTally] = await Promise.all([
-            this.getEscrowStake(accountId),
+            this.getEscrowStakeRaw(accountId),
             this.getRewardPerToken(),
             this.getRewardTally(accountId)
         ]);
@@ -176,8 +176,8 @@ export class DefaultEscrowAPI implements EscrowAPI {
             apy: Big
     }> {
         const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber, minimumBlockPeriod, maxPeriod] = await Promise.all([
-            this.getEscrowStake(accountId),
-            this.getEscrowTotalStake(),
+            this.getEscrowStakeRaw(accountId),
+            this.getEscrowTotalStakeRaw(),
             this.getRewardPerBlock(),
             this.getStakedBalance(accountId),
             this.systemAPI.getCurrentBlockNumber(),
@@ -292,19 +292,19 @@ export class DefaultEscrowAPI implements EscrowAPI {
         };
     }
 
-    async getEscrowStake(accountId: AccountId): Promise<Big> {
+    async getEscrowStakeRaw(accountId: AccountId): Promise<Big> {
         const rawStake = await this.api.query.escrowRewards.stake(accountId);
         return decodeFixedPointType(rawStake);
     }
 
-    async getEscrowTotalStake(): Promise<Big> {
+    async getEscrowTotalStakeRaw(): Promise<Big> {
         const rawTotalStake = await this.api.query.escrowRewards.totalStake();
         return decodeFixedPointType(rawTotalStake);
     }
 
-    async getEscrowTotalStakeAsGovernanceToken(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>  {
-        const rawTotalStake = await this.api.query.escrowRewards.totalStake();
-        return newMonetaryAmount((await this.getEscrowTotalStake()), this.governanceCurrency as Currency<GovernanceUnit>);
+    async getEscrowTotalStake(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>  {
+        const rawTotalStake = await this.getEscrowTotalStakeRaw();
+        return newMonetaryAmount(rawTotalStake, this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getRewardTally(accountId: AccountId): Promise<Big> {
