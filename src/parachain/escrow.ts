@@ -304,7 +304,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
     async getEscrowTotalStakeAsGovernanceToken(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>  {
         const rawTotalStake = await this.api.query.escrowRewards.totalStake();
-        return newMonetaryAmount(rawTotalStake.toString(), this.governanceCurrency as Currency<GovernanceUnit>);
+        return newMonetaryAmount((await this.getEscrowTotalStake()), this.governanceCurrency as Currency<GovernanceUnit>);
     }
 
     async getRewardTally(accountId: AccountId): Promise<Big> {
