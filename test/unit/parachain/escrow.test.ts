@@ -388,11 +388,4 @@ describe("Escrow", () => {
         assert.equal(result.apy.round(2).toString(), apy.round(2).toString());
         assert.isTrue(result.apy.gt(0), `${result.apy.toString()} not greater than 0`);
     });
-
-    it("should return the total stake as a governance token amount", async () => {
-        const totalStake = new Big(0);
-        const getTotalStake = await escrowApi.getEscrowTotalStakeAsGovernanceToken();
-
-        assert.equal(getTotalStake.toString(), totalStake.toString());
-    });
 });

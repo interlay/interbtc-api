@@ -57,6 +57,40 @@ describe("escrow", () => {
         assert.isTrue(rewardsEstimate.amount.isZero(), `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`);
     });
 
+    // PRECONDITION: This test must run third, so no tokens are locked.
+    it("should return the total stake as a monetary amount", async () => {
+        const user1_intrAmount = newMonetaryAmount(1000, governanceCurrency, true);
+        const user2_intrAmount = newMonetaryAmount(600, governanceCurrency, true);
+        const chargedFees = newMonetaryAmount(2, governanceCurrency, true);
+
+        const user1_stake = newMonetaryAmount(500, governanceCurrency, true);
+
+        const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
+        const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
+
+        const userIntrPairs: [KeyringPair, typeof user2_intrAmount][] = [
+            [userAccount_1, user1_intrAmount],
+            [userAccount_2, user2_intrAmount],
+        ];
+
+        // FIXME: remove magic multiplier
+        for (const [userKeyring, amount] of userIntrPairs) {
+            const userAccount = newAccountId(api, userKeyring.address);
+            await sudo(
+                interBtcAPI,
+                () => interBtcAPI.tokens.setBalance(
+                    userAccount,
+                    amount.mul(2).add((chargedFees).mul(3))
+                )
+            );
+        }
+
+        interBtcAPI.setAccount(userAccount_1);
+        await interBtcAPI.escrow.createLock(user1_stake, currentBlockNumber + unlockHeightDiff);
+
+        assert.equal(interBtcAPI.escrow.getEscrowTotalStake.toString(), user1_stake.toString());
+    });
+
     it("should compute voting balance and total supply", async () => {
         const user1_intrAmount = newMonetaryAmount(1000, governanceCurrency, true);
         const user2_intrAmount = newMonetaryAmount(600, governanceCurrency, true);
@@ -122,7 +156,7 @@ describe("escrow", () => {
     }).timeout(500000);
 
     // TODO: Unskip and implement once instant-seal is added to interbtc-standalone. Otherwise this test would take a week.
-    it.skip("should withdraw locked funds", async () => {}).timeout(100000);
+    // it.skip("should withdraw locked funds", async () => {}).timeout(100000);
 
     it("should increase amount and unlock height", async () => {
         const user_intrAmount = newMonetaryAmount(1000, governanceCurrency, true);
