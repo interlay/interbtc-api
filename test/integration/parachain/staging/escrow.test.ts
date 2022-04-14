@@ -53,7 +53,7 @@ describe("escrow", () => {
     it("should return 0 reward and apy estimate", async () => {
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
 
-        assert.equal(rewardsEstimate.apy, new Big(0), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
+        assert.equal(rewardsEstimate.apy.toString(), "0", `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
         assert.isTrue(rewardsEstimate.amount.isZero(), `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`);
     });
 
@@ -78,7 +78,8 @@ describe("escrow", () => {
         interBtcAPI.setAccount(userAccount_1);
         await interBtcAPI.escrow.createLock(user1_stake, currentBlockNumber + unlockHeightDiff);
 
-        assert.equal(interBtcAPI.escrow.getEscrowTotalStake.toString(), user1_stake.toString());
+        const totalStake = await interBtcAPI.escrow.getEscrowTotalStake();
+        assert.equal(totalStake.toString(), user1_stake.toString());
     });
 
     it("should compute voting balance and total supply", async () => {
