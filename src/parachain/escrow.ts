@@ -220,12 +220,12 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
         // Note: on first time staking the user has to provide both a increased stake and a locktime
         // otherwise, the rewards will be 0.
-        let newStakedBalance = {
+        const newStakedBalance = {
             amount: stakedBalance.amount,
             endBlock: stakedBalance.endBlock
         };
 
-        const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>)
+        const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>);
         // User staking for the first time; only case 2 relevant otherwise rewards should be 0
         if (stakedBalance.amount.isZero()) {
             newStakedBalance.amount = monetaryAddedStake;
@@ -235,11 +235,11 @@ export class DefaultEscrowAPI implements EscrowAPI {
             // might add 0 to either amount or endBlock
             newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStake);
             newStakedBalance.endBlock = stakedBalance.endBlock + blockLockTimeExtension;
-        };
+        }
         let newLockDuration = 0;
         if (newStakedBalance.endBlock - currentBlockNumber > 0) {
             newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
-        };
+        }
 
         const newUserStake = newStakedBalance.amount.toBig()
             .mul(newLockDuration)
@@ -260,7 +260,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
                 ),
                 apy: new Big(0)
             };
-        };
+        }
         // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward * lock duration
         const rewardAmount = newUserStake
             .div(newTotalStake)
