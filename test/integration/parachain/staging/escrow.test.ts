@@ -76,10 +76,14 @@ describe("escrow", () => {
         );
 
         interBtcAPI.setAccount(userAccount_1);
+        
         await interBtcAPI.escrow.createLock(user1_stake, currentBlockNumber + unlockHeightDiff);
-
+        
         const totalStake = await interBtcAPI.escrow.getEscrowTotalStake();
-        assert.equal(totalStake.toString(), user1_stake.toString());
+        const locks = await interBtcAPI.api.query.escrow.locked.entries();
+        const totalLocked = locks.map((v) => parseInt(v[1].amount)).reduce((a,b) => a+b);
+
+        assert.equal(totalStake.toString(), totalLocked.toString());
     });
 
     it("should compute voting balance and total supply", async () => {
