@@ -256,7 +256,7 @@ export class DefaultIssueAPI implements IssueAPI {
     ): Promise<SubmittableExtrinsic<"promise">> {
         let griefingCollateral = await this.feeAPI.getGriefingCollateral(amount, GriefingCollateralType.Issue);
         // add() here is a hacky workaround for rounding errors
-        const oneHundred = newMonetaryAmount(100, griefingCollateral.currency);
+        const oneHundred = newMonetaryAmount(500, griefingCollateral.currency);
         griefingCollateral = griefingCollateral.add(oneHundred);
         return this.api.tx.issue.requestIssue(
             amount.toString(amount.currency.rawBase),

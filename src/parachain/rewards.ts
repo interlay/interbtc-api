@@ -243,7 +243,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
     }
 
     async getStakingPoolRewardTally(
-        rewardCurrencyId: CurrencyIdLiteral,
+        rewardCurrencyIdLiteral: CurrencyIdLiteral,
         vaultAccountId: AccountId,
         nominatorId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral,
@@ -252,14 +252,14 @@ export class DefaultRewardsAPI implements RewardsAPI {
         if (nonce === undefined) {
             nonce = await this.getStakingPoolNonce(collateralCurrencyIdLiteral, vaultAccountId);
         }
-
-        const collateralCurrencyId = newCurrencyId(this.api, collateralCurrencyIdLiteral);
-        const collateralCurrency = currencyIdToMonetaryCurrency(
-            collateralCurrencyId
+        const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
+            this.api,
+            collateralCurrencyIdLiteral
         ) as CollateralCurrency;
+        const rewardCurrency = newCurrencyId(this.api, rewardCurrencyIdLiteral);
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         return decodeFixedPointType(
-            await this.api.query.vaultStaking.rewardTally(collateralCurrencyId, [nonce, vaultId, nominatorId])
+            await this.api.query.vaultStaking.rewardTally(rewardCurrency, [nonce, vaultId, nominatorId])
         );
     }
 
