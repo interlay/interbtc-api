@@ -19,9 +19,6 @@ const DEFAULT_VAULT_3_URI="//Eve//stash";
 const DEFAULT_VAULT_TO_LIQUIDATE_URI="//Ferdie//stash";
 const DEFAULT_VAULT_TO_BAN_URI="//Ferdie";
 const DEFAULT_SUDO_URI="//Alice";
-const DEFAULT_COLLATERAL_CURRENCY_TICKER="DOT";
-const DEFAULT_WRAPPED_CURRENCY_TICKER="INTERBTC";
-const DEFAULT_GOVERNANCE_CURRENCY_TICKER="INTR";
 
 // Use the config set in the environment, or fallback to the config for local testing
 export const PARACHAIN_ENDPOINT = process.env.PARACHAIN_ENDPOINT || DEFAULT_PARACHAIN_ENDPOINT;

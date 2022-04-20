@@ -27,7 +27,7 @@ import { newCurrencyId, newMonetaryAmount } from "../utils";
 
 export enum CurrencyIdLiteral {
     DOT = "DOT",
-    INTERBTC = "INTERBTC",
+    INTERBTC = "IBTC",
     INTR = "INTR",
     KSM = "KSM",
     KBTC = "KBTC",
