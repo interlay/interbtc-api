@@ -371,8 +371,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async list(atBlock?: BlockHash): Promise<VaultExt<BitcoinUnit>[]> {
-        const block = atBlock || (await this.api.rpc.chain.getFinalizedHead());
-        const vaultsMap = await this.api.query.vaultRegistry.vaults.entriesAt(block);
+        const vaultsMap = await (atBlock ?
+            this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
+            : this.api.query.vaultRegistry.vaults.entries());
         return Promise.all(
             vaultsMap
                 .filter((v) => v[1].isSome)
