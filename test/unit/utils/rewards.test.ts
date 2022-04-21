@@ -1,35 +1,17 @@
-import { Currency, KintsugiAmount, KintsugiUnit, MonetaryAmount } from "@interlay/monetary-js";
-import { ApiPromise } from "@polkadot/api";
+import { Currency, Kintsugi, KintsugiAmount, KintsugiUnit, MonetaryAmount } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
-
-import { createSubstrateAPI, DefaultEscrowAPI, DefaultSystemAPI, DefaultTransactionAPI, GovernanceUnit, newMonetaryAmount, tickerToMonetaryCurrency } from "../../../src";
-import { PARACHAIN_ENDPOINT } from "../../config";
+import { GovernanceUnit, newMonetaryAmount, estimateReward } from "../../../src";
 
 const WEEK_IN_BLOCKS = 54000;
 const MINIMUM_BLOCK_PERIOD = 6000; // 6s parachain constant
 const MAX_PERIOD = 4838400; // Kintsugi max locking period
 
 describe("Escrow", () => {
-    let api: ApiPromise;
-    let escrowApi: DefaultEscrowAPI;
     let kintCurrency: Currency<KintsugiUnit>;
 
     before(async () => {
-        // FIXME: check if we can do this without running a chain locally
-        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        const transactionApi = new DefaultTransactionAPI(api);
-        kintCurrency = tickerToMonetaryCurrency(api, "KINT") as Currency<KintsugiUnit>;
-        escrowApi = new DefaultEscrowAPI(
-            api,
-            kintCurrency,
-            new DefaultSystemAPI(api, transactionApi),
-            transactionApi
-        );
-    });
-
-    after(async () => {
-        api.disconnect();
+        kintCurrency = Kintsugi;
     });
 
     it("should calculate rewards for the first staker with only the amount", () => {
@@ -50,7 +32,8 @@ describe("Escrow", () => {
         const amount = "0";
         const apy = "0";
 
-        const resultAmount = escrowApi._computeRewardEstimate(
+        const resultAmount = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -83,7 +66,8 @@ describe("Escrow", () => {
         const amount = "0";
         const apy = "0";
 
-        const resultTime = escrowApi._computeRewardEstimate(
+        const resultTime = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -124,7 +108,8 @@ describe("Escrow", () => {
             .div(amountToLock.toBig())
             .mul(100);
 
-        const resultAmountAndTime = escrowApi._computeRewardEstimate(
+        const resultAmountAndTime = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -163,7 +148,8 @@ describe("Escrow", () => {
         // projects block rewards for 1 year
         const apy = "0";
 
-        const resultAmountAndTime = escrowApi._computeRewardEstimate(
+        const resultAmountAndTime = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -177,7 +163,8 @@ describe("Escrow", () => {
         assert.equal(resultAmountAndTime.amount.toString(), amount);
         assert.equal(resultAmountAndTime.apy.toString(), apy);
 
-        const resultAmount = escrowApi._computeRewardEstimate(
+        const resultAmount = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -191,7 +178,8 @@ describe("Escrow", () => {
         assert.equal(resultAmount.amount.toString(), amount);
         assert.equal(resultAmount.apy.toString(), apy);
 
-        const resultTime = escrowApi._computeRewardEstimate(
+        const resultTime = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -205,7 +193,8 @@ describe("Escrow", () => {
         assert.equal(resultTime.amount.toString(), amount);
         assert.equal(resultTime.apy.toString(), apy);
 
-        const resultNoInput = escrowApi._computeRewardEstimate(
+        const resultNoInput = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -241,21 +230,23 @@ describe("Escrow", () => {
         const newUserStake = amountToLock.toBig(0)
             .mul(blockLockTimeExtension)
             .div(MAX_PERIOD);
-        const amount = blockReward
-            .mul(newUserStake) // user stake
+        const amount = newUserStake
             .div(newUserStake.add(totalStake)) // new total stake
+            .mul(blockReward.toBig())
             .mul(blockLockTimeExtension);
+
+        const blockTime = MINIMUM_BLOCK_PERIOD * 2; // ms
+        const blocksPerYear = (60 * 60 * 24 * 365 * 1000) / blockTime;
+
         // projects block rewards for 1 year
         const apy = amount
-            .toBig()
             .div(blockLockTimeExtension)
-            .mul(60 * 60 * 24 * 365 * 1000) // ms per year
-            .div(MINIMUM_BLOCK_PERIOD * 2)
+            .mul(blocksPerYear)
             .div(amountToLock.toBig())
-            .mul(100)
-            .round(0);
+            .mul(100);
 
-        const result = escrowApi._computeRewardEstimate(
+        const result = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -267,9 +258,9 @@ describe("Escrow", () => {
             blockLockTimeExtension
         );
 
-        assert.equal(result.amount.toString(), amount.toString());
+        assert.equal(result.amount.toString(), amount.round(0, 0).toString());
         assert.isTrue(result.amount.toBig().gt(0), `${result.amount.toString()} not greater than 0`);
-        assert.equal(result.apy.round(0).toString(), apy.toString());
+        assert.equal(result.apy.round(0).toString(), apy.round(0).toString());
         assert.isTrue(result.apy.gt(0), `${result.apy.toString()} not greater than 0`);
     });
 
@@ -315,7 +306,8 @@ describe("Escrow", () => {
             .div(stakedBalance.amount.toBig().add(amountToLock.toBig()))
             .mul(100);
 
-        const result = escrowApi._computeRewardEstimate(
+        const result = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
@@ -365,7 +357,8 @@ describe("Escrow", () => {
             .div(stakedBalance.amount.toBig())
             .mul(100);
 
-        const result = escrowApi._computeRewardEstimate(
+        const result = estimateReward(
+            kintCurrency,
             userStake,
             totalStake,
             blockReward,
