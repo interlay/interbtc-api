@@ -10,7 +10,6 @@ import { CollateralUnit, currencyIdToMonetaryCurrency } from "./currency";
 
 export interface WalletExt {
     // network encoded btc addresses
-    publicKey: string;
     addresses: Array<string>;
 }
 

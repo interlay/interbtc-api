@@ -331,7 +331,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private rewardsAPI: RewardsAPI,
         private systemAPI: SystemAPI,
         private transactionAPI: TransactionAPI
-    ) {}
+    ) { }
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
@@ -344,8 +344,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
             tickerToMonetaryCurrency(this.api, amount.currency.ticker) as CollateralCurrency,
             this.wrappedCurrency
         );
-        const tx = this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit, publicKey);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault, true);
+        await Promise.all([
+            this.transactionAPI.sendLogged(this.api.tx.vaultRegistry.registerPublicKey(publicKey), this.api.events.vaultRegistry.UpdatePublicKey, true),
+            this.transactionAPI.sendLogged(this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit), this.api.events.vaultRegistry.RegisterVault, true)
+        ]);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -749,7 +751,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getPremiumRedeemVaults(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
-        > {
+    > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const vaults = await this.list();
         const premiumRedeemVaultPredicates = await Promise.all(
@@ -772,7 +774,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getVaultsWithIssuableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
-        > {
+    > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const [vaults, activeBlockNumber] = await Promise.all([
             this.list(),
@@ -796,7 +798,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getVaultsWithRedeemableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
-        > {
+    > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const [vaults, activeBlockNumber] = await Promise.all([
             this.list(),

@@ -141,7 +141,7 @@ export interface DecodedRequestExt extends Omit<DecodedRequest, "btc_address"> {
 }
 
 export function parseWallet(wallet: VaultRegistryWallet, network: Network): WalletExt {
-    const { addresses, publicKey } = wallet;
+    const { addresses } = wallet;
 
     const btcAddresses: Array<string> = [];
     for (const value of addresses.values()) {
@@ -149,7 +149,6 @@ export function parseWallet(wallet: VaultRegistryWallet, network: Network): Wall
     }
 
     return {
-        publicKey: publicKey.toString(),
         addresses: btcAddresses,
     };
 }

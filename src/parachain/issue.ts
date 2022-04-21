@@ -163,7 +163,7 @@ export class DefaultIssueAPI implements IssueAPI {
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
         private transactionAPI: TransactionAPI
-    ) {}
+    ) { }
 
     async getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
@@ -254,14 +254,9 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultId: InterbtcPrimitivesVaultId,
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
     ): Promise<SubmittableExtrinsic<"promise">> {
-        let griefingCollateral = await this.feeAPI.getGriefingCollateral(amount, GriefingCollateralType.Issue);
-        // add() here is a hacky workaround for rounding errors
-        const oneHundred = newMonetaryAmount(500, griefingCollateral.currency);
-        griefingCollateral = griefingCollateral.add(oneHundred);
         return this.api.tx.issue.requestIssue(
             amount.toString(amount.currency.rawBase),
             vaultId,
-            griefingCollateral.toString(griefingCollateral.currency.rawBase)
         );
     }
 

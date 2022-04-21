@@ -112,7 +112,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
         private transactionAPI: TransactionAPI
-    ) {}
+    ) { }
 
     async request(
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
@@ -126,18 +126,9 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         }
         const vaultAccountId = isKeyringPair(vaultAccount) ? vaultAccount.address : vaultAccount.toString();
         const vaultId = newVaultId(this.api, vaultAccountId, collateralCurrency, this.wrappedCurrency);
-        const griefingCollateral = await this.feeAPI.getGriefingCollateral(
-            amount,
-            GriefingCollateralType.Replace
-        );
-        const griefingCollateralAtomicUnit = this.api.createType(
-            "Balance",
-            griefingCollateral.toString(griefingCollateral.currency.rawBase)
-        );
         const requestTx = this.api.tx.replace.requestReplace(
             vaultId.currencies,
             amountAtomicUnit,
-            griefingCollateralAtomicUnit
         );
         await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.RequestReplace);
     }
