@@ -107,7 +107,7 @@ export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId:
         throw new Error("The currency ID must be a token");
     }
     const token = currencyId.asToken;
-    if (token.isInterbtc) {
+    if (token.isIbtc) {
         return InterBtc as unknown as Currency<U>;
     } else if (token.isDot) {
         return Polkadot as unknown as Currency<U>;
