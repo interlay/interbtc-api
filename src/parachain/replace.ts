@@ -13,17 +13,12 @@ import {
     ensureHashEncoded,
     newMonetaryAmount,
     newVaultCurrencyPair,
-    newVaultId
+    newVaultId,
 } from "../utils";
-import { FeeAPI, GriefingCollateralType } from "./fee";
+import { FeeAPI } from "./fee";
 import { TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
-import {
-    CollateralCurrency,
-    CollateralUnit,
-    ReplaceRequestExt,
-    WrappedCurrency,
-} from "../types";
+import { CollateralCurrency, CollateralUnit, ReplaceRequestExt, WrappedCurrency } from "../types";
 import { VaultsAPI } from "../parachain";
 
 /**
@@ -126,19 +121,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         }
         const vaultAccountId = isKeyringPair(vaultAccount) ? vaultAccount.address : vaultAccount.toString();
         const vaultId = newVaultId(this.api, vaultAccountId, collateralCurrency, this.wrappedCurrency);
-        const griefingCollateral = await this.feeAPI.getGriefingCollateral(
-            amount,
-            GriefingCollateralType.Replace
-        );
-        const griefingCollateralAtomicUnit = this.api.createType(
-            "Balance",
-            griefingCollateral.toString(griefingCollateral.currency.rawBase)
-        );
-        const requestTx = this.api.tx.replace.requestReplace(
-            vaultId.currencies,
-            amountAtomicUnit,
-            griefingCollateralAtomicUnit
-        );
+        const requestTx = this.api.tx.replace.requestReplace(vaultId.currencies, amountAtomicUnit);
         await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.RequestReplace);
     }
 
@@ -179,18 +162,20 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        const tx = this.api.tx.replace.executeReplace(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
+        const tx = this.api.tx.replace.executeReplace(
+            parsedRequestId,
+            txInclusionDetails.merkleProof,
+            txInclusionDetails.rawTx
+        );
         await this.transactionAPI.sendLogged(tx, this.api.events.replace.ExecuteReplace, true);
     }
 
     async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
-
         const dustSatoshi = await this.api.query.replace.replaceBtcDustValue();
         return newMonetaryAmount(dustSatoshi.toString(), this.wrappedCurrency);
     }
 
     async getReplacePeriod(): Promise<BlockNumber> {
-
         return await this.api.query.replace.replacePeriod();
     }
 
@@ -202,7 +187,14 @@ export class DefaultReplaceAPI implements ReplaceAPI {
                 .filter((v) => v[1].isSome.valueOf)
                 // Can be unwrapped because the filter removes `None` values
                 .map(([id, req]) =>
-                    parseReplaceRequest(this.vaultsAPI, req.unwrap(), this.btcNetwork, this.wrappedCurrency, storageKeyToNthInner(id)))
+                    parseReplaceRequest(
+                        this.vaultsAPI,
+                        req.unwrap(),
+                        this.btcNetwork,
+                        this.wrappedCurrency,
+                        storageKeyToNthInner(id)
+                    )
+                )
         );
     }
 
@@ -248,7 +240,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         try {
             const [oldVaultReplaceRequests, newVaultReplaceRequests] = await Promise.all([
                 this.getOldVaultReplaceRequests(vaultAccountId),
-                this.getNewVaultReplaceRequests(vaultAccountId)
+                this.getNewVaultReplaceRequests(vaultAccountId),
             ]);
             return [...oldVaultReplaceRequests, ...newVaultReplaceRequests];
         } catch (err) {
@@ -257,14 +249,20 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async getOldVaultReplaceRequests(vaultAccountId: AccountId): Promise<ReplaceRequestExt[]> {
-        return (await this.list()).filter(request => request.oldVault.accountId.toString() === vaultAccountId.toString());
+        return (await this.list()).filter(
+            (request) => request.oldVault.accountId.toString() === vaultAccountId.toString()
+        );
     }
 
     async getNewVaultReplaceRequests(vaultAccountId: AccountId): Promise<ReplaceRequestExt[]> {
-        return (await this.list()).filter(request => request.newVault.accountId.toString() === vaultAccountId.toString());
+        return (await this.list()).filter(
+            (request) => request.newVault.accountId.toString() === vaultAccountId.toString()
+        );
     }
 
-    async parseRequestsAsync(requestPairs: [H256, InterbtcPrimitivesReplaceReplaceRequest][]): Promise<[H256, ReplaceRequestExt][]> {
+    async parseRequestsAsync(
+        requestPairs: [H256, InterbtcPrimitivesReplaceReplaceRequest][]
+    ): Promise<[H256, ReplaceRequestExt][]> {
         return await Promise.all(
             requestPairs.map(
                 ([id, req]) =>

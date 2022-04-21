@@ -35,10 +35,10 @@ export enum NominationAmountType {
     Parsed = "parsed",
 }
 export type NominationData<U extends CurrencyUnit> = {
-    nonce: number,
-    vaultId: InterbtcPrimitivesVaultId,
-    nominatorId: AccountId,
-    amount: MonetaryAmount<Currency<U>, U>
+    nonce: number;
+    vaultId: InterbtcPrimitivesVaultId;
+    nominatorId: AccountId;
+    amount: MonetaryAmount<Currency<U>, U>;
 };
 
 export type RawNomination = NominationData<CollateralUnit> & { type: NominationAmountType.Raw };
@@ -110,7 +110,7 @@ export interface NominationAPI {
     getFilteredNominations(
         vaultAccountId?: AccountId,
         collateralCurrencyId?: CurrencyIdLiteral,
-        nominatorId?: AccountId,
+        nominatorId?: AccountId
     ): Promise<Nomination[]>;
     /**
      * @remarks At least one of the parameters must be specified
@@ -122,16 +122,14 @@ export interface NominationAPI {
     getTotalNomination(
         vaultAccountId?: AccountId,
         collateralCurrency?: CollateralCurrency,
-        nominatorId?: AccountId,
+        nominatorId?: AccountId
     ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>;
     /**
      *
      * @param nominatorId Id of user who nominated to one or more vaults
      * @returns The rewards a currently active nominator has accumulated
      */
-    getActiveNominatorRewards(
-        nominatorId: AccountId,
-    ): Promise<NominationReward[]>;
+    getActiveNominatorRewards(nominatorId: AccountId): Promise<NominationReward[]>;
     /**
      * @param vaultAccountId Id of nominated vault
      * @param collateralCurrencyId The currency towards whose issuance the nomination was made
@@ -143,7 +141,7 @@ export interface NominationAPI {
         vaultId: AccountId,
         collateralCurrencyId: CollateralIdLiteral,
         rewardCurrencyId: CurrencyIdLiteral,
-        nominatorId: AccountId,
+        nominatorId: AccountId
     ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
     /**
      * @returns A map (vaultId => nonce), representing the nonces for each reward pool with the given currency
@@ -240,7 +238,9 @@ export class DefaultNominationAPI implements NominationAPI {
                 const nonce = storageKeyToNthInner(v[0], 0) as Index;
                 const [vaultId, nominatorId] = storageKeyToNthInner(v[0], 1) as [InterbtcPrimitivesVaultId, AccountId];
                 const nomination = decodeFixedPointType(v[1] as UnsignedFixedPoint);
-                const collateralCurrency = currencyIdToMonetaryCurrency(vaultId.currencies.collateral) as Currency<CurrencyUnit>;
+                const collateralCurrency = currencyIdToMonetaryCurrency(
+                    vaultId.currencies.collateral
+                ) as Currency<CurrencyUnit>;
                 const monetaryNomination = newMonetaryAmount(nomination, collateralCurrency, true);
                 return {
                     nonce: nonce.toNumber(),
@@ -255,10 +255,7 @@ export class DefaultNominationAPI implements NominationAPI {
                 // ever so slightly even if they have identical properties
                 const vaultIdHighestNonce = queryNominationsMap(nonces, rawNomination.vaultId);
                 // Only consider active nominations, i.e. with the latest nonce
-                return (
-                    rawNomination.nonce === vaultIdHighestNonce &&
-                    rawNomination.amount.toBig().gt(0)
-                );
+                return rawNomination.nonce === vaultIdHighestNonce && rawNomination.amount.toBig().gt(0);
             });
     }
 
@@ -276,15 +273,13 @@ export class DefaultNominationAPI implements NominationAPI {
                     nonce: rawNomination.nonce,
                     vaultId: rawNomination.vaultId,
                     nominatorId: rawNomination.nominatorId,
-                    amount: reward
+                    amount: reward,
                 };
             })
         );
     }
 
-    async getActiveNominatorRewards(
-        nominatorId: AccountId,
-    ): Promise<NominationReward[]> {
+    async getActiveNominatorRewards(nominatorId: AccountId): Promise<NominationReward[]> {
         const nominatorRewards = await this.listNominatorRewards();
         return nominatorRewards.filter((nominationReward) => {
             return nominationReward.nominatorId.toString() === nominatorId.toString();
@@ -295,14 +290,9 @@ export class DefaultNominationAPI implements NominationAPI {
         vaultId: AccountId,
         collateralCurrencyId: CollateralIdLiteral,
         rewardCurrencyId: CurrencyIdLiteral,
-        nominatorId: AccountId,
+        nominatorId: AccountId
     ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
-        return await this.vaultsAPI.computeReward(
-            vaultId,
-            nominatorId,
-            collateralCurrencyId,
-            rewardCurrencyId
-        );
+        return await this.vaultsAPI.computeReward(vaultId, nominatorId, collateralCurrencyId, rewardCurrencyId);
     }
 
     async list(): Promise<Nomination[]> {
@@ -312,7 +302,7 @@ export class DefaultNominationAPI implements NominationAPI {
     async getFilteredNominations(
         vaultId?: AccountId,
         collateralCurrencyId?: CurrencyIdLiteral,
-        nominatorId?: AccountId,
+        nominatorId?: AccountId
     ): Promise<Nomination[]> {
         const rawList = await this.listAllNominations();
         // Filter by nominatorId and vaultId if each is defined respectively.
@@ -324,7 +314,7 @@ export class DefaultNominationAPI implements NominationAPI {
                 (!nominatorId || nominatorId === nominatorId) &&
                 (!vaultId || vaultId === vaultId) &&
                 (!collateralCurrencyId || collateralCurrencyId === nominationCurrencyId) &&
-                (nominationWrappedCurrencyId === wrappedCurrencyId)
+                nominationWrappedCurrencyId === wrappedCurrencyId
             );
         });
         return await Promise.all(
@@ -333,7 +323,7 @@ export class DefaultNominationAPI implements NominationAPI {
                     ...rawNomination,
                     amount: await this.rewardsAPI.computeCollateralInStakingPool(
                         rawNomination.vaultId,
-                        rawNomination.nominatorId,
+                        rawNomination.nominatorId
                     ),
                     type: NominationAmountType.Parsed,
                 };
@@ -362,9 +352,11 @@ export class DefaultNominationAPI implements NominationAPI {
     async getTotalNomination(
         vaultId?: AccountId,
         collateralCurrency?: CollateralCurrency,
-        nominatorId?: AccountId,
+        nominatorId?: AccountId
     ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
-        const collateralCurrencyId = collateralCurrency ? tickerToCurrencyIdLiteral(collateralCurrency.ticker) : undefined;
+        const collateralCurrencyId = collateralCurrency
+            ? tickerToCurrencyIdLiteral(collateralCurrency.ticker)
+            : undefined;
         const filteredNominations = await this.getFilteredNominations(vaultId, collateralCurrencyId, nominatorId);
         if (!filteredNominations.length) {
             // Cannot return `zero` because the type of nominated collateral is unknown
@@ -376,7 +368,8 @@ export class DefaultNominationAPI implements NominationAPI {
                 const wrappedVaultCurrency = currencyIdToMonetaryCurrency(nomination.vaultId.currencies.wrapped);
                 const collateralVaultCurrency = currencyIdToMonetaryCurrency(nomination.vaultId.currencies.collateral);
                 wrappedVaultCurrency.ticker === this.wrappedCurrency.ticker &&
-                    (collateralCurrency && collateralVaultCurrency.ticker === collateralCurrency.ticker);
+                    collateralCurrency &&
+                    collateralVaultCurrency.ticker === collateralCurrency.ticker;
             })
             .map((nomination) => nomination.amount)
             .reduce((previousValue, currentValue) => previousValue.add(currentValue), zero);

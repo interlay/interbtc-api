@@ -55,7 +55,6 @@ export class DefaultSystemAPI {
     }
 
     async getStatusCode(): Promise<SecurityStatusCode> {
-
         return await this.api.query.security.parachainStatus();
     }
 

@@ -1,4 +1,4 @@
-import { Currency, KintsugiAmount, KintsugiUnit, MonetaryAmount } from "@interlay/monetary-js"
+import { Currency, KintsugiAmount, KintsugiUnit, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { assert } from "chai";
 import Big from "big.js";
@@ -43,12 +43,12 @@ describe("Escrow", () => {
         const stakedBalance = {
             amount: newMonetaryAmount(0, kintCurrency) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
             endBlock: 0
-        }
+        };
         const currentBlockNumber = 1000;
 
         // expected outputs
         const amount = "0";
-        const apy = "0"
+        const apy = "0";
 
         const resultAmount = escrowApi._computeRewardEstimate(
             userStake,
@@ -76,12 +76,12 @@ describe("Escrow", () => {
         const stakedBalance = {
             amount: newMonetaryAmount(0, kintCurrency) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
             endBlock: 0
-        }
+        };
         const currentBlockNumber = 1000;
 
         // expected outputs
         const amount = "0";
-        const apy = "0"
+        const apy = "0";
 
         const resultTime = escrowApi._computeRewardEstimate(
             userStake,
@@ -111,7 +111,7 @@ describe("Escrow", () => {
         const stakedBalance = {
             amount: newMonetaryAmount(0, kintCurrency) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
             endBlock: 0
-        }
+        };
         const currentBlockNumber = 1000;
 
         // expected outputs
@@ -154,7 +154,7 @@ describe("Escrow", () => {
         const stakedBalance = {
             amount: newMonetaryAmount(0, kintCurrency) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
             endBlock: 0
-        }
+        };
         const currentBlockNumber = 1000;
 
         // expected outputs
@@ -233,12 +233,12 @@ describe("Escrow", () => {
         const stakedBalance = {
             amount: newMonetaryAmount(0, kintCurrency) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
             endBlock: 0
-        }
+        };
         const currentBlockNumber = 1000;
 
         // expected outputs
         // staker gets a share of the rewards
-        let newUserStake = amountToLock.toBig(0)
+        const newUserStake = amountToLock.toBig(0)
             .mul(blockLockTimeExtension)
             .div(MAX_PERIOD);
         const amount = blockReward
@@ -284,7 +284,7 @@ describe("Escrow", () => {
         const stakedBalance = {
             amount: newMonetaryAmount(100, kintCurrency, true) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
             endBlock: 5 * WEEK_IN_BLOCKS
-        }
+        };
         const userStake = stakedBalance.amount.toBig()
             .mul(stakedBalance.endBlock - currentBlockNumber)
             .div(MAX_PERIOD);
@@ -305,7 +305,7 @@ describe("Escrow", () => {
         const amount = blockReward
             .mul(newUserStake) // user stake
             .div(userStakeDifference.add(totalStake)) // new total stake
-            .mul(newLockDuration)
+            .mul(newLockDuration);
         // projects block rewards for 1 year
         const apy = amount
             .toBig()
@@ -340,7 +340,7 @@ describe("Escrow", () => {
         const stakedBalance = {
             amount: newMonetaryAmount(100, kintCurrency, true) as MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
             endBlock: 5 * WEEK_IN_BLOCKS
-        }
+        };
         // this user's stake is 100
         const userStake = stakedBalance.amount.toBig()
             .mul(stakedBalance.endBlock - currentBlockNumber)
@@ -380,4 +380,4 @@ describe("Escrow", () => {
         assert.equal(result.apy.round(2).toString(), apy.round(2).toString());
         assert.isTrue(result.apy.gt(0), `${result.apy.toString()} not greater than 0`);
     });
-})
+});

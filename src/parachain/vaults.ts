@@ -344,8 +344,18 @@ export class DefaultVaultsAPI implements VaultsAPI {
             tickerToMonetaryCurrency(this.api, amount.currency.ticker) as CollateralCurrency,
             this.wrappedCurrency
         );
-        const tx = this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit, publicKey);
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.RegisterVault, true);
+        await Promise.all([
+            this.transactionAPI.sendLogged(
+                this.api.tx.vaultRegistry.registerPublicKey(publicKey),
+                this.api.events.vaultRegistry.UpdatePublicKey,
+                true
+            ),
+            this.transactionAPI.sendLogged(
+                this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit),
+                this.api.events.vaultRegistry.RegisterVault,
+                true
+            ),
+        ]);
     }
 
     async withdrawCollateral<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): Promise<void> {
@@ -371,8 +381,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async list(atBlock?: BlockHash): Promise<VaultExt<BitcoinUnit>[]> {
-        const vaultsMap = await (atBlock ?
-            this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
+        const vaultsMap = await (atBlock
+            ? this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
             : this.api.query.vaultRegistry.vaults.entries());
         return Promise.all(
             vaultsMap
@@ -464,21 +474,27 @@ export class DefaultVaultsAPI implements VaultsAPI {
         governanceCurrency: GovernanceIdLiteral
     ): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrency);
-        const [globalRewardPerBlock, globalStake, vaultStake, vaultRewardShare, lockedCollateral, minimumBlockPeriod] = await Promise.all([
-            this.rewardsAPI.getRewardPerBlock(governanceCurrency),
-            this.getTotalIssuedAmount(),
-            this.getIssuedAmount(vaultAccountId, collateralCurrency),
-            this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
-            (await this.tokensAPI.balance(
-                currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
-                vaultAccountId
-            )).reserved,
-            this.api.consts.timestamp.minimumPeriod
-        ]);
+        const [globalRewardPerBlock, globalStake, vaultStake, vaultRewardShare, lockedCollateral, minimumBlockPeriod] =
+            await Promise.all([
+                this.rewardsAPI.getRewardPerBlock(governanceCurrency),
+                this.getTotalIssuedAmount(),
+                this.getIssuedAmount(vaultAccountId, collateralCurrency),
+                this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
+                (
+                    await this.tokensAPI.balance(
+                        currencyIdToMonetaryCurrency(vault.id.currencies.collateral) as Currency<CollateralUnit>,
+                        vaultAccountId
+                    )
+                ).reserved,
+                this.api.consts.timestamp.minimumPeriod,
+            ]);
         const globalRewardShare = vaultStake.toBig().div(globalStake.toBig());
         const vaultRewardPerBlock = globalRewardPerBlock.mul(globalRewardShare);
         const ownRewardPerBlock = vaultRewardPerBlock.mul(vaultRewardShare);
-        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(ownRewardPerBlock, this.wrappedCurrency);
+        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(
+            ownRewardPerBlock,
+            this.wrappedCurrency
+        );
         const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
         const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
@@ -877,7 +893,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
                 vaultAccountId,
                 collateralCurrency,
                 tickerToCurrencyIdLiteral(this.governanceCurrency.ticker) as GovernanceIdLiteral
-            )
+            ),
         ]);
         return (await this.feeAPI.calculateAPY(feesWrapped, lockedCollateral)).add(blockRewardsAPY);
     }

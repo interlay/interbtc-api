@@ -21,7 +21,7 @@ import {
     newVaultId,
     newCurrencyId,
 } from "../utils";
-import { FeeAPI, GriefingCollateralType } from "./fee";
+import { FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import {
@@ -49,7 +49,9 @@ export interface IssueAPI {
      * parachain (incurring an extra request).
      * @returns An object of type {singleVault, maxTotal, vaultsCache}
      */
-    getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>): Promise<IssueLimits>;
+    getRequestLimits(
+        vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+    ): Promise<IssueLimits>;
 
     /**
      * Request issuing wrapped tokens (e.g. interBTC, kBTC).
@@ -165,13 +167,14 @@ export class DefaultIssueAPI implements IssueAPI {
         private transactionAPI: TransactionAPI
     ) {}
 
-    async getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>): Promise<IssueLimits> {
+    async getRequestLimits(
+        vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+    ): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
-        const vaultsArr = [...vaults.entries()]
-            .sort(
-                // sort in descending order
-                ([_id_1, amount_1], [_id_2, amount_2]) => amount_2.sub(amount_1).toBig().toNumber()
-            );
+        const vaultsArr = [...vaults.entries()].sort(
+            // sort in descending order
+            ([_id_1, amount_1], [_id_2, amount_2]) => amount_2.sub(amount_1).toBig().toNumber()
+        );
 
         if (vaultsArr.length === 0) {
             return {
@@ -201,7 +204,7 @@ export class DefaultIssueAPI implements IssueAPI {
         collateralCurrencyIdLiteral?: CurrencyIdLiteral,
         atomic: boolean = true,
         retries: number = 0,
-        cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>,
+        cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
     ): Promise<Issue[]> {
         try {
             if (vaultAccountId) {
@@ -219,9 +222,10 @@ export class DefaultIssueAPI implements IssueAPI {
                     currencyIdToMonetaryCurrency(collateralCurrencyId) as CollateralCurrency,
                     this.wrappedCurrency
                 );
-                const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>([
-                    [vaultId, amount],
-                ]);
+                const amountsPerVault = new Map<
+                    InterbtcPrimitivesVaultId,
+                    MonetaryAmount<WrappedCurrency, BitcoinUnit>
+                >([[vaultId, amount]]);
                 return await this.requestAdvanced(amountsPerVault, atomic);
             }
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
@@ -254,15 +258,7 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultId: InterbtcPrimitivesVaultId,
         amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
     ): Promise<SubmittableExtrinsic<"promise">> {
-        let griefingCollateral = await this.feeAPI.getGriefingCollateral(amount, GriefingCollateralType.Issue);
-        // add() here is a hacky workaround for rounding errors
-        const oneHundred = newMonetaryAmount(500, griefingCollateral.currency);
-        griefingCollateral = griefingCollateral.add(oneHundred);
-        return this.api.tx.issue.requestIssue(
-            amount.toString(amount.currency.rawBase),
-            vaultId,
-            griefingCollateral.toString(griefingCollateral.currency.rawBase)
-        );
+        return this.api.tx.issue.requestIssue(amount.toString(amount.currency.rawBase), vaultId);
     }
 
     async requestAdvanced(
@@ -273,10 +269,7 @@ export class DefaultIssueAPI implements IssueAPI {
             Array.from(amountsPerVault.entries()).map(
                 ([vaultId, amount]) =>
                     new Promise<SubmittableExtrinsic<"promise">>((resolve) => {
-                        this.craftRequestTx(
-                            vaultId,
-                            amount
-                        ).then(resolve);
+                        this.craftRequestTx(vaultId, amount).then(resolve);
                     })
             )
         );
@@ -295,7 +288,11 @@ export class DefaultIssueAPI implements IssueAPI {
     async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        const tx = this.api.tx.issue.executeIssue(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
+        const tx = this.api.tx.issue.executeIssue(
+            parsedRequestId,
+            txInclusionDetails.merkleProof,
+            txInclusionDetails.rawTx
+        );
         await this.transactionAPI.sendLogged(tx, this.api.events.issue.ExecuteIssue, true);
     }
 

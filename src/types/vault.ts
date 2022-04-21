@@ -10,7 +10,6 @@ import { CollateralUnit, currencyIdToMonetaryCurrency } from "./currency";
 
 export interface WalletExt {
     // network encoded btc addresses
-    publicKey: string;
     addresses: Array<string>;
 }
 
@@ -48,7 +47,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
         toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
         replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
-        liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
+        liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>
     ) {
         this.wallet = wallet;
         this.backingCollateral = backingCollateral;
@@ -79,7 +78,10 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
             currencyIdToMonetaryCurrency(this.id.currencies.wrapped)
         );
         // Force type-assert here as the oracle API only uses wrapped Bitcoin
-        return backableWrappedTokens.div(secureCollateralThreshold) as unknown as MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
+        return backableWrappedTokens.div(secureCollateralThreshold) as unknown as MonetaryAmount<
+            Currency<WrappedUnit>,
+            WrappedUnit
+        >;
     }
 
     async isBanned(): Promise<boolean> {
@@ -121,9 +123,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         return decodeFixedPointType(threshold.value as UnsignedFixedPoint);
     }
 
-    async computeBackingCollateral(
-        nonce?: number
-    ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
+    async computeBackingCollateral(nonce?: number): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
         if (nonce === undefined) {
             nonce = await this.getStakingPoolNonce();
         }
@@ -136,7 +136,6 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     }
 
     async getStakingPoolNonce(): Promise<number> {
-
         const rawNonce = await this.api.query.vaultStaking.nonce(this.id);
         return rawNonce.toNumber();
     }
@@ -148,7 +147,7 @@ export interface SystemVaultExt<WrappedUnit extends BitcoinUnit> {
     toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
     collateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     currencyPair: {
-        collateralCurrency: Currency<CollateralUnit>,
-        wrappedCurrency: Currency<WrappedUnit>
-    }
+        collateralCurrency: Currency<CollateralUnit>;
+        wrappedCurrency: Currency<WrappedUnit>;
+    };
 }

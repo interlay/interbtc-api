@@ -86,7 +86,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         readonly api: ApiPromise,
         bitcoinNetwork: BitcoinNetwork = "mainnet",
         _account?: AddressOrPair,
-        esploraNetwork?: string,
+        esploraNetwork?: string
     ) {
         const wrappedCurrency = this.getWrappedCurrency() as WrappedCurrency;
         const governanceCurrency = this.getGovernanceCurrency() as GovernanceCurrency;
@@ -128,7 +128,15 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.vaults,
             this.transactionAPI
         );
-        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.fee, this.vaults, this.transactionAPI);
+        this.issue = new DefaultIssueAPI(
+            api,
+            btcNetwork,
+            this.electrsAPI,
+            wrappedCurrency,
+            this.fee,
+            this.vaults,
+            this.transactionAPI
+        );
         this.redeem = new DefaultRedeemAPI(
             api,
             btcNetwork,

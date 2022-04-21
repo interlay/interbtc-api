@@ -9,14 +9,7 @@ import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import { newAccountId } from "../utils";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
-import {
-    currencyIdToLiteral,
-    Issue,
-    IssueStatus,
-    Redeem,
-    RedeemStatus,
-    WrappedCurrency,
-} from "../types";
+import { currencyIdToLiteral, Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
 import { waitForBlockFinalization } from "./bitcoin";
 import { newMonetaryAmount } from "./currency";
 import { InterBtcApi } from "..";
@@ -78,7 +71,10 @@ export function allocateAmountsToVaults<U extends BitcoinUnit>(
         .reverse()
         .map(
             (entry) =>
-                [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>]
+                [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [
+                    InterbtcPrimitivesVaultId,
+                    MonetaryAmount<Currency<U>, U>
+                ]
         );
     while (amountToAllocate.gt(newMonetaryAmount(0, amountToAllocate.currency))) {
         // find first vault that can fulfil request (or undefined if none)
@@ -122,7 +118,12 @@ export async function issueSingle(
         const blocksToMine = 3;
 
         const collateralIdLiteral = vaultId ? currencyIdToLiteral(vaultId.currencies.collateral) : undefined;
-        const rawRequestResult = await interBtcApi.issue.request(amount, vaultId?.accountId, collateralIdLiteral, atomic);
+        const rawRequestResult = await interBtcApi.issue.request(
+            amount,
+            vaultId?.accountId,
+            collateralIdLiteral,
+            atomic
+        );
         if (rawRequestResult.length !== 1) {
             throw new Error("More than one issue request created");
         }
@@ -194,13 +195,7 @@ export async function redeem(
     const prevAccount = interBtcApi.account;
     interBtcApi.setAccount(redeemingAccount);
     const btcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-    const [redeemRequest] = await interBtcApi.redeem.request(
-        amount,
-        btcAddress,
-        vaultId,
-        atomic,
-        retries
-    );
+    const [redeemRequest] = await interBtcApi.redeem.request(amount, btcAddress, vaultId, atomic, retries);
 
     switch (autoExecute) {
         case ExecuteRedeem.Manually: {

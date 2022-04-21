@@ -84,11 +84,11 @@ export function decodeBtcAddress(
 export async function getTxProof(
     electrsAPI: ElectrsAPI,
     btcTxId: string
-): Promise<{ merkleProof: Bytes, rawTx: Bytes}> {
+): Promise<{ merkleProof: Bytes; rawTx: Bytes }> {
     const [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
     return {
         merkleProof,
-        rawTx
+        rawTx,
     };
 }
 

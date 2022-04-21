@@ -8,7 +8,7 @@ import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit } from "../t
 
 export enum GriefingCollateralType {
     Issue,
-    Replace
+    Replace,
 }
 
 /**
@@ -25,7 +25,7 @@ export interface FeeAPI {
     getGriefingCollateral(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
         type: GriefingCollateralType
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>
+    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
     /**
      * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
      * @param lockedCollateral Collateral value representing the value locked to gain yield.
@@ -52,10 +52,7 @@ export interface FeeAPI {
 }
 
 export class DefaultFeeAPI implements FeeAPI {
-    constructor(
-        private api: ApiPromise,
-        private oracleAPI: OracleAPI,
-    ) {}
+    constructor(private api: ApiPromise, private oracleAPI: OracleAPI) {}
 
     async getGriefingCollateral(
         amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
@@ -63,20 +60,22 @@ export class DefaultFeeAPI implements FeeAPI {
     ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
         let ratePromise;
         switch (type) {
-            case(GriefingCollateralType.Issue): {
+            case GriefingCollateralType.Issue: {
                 ratePromise = this.getIssueGriefingCollateralRate();
                 break;
             }
-            case(GriefingCollateralType.Replace): {
+            case GriefingCollateralType.Replace: {
                 ratePromise = this.getReplaceGriefingCollateralRate();
                 break;
             }
         }
 
-        const nativeCurrency = currencyIdToMonetaryCurrency(this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId);
+        const nativeCurrency = currencyIdToMonetaryCurrency(
+            this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId
+        );
         const [griefingCollateralRate, griefingAmount] = await Promise.all([
             ratePromise,
-            this.oracleAPI.convertWrappedToCurrency(amount, nativeCurrency)
+            this.oracleAPI.convertWrappedToCurrency(amount, nativeCurrency),
         ]);
         return griefingAmount.mul(griefingCollateralRate);
     }

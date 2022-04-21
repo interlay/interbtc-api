@@ -17,10 +17,15 @@ import {
     Interlay,
     VoteInterlay,
     VoteKintsugi,
-    MonetaryAmount
+    MonetaryAmount,
 } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
-import { EscrowLockedBalance, EscrowPoint, InterbtcPrimitivesCurrencyId, OrmlTokensAccountData } from "@polkadot/types/lookup";
+import {
+    EscrowLockedBalance,
+    EscrowPoint,
+    InterbtcPrimitivesCurrencyId,
+    OrmlTokensAccountData,
+} from "@polkadot/types/lookup";
 import { BigSource } from "big.js";
 import BN from "bn.js";
 import { newCurrencyId, newMonetaryAmount } from "../utils";
@@ -73,8 +78,8 @@ export const VoteUnit = GovernanceUnit;
 export type VoteUnit = GovernanceUnit;
 
 export type StakedBalance<U extends GovernanceUnit> = {
-    amount: MonetaryAmount<Currency<U>, U>,
-    endBlock: number
+    amount: MonetaryAmount<Currency<U>, U>;
+    endBlock: number;
 };
 
 export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
@@ -101,7 +106,9 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
-export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(currencyId: InterbtcPrimitivesCurrencyId): Currency<U> {
+export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(
+    currencyId: InterbtcPrimitivesCurrencyId
+): Currency<U> {
     // The currencyId is always a token, since it is just a tuple struct
     if (!currencyId.isToken) {
         throw new Error("The currency ID must be a token");
@@ -127,9 +134,7 @@ export function currencyIdLiteralToMonetaryCurrency<U extends CurrencyUnit>(
     api: ApiPromise,
     currencyIdLiteral: CurrencyIdLiteral
 ): Currency<U> {
-    return currencyIdToMonetaryCurrency(
-        newCurrencyId(api, currencyIdLiteral)
-    );
+    return currencyIdToMonetaryCurrency(newCurrencyId(api, currencyIdLiteral));
 }
 
 export function currencyIdToLiteral(currencyId: InterbtcPrimitivesCurrencyId): CurrencyIdLiteral {
@@ -143,16 +148,16 @@ export function tickerToMonetaryCurrency<U extends CurrencyUnit>(api: ApiPromise
 }
 
 export type RWEscrowPoint = {
-    bias: BN,
-    slope: BN,
-    ts: BN
-}
+    bias: BN;
+    slope: BN;
+    ts: BN;
+};
 
 export function parseEscrowPoint(e: EscrowPoint): RWEscrowPoint {
     return {
         bias: e.bias.toBn(),
         slope: e.slope.toBn(),
-        ts: e.ts.toBn()
+        ts: e.ts.toBn(),
     };
 }
 
@@ -162,12 +167,7 @@ export class ChainBalance<U extends CurrencyUnit> {
     reserved: MonetaryAmount<Currency<U>, U>;
     currency: Currency<U>;
 
-    constructor(
-        currency: Currency<U>,
-        free?: BigSource,
-        transferable?: BigSource,
-        reserved?: BigSource
-    ) {
+    constructor(currency: Currency<U>, free?: BigSource, transferable?: BigSource, reserved?: BigSource) {
         this.currency = currency;
         this.free = newMonetaryAmount(free || 0, currency);
         this.transferable = newMonetaryAmount(transferable || 0, currency);
@@ -204,6 +204,6 @@ export function parseEscrowLockedBalance(
 ): StakedBalance<GovernanceUnit> {
     return {
         amount: newMonetaryAmount(escrowLockedBalance.amount.toString(), governanceCurrency),
-        endBlock: escrowLockedBalance.end.toNumber()
+        endBlock: escrowLockedBalance.end.toNumber(),
     };
 }

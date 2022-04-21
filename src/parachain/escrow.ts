@@ -13,7 +13,7 @@ import {
     RWEscrowPoint,
     StakedBalance,
     tickerToCurrencyIdLiteral,
-    VoteUnit
+    VoteUnit,
 } from "../types";
 import { SystemAPI } from "./system";
 import { TransactionAPI } from ".";
@@ -40,18 +40,13 @@ export interface EscrowAPI {
      * It is not recommended to call this directly, but rather to query through the indexer (currently `interbtc-index`).
      * - Logic is duplicated from Escrow pallet in the parachain
      */
-    totalVotingSupply(
-        blockNumber?: number
-    ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
+    totalVotingSupply(blockNumber?: number): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
     /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
      * @param unlockHeight Block number to lock until
      * @remarks The amount can't be less than the max period (`getMaxPeriod` getter) to prevent rounding errors
      */
-    createLock<U extends GovernanceUnit>(
-        amount: MonetaryAmount<Currency<U>, U>,
-        unlockHeight: number
-    ): Promise<void>;
+    createLock<U extends GovernanceUnit>(amount: MonetaryAmount<Currency<U>, U>, unlockHeight: number): Promise<void>;
     /**
      * @param accountId ID of the user whose stake to fetch
      * @returns The staked amount and end block
@@ -76,23 +71,17 @@ export interface EscrowAPI {
     /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
      */
-    increaseAmount<U extends GovernanceUnit>(
-        amount: MonetaryAmount<Currency<U>, U>,
-    ): Promise<void>;
+    increaseAmount<U extends GovernanceUnit>(amount: MonetaryAmount<Currency<U>, U>): Promise<void>;
     /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
      */
-    increaseUnlockHeight(
-        unlockHeight: number
-    ): Promise<void>;
+    increaseUnlockHeight(unlockHeight: number): Promise<void>;
     /**
      * @param accountId User account ID
      * @returns The rewards that can be withdrawn by the account
      * @remarks Implements https://spec.interlay.io/spec/reward.html#computereward
      */
-    getRewards<U extends GovernanceUnit>(
-        accountId: AccountId,
-    ): Promise<MonetaryAmount<Currency<U>, U>>;
+    getRewards<U extends GovernanceUnit>(accountId: AccountId): Promise<MonetaryAmount<Currency<U>, U>>;
     /**
      * @param accountId User account ID
      * @param amountToLock New amount to add to the current stake
@@ -104,13 +93,12 @@ export interface EscrowAPI {
         amountToLock?: MonetaryAmount<Currency<U>, U>,
         blockLockTimeExtension?: number
     ): Promise<{
-            amount: MonetaryAmount<Currency<U>, U>,
-            apy: Big
+        amount: MonetaryAmount<Currency<U>, U>;
+        apy: Big;
     }>;
 }
 
 export class DefaultEscrowAPI implements EscrowAPI {
-
     constructor(
         private api: ApiPromise,
         private governanceCurrency: GovernanceCurrency,
@@ -151,15 +139,12 @@ export class DefaultEscrowAPI implements EscrowAPI {
         const [rewardStake, rewardPerToken, rewardTally] = await Promise.all([
             this.getEscrowStake(accountId),
             this.getRewardPerToken(),
-            this.getRewardTally(accountId)
+            this.getRewardTally(accountId),
         ]);
         // Step 2. Calculate the rewards that can be withdrawn at the moment
         // Stake[currencyId, accountId] * RewardPerToken[currencyId] - RewardTally[currencyId, accountId]
         const rewards = rewardStake.mul(rewardPerToken).sub(rewardTally);
-        return newMonetaryAmount(
-            rewards,
-            this.governanceCurrency as unknown as Currency<U>
-        );
+        return newMonetaryAmount(rewards, this.governanceCurrency as unknown as Currency<U>);
     }
 
     async getRewardEstimate<U extends GovernanceUnit>(
@@ -167,18 +152,19 @@ export class DefaultEscrowAPI implements EscrowAPI {
         amountToLock?: MonetaryAmount<Currency<U>, U>,
         blockLockTimeExtension?: number
     ): Promise<{
-            amount: MonetaryAmount<Currency<U>, U>,
-            apy: Big
+        amount: MonetaryAmount<Currency<U>, U>;
+        apy: Big;
     }> {
-        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber, minimumBlockPeriod, maxPeriod] = await Promise.all([
-            this.getEscrowStake(accountId),
-            this.getEscrowTotalStake(),
-            this.getRewardPerBlock(),
-            this.getStakedBalance(accountId),
-            this.systemAPI.getCurrentBlockNumber(),
-            this.api.consts.timestamp.minimumPeriod,
-            this.getMaxPeriod()
-        ]);
+        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber, minimumBlockPeriod, maxPeriod] =
+            await Promise.all([
+                this.getEscrowStake(accountId),
+                this.getEscrowTotalStake(),
+                this.getRewardPerBlock(),
+                this.getStakedBalance(accountId),
+                this.systemAPI.getCurrentBlockNumber(),
+                this.api.consts.timestamp.minimumPeriod,
+                this.getMaxPeriod(),
+            ]);
 
         return this._computeRewardEstimate<U>(
             userStake,
@@ -191,7 +177,6 @@ export class DefaultEscrowAPI implements EscrowAPI {
             amountToLock,
             blockLockTimeExtension
         );
-
     }
 
     _computeRewardEstimate<U extends GovernanceUnit>(
@@ -202,11 +187,14 @@ export class DefaultEscrowAPI implements EscrowAPI {
         currentBlockNumber: number,
         minimumBlockPeriod: number,
         maxPeriod: number,
-        amountToLock: MonetaryAmount<Currency<U>, U> = newMonetaryAmount(0, this.governanceCurrency as unknown as Currency<U>),
+        amountToLock: MonetaryAmount<Currency<U>, U> = newMonetaryAmount(
+            0,
+            this.governanceCurrency as unknown as Currency<U>
+        ),
         blockLockTimeExtension: number = 0
     ): {
-        amount: MonetaryAmount<Currency<U>, U>,
-        apy: Big
+        amount: MonetaryAmount<Currency<U>, U>;
+        apy: Big;
     } {
         // Note: the parachain uses the balance_at which combines the staked amount
         // and staked time divided by the maximum period to calculate the share in the reward pool
@@ -222,15 +210,18 @@ export class DefaultEscrowAPI implements EscrowAPI {
         // otherwise, the rewards will be 0.
         const newStakedBalance = {
             amount: stakedBalance.amount,
-            endBlock: stakedBalance.endBlock
+            endBlock: stakedBalance.endBlock,
         };
 
-        const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), this.governanceCurrency as Currency<GovernanceUnit>);
+        const monetaryAddedStake = newMonetaryAmount(
+            amountToLock.toBig(),
+            this.governanceCurrency as Currency<GovernanceUnit>
+        );
         // User staking for the first time; only case 2 relevant otherwise rewards should be 0
         if (stakedBalance.amount.isZero()) {
             newStakedBalance.amount = monetaryAddedStake;
             newStakedBalance.endBlock = currentBlockNumber + blockLockTimeExtension;
-        // User increasing stake or locking amount or none (cases 1 - 4)
+            // User increasing stake or locking amount or none (cases 1 - 4)
         } else {
             // might add 0 to either amount or endBlock
             newStakedBalance.amount = stakedBalance.amount.add(monetaryAddedStake);
@@ -241,31 +232,19 @@ export class DefaultEscrowAPI implements EscrowAPI {
             newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
         }
 
-        const newUserStake = newStakedBalance.amount.toBig()
-            .mul(newLockDuration)
-            .div(maxPeriod);
+        const newUserStake = newStakedBalance.amount.toBig().mul(newLockDuration).div(maxPeriod);
         const userStakeDifference = newUserStake.sub(userStake);
         const newTotalStake = totalStake.add(userStakeDifference);
 
         // Catch 0 values
-        if (
-            newLockDuration == 0 ||
-            newTotalStake.eq(0) ||
-            newStakedBalance.amount.isZero()
-        ) {
+        if (newLockDuration == 0 || newTotalStake.eq(0) || newStakedBalance.amount.isZero()) {
             return {
-                amount: newMonetaryAmount(
-                    0,
-                    this.governanceCurrency as unknown as Currency<U>
-                ),
-                apy: new Big(0)
+                amount: newMonetaryAmount(0, this.governanceCurrency as unknown as Currency<U>),
+                apy: new Big(0),
             };
         }
         // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward * lock duration
-        const rewardAmount = newUserStake
-            .div(newTotalStake)
-            .mul(blockReward.toBig())
-            .mul(newLockDuration);
+        const rewardAmount = newUserStake.div(newTotalStake).mul(blockReward.toBig()).mul(newLockDuration);
 
         const monetaryRewardAmount = newMonetaryAmount(rewardAmount, this.governanceCurrency as unknown as Currency<U>);
 
@@ -273,17 +252,13 @@ export class DefaultEscrowAPI implements EscrowAPI {
         // normalize APY to 1 year
         const blockTime = minimumBlockPeriod * 2; // ms
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
-        const annualisedReward = rewardAmount
-            .div(newLockDuration)
-            .mul(blocksPerYear);
+        const annualisedReward = rewardAmount.div(newLockDuration).mul(blocksPerYear);
 
-        const apy = annualisedReward
-            .div(newStakedBalance.amount.toBig())
-            .mul(100);
+        const apy = annualisedReward.div(newStakedBalance.amount.toBig()).mul(100);
 
         return {
             amount: monetaryRewardAmount,
-            apy: apy
+            apy: apy,
         };
     }
 
@@ -298,23 +273,13 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async getRewardTally(accountId: AccountId): Promise<Big> {
-        const governanceCurrencyId = newCurrencyId(
-            this.api,
-            tickerToCurrencyIdLiteral(
-                this.governanceCurrency.ticker
-            )
-        );
+        const governanceCurrencyId = newCurrencyId(this.api, tickerToCurrencyIdLiteral(this.governanceCurrency.ticker));
         const rawRewardTally = await this.api.query.escrowRewards.rewardTally(governanceCurrencyId, accountId);
         return decodeFixedPointType(rawRewardTally);
     }
 
     async getRewardPerToken(): Promise<Big> {
-        const governanceCurrencyId = newCurrencyId(
-            this.api,
-            tickerToCurrencyIdLiteral(
-                this.governanceCurrency.ticker
-            )
-        );
+        const governanceCurrencyId = newCurrencyId(this.api, tickerToCurrencyIdLiteral(this.governanceCurrency.ticker));
         const rawRewardPerToken = await this.api.query.escrowRewards.rewardPerToken(governanceCurrencyId);
         return decodeFixedPointType(rawRewardPerToken);
     }
@@ -333,47 +298,34 @@ export class DefaultEscrowAPI implements EscrowAPI {
         accountId: AccountId,
         blockNumber?: number
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const height = blockNumber || await this.systemAPI.getCurrentBlockNumber();
+        const height = blockNumber || (await this.systemAPI.getCurrentBlockNumber());
         const userPointEpoch = await this.api.query.escrow.userPointEpoch(accountId);
         const lastPoint = await this.api.query.escrow.userPointHistory(accountId, userPointEpoch);
         const rawBalance = this.rawBalanceAt(parseEscrowPoint(lastPoint), height);
 
         // `rawBalance.toString()` is used to convert the BN to a BigSource type
-        return newMonetaryAmount(
-            rawBalance.toString(),
-            toVoting(this.governanceCurrency)
-        );
+        return newMonetaryAmount(rawBalance.toString(), toVoting(this.governanceCurrency));
     }
 
     private rawBalanceAt(escrowPoint: RWEscrowPoint, height: number): BN {
-    /*
+        /*
         Rust reference implementation:
         https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L524
     */
-        const heightDiff = this.saturatingSub(
-            new BN(height),
-            escrowPoint.ts
-        );
-        return this.saturatingSub(
-            escrowPoint.bias,
-            escrowPoint.slope.mul(heightDiff)
-        );
+        const heightDiff = this.saturatingSub(new BN(height), escrowPoint.ts);
+        return this.saturatingSub(escrowPoint.bias, escrowPoint.slope.mul(heightDiff));
     }
 
-    async totalVotingSupply(
-        blockNumber?: number
-    ): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
+    async totalVotingSupply(blockNumber?: number): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
         const [currentBlockNumber, epoch, span, rawSlopeChanges] = await Promise.all([
             this.systemAPI.getCurrentBlockNumber(),
             this.api.query.escrow.epoch(),
             this.getSpan(),
-            this.api.query.escrow.slopeChanges.entries()
+            this.api.query.escrow.slopeChanges.entries(),
         ]);
         const height = blockNumber || currentBlockNumber;
         const slopeChanges = new Map<BN, BN>();
-        rawSlopeChanges.forEach(
-            ([id, value]) => slopeChanges.set(storageKeyToNthInner(id).toBn(), value.toBn())
-        );
+        rawSlopeChanges.forEach(([id, value]) => slopeChanges.set(storageKeyToNthInner(id).toBn(), value.toBn()));
 
         const lastPoint = await this.api.query.escrow.pointHistory(epoch);
         const rawSupply = this.rawSupplyAt(parseEscrowPoint(lastPoint), new BN(height), span, slopeChanges);
@@ -400,10 +352,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
             }
 
             const heightDiff = this.saturatingSub(t_i, lastPoint.ts);
-            lastPoint.bias = this.saturatingSub(
-                lastPoint.bias,
-                lastPoint.slope.mul(heightDiff)
-            );
+            lastPoint.bias = this.saturatingSub(lastPoint.bias, lastPoint.slope.mul(heightDiff));
 
             if (t_i.eq(height)) {
                 break;
@@ -439,5 +388,4 @@ export class DefaultEscrowAPI implements EscrowAPI {
     private saturatingSub(x: BN, y: BN): BN {
         return BN.max(x.sub(y), new BN(0));
     }
-
 }
