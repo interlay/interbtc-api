@@ -47,7 +47,11 @@ export class DefaultRefundAPI implements RefundAPI {
     async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        const requestTx = this.api.tx.refund.executeRefund(parsedRequestId, txInclusionDetails.merkleProof, txInclusionDetails.rawTx);
+        const requestTx = this.api.tx.refund.executeRefund(
+            parsedRequestId,
+            txInclusionDetails.merkleProof,
+            txInclusionDetails.rawTx
+        );
         await this.transactionAPI.sendLogged(requestTx, this.api.events.refund.ExecuteRefund, true);
     }
 

@@ -135,8 +135,8 @@ async function main(): Promise<void> {
     // note: very important to use `.method`, otherwise it includes signing info. The polkadot.js
     // app strips the signing info when you try to decode it, but if you use the call data in
     // an extrinsic (e.g. in democracy), it will fail.
-    console.log('Call data: ' + rococoRequestXcmTx.method.toHex());
-    console.log('Call hash: ' + rococoRequestXcmTx.method.hash.toHex());
+    console.log("Call data: " + rococoRequestXcmTx.method.toHex());
+    console.log("Call hash: " + rococoRequestXcmTx.method.hash.toHex());
 
     const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
 

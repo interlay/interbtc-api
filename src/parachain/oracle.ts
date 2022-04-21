@@ -110,7 +110,11 @@ export interface OracleAPI {
 }
 
 export class DefaultOracleAPI implements OracleAPI {
-    constructor(private api: ApiPromise, private wrappedCurrency: WrappedCurrency, private transactionAPI: TransactionAPI) {}
+    constructor(
+        private api: ApiPromise,
+        private wrappedCurrency: WrappedCurrency,
+        private transactionAPI: TransactionAPI
+    ) {}
 
     async getExchangeRate<C extends CurrencyUnit>(
         collateralCurrency: Currency<C>

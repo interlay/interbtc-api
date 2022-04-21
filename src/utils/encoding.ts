@@ -24,10 +24,7 @@ import {
 import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
 import { WalletExt, SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
-import {
-    SignedFixedPoint,
-    UnsignedFixedPoint,
-} from "../interfaces";
+import { SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
 import {
     CollateralCurrency,
     CollateralIdLiteral,
@@ -166,7 +163,7 @@ export function parseSystemVault(
         currencyPair: {
             collateralCurrency: currencyIdToMonetaryCurrency(vault.currencyPair.collateral),
             wrappedCurrency: currencyIdToMonetaryCurrency(vault.currencyPair.wrapped),
-        }
+        },
     };
 }
 
@@ -230,17 +227,16 @@ export async function parseReplaceRequest(
 ): Promise<ReplaceRequestExt> {
     const currencyIdLiteral = currencyIdToLiteral(req.oldVault.currencies.collateral);
     const oldVault = await vaultsAPI.get(req.oldVault.accountId, currencyIdLiteral);
-    const collateralCurrency = currencyIdToMonetaryCurrency(oldVault.id.currencies.collateral) as Currency<CollateralUnit>;
+    const collateralCurrency = currencyIdToMonetaryCurrency(
+        oldVault.id.currencies.collateral
+    ) as Currency<CollateralUnit>;
     return {
         id: stripHexPrefix(id.toString()),
         btcAddress: encodeBtcAddress(req.btcAddress, network),
         newVault: req.newVault,
         oldVault: req.oldVault,
         amount: newMonetaryAmount(req.amount.toString(), wrappedCurrency),
-        griefingCollateral: newMonetaryAmount(
-            req.griefingCollateral.toString(),
-            collateralCurrency
-        ),
+        griefingCollateral: newMonetaryAmount(req.griefingCollateral.toString(), collateralCurrency),
         collateral: newMonetaryAmount(req.collateral.toString(), collateralCurrency),
         acceptTime: req.acceptTime.toNumber(),
         period: req.period.toNumber(),
@@ -347,7 +343,10 @@ export function decodeVaultId(api: ApiPromise, id: string): InterbtcPrimitivesVa
     );
 }
 
-export function queryNominationsMap(map: Map<InterbtcPrimitivesVaultId, number>, vaultId: InterbtcPrimitivesVaultId): number | undefined {
+export function queryNominationsMap(
+    map: Map<InterbtcPrimitivesVaultId, number>,
+    vaultId: InterbtcPrimitivesVaultId
+): number | undefined {
     for (const [entryVaultId, entryNonce] of map.entries()) {
         if (encodeVaultId(entryVaultId) === encodeVaultId(vaultId)) {
             return entryNonce;

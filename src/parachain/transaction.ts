@@ -36,13 +36,7 @@ export class DefaultTransactionAPI {
         if (this.account === undefined) {
             return Promise.reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
         }
-        return DefaultTransactionAPI.sendLogged(
-            this.api,
-            this.account,
-            transaction,
-            successEventType,
-            onlyInBlock
-        );
+        return DefaultTransactionAPI.sendLogged(this.api, this.account, transaction, successEventType, onlyInBlock);
     }
 
     static async sendLogged<T extends AnyTuple>(
@@ -56,9 +50,7 @@ export class DefaultTransactionAPI {
             let unsubscribe: () => void;
             // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
             transaction
-                .signAndSend(account, { nonce: -1 }, (result: ISubmittableResult) =>
-                    callback({ unsubscribe, result })
-                )
+                .signAndSend(account, { nonce: -1 }, (result: ISubmittableResult) => callback({ unsubscribe, result }))
                 .then((u: () => void) => (unsubscribe = u))
                 .catch((error) => reject(error));
 
@@ -96,7 +88,7 @@ export class DefaultTransactionAPI {
                 const decoded = api.registry.findMetaError(dispatchError.asModule);
                 const { docs, name, section } = decoded;
                 message = message.concat(` The error code is ${section}.${name}. ${docs.join(" ")}`);
-            // Bad origin
+                // Bad origin
             } else if (dispatchError.isBadOrigin) {
                 message = message.concat(` The error is caused by using an incorrect account.
                 The error code is BadOrigin ${dispatchError}.`);

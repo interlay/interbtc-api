@@ -23,8 +23,8 @@ main().catch((err) => {
 });
 
 async function main(): Promise<void> {
-    const rawData = require('fs').readFileSync('testnet_runtime_parachain.compact.compressed.wasm');
-    const data = '0x' + rawData.toString('hex');
+    const rawData = require("fs").readFileSync("testnet_runtime_parachain.compact.compressed.wasm");
+    const data = "0x" + rawData.toString("hex");
     await cryptoWaitReady();
     const keyring = new Keyring({ type: "sr25519" });
     const userKeyring = keyring.addFromUri(ACCOUNT_URI);
@@ -32,7 +32,7 @@ async function main(): Promise<void> {
 
     const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
     
-    const proposal = api.tx.parachainSystem.authorizeUpgrade('0x72e1663c5c98310ff9654700738b4f2987a7d8d9d4ccbfd39babe98517ddd7eb');
+    const proposal = api.tx.parachainSystem.authorizeUpgrade("0x72e1663c5c98310ff9654700738b4f2987a7d8d9d4ccbfd39babe98517ddd7eb");
     const proposalData = proposal.method.toHex();
     const proposalHash = proposal.method.hash.toHex();
 
@@ -54,9 +54,9 @@ async function main(): Promise<void> {
 
     console.log("Voting on proposal...");
     await transactionAPI.sendLogged(api.tx.democracy.vote(0, api.createType<DemocracyVote>("DemocracyVote", {
-            aye: true,
-            balance: 1000000000000
-        })), undefined);
+        aye: true,
+        balance: 1000000000000
+    })), undefined);
 
     api.disconnect();
 }

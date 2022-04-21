@@ -3,13 +3,7 @@ import { Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api/promise";
 import Big from "big.js";
 
-import {
-    computeLazyDistribution,
-    decodeFixedPointType,
-    newCurrencyId,
-    newMonetaryAmount,
-    newVaultId,
-} from "../utils";
+import { computeLazyDistribution, decodeFixedPointType, newCurrencyId, newMonetaryAmount, newVaultId } from "../utils";
 import { InterbtcPrimitivesVaultId } from "../parachain";
 import { TransactionAPI } from "../parachain/transaction";
 import {
@@ -48,7 +42,11 @@ export interface RewardsAPI {
      * @param nominatorId The account ID of the staking pool nominator
      * @returns The stake, as a Big object
      */
-    getStakingPoolStake(collateralCurrencyId: CollateralIdLiteral, vaultId: AccountId, nominatorId: AccountId): Promise<Big>;
+    getStakingPoolStake(
+        collateralCurrencyId: CollateralIdLiteral,
+        vaultId: AccountId,
+        nominatorId: AccountId
+    ): Promise<Big>;
     /**
      * Total stake for a vault
      * @param collateralCurrencyIdLiteral The vault's collateral
@@ -83,7 +81,7 @@ export interface RewardsAPI {
      * @param nonce Nonce of the rewards pool
      * @returns The reward per token, as a Big object
      */
-     getStakingPoolRewardPerToken(
+    getStakingPoolRewardPerToken(
         rewardCurrencyId: CurrencyIdLiteral,
         vaultId: AccountId,
         collateralCurrencyId: CollateralIdLiteral,
@@ -114,7 +112,7 @@ export interface RewardsAPI {
      */
     computeCollateralInStakingPool(
         vaultId: InterbtcPrimitivesVaultId,
-        nominatorId: AccountId,
+        nominatorId: AccountId
     ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>;
     /**
      * @param currencyId The reward currency
@@ -143,16 +141,15 @@ export interface RewardsAPI {
      * @param nonce Staking pool nonce
      * @remarks Withdraw all rewards from the current account in the `vaultId` staking pool.
      */
-    withdrawRewards(
-        vaultId: InterbtcPrimitivesVaultId,
-        nonce?: number,
-    ): Promise<void>;
+    withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<void>;
 
     /**
      * Gets the vault annuity systemwide per-block reward.
      * @param governanceCurrency The ID of the currency the reward is paid out in.
      */
-    getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
+    getRewardPerBlock(
+        governanceCurrency: GovernanceIdLiteral
+    ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
 }
 
 export class DefaultRewardsAPI implements RewardsAPI {
@@ -162,15 +159,12 @@ export class DefaultRewardsAPI implements RewardsAPI {
         private transactionAPI: TransactionAPI
     ) {}
 
-    async withdrawRewards(
-        vaultId: InterbtcPrimitivesVaultId,
-        nonce?: number,
-    ): Promise<void> {
+    async withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<void> {
         const definedNonce = nonce
             ? nonce
             : await this.getStakingPoolNonce(
-                currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral,
-                vaultId.accountId
+                  currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral,
+                  vaultId.accountId
             );
         const tx = this.api.tx.fee.withdrawRewards(vaultId, definedNonce.toString());
         await this.transactionAPI.sendLogged(tx, this.api.events.vaultStaking.WithdrawReward, true);
@@ -191,10 +185,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
             this.getStakingPoolRewardTally(rewardCurrencyId, vaultAccountId, nominatorId, collateralCurrencyId, nonce),
         ]);
         const rawLazyDistribution = computeLazyDistribution(stake, rewardPerToken, rewardTally);
-        return newMonetaryAmount(
-            rawLazyDistribution,
-            currencyIdLiteralToMonetaryCurrency(this.api, rewardCurrencyId)
-        );
+        return newMonetaryAmount(rawLazyDistribution, currencyIdLiteralToMonetaryCurrency(this.api, rewardCurrencyId));
     }
 
     async getStakingPoolNonce(
@@ -278,15 +269,14 @@ export class DefaultRewardsAPI implements RewardsAPI {
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
 
         const wrappedCurrencyId = newCurrencyId(this.api, wrappedCurrencyIdLiteral);
-        return decodeFixedPointType(await this.api.query.vaultStaking.rewardPerToken(
-            wrappedCurrencyId,
-            [nonce, vaultId])
+        return decodeFixedPointType(
+            await this.api.query.vaultStaking.rewardPerToken(wrappedCurrencyId, [nonce, vaultId])
         );
     }
 
     async computeCollateralInStakingPool(
         vaultId: InterbtcPrimitivesVaultId,
-        nominatorId: AccountId,
+        nominatorId: AccountId
     ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral;
         const [stake, slashPerToken, slashTally] = await Promise.all([
@@ -350,7 +340,6 @@ export class DefaultRewardsAPI implements RewardsAPI {
     }
 
     async getRewardsPoolStake(vaultCollateralIdLiteral: CollateralIdLiteral, vaultAccountId: AccountId): Promise<Big> {
-
         const collateralCurrency = currencyIdToMonetaryCurrency(
             newCurrencyId(this.api, vaultCollateralIdLiteral)
         ) as CollateralCurrency;
@@ -363,7 +352,6 @@ export class DefaultRewardsAPI implements RewardsAPI {
         vaultCollateralIdLiteral: CollateralIdLiteral,
         vaultAccountId: AccountId
     ): Promise<Big> {
-
         const rewardCurrencyId = newCurrencyId(this.api, rewardCurrencyIdLiteral);
         currencyIdToMonetaryCurrency(newCurrencyId(this.api, rewardCurrencyIdLiteral)) as CollateralCurrency;
         const collateralCurrency = currencyIdToMonetaryCurrency(
@@ -374,13 +362,14 @@ export class DefaultRewardsAPI implements RewardsAPI {
     }
 
     async getRewardsPoolRewardPerToken(currencyId: CurrencyIdLiteral): Promise<Big> {
-
         return decodeFixedPointType(
             await this.api.query.vaultRewards.rewardPerToken(newCurrencyId(this.api, currencyId))
         );
     }
 
-    async getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+    async getRewardPerBlock(
+        governanceCurrency: GovernanceIdLiteral
+    ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
         const rawRewardPerBlock = await this.api.query.vaultAnnuity.rewardPerBlock();
         return newMonetaryAmount(
             rawRewardPerBlock.toString(),

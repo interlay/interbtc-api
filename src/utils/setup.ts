@@ -1,11 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import {
-    ExchangeRate,
-    Bitcoin,
-    BitcoinUnit,
-    Currency,
-    MonetaryAmount,
-} from "@interlay/monetary-js";
+import { ExchangeRate, Bitcoin, BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { Big } from "big.js";
 import BN from "bn.js";
 import { ApiPromise, Keyring } from "@polkadot/api";
@@ -13,11 +7,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { createSubstrateAPI } from "../factory";
 import { issueSingle } from "./issueRedeem";
 import { setNumericStorage } from "./storage";
-import {
-    NominationAPI,
-    OracleAPI,
-    RedeemAPI,
-} from "../parachain";
+import { NominationAPI, OracleAPI, RedeemAPI } from "../parachain";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
@@ -194,13 +184,7 @@ export async function initializeIssue(
     vaultAccountId: InterbtcPrimitivesVaultId
 ): Promise<void> {
     console.log("Initializing an issue...");
-    await issueSingle(
-        InterBtcApi,
-        bitcoinCoreClient,
-        issuingAccount,
-        amountToIssue,
-        vaultAccountId
-    );
+    await issueSingle(InterBtcApi, bitcoinCoreClient, issuingAccount, amountToIssue, vaultAccountId);
 }
 
 export async function initializeRedeem(
@@ -212,9 +196,7 @@ export async function initializeRedeem(
     await redeemAPI.request(amountToRedeem, redeemBTCAddress);
 }
 
-async function main<U extends CurrencyUnit>(
-    params: InitializationParams,
-): Promise<void> {
+async function main<U extends CurrencyUnit>(params: InitializationParams): Promise<void> {
     if (!params.initialize) {
         return Promise.resolve();
     }
@@ -261,8 +243,11 @@ async function main<U extends CurrencyUnit>(
         const exchangeRateToSet =
             params.setExchangeRate === true
                 ? (defaultInitializationParams.setExchangeRate as unknown as ExchangeRate<
-                    Bitcoin, BitcoinUnit, Currency<CollateralUnit>, CollateralUnit
-                >)
+                      Bitcoin,
+                      BitcoinUnit,
+                      Currency<CollateralUnit>,
+                      CollateralUnit
+                  >)
                 : params.setExchangeRate;
         await initializeExchangeRate(exchangeRateToSet, oracleAccountInterBtcApi.oracle);
     }
@@ -302,7 +287,11 @@ async function main<U extends CurrencyUnit>(
                 ? (defaultInitializationParams.redeem as InitializeRedeem)
                 : (params.redeem as InitializeRedeem);
         const redeemingAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount);
-        await initializeRedeem(redeemingAccountInterBtcApi.redeem, redeemParams.amount, redeemParams.redeemingBTCAddress);
+        await initializeRedeem(
+            redeemingAccountInterBtcApi.redeem,
+            redeemParams.amount,
+            redeemParams.redeemingBTCAddress
+        );
     }
     api.disconnect();
 }
