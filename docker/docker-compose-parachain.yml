@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     relaychain-alice:
-        image: "parity/interbtc:interbtc-parachain-1.7.1"
+        image: "parity/interbtc:interbtc-parachain-1-12-1"
         ports:
             - 9944:9944
             - 9933:9933
@@ -23,7 +23,7 @@ services:
             - --rpc-methods=unsafe
             - --force-authoring
     interbtc:
-        image: "interlayhq/interbtc:interbtc-parachain-1.7.1"
+        image: "interlayhq/interbtc:interbtc-parachain-1-10-1"
         command:
             - interbtc-parachain
             - --rpc-external
@@ -90,16 +90,16 @@ services:
             - "3002:3002"
         restart: always
     oracle:
-        image: "interlayhq/interbtc-clients:oracle-standalone-metadata-1-5-6"
+        image: "interlayhq/interbtc-clients:oracle-parachain-metadata-testnet-1-10-1"
         command:
             - /bin/sh
             - -c
             - |
-                oracle-standalone-metadata --keyring charlie --btc-parachain-url 'ws://interbtc:9944' --currency-id DOT KSM KINT INTR
+                oracle-parachain-metadata-testnet --keyring charlie --btc-parachain-url 'ws://interbtc:9944' --currency-id DOT KSM KINT INTR
         environment:
             RUST_LOG: info
     vault_1:
-        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-testnet-1-10-1"
         command:
             - /bin/sh
             - -c
@@ -110,14 +110,14 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Charlie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault-standalone-metadata --keyfile="keyfile.json" --keyname="vault_1" --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+                vault-parachain-metadata-testnet --keyfile="keyfile.json" --keyname="vault_1" --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT'
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443
             BITCOIN_RPC_USER: rpcuser
             BITCOIN_RPC_PASS: rpcpassword
             RUST_LOG: info
     vault_2:
-        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-testnet-1-10-1"
         command:
             - /bin/sh
             - -c
@@ -129,11 +129,11 @@ services:
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
                 # KSM atomic units for registration must be 100x those for DOT, because of the difference in max currency granularity
-                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_2 --auto-register-with-collateral 1000000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'KSM' --wrapped-currency-id 'INTERBTC'
+                vault-parachain-metadata-testnet --keyfile="keyfile.json" --keyname=vault_2 --auto-register-with-collateral 1000000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'KSM'
         environment:
             <<: *client-env
     vault_3:
-        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-testnet-1-10-1"
         command:
             - /bin/sh
             - -c
@@ -144,11 +144,11 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Eve wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_3 --auto-register-with-collateral 1000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+                vault-parachain-metadata-testnet --keyfile="keyfile.json" --keyname=vault_3 --auto-register-with-collateral 1000000000000 --no-issue-execution --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT'
         environment:
             <<: *client-env
     vault_to_liquidate:
-        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-testnet-1-10-1"
         command:
             - /bin/sh
             - -c
@@ -159,11 +159,11 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Ferdie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_to_liquidate --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+                vault-parachain-metadata-testnet --keyfile="keyfile.json" --keyname=vault_to_liquidate --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT'
         environment:
             <<: *client-env
     vault_to_ban:
-        image: "interlayhq/interbtc-clients:vault-standalone-metadata-1-5-6"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-testnet-1-10-1"
         command:
             - /bin/sh
             - -c
@@ -174,7 +174,7 @@ services:
                 # sleep for 30s to wait for bitcoin to create the Ferdie wallet
                 # and also to ensure that the issue period and redeem period are set
                 sleep 30
-                vault-standalone-metadata --keyfile="keyfile.json" --keyname=vault_to_ban --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT' --wrapped-currency-id 'INTERBTC'
+                vault-parachain-metadata-testnet --keyfile="keyfile.json" --keyname=vault_to_ban --auto-register-with-collateral 1000000000000 --btc-parachain-url 'ws://interbtc:9944' --collateral-currency-id 'DOT'
         environment:
             <<: *client-env
     postgres:
