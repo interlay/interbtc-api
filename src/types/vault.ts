@@ -1,6 +1,6 @@
 import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
-import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
+import { InterbtcPrimitivesVaultId, VaultRegistryVaultStatus } from "@polkadot/types/lookup";
 import Big from "big.js";
 
 import { UnsignedFixedPoint } from "../interfaces";
@@ -18,6 +18,20 @@ export enum VaultStatusExt {
     Inactive,
     Liquidated,
     CommittedTheft,
+}
+
+export namespace VaultStatusExt {
+    export function parseVaultStatus(status: VaultRegistryVaultStatus): VaultStatusExt {
+        if (status.isActive) {
+            return status.asActive.isTrue ? VaultStatusExt.Active : VaultStatusExt.Inactive;
+        } else if (status.isLiquidated) {
+            return VaultStatusExt.Liquidated;
+        } else if (status.isCommittedTheft) {
+            return VaultStatusExt.CommittedTheft;
+        } else {
+            throw new Error("Unknown vault status");
+        }
+    }
 }
 
 export class VaultExt<WrappedUnit extends BitcoinUnit> {

@@ -13,10 +13,7 @@ export function estimateReward<U extends GovernanceUnit>(
     currentBlockNumber: number,
     minimumBlockPeriod: number,
     maxPeriod: number,
-    amountToLock: MonetaryAmount<Currency<U>, U> = newMonetaryAmount(
-        0,
-        governanceCurrency as unknown as Currency<U>
-    ),
+    amountToLock: MonetaryAmount<Currency<U>, U> = newMonetaryAmount(0, governanceCurrency as unknown as Currency<U>),
     blockLockTimeExtension: number = 0
 ): {
     amount: MonetaryAmount<Currency<U>, U>;
@@ -39,10 +36,7 @@ export function estimateReward<U extends GovernanceUnit>(
         endBlock: stakedBalance.endBlock,
     };
 
-    const monetaryAddedStake = newMonetaryAmount(
-        amountToLock.toBig(),
-        governanceCurrency as Currency<GovernanceUnit>
-    );
+    const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(), governanceCurrency as Currency<GovernanceUnit>);
 
     // User staking for the first time; only case 2 relevant otherwise rewards should be 0
     if (stakedBalance.amount.isZero()) {

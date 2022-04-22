@@ -917,18 +917,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         );
     }
 
-    private parseVaultStatus(status: VaultRegistryVaultStatus): VaultStatusExt {
-        if (status.isActive) {
-            return status.asActive.isTrue ? VaultStatusExt.Active : VaultStatusExt.Inactive;
-        } else if (status.isLiquidated) {
-            return VaultStatusExt.Liquidated;
-        } else if (status.isCommittedTheft) {
-            return VaultStatusExt.CommittedTheft;
-        } else {
-            throw new Error("Unknown vault status");
-        }
-    }
-
     async parseVault(vault: VaultRegistryVault, network: Network): Promise<VaultExt<BitcoinUnit>> {
         const collateralCurrency = currencyIdToMonetaryCurrency<CollateralUnit>(vault.id.currencies.collateral);
         const replaceCollateral = newMonetaryAmount(vault.replaceCollateral.toString(), collateralCurrency);
@@ -941,7 +929,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             parseWallet(vault.wallet, network),
             backingCollateral,
             vault.id,
-            this.parseVaultStatus(vault.status),
+            VaultStatusExt.parseVaultStatus(vault.status),
             vault.bannedUntil.isSome ? (vault.bannedUntil.value as BlockNumber).toNumber() : undefined,
             newMonetaryAmount(vault.toBeIssuedTokens.toString(), this.wrappedCurrency),
             newMonetaryAmount(vault.issuedTokens.toString(), this.wrappedCurrency),

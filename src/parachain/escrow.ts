@@ -4,7 +4,14 @@ import { AccountId } from "@polkadot/types/interfaces";
 import BN from "bn.js";
 import Big from "big.js";
 
-import { decodeFixedPointType, newCurrencyId, newMonetaryAmount, storageKeyToNthInner, toVoting, estimateReward } from "../utils";
+import {
+    decodeFixedPointType,
+    newCurrencyId,
+    newMonetaryAmount,
+    storageKeyToNthInner,
+    toVoting,
+    estimateReward,
+} from "../utils";
 import {
     GovernanceCurrency,
     GovernanceUnit,
@@ -104,7 +111,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         private governanceCurrency: GovernanceCurrency,
         private systemAPI: SystemAPI,
         private transactionAPI: TransactionAPI
-    ) { }
+    ) {}
 
     async createLock<U extends GovernanceUnit>(
         amount: MonetaryAmount<Currency<U>, U>,
@@ -230,19 +237,11 @@ export class DefaultEscrowAPI implements EscrowAPI {
         https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L524
     */
     private rawBalanceAt(escrowPoint: RWEscrowPoint, height: number): BN {
-        const heightDiff = this.saturatingSub(
-            new BN(height),
-            escrowPoint.ts
-        );
-        return this.saturatingSub(
-            escrowPoint.bias,
-            escrowPoint.slope.mul(heightDiff)
-        );
+        const heightDiff = this.saturatingSub(new BN(height), escrowPoint.ts);
+        return this.saturatingSub(escrowPoint.bias, escrowPoint.slope.mul(heightDiff));
     }
 
-    async totalVotingSupply(
-        blockNumber?: number
-    ): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
+    async totalVotingSupply(blockNumber?: number): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
         let block;
         let epoch;
 
@@ -261,10 +260,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         return this.totalVotingSupplyAt(block, epoch);
     }
 
-    private async totalVotingSupplyAt(
-        block: BN,
-        epoch: BN,
-    ): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
+    private async totalVotingSupplyAt(block: BN, epoch: BN): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
         const [span, rawSlopeChanges] = await Promise.all([
             this.getSpan(),
             this.api.query.escrow.slopeChanges.entries(),
@@ -290,7 +286,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
             if (min >= max) {
                 break;
             }
-            const mid = (min.add(max).addn(1)).divn(2);
+            const mid = min.add(max).addn(1).divn(2);
             const point = parseEscrowPoint(await this.api.query.escrow.pointHistory(mid));
             if (point.ts <= block) {
                 min = mid;
