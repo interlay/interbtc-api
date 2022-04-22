@@ -225,37 +225,88 @@ export class DefaultEscrowAPI implements EscrowAPI {
         return newMonetaryAmount(rawBalance.toString(), toVoting(this.governanceCurrency));
     }
 
-    private rawBalanceAt(escrowPoint: RWEscrowPoint, height: number): BN {
-        /*
+    /*
         Rust reference implementation:
         https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L524
     */
-        const heightDiff = this.saturatingSub(new BN(height), escrowPoint.ts);
-        return this.saturatingSub(escrowPoint.bias, escrowPoint.slope.mul(heightDiff));
+    private rawBalanceAt(escrowPoint: RWEscrowPoint, height: number): BN {
+        const heightDiff = this.saturatingSub(
+            new BN(height),
+            escrowPoint.ts
+        );
+        return this.saturatingSub(
+            escrowPoint.bias,
+            escrowPoint.slope.mul(heightDiff)
+        );
     }
 
-    async totalVotingSupply(blockNumber?: number): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
-        const [currentBlockNumber, epoch, span, rawSlopeChanges] = await Promise.all([
-            this.systemAPI.getCurrentBlockNumber(),
-            this.api.query.escrow.epoch(),
+    async totalVotingSupply(
+        blockNumber?: number
+    ): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
+        let block;
+        let epoch;
+
+        if (blockNumber) {
+            block = new BN(blockNumber);
+            const maxEpoch = await this.api.query.escrow.epoch();
+            epoch = await this.findBlockEpoch(block, maxEpoch.toBn());
+        } else {
+            const [currentBlock, currentEpoch] = await Promise.all([
+                this.systemAPI.getCurrentBlockNumber(),
+                this.api.query.escrow.epoch(),
+            ]);
+            block = new BN(currentBlock);
+            epoch = currentEpoch.toBn();
+        }
+        return this.totalVotingSupplyAt(block, epoch);
+    }
+
+    private async totalVotingSupplyAt(
+        block: BN,
+        epoch: BN,
+    ): Promise<MonetaryAmount<Currency<VoteUnit>, VoteUnit>> {
+        const [span, rawSlopeChanges] = await Promise.all([
             this.getSpan(),
             this.api.query.escrow.slopeChanges.entries(),
         ]);
-        const height = blockNumber || currentBlockNumber;
         const slopeChanges = new Map<BN, BN>();
         rawSlopeChanges.forEach(([id, value]) => slopeChanges.set(storageKeyToNthInner(id).toBn(), value.toBn()));
 
         const lastPoint = await this.api.query.escrow.pointHistory(epoch);
-        const rawSupply = this.rawSupplyAt(parseEscrowPoint(lastPoint), new BN(height), span, slopeChanges);
+        const rawSupply = this.rawSupplyAt(parseEscrowPoint(lastPoint), block, span, slopeChanges);
         // `rawSupply.toString()` is used to convert the BN to a BigSource type
         return newMonetaryAmount(rawSupply.toString(), toVoting(this.governanceCurrency));
     }
 
+    /*
+        Vyper reference implementation:
+        https://github.com/curvefi/curve-dao-contracts/blob/4e428823c8ae9c0f8a669d796006fade11edb141/contracts/VotingEscrow.vy#L502
+    */
+    private async findBlockEpoch(block: BN, maxEpoch: BN): Promise<BN> {
+        let min = new BN(0);
+        let max = maxEpoch;
+
+        for (let i = 0; i < 128; i++) {
+            if (min >= max) {
+                break;
+            }
+            const mid = (min.add(max).addn(1)).divn(2);
+            const point = parseEscrowPoint(await this.api.query.escrow.pointHistory(mid));
+            if (point.ts <= block) {
+                min = mid;
+            } else {
+                max = mid.subn(1);
+            }
+        }
+
+        return min;
+    }
+
+    /*
+        Rust reference implementation:
+        https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L530
+    */
     private rawSupplyAt(escrowPoint: RWEscrowPoint, height: BN, escrowSpan: BN, slopeChanges: Map<BN, BN>): BN {
-        /*
-            Rust reference implementation:
-            https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L530
-        */
         const lastPoint = escrowPoint;
         let t_i = this.roundHeight(lastPoint.ts, escrowSpan);
         while (t_i.lt(height)) {
@@ -284,11 +335,11 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async getSpan(): Promise<BN> {
-        return (await this.api.consts.escrow.span).toBn();
+        return this.api.consts.escrow.span.toBn();
     }
 
     async getMaxPeriod(): Promise<BN> {
-        return (await this.api.consts.escrow.maxPeriod).toBn();
+        return this.api.consts.escrow.maxPeriod.toBn();
     }
 
     private roundHeight(height: BN, span: BN): BN {
