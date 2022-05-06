@@ -53,7 +53,8 @@ describe("escrow", () => {
     it("should return 0 reward and apy estimate", async () => {
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
 
-        assert.equal(rewardsEstimate.apy, new Big(0), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
+        const expected = new Big(0);
+        assert.isTrue(expected.eq(rewardsEstimate.apy), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
         assert.isTrue(rewardsEstimate.amount.isZero(), `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`);
     });
 
