@@ -117,7 +117,7 @@ describe("escrow", () => {
         await interBtcAPI.escrow.createLock(user2_intrAmount, currentBlockNumber + unlockHeightDiff);
         const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
         assert.equal(
-            votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(1, 0).toString(),
+            votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(1, RoundingMode.RoundDown).toString(),
             "9.9"
         );
     }).timeout(500000);
