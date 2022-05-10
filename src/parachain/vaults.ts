@@ -575,8 +575,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
         );
     }
 
-    private isNoTokensIssuedError(e: Error): boolean {
-        return e.message !== undefined && e.message.includes("NoTokensIssued");
+    private isNoTokensIssuedError(e: string): boolean {
+        return e !== undefined && e.includes("No tokens issued");
     }
 
     async isBelowPremiumThreshold(vaultId: InterbtcPrimitivesVaultId): Promise<boolean> {
@@ -614,10 +614,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
                 collateralization = await this.getCollateralizationFromVault(vaultId, onlyIssued);
             }
         } catch (e) {
-            if (this.isNoTokensIssuedError(e as Error)) {
+            if (this.isNoTokensIssuedError(e as string)) {
                 return Promise.resolve(undefined);
             }
-            return Promise.reject(new Error(`Error during collateralization computation: ${(e as Error).message}`));
+            return Promise.reject(new Error(`Error during collateralization computation: ${(e)}`));
         }
         if (!collateralization) {
             return Promise.resolve(undefined);
