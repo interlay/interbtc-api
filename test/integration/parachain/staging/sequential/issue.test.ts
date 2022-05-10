@@ -164,7 +164,15 @@ describe("issue", () => {
     it("should getFeesToPay", async () => {
         const amount = newMonetaryAmount(2, wrappedCurrency, true);
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
-        assert.equal(feesToPay.str.BTC(), "0.01");
+        const feeRate = await userInterBtcAPI.issue.getFeeRate();
+
+        const expectedFeesInBTC = amount.to.BTC().toNumber() * feeRate.toNumber();
+        // compare floating point values in BTC, allowing for small delta difference
+        assert.closeTo(
+            feesToPay.to.BTC().toNumber(), 
+            expectedFeesInBTC, 
+            0.00001,
+            "Calculated fees in BTC do not match expectations");
     });
 
     it("should getFeeRate", async () => {
