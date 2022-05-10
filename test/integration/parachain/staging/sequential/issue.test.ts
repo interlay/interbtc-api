@@ -165,9 +165,14 @@ describe("issue", () => {
             false,
             false
         );
+
+        // calculate expected final balance and round the fees value as the parachain will do so when calculating fees.
+        const amtInSatoshi = amount.to.Satoshi();
+        const feesInSatoshiRounded = feesToPay.to.Satoshi().round(0);
+        const expectedFinalBalance = amtInSatoshi.sub(feesInSatoshiRounded).sub(oneSatoshi.to.Satoshi()).toString();
         assert.equal(
-            issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).toString(),
-            amount.sub(feesToPay).sub(oneSatoshi).toString(),
+            issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).to.Satoshi().toString(),
+            expectedFinalBalance,
             "Final balance was not increased by the exact amount specified"
         );
     }).timeout(500000);
