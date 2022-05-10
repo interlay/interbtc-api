@@ -1,8 +1,13 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-
-import { CollateralCurrency, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, VaultRegistryVault } from "../../../../../src/index";
+import { 
+    CollateralCurrency, 
+    DefaultInterBtcApi, 
+    InterBtcApi, 
+    InterbtcPrimitivesVaultId, 
+    VaultRegistryVault 
+} from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import {
@@ -14,16 +19,14 @@ import {
     BITCOIN_CORE_WALLET,
     BITCOIN_CORE_PORT,
     USER_1_URI,
-    VAULT_TO_LIQUIDATE_URI,
     VAULT_1_URI,
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
 import { getCorrespondingCollateralCurrency, issueAndRedeem, newMonetaryAmount } from "../../../../../src/utils";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
-import { ElectrsAPI, newVaultId, WrappedCurrency } from "../../../../../src";
+import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
-import { DefaultElectrsAPI } from "../../../../../src/external/electrs";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -32,9 +35,7 @@ describe("redeem", () => {
     let keyring: Keyring;
     let userAccount: KeyringPair;
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
-    let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
-    let vault_to_liquidate: KeyringPair;
     let vault_1: KeyringPair;
     let vault_1_id: InterbtcPrimitivesVaultId;
     let vault_2: KeyringPair;
@@ -49,11 +50,9 @@ describe("redeem", () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
-        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         collateralCurrency = getCorrespondingCollateralCurrency(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
