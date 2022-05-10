@@ -177,7 +177,7 @@ describe("issue", () => {
 
     it("should getFeeRate", async () => {
         const feePercentage = await userInterBtcAPI.issue.getFeeRate();
-        assert.equal(feePercentage.toString(), "0.005");
+        assert.equal(feePercentage.toString(), "0.0015");
     });
 
     // FIXME: don't use magic numbers for these tests
