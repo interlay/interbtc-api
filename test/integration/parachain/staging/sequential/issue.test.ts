@@ -1,15 +1,36 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinUnit } from "@interlay/monetary-js";
-import { CollateralCurrency, currencyIdToLiteral, DefaultElectrsAPI, DefaultInterBtcApi, ElectrsAPI, getCorrespondingCollateralCurrency, InterBtcApi, InterbtcPrimitivesVaultId, IssueStatus, newAccountId, newMonetaryAmount } from "../../../../../src/index";
-
+import { 
+    CollateralCurrency, 
+    currencyIdToLiteral, 
+    DefaultInterBtcApi, 
+    ElectrsAPI, 
+    getCorrespondingCollateralCurrency, 
+    InterBtcApi, 
+    InterbtcPrimitivesVaultId, 
+    IssueStatus, 
+    newAccountId, 
+    newMonetaryAmount 
+} from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
-import { USER_1_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI } from "../../../../config";
+import { 
+    USER_1_URI, 
+    VAULT_1_URI, 
+    VAULT_2_URI, 
+    BITCOIN_CORE_HOST, 
+    BITCOIN_CORE_NETWORK, 
+    BITCOIN_CORE_PASSWORD, 
+    BITCOIN_CORE_PORT, 
+    BITCOIN_CORE_USERNAME, 
+    BITCOIN_CORE_WALLET, 
+    PARACHAIN_ENDPOINT, 
+    ESPLORA_BASE_PATH
+} from "../../../../config";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
-import { newVaultId, tickerToMonetaryCurrency, WrappedCurrency } from "../../../../../src";
+import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
 
 describe("issue", () => {
@@ -17,14 +38,12 @@ describe("issue", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
     let userInterBtcAPI: InterBtcApi;
-    let electrsAPI: ElectrsAPI;
 
     let userAccount: KeyringPair;
     let vault_1: KeyringPair;
     let vault_1_id: InterbtcPrimitivesVaultId;
     let vault_2: KeyringPair;
     let vault_2_id: InterbtcPrimitivesVaultId;
-    let vault_to_ban: KeyringPair;
 
     let wrappedCurrency: WrappedCurrency;
     let collateralCurrency: CollateralCurrency;
@@ -40,8 +59,6 @@ describe("issue", () => {
         vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
         vault_2_id = newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency);
-        vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
-        electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -206,7 +223,11 @@ describe("issue", () => {
                 // request issue
                 const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
                 const vaultCollateralIdLiteral = currencyIdToLiteral(vault_2_id.currencies.collateral);
-                const requestResults = await userInterBtcAPI.issue.request(amount, newAccountId(api, vault_2.address), vaultCollateralIdLiteral);
+                const requestResults = await userInterBtcAPI.issue.request(
+                    amount, 
+                    newAccountId(api, vault_2.address), 
+                    vaultCollateralIdLiteral
+                );
                 assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                 const requestResult = requestResults[0];
 
