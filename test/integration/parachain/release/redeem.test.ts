@@ -148,7 +148,8 @@ describe("redeem", () => {
         // Do not check balances as this is already checked in the parachain integration tests.
     }).timeout(10 * 60 * 1000);
 
-    it("should issue and manually execute redeem", async () => {
+    // TODO: double the timeout and run on `master` branch only, before a release
+    it.skip("should issue and manually execute redeem", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const issueAmount = newMonetaryAmount(0.00013, wrappedCurrency, true);
             const redeemAmount = newMonetaryAmount(0.00011, wrappedCurrency, true);
