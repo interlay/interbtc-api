@@ -19,7 +19,7 @@
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint --fix . --ext .ts",
-    "ci:test": "run-s build test:lint test:unit",
+    "ci:test": "run-s build test:lint test:unit test:integration",
     "ci:test:staging": "run-s build test:lint test:unit test:integration:staging",
     "ci:test:release": "run-s build test:integration:release",
     "ci:test-with-coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" yarn ci:test",
