@@ -3,7 +3,7 @@ import { assert } from "chai";
 import { Currency } from "@interlay/monetary-js";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import Big from "big.js";
+import Big, { RoundingMode } from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_3_URI, VAULT_TO_BAN_URI, VAULT_TO_LIQUIDATE_URI } from "../../../config";
@@ -53,7 +53,8 @@ describe("escrow", () => {
     it("should return 0 reward and apy estimate", async () => {
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
 
-        assert.equal(rewardsEstimate.apy, new Big(0), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
+        const expected = new Big(0);
+        assert.isTrue(expected.eq(rewardsEstimate.apy), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
         assert.isTrue(rewardsEstimate.amount.isZero(), `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`);
     });
 
@@ -93,7 +94,7 @@ describe("escrow", () => {
 
         // Hardcoded value here to match the parachain
         assert.equal(
-            votingSupply.toBig(votingSupply.currency.base).round(1, 0).toString(),
+            votingSupply.toBig(votingSupply.currency.base).round(1, RoundingMode.RoundDown).toString(),
             "6.2"
         );
         const firstYearRewards = 125000000000000000;
@@ -116,7 +117,7 @@ describe("escrow", () => {
         await interBtcAPI.escrow.createLock(user2_intrAmount, currentBlockNumber + unlockHeightDiff);
         const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
         assert.equal(
-            votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(1, 0).toString(),
+            votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(1, RoundingMode.RoundDown).toString(),
             "9.9"
         );
     }).timeout(500000);

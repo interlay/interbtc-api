@@ -287,12 +287,12 @@ export class DefaultEscrowAPI implements EscrowAPI {
         let max = maxEpoch;
 
         for (let i = 0; i < 128; i++) {
-            if (min >= max) {
+            if (min.gte(max)) {
                 break;
             }
             const mid = (min.add(max).addn(1)).divn(2);
             const point = parseEscrowPoint(await this.api.query.escrow.pointHistory(mid));
-            if (point.ts <= block) {
+            if (point.ts.lte(block)) {
                 min = mid;
             } else {
                 max = mid.subn(1);

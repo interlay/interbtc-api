@@ -35,13 +35,19 @@ export async function callWithExchangeRate<C extends CollateralUnit>(
     const initialExchangeRate = await oracleAPI.getExchangeRate(exchangeRate.counter);
     await oracleAPI.setExchangeRate(exchangeRate);
     await oracleAPI.waitForExchangeRateUpdate(exchangeRate);
+    let result: Promise<void>;
     try {
         await fn();
+        result = Promise.resolve();
     } catch (error) {
         console.log(`Error: ${(error as Error).toString()}`);
+        result = Promise.reject(error);
+    } finally {
+        await oracleAPI.setExchangeRate(initialExchangeRate);
+        await oracleAPI.waitForExchangeRateUpdate(initialExchangeRate);
     }
-    await oracleAPI.setExchangeRate(initialExchangeRate);
-    await oracleAPI.waitForExchangeRateUpdate(initialExchangeRate);
+
+    return result;
 }
 
 /*

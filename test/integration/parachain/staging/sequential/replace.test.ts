@@ -1,6 +1,12 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, InterbtcPrimitivesVaultId, newMonetaryAmount } from "../../../../../src/index";
+import { 
+    DefaultInterBtcApi, 
+    getCorrespondingCollateralCurrency, 
+    InterBtcApi, 
+    InterbtcPrimitivesVaultId, 
+    newMonetaryAmount
+} from "../../../../../src/index";
 
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { createSubstrateAPI } from "../../../../../src/factory";
@@ -20,7 +26,6 @@ import {
 import { assert } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
-import { SLEEP_TIME_MS, sleep } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -62,7 +67,8 @@ describe("replace", () => {
         api.disconnect();
     });
 
-    describe("request", () => {
+    // TODO: revisit after publishing patch to find better way to set value above dust + estimated fees
+    describe.skip("request", () => {
         it("should request vault replacement", async () => {
             const issueAmount = newMonetaryAmount(0.000012, wrappedCurrency, true);
             const replaceAmount = newMonetaryAmount(0.00001, wrappedCurrency, true);
@@ -74,10 +80,16 @@ describe("replace", () => {
                 vault_3_id
             );
             interBtcAPI.setAccount(vault_3);
-            await interBtcAPI.replace.request(replaceAmount, currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency);
+            await interBtcAPI.replace.request(
+                replaceAmount, 
+                currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
+            );
 
             interBtcAPI.setAccount(vault_2);
-            await interBtcAPI.replace.request(replaceAmount, currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency);
+            await interBtcAPI.replace.request(
+                replaceAmount, 
+                currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency
+            );
 
             const requestsList = await interBtcAPI.replace.list();
             const requestsMap = await interBtcAPI.replace.map();
