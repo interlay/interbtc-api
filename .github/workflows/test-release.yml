@@ -11,7 +11,7 @@ on:
 jobs:
     build:
         runs-on: [self-hosted, linux]
-        timeout-minutes: 5
+        timeout-minutes: 60
         steps:
             - uses: actions/checkout@v2
 
@@ -23,7 +23,7 @@ jobs:
             - run: yarn install
             - name: Run and set up the parachain, oracle, staked relayer and vault
               run: yarn docker-parachain-start -- -d
-            - run: yarn ci:test
+            - run: yarn ci:test-with-coverage
 
             - name: Archive logs
               if: always()
@@ -35,3 +35,10 @@ jobs:
               with:
                 name: docker-compose-logs
                 path: logs.txt
+
+            - name: Upload coverage results
+              if: always()
+              uses: actions/upload-artifact@v3
+              with:
+                name: testing-coverage-metrics
+                path: coverage
