@@ -9,4 +9,4 @@ then
     rm -rf parachain-launch
 fi
 
-cd local-setup && docker-compose up --build &
+cd local-setup && docker-compose up --build --detach
