@@ -75,11 +75,11 @@ export class DefaultTransactionAPI {
         }
         unsubscribe(result);
 
+        // Print all events for debugging
+        DefaultTransactionAPI.printEvents(api, result.events);
+
         const dispatchError = result.dispatchError;
         if (dispatchError) {
-            // Print all events for debugging
-            DefaultTransactionAPI.printEvents(api, result.events);
-
             // Construct error message
             let message = "The transaction failed.";
             // Runtime error in one of the parachain modules
