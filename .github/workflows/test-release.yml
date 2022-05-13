@@ -20,5 +20,4 @@ jobs:
             - run: corepack enable
             - run: yarn install
             - name: Run and set up the parachain, oracle, staked relayer and vault
-              run: yarn docker-parachain-start -- -d
-            - run: yarn ci:test
+              run: yarn docker-parachain-start & yarn ci:test
