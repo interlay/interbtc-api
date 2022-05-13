@@ -120,7 +120,7 @@ describe("escrow", () => {
             votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(1, RoundingMode.RoundDown).toString(),
             "9.9"
         );
-    }).timeout(500000);
+    }).timeout(15 * 60000);
 
     // TODO: Unskip and implement once instant-seal is added to interbtc-standalone. Otherwise this test would take a week.
     it.skip("should withdraw locked funds", async () => {}).timeout(100000);
