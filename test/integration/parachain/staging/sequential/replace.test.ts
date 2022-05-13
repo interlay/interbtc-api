@@ -29,9 +29,6 @@ import { assert } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { BitcoinUnit, MonetaryAmount } from "@interlay/monetary-js";
-import { runWhileMiningBTCBlocks } from "../../../../utils/helpers";
-import { resolve } from "path";
-import Big from "big.js";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -100,12 +97,10 @@ describe("replace", () => {
                 currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
             );
 
-            await DefaultTransactionAPI.waitForEvent(api, api.events.replace.AcceptReplace, 5 * 60000);
-            const headNumber = new Big(await interBtcAPI.system.getCurrentActiveBlockNumber());
             const finalizedPromise = new Promise<void>((resolve, _) => interBtcAPI.system.subscribeToFinalizedBlockHeads(
                 async (header) => {
-                    const currentHeadNumber = new Big(header.number.toString());
-                    if (currentHeadNumber.gte(headNumber.add(1))) {
+                    const events = await interBtcAPI.api.query.system.events.at(header.parentHash);
+                    if (DefaultTransactionAPI.doesArrayContainEvent(events, api.events.replace.AcceptReplace)) {
                         resolve();
                     }
                 })
