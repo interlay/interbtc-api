@@ -279,7 +279,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
 
         let txs: Transaction[] = [];
         try {
-            txs = await this.getData(this.scripthashApi.getRecentTxsByScripthash(hash));
+            txs = await this.getData(this.scripthashApi.getTxsByScripthash(hash));
         } catch (e) {
             return Promise.reject(new Error(`Error during tx lookup by OP_RETURN: ${e}`));
         }
