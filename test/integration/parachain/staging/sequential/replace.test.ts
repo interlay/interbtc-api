@@ -2,10 +2,12 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { 
     DefaultInterBtcApi, 
+    DefaultTransactionAPI, 
     getCorrespondingCollateralCurrency, 
     InterBtcApi, 
     InterbtcPrimitivesVaultId, 
-    newMonetaryAmount
+    newMonetaryAmount,
+    tickerToCurrencyIdLiteral
 } from "../../../../../src/index";
 
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
@@ -26,6 +28,10 @@ import {
 import { assert } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
+import { BitcoinUnit, MonetaryAmount } from "@interlay/monetary-js";
+import { runWhileMiningBTCBlocks } from "../../../../utils/helpers";
+import { resolve } from "path";
+import Big from "big.js";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -67,11 +73,19 @@ describe("replace", () => {
         api.disconnect();
     });
 
-    // TODO: revisit after publishing patch to find better way to set value above dust + estimated fees
-    describe.skip("request", () => {
+    describe("request", () => {
+        let dustValue : MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+        let feesEstimate : MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+
+        before(async () => {
+            dustValue = await interBtcAPI.replace.getDustValue();
+            feesEstimate = newMonetaryAmount((await interBtcAPI.oracle.getBitcoinFees()), wrappedCurrency, false);
+        });
+
         it("should request vault replacement", async () => {
-            const issueAmount = newMonetaryAmount(0.000012, wrappedCurrency, true);
-            const replaceAmount = newMonetaryAmount(0.00001, wrappedCurrency, true);
+            // try to set value above dust + estimated fees
+            const issueAmount = dustValue.add(feesEstimate).mul(1.2);
+            const replaceAmount = dustValue;
             await issueSingle(
                 interBtcAPI,
                 bitcoinCoreClient,
@@ -79,17 +93,25 @@ describe("replace", () => {
                 issueAmount,
                 vault_3_id
             );
+
             interBtcAPI.setAccount(vault_3);
             await interBtcAPI.replace.request(
                 replaceAmount, 
                 currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
             );
 
-            interBtcAPI.setAccount(vault_2);
-            await interBtcAPI.replace.request(
-                replaceAmount, 
-                currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency
+            await DefaultTransactionAPI.waitForEvent(api, api.events.replace.AcceptReplace, 5 * 60000);
+            const headNumber = new Big(await interBtcAPI.system.getCurrentActiveBlockNumber());
+            const finalizedPromise = new Promise<void>((resolve, _) => interBtcAPI.system.subscribeToFinalizedBlockHeads(
+                async (header) => {
+                    const currentHeadNumber = new Big(header.number.toString());
+                    if (currentHeadNumber.gte(headNumber.add(1))) {
+                        resolve();
+                    }
+                })
             );
+
+            await finalizedPromise;
 
             const requestsList = await interBtcAPI.replace.list();
             const requestsMap = await interBtcAPI.replace.map();
@@ -102,7 +124,38 @@ describe("replace", () => {
             assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
             assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
             assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
-        }).timeout(400000);
+        }).timeout(1000000);
+
+        it("should fail vault replace request if not having enough tokens", async () => {
+            const replaceAmount = dustValue;
+
+            interBtcAPI.setAccount(vault_2);
+
+            // check precondition: vault does not hold enough issued tokens to request a replace
+            const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
+                newAccountId(api, vault_2.address),
+                tickerToCurrencyIdLiteral(collateralCurrency.ticker)
+            );
+
+            // vault 2 should have 0 issued tokens, but tests added later may interfere...
+            // just double check here that we don't have enough to match the replace request.
+            assert.isAbove(
+                replaceAmount.add(feesEstimate).toBig(wrappedCurrency.base).toNumber(), 
+                tokensInVault.toBig(wrappedCurrency.base).toNumber(), 
+                "Pre-condition failed: vault needs fewer tokens than replace request"
+            );
+
+            try {
+                await interBtcAPI.replace.request(
+                    replaceAmount, 
+                    currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
+                );
+                assert.fail("Expected error to be thrown due to lack of issued tokens for vault, but call completed.");
+            } catch (e) {
+                assert.isTrue(e instanceof Error, "Expected replace request to fail with Error");
+            }
+
+        }).timeout(300000);
     });
 
     it("should getDustValue", async () => {
