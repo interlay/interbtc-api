@@ -1,13 +1,13 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { 
+    currencyIdToLiteral,
     DefaultInterBtcApi, 
     DefaultTransactionAPI, 
     getCorrespondingCollateralCurrency, 
     InterBtcApi, 
     InterbtcPrimitivesVaultId, 
     newMonetaryAmount,
-    tickerToCurrencyIdLiteral
 } from "../../../../../src/index";
 
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
@@ -129,7 +129,7 @@ describe("replace", () => {
             // check precondition: vault does not hold enough issued tokens to request a replace
             const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
                 newAccountId(api, vault_2.address),
-                tickerToCurrencyIdLiteral(collateralCurrency.ticker)
+                currencyIdToLiteral(vault_2_id.currencies.collateral)
             );
 
             // vault 2 should have 0 issued tokens, but tests added later may interfere...
