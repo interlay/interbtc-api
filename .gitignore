@@ -18,3 +18,4 @@ coverage
 .vscode
 .yarn
 local-setup
+logs.txt
