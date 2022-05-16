@@ -763,24 +763,38 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return Promise.reject(new Error("Did not find vault with sufficient locked BTC"));
     }
 
+    private isVaultEligibleForRedeem(vault: VaultExt<BitcoinUnit>, activeBlockNumber: number): boolean {
+        const bannedUntilBlockNumber = vault.bannedUntil || 0;
+        return (
+            (vault.status === VaultStatusExt.Active || vault.status === VaultStatusExt.Inactive) &&
+            vault.issuedTokens.gt(vault.toBeRedeemedTokens) &&
+            bannedUntilBlockNumber < activeBlockNumber
+        );
+    }
+
     async getPremiumRedeemVaults(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
         > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
-        const vaults = await this.list();
+        const [vaults, activeBlockNumber] = await Promise.all([
+            this.list(),
+            this.systemAPI.getCurrentActiveBlockNumber(),
+        ]);        
+
+        // only non-banned, non-liquidated vaults with liquidity are eligible for redeems
+        const redeemVaults = vaults.filter((vault) => {
+            return this.isVaultEligibleForRedeem(vault, activeBlockNumber);
+        });
+        
         const premiumRedeemVaultPredicates = await Promise.all(
-            vaults.map((vault) => {
-                return new Promise((resolve, reject) => {
-                    const redemableTokens = vault.getRedeemableTokens();
-                    if (redemableTokens.isZero()) {
-                        resolve(false);
-                    } else {
+            redeemVaults
+                .map((vault) => {
+                    return new Promise((resolve, reject) => {
                         this.isBelowPremiumThreshold(vault.id).then(resolve).catch(reject);
-                    }
-                });
-            })
+                    });
+                })
         );
-        vaults
+        redeemVaults
             .filter((_, index) => premiumRedeemVaultPredicates[index])
             .forEach((vault) => map.set(vault.id, vault.getRedeemableTokens()));
         return map;
@@ -820,13 +834,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         ]);
         vaults
             .filter((vault) => {
-                const bannedUntilBlockNumber = vault.bannedUntil || 0;
-                // issuedTokens - toBeRedeemedTokens > 0
-                return (
-                    vault.issuedTokens.gt(vault.toBeRedeemedTokens) &&
-                    vault.status === VaultStatusExt.Active &&
-                    bannedUntilBlockNumber < activeBlockNumber
-                );
+                return this.isVaultEligibleForRedeem(vault, activeBlockNumber);
             })
             .sort((vault1, vault2) => {
                 // Descending order
