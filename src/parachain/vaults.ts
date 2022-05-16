@@ -788,9 +788,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         
         const premiumRedeemVaultPredicates = await Promise.all(
             redeemVaults
-                .map((vault) => {
-                    return new Promise((resolve, reject) => {
-                        this.isBelowPremiumThreshold(vault.id).then(resolve).catch(reject);
+                .map((vault) => this.isBelowPremiumThreshold(vault.id)
                     });
                 })
         );
