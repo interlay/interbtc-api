@@ -5,10 +5,10 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
 import Big, { RoundingMode } from "big.js";
 
-import { createSubstrateAPI } from "../../../../src/factory";
-import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_3_URI, VAULT_TO_BAN_URI, VAULT_TO_LIQUIDATE_URI } from "../../../config";
-import { DefaultInterBtcApi, GovernanceUnit, newAccountId, newMonetaryAmount, setNumericStorage } from "../../../../src";
-import { sudo } from "../../../utils/helpers";
+import { createSubstrateAPI } from "../../../../../src/factory";
+import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_3_URI, VAULT_TO_BAN_URI, VAULT_TO_LIQUIDATE_URI } from "../../../../config";
+import { DefaultInterBtcApi, GovernanceUnit, newAccountId, newMonetaryAmount, setNumericStorage } from "../../../../../src";
+import { sudo } from "../../../../utils/helpers";
 
 describe("escrow", () => {
     let api: ApiPromise;
