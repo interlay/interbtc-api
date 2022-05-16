@@ -833,7 +833,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.systemAPI.getCurrentActiveBlockNumber(),
         ]);
         vaults
-            .filter((vault) => {
+            .filter((vault) => this.isVaultEligibleForRedeem(vault, activeBlockNumber))
                 return this.isVaultEligibleForRedeem(vault, activeBlockNumber);
             })
             .sort((vault1, vault2) => {
