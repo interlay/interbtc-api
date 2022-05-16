@@ -763,34 +763,17 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return Promise.reject(new Error("Did not find vault with sufficient locked BTC"));
     }
 
-    private isVaultEligibleForRedeem(vault: VaultExt<BitcoinUnit>, activeBlockNumber: number): boolean {
-        const bannedUntilBlockNumber = vault.bannedUntil || 0;
-        return (
-            (vault.status === VaultStatusExt.Active || vault.status === VaultStatusExt.Inactive) &&
-            vault.issuedTokens.gt(vault.toBeRedeemedTokens) &&
-            bannedUntilBlockNumber < activeBlockNumber
-        );
-    }
-
     async getPremiumRedeemVaults(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
         > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
-        const [vaults, activeBlockNumber] = await Promise.all([
-            this.list(),
-            this.systemAPI.getCurrentActiveBlockNumber(),
-        ]);        
-
-        // only non-banned, non-liquidated vaults with liquidity are eligible for redeems
-        const redeemVaults = vaults.filter((vault) => {
-            return this.isVaultEligibleForRedeem(vault, activeBlockNumber);
-        });
+        const vaults = await this.getVaultsEligibleForRedeeming();
         
         const premiumRedeemVaultPredicates = await Promise.all(
-            redeemVaults
+            vaults
                 .map((vault) => this.isBelowPremiumThreshold(vault.id))
         );
-        redeemVaults
+        vaults
             .filter((_, index) => premiumRedeemVaultPredicates[index])
             .forEach((vault) => map.set(vault.id, vault.getRedeemableTokens()));
         return map;
@@ -820,16 +803,35 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return map;
     }
 
+    private isVaultEligibleForRedeem(vault: VaultExt<BitcoinUnit>, activeBlockNumber: number): boolean {
+        const bannedUntilBlockNumber = vault.bannedUntil || 0;
+        return (
+            (vault.status === VaultStatusExt.Active || vault.status === VaultStatusExt.Inactive) &&
+            vault.issuedTokens.gt(vault.toBeRedeemedTokens) &&
+            bannedUntilBlockNumber < activeBlockNumber
+        );
+    }
+
+    private async getVaultsEligibleForRedeeming(): Promise<VaultExt<BitcoinUnit>[]> {
+        const [vaults, activeBlockNumber] = await Promise.all([
+            this.list(),
+            this.systemAPI.getCurrentActiveBlockNumber(),
+        ]);        
+
+        // only non-banned, non-liquidated vaults with liquidity are eligible for redeems
+        const redeemVaults = vaults.filter((vault) => {
+            return this.isVaultEligibleForRedeem(vault, activeBlockNumber);
+        });
+
+        return redeemVaults;
+    }
+
     async getVaultsWithRedeemableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
         > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
-        const [vaults, activeBlockNumber] = await Promise.all([
-            this.list(),
-            this.systemAPI.getCurrentActiveBlockNumber(),
-        ]);
+        const vaults = await this.getVaultsEligibleForRedeeming();
         vaults
-            .filter((vault) => this.isVaultEligibleForRedeem(vault, activeBlockNumber))
             .sort((vault1, vault2) => {
                 // Descending order
                 const vault1Redeemable = vault1.getRedeemableTokens().toBig();
