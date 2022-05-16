@@ -22,9 +22,9 @@ jobs:
             - run: yarn install
             - name: Run and set up the parachain, oracle, staked relayer and vault
               run: yarn docker-parachain-start -- -d
-            - run: yarn ci:test-with-coverage
+            - run: yarn ci:test
 
-            - name: Archive logs
+            - name: Archive Docker logs
               if: always()
               run: docker-compose -f local-setup/docker-compose.yml logs > logs.txt
 
@@ -35,9 +35,3 @@ jobs:
                 name: docker-compose-logs
                 path: logs.txt
 
-            - name: Upload coverage results
-              if: always()
-              uses: actions/upload-artifact@v3
-              with:
-                name: testing-coverage-metrics
-                path: coverage

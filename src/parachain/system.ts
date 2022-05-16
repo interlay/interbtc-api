@@ -33,6 +33,12 @@ export interface SystemAPI {
      * @param code Hex-encoded wasm blob
      */
     setCode(code: string): Promise<void>;
+
+    /**
+     * @param blockNumber The block number to get the hash for
+     * @returns The block hash for the given block number
+     */
+    getBlockHash(blockNumber: number): Promise<BlockHash>;
 }
 
 export class DefaultSystemAPI {
@@ -61,5 +67,9 @@ export class DefaultSystemAPI {
     async setCode(code: string): Promise<void> {
         const tx = this.api.tx.sudo.sudoUncheckedWeight(this.api.tx.system.setCode(code), 0);
         await this.transactionAPI.sendLogged(tx, this.api.events.system.CodeUpdated, true);
+    }
+
+    async getBlockHash(blockNumber: number): Promise<BlockHash> {
+        return await this.api.query.system.blockHash(blockNumber);
     }
 }
