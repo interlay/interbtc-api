@@ -788,9 +788,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         
         const premiumRedeemVaultPredicates = await Promise.all(
             redeemVaults
-                .map((vault) => this.isBelowPremiumThreshold(vault.id)
-                    });
-                })
+                .map((vault) => this.isBelowPremiumThreshold(vault.id))
         );
         redeemVaults
             .filter((_, index) => premiumRedeemVaultPredicates[index])
@@ -832,8 +830,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         ]);
         vaults
             .filter((vault) => this.isVaultEligibleForRedeem(vault, activeBlockNumber))
-                return this.isVaultEligibleForRedeem(vault, activeBlockNumber);
-            })
             .sort((vault1, vault2) => {
                 // Descending order
                 const vault1Redeemable = vault1.getRedeemableTokens().toBig();
