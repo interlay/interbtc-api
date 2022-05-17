@@ -491,10 +491,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const globalRewardShare = vaultStake.toBig().div(globalStake.toBig());
         const vaultRewardPerBlock = globalRewardPerBlock.mul(globalRewardShare);
         const ownRewardPerBlock = vaultRewardPerBlock.mul(vaultRewardShare);
-        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(
-            ownRewardPerBlock,
-            this.wrappedCurrency
-        );
+        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(ownRewardPerBlock);
         const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
         const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
@@ -643,10 +640,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         if (issuedTokens.isZero()) {
             return Promise.reject("No tokens issued");
         }
-        const collateralInWrapped = await this.oracleAPI.convertCollateralToWrapped(
-            newCollateral,
-            currencyIdToMonetaryCurrency(vaultId.currencies.wrapped)
-        );
+        const collateralInWrapped = await this.oracleAPI.convertCollateralToWrapped(newCollateral);
         return collateralInWrapped.toBig().div(issuedTokens.toBig());
     }
 
