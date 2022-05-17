@@ -2,14 +2,40 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinUnit, ExchangeRate, Currency } from "@interlay/monetary-js";
 import Big from "big.js";
-import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, currencyIdToMonetaryCurrency, CollateralUnit, CollateralCurrency, tickerToCurrencyIdLiteral, GovernanceUnit, GovernanceIdLiteral } from "../../../../../src/index";
+import { 
+    DefaultInterBtcApi, 
+    InterBtcApi, 
+    InterbtcPrimitivesVaultId, 
+    WrappedIdLiteral, 
+    currencyIdToMonetaryCurrency, 
+    CollateralUnit, 
+    CollateralCurrency, 
+    tickerToCurrencyIdLiteral, 
+    GovernanceUnit, 
+    GovernanceIdLiteral
+} from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
-import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH } from "../../../../config";
+import { 
+    ORACLE_URI, 
+    VAULT_1_URI, 
+    VAULT_2_URI, 
+    BITCOIN_CORE_HOST, 
+    BITCOIN_CORE_NETWORK, 
+    BITCOIN_CORE_PASSWORD, 
+    BITCOIN_CORE_PORT, 
+    BITCOIN_CORE_USERNAME, 
+    BITCOIN_CORE_WALLET, 
+    PARACHAIN_ENDPOINT, 
+    VAULT_3_URI, 
+    VAULT_TO_LIQUIDATE_URI, 
+    VAULT_TO_BAN_URI, 
+    ESPLORA_BASE_PATH 
+} from "../../../../config";
 import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../../src";
 import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
-import { callWithExchangeRate } from "../../../../utils/helpers";
+import sinon from "sinon";
 
 describe("vaultsAPI", () => {
     let oracleAccount: KeyringPair;
@@ -62,6 +88,10 @@ describe("vaultsAPI", () => {
 
     after(() => {
         return api.disconnect();
+    });
+
+    afterEach(() => {
+        sinon.reset();
     });
 
     function vaultIsATestVault(vaultAddress: string): boolean {
@@ -132,7 +162,7 @@ describe("vaultsAPI", () => {
         }
     });
 
-    it.skip("should getPremiumRedeemVaults after a price crash", async () => {
+    it("should getPremiumRedeemVaults after a price crash", async () => {
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
         const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrencyIdLiteral);
         let issuableAmount = await vault.getIssuableTokens();
@@ -157,29 +187,38 @@ describe("vaultsAPI", () => {
         const initialExchangeRate = await interBtcAPI.oracle.getExchangeRate(collateralCurrencyTyped);
         // crash the exchange rate so that the vault falls below the premium redeem threshold
         const exchangeRateValue = initialExchangeRate.toBig().div(modifyExchangeRateBy);
-        const exchangeRateToSet = new ExchangeRate<
+        const mockExchangeRate = new ExchangeRate<
             Bitcoin,
             BitcoinUnit,
             typeof collateralCurrencyTyped,
             typeof collateralCurrencyTyped.units
         >(Bitcoin, collateralCurrencyTyped, exchangeRateValue);
 
-        await callWithExchangeRate(oracleInterBtcAPI.oracle, exchangeRateToSet, async () => {
-            const premiumRedeemVaults = await interBtcAPI.vaults.getPremiumRedeemVaults();
-            assert.equal(premiumRedeemVaults.size, 1);
-            assert.equal(
-                encodeVaultId(premiumRedeemVaults.keys().next().value),
-                encodeVaultId(vault_3_id),
-                "Premium redeem vault is not the expected one"
-            );
+        // stub the oracle API to always return the new exchange rate
+        const stub = sinon.stub(interBtcAPI.oracle, "getExchangeRate")
+            .withArgs(sinon.match.any)
+            .returns(Promise.resolve(mockExchangeRate as any)); // "as any" to help eslint play nicely
 
-            const premiumRedeemAmount = premiumRedeemVaults.values().next().value;
-            assert.isTrue(
-                premiumRedeemAmount.gte(issuableAmount),
-                "Amount available for premium redeem should be higher"
-            );
-        });
-    });
+        const premiumRedeemVaults = await interBtcAPI.vaults.getPremiumRedeemVaults();
+
+        // Check that the stub has indeed been called at least once 
+        // If not, code has changed and our assumptions when mocking the oracle API are no longer valid
+        sinon.assert.called(stub);
+
+        // real assertions here
+        assert.equal(premiumRedeemVaults.size, 1);
+        assert.equal(
+            encodeVaultId(premiumRedeemVaults.keys().next().value),
+            encodeVaultId(vault_3_id),
+            "Premium redeem vault is not the expected one"
+        );
+
+        const premiumRedeemAmount = premiumRedeemVaults.values().next().value;
+        assert.isTrue(
+            premiumRedeemAmount.gte(issuableAmount),
+            "Amount available for premium redeem should be higher"
+        );
+    }).timeout(5 * 60000);
 
     it("should getLiquidationCollateralThreshold", async () => {
         const threshold = await interBtcAPI.vaults.getLiquidationCollateralThreshold(collateralCurrency);
