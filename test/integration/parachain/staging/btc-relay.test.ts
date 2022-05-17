@@ -22,10 +22,10 @@ describe("BTCRelay", function () {
     it("should getLatestBTCBlockFromBTCRelay", async () => {
         const latestBTCBlockFromBTCRelay = await interBtcAPI.btcRelay.getLatestBlock();
         assert.isDefined(latestBTCBlockFromBTCRelay);
-    }).timeout(500);
+    }).timeout(1500);
 
     it("should getLatestBTCBlockHeightFromBTCRelay", async () => {
         const latestBTCBlockHeightFromBTCRelay = await interBtcAPI.btcRelay.getLatestBlockHeight();
         assert.isDefined(latestBTCBlockHeightFromBTCRelay);
-    }).timeout(500);
+    }).timeout(1500);
 });
