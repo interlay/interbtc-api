@@ -2,11 +2,39 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinUnit, ExchangeRate, Currency } from "@interlay/monetary-js";
 import Big from "big.js";
-import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, WrappedIdLiteral, currencyIdToMonetaryCurrency, CollateralUnit, CollateralCurrency, tickerToCurrencyIdLiteral, GovernanceUnit, GovernanceIdLiteral } from "../../../../../src/index";
+import { 
+    DefaultInterBtcApi,
+    InterBtcApi,
+    InterbtcPrimitivesVaultId,
+    WrappedIdLiteral,
+    currencyIdToMonetaryCurrency,
+    CollateralUnit,
+    CollateralCurrency,
+    tickerToCurrencyIdLiteral,
+    GovernanceUnit,
+    GovernanceIdLiteral,
+    VaultStatusExt, 
+    VaultExt
+} from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
-import { ORACLE_URI, VAULT_1_URI, VAULT_2_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_3_URI, VAULT_TO_LIQUIDATE_URI, VAULT_TO_BAN_URI, ESPLORA_BASE_PATH } from "../../../../config";
+import { 
+    ORACLE_URI,
+    VAULT_1_URI,
+    VAULT_2_URI,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    PARACHAIN_ENDPOINT,
+    VAULT_3_URI,
+    VAULT_TO_LIQUIDATE_URI,
+    VAULT_TO_BAN_URI,
+    ESPLORA_BASE_PATH 
+} from "../../../../config";
 import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../../src";
 import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
 import { callWithExchangeRate } from "../../../../utils/helpers";
@@ -266,4 +294,48 @@ describe("vaultsAPI", () => {
         const vaults = (await interBtcAPI.vaults.list()).map(vault => vault.id.toHuman());
         assert.isAbove(vaults.length, 0, "Vault list should not be empty");
     });
+
+    it("should disable and enable issuing with vault", async () => {
+        const ACCEPT_NEW_ISSUES = true;
+        const REJECT_NEW_ISSUES = false;
+
+        const toggleIssuingWithVaults = async (vaults: VaultExt<BitcoinUnit>[], acceptNewIssues: boolean) => {
+            await Promise.all(vaults.map(({id}) => interBtcAPI.vaults.toggleIssueRequests(id, acceptNewIssues)));
+        };
+
+        const checkVaultsStatuses = async (vaults: VaultExt<BitcoinUnit>[], expectedStatus: VaultStatusExt) => {
+            for (const {id} of vaults) {
+                const collateralCurrencyIdLiteral = currencyIdToLiteral(id.currencies.collateral);
+                const {status} = await interBtcAPI.vaults.get(id, collateralCurrencyIdLiteral);
+                assert.isTrue(status === expectedStatus, `Vault with id ${id.toString()} was expected to have status: ${}, but got status: ${}`);
+            }
+        };
+
+        const initialVaults = await interBtcAPI.vaults.list();
+        const initiallyActiveVaults = initialVaults.filter(({status}) => status === VaultStatusExt.Active);
+        const initiallyInactiveVaults = initialVaults.filter(({status}) => status === VaultStatusExt.Inactive);
+
+
+        // Disables issuing with all initially active vaults.
+        await toggleIssuingWithVaults(initiallyActiveVaults, REJECT_NEW_ISSUES);
+        // Asserts that all initially active vaults are inactive now.
+        await checkVaultsStatuses(initiallyActiveVaults, VaultStatusExt.Inactive);
+
+        // Enables all initially inactive vaults.
+        await toggleIssuingWithVaults(initiallyInactiveVaults, ACCEPT_NEW_ISSUES);
+        // Asserts that initially inactive vaults were activated.
+        await checkVaultsStatuses(initiallyInactiveVaults, VaultStatusExt.Active);
+
+        // Reverts all changed vaults' statuses to initial values.
+        await toggleIssuingWithVaults(initiallyActiveVaults, ACCEPT_NEW_ISSUES);
+        await toggleIssuingWithVaults(initiallyInactiveVaults, REJECT_NEW_ISSUES);
+
+        const finalVaults = await interBtcAPI.vaults.list();
+        // Check that all vaults statuses are equal to initial ones.
+        for (const {id: finalVaultId} of finalVaults) {
+            // TODO: check that final and initial vaults have same statuses
+        }
+    });
+
+
 });
