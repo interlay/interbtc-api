@@ -77,12 +77,10 @@ export interface OracleAPI {
     ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
      * @param amount The amount of collateral tokens to convert
-     * @param collateralCurrency A `Monetary.js` object
      * @returns Converted value
      */
     convertCollateralToWrapped<C extends CurrencyUnit>(
-        amount: MonetaryAmount<Currency<C>, C>,
-        wrappedCurrency: Currency<BitcoinUnit>
+        amount: MonetaryAmount<Currency<C>, C>
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
     /**
      * @returns The period of time (in milliseconds) after an oracle's last submission

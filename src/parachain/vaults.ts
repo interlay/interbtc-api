@@ -491,10 +491,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const globalRewardShare = vaultStake.toBig().div(globalStake.toBig());
         const vaultRewardPerBlock = globalRewardPerBlock.mul(globalRewardShare);
         const ownRewardPerBlock = vaultRewardPerBlock.mul(vaultRewardShare);
-        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(
-            ownRewardPerBlock,
-            this.wrappedCurrency
-        );
+        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(ownRewardPerBlock);
         const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
         const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
@@ -643,10 +640,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         if (issuedTokens.isZero()) {
             return Promise.reject("No tokens issued");
         }
-        const collateralInWrapped = await this.oracleAPI.convertCollateralToWrapped(
-            newCollateral,
-            currencyIdToMonetaryCurrency(vaultId.currencies.wrapped)
-        );
+        const collateralInWrapped = await this.oracleAPI.convertCollateralToWrapped(newCollateral);
         return collateralInWrapped.toBig().div(issuedTokens.toBig());
     }
 
@@ -767,18 +761,11 @@ export class DefaultVaultsAPI implements VaultsAPI {
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
         > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
-        const vaults = await this.list();
+        const vaults = await this.getVaultsEligibleForRedeeming();
+        
         const premiumRedeemVaultPredicates = await Promise.all(
-            vaults.map((vault) => {
-                return new Promise((resolve, reject) => {
-                    const redemableTokens = vault.getRedeemableTokens();
-                    if (redemableTokens.isZero()) {
-                        resolve(false);
-                    } else {
-                        this.isBelowPremiumThreshold(vault.id).then(resolve).catch(reject);
-                    }
-                });
-            })
+            vaults
+                .map((vault) => this.isBelowPremiumThreshold(vault.id))
         );
         vaults
             .filter((_, index) => premiumRedeemVaultPredicates[index])
@@ -810,24 +797,35 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return map;
     }
 
+    private isVaultEligibleForRedeem(vault: VaultExt<BitcoinUnit>, activeBlockNumber: number): boolean {
+        const bannedUntilBlockNumber = vault.bannedUntil || 0;
+        return (
+            (vault.status === VaultStatusExt.Active || vault.status === VaultStatusExt.Inactive) &&
+            vault.issuedTokens.gt(vault.toBeRedeemedTokens) &&
+            bannedUntilBlockNumber < activeBlockNumber
+        );
+    }
+
+    private async getVaultsEligibleForRedeeming(): Promise<VaultExt<BitcoinUnit>[]> {
+        const [vaults, activeBlockNumber] = await Promise.all([
+            this.list(),
+            this.systemAPI.getCurrentActiveBlockNumber(),
+        ]);        
+
+        // only non-banned, non-liquidated vaults with liquidity are eligible for redeems
+        const redeemVaults = vaults.filter((vault) => {
+            return this.isVaultEligibleForRedeem(vault, activeBlockNumber);
+        });
+
+        return redeemVaults;
+    }
+
     async getVaultsWithRedeemableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
         > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
-        const [vaults, activeBlockNumber] = await Promise.all([
-            this.list(),
-            this.systemAPI.getCurrentActiveBlockNumber(),
-        ]);
+        const vaults = await this.getVaultsEligibleForRedeeming();
         vaults
-            .filter((vault) => {
-                const bannedUntilBlockNumber = vault.bannedUntil || 0;
-                // issuedTokens - toBeRedeemedTokens > 0
-                return (
-                    vault.issuedTokens.gt(vault.toBeRedeemedTokens) &&
-                    vault.status === VaultStatusExt.Active &&
-                    bannedUntilBlockNumber < activeBlockNumber
-                );
-            })
             .sort((vault1, vault2) => {
                 // Descending order
                 const vault1Redeemable = vault1.getRedeemableTokens().toBig();
