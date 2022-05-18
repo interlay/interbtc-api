@@ -37,6 +37,7 @@ import {
 } from "../../../../config";
 import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../../src";
 import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
+import { callWithExchangeRate, vaultStatusToLabel } from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
@@ -309,45 +310,27 @@ describe("vaultsAPI", () => {
     });
 
     it("should disable and enable issuing with vault", async () => {
+        const assertVaultStatus = async (id: InterbtcPrimitivesVaultId, expectedStatus: VaultStatusExt) => {
+            const collateralCurrencyIdLiteral = currencyIdToLiteral(id.currencies.collateral);
+            const { status } = await interBtcAPI.vaults.get(id.accountId, collateralCurrencyIdLiteral);
+            const assertionMessage = `Vault with id ${id.toString()} was expected to have 
+                    status: ${vaultStatusToLabel(expectedStatus)}, but got status: ${vaultStatusToLabel(status)}`;
+
+            assert.isTrue(status === expectedStatus, assertionMessage);
+        };
         const ACCEPT_NEW_ISSUES = true;
         const REJECT_NEW_ISSUES = false;
 
-        const toggleIssuingWithVaults = async (vaults: VaultExt<BitcoinUnit>[], acceptNewIssues: boolean) => {
-            await Promise.all(vaults.map(({id}) => interBtcAPI.vaults.toggleIssueRequests(id, acceptNewIssues)));
-        };
-
-        const checkVaultsStatuses = async (vaults: VaultExt<BitcoinUnit>[], expectedStatus: VaultStatusExt) => {
-            for (const {id} of vaults) {
-                const collateralCurrencyIdLiteral = currencyIdToLiteral(id.currencies.collateral);
-                const {status} = await interBtcAPI.vaults.get(id, collateralCurrencyIdLiteral);
-                assert.isTrue(status === expectedStatus, `Vault with id ${id.toString()} was expected to have status: ${}, but got status: ${}`);
-            }
-        };
-
-        const initialVaults = await interBtcAPI.vaults.list();
-        const initiallyActiveVaults = initialVaults.filter(({status}) => status === VaultStatusExt.Active);
-        const initiallyInactiveVaults = initialVaults.filter(({status}) => status === VaultStatusExt.Inactive);
-
-
-        // Disables issuing with all initially active vaults.
-        await toggleIssuingWithVaults(initiallyActiveVaults, REJECT_NEW_ISSUES);
-        // Asserts that all initially active vaults are inactive now.
-        await checkVaultsStatuses(initiallyActiveVaults, VaultStatusExt.Inactive);
-
-        // Enables all initially inactive vaults.
-        await toggleIssuingWithVaults(initiallyInactiveVaults, ACCEPT_NEW_ISSUES);
-        // Asserts that initially inactive vaults were activated.
-        await checkVaultsStatuses(initiallyInactiveVaults, VaultStatusExt.Active);
-
-        // Reverts all changed vaults' statuses to initial values.
-        await toggleIssuingWithVaults(initiallyActiveVaults, ACCEPT_NEW_ISSUES);
-        await toggleIssuingWithVaults(initiallyInactiveVaults, REJECT_NEW_ISSUES);
-
-        const finalVaults = await interBtcAPI.vaults.list();
-        // Check that all vaults statuses are equal to initial ones.
-        for (const {id: finalVaultId} of finalVaults) {
-            // TODO: check that final and initial vaults have same statuses
-        }
+        // Check that vault 1 is active.
+        await assertVaultStatus(vault_1_id, VaultStatusExt.Active);
+        // Disables vault 1 which is active.
+        await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, REJECT_NEW_ISSUES);
+        // Check that vault 1 is inactive.
+        await assertVaultStatus(vault_1_id, VaultStatusExt.Inactive);
+        // Re-enable issuing with vault 1.
+        await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, ACCEPT_NEW_ISSUES);
+        // Check that vault 1 is again active.
+        await assertVaultStatus(vault_1_id, VaultStatusExt.Active);
     });
 
 

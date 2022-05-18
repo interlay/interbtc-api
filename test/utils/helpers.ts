@@ -3,7 +3,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { BitcoinCoreClient, InterBtcApi, CollateralCurrency, CollateralUnit, OracleAPI } from "../../src";
+import { BitcoinCoreClient, InterBtcApi, CollateralCurrency, CollateralUnit, OracleAPI, VaultStatusExt } from "../../src";
 import { TransactionAPI } from "../../src/parachain/transaction";
 import { SUDO_URI } from "../config";
 
@@ -129,3 +129,16 @@ export async function runWithChangingExchangeRates(oracleAPI: OracleAPI, fn: () 
         }
     });
 }
+
+export const vaultStatusToLabel = (status: VaultStatusExt): string => {
+    switch(status) {
+        case VaultStatusExt.Active:
+            return "Active";
+        case VaultStatusExt.Inactive:
+            return "Inactive";
+        case VaultStatusExt.CommittedTheft:
+            return "Commited theft";
+        case VaultStatusExt.Liquidated:
+            return "Liquidated";
+    }
+};
