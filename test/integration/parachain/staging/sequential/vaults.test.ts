@@ -91,7 +91,8 @@ describe("vaultsAPI", () => {
     });
 
     afterEach(() => {
-        sinon.reset();
+        // discard any stubbed methods after each test
+        sinon.restore();
     });
 
     function vaultIsATestVault(vaultAddress: string): boolean {
@@ -168,7 +169,6 @@ describe("vaultsAPI", () => {
         let issuableAmount = await vault.getIssuableTokens();
         // TODO: Look into why requesting the full issuable amount fails, and remove the line below
         issuableAmount = issuableAmount.mul(0.9);
-        console.log(`issuableAmount: ${issuableAmount.toString()}`);
         await issueSingle(interBtcAPI, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3_id);
 
         const currentVaultCollateralization =
