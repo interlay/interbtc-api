@@ -25,6 +25,12 @@ export interface SystemAPI {
     subscribeToFinalizedBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
 
     /**
+     * On every new parachain block, call the callback function with the new block header
+     * @param callback Function to be called with every new unfinalized block header
+     */
+     subscribeToCurrentBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
+
+     /**
      * @returns The parachain status code object.
      */
     getStatusCode(): Promise<SecurityStatusCode>;
@@ -55,6 +61,13 @@ export class DefaultSystemAPI {
 
     async subscribeToFinalizedBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void> {
         const unsub = await this.api.rpc.chain.subscribeFinalizedHeads((head) => {
+            callback(head);
+        });
+        return unsub;
+    }
+
+    async subscribeToCurrentBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void> {
+        const unsub = await this.api.rpc.chain.subscribeAllHeads((head) => {
             callback(head);
         });
         return unsub;

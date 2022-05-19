@@ -73,10 +73,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         }
         const freeCollateral = await this.getFreeCollateral();
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
-        const backableWrappedTokens = await this.oracleAPI.convertCollateralToWrapped(
-            freeCollateral,
-            currencyIdToMonetaryCurrency(this.id.currencies.wrapped)
-        );
+        const backableWrappedTokens = await this.oracleAPI.convertCollateralToWrapped(freeCollateral);
         // Force type-assert here as the oracle API only uses wrapped Bitcoin
         return backableWrappedTokens.div(secureCollateralThreshold) as unknown as MonetaryAmount<
             Currency<WrappedUnit>,
