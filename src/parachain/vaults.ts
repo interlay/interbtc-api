@@ -318,10 +318,10 @@ export interface VaultsAPI {
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
     /**
      * Enables or disables issue requests for given vault
-     * @param vaultAccountId The vault ID whose issuing will be toggled
+     * @param vaultId The vault ID whose issuing will be toggled
      * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
      */
-    toggleIssueRequests(vaultAccountId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void>;
+    toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void>;
 }
 
 export class DefaultVaultsAPI implements VaultsAPI {
