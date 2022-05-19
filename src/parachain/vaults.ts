@@ -316,6 +316,12 @@ export interface VaultsAPI {
         vaultCollateralIdLiteral: CollateralIdLiteral,
         governanceCurrencyIdLiteral: GovernanceIdLiteral
     ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
+    /**
+     * Enables or disables issue requests for given vault
+     * @param vaultId The vault ID whose issuing will be toggled
+     * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
+     */
+    toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void>;
 }
 
 export class DefaultVaultsAPI implements VaultsAPI {
@@ -958,5 +964,11 @@ export class DefaultVaultsAPI implements VaultsAPI {
             txInclusionDetails.rawTx
         );
         await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft, true);
+    }
+
+    async toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void> {
+        const currencyPair = vaultId.currencies;
+        const tx = this.api.tx.vaultRegistry.acceptNewIssues(currencyPair, acceptNewIssues);
+        await this.transactionAPI.sendLogged(tx, this.api.events.system.ExtrinsicSuccess, true);
     }
 }

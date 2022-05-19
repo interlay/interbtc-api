@@ -3,38 +3,41 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinUnit, ExchangeRate, Currency } from "@interlay/monetary-js";
 import Big from "big.js";
 import { 
-    DefaultInterBtcApi, 
-    InterBtcApi, 
-    InterbtcPrimitivesVaultId, 
-    WrappedIdLiteral, 
-    currencyIdToMonetaryCurrency, 
-    CollateralUnit, 
-    CollateralCurrency, 
-    tickerToCurrencyIdLiteral, 
-    GovernanceUnit, 
-    GovernanceIdLiteral
+    DefaultInterBtcApi,
+    InterBtcApi,
+    InterbtcPrimitivesVaultId,
+    WrappedIdLiteral,
+    currencyIdToMonetaryCurrency,
+    CollateralUnit,
+    CollateralCurrency,
+    tickerToCurrencyIdLiteral,
+    GovernanceUnit,
+    GovernanceIdLiteral,
+    VaultStatusExt, 
+    VaultExt
 } from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { 
-    ORACLE_URI, 
-    VAULT_1_URI, 
-    VAULT_2_URI, 
-    BITCOIN_CORE_HOST, 
-    BITCOIN_CORE_NETWORK, 
-    BITCOIN_CORE_PASSWORD, 
-    BITCOIN_CORE_PORT, 
-    BITCOIN_CORE_USERNAME, 
-    BITCOIN_CORE_WALLET, 
-    PARACHAIN_ENDPOINT, 
-    VAULT_3_URI, 
-    VAULT_TO_LIQUIDATE_URI, 
-    VAULT_TO_BAN_URI, 
+    ORACLE_URI,
+    VAULT_1_URI,
+    VAULT_2_URI,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    PARACHAIN_ENDPOINT,
+    VAULT_3_URI,
+    VAULT_TO_LIQUIDATE_URI,
+    VAULT_TO_BAN_URI,
     ESPLORA_BASE_PATH 
 } from "../../../../config";
 import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../../src";
 import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
+import { callWithExchangeRate, vaultStatusToLabel } from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
@@ -305,4 +308,31 @@ describe("vaultsAPI", () => {
         const vaults = (await interBtcAPI.vaults.list()).map(vault => vault.id.toHuman());
         assert.isAbove(vaults.length, 0, "Vault list should not be empty");
     });
+
+    it("should disable and enable issuing with vault", async () => {
+        const assertVaultStatus = async (id: InterbtcPrimitivesVaultId, expectedStatus: VaultStatusExt) => {
+            const collateralCurrencyIdLiteral = currencyIdToLiteral(id.currencies.collateral);
+            const { status } = await interBtcAPI.vaults.get(id.accountId, collateralCurrencyIdLiteral);
+            const assertionMessage = `Vault with id ${id.toString()} was expected to have 
+                    status: ${vaultStatusToLabel(expectedStatus)}, but got status: ${vaultStatusToLabel(status)}`;
+
+            assert.isTrue(status === expectedStatus, assertionMessage);
+        };
+        const ACCEPT_NEW_ISSUES = true;
+        const REJECT_NEW_ISSUES = false;
+
+
+        // Check that vault 1 is active.
+        await assertVaultStatus(vault_1_id, VaultStatusExt.Active);
+        // Disables vault 1 which is active.
+        await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, REJECT_NEW_ISSUES);
+        // Check that vault 1 is inactive.
+        await assertVaultStatus(vault_1_id, VaultStatusExt.Inactive);
+        // Re-enable issuing with vault 1.
+        await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, ACCEPT_NEW_ISSUES);
+        // Check that vault 1 is again active.
+        await assertVaultStatus(vault_1_id, VaultStatusExt.Active);
+    });
+
+
 });
