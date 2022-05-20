@@ -138,7 +138,7 @@ describe("vaultsAPI", () => {
             throw new Error("Collateralization is undefined");
         }
         assert.isTrue(
-            collateralizationAfterDeposit > collateralizationBeforeDeposit,
+            collateralizationAfterDeposit.gt(collateralizationBeforeDeposit),
             `Depositing did not increase collateralization,
             expected ${collateralizationAfterDeposit} greater than ${collateralizationBeforeDeposit}`
         );
@@ -150,7 +150,7 @@ describe("vaultsAPI", () => {
             throw new Error("Collateralization is undefined");
         }
         assert.isTrue(
-            collateralizationAfterDeposit > collateralizationAfterWithdrawal,
+            collateralizationAfterDeposit.gt(collateralizationAfterWithdrawal),
             `Withdrawing did not decrease collateralization, expected
             ${collateralizationAfterDeposit} greater than ${collateralizationAfterWithdrawal}`
         );
