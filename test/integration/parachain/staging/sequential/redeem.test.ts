@@ -72,10 +72,10 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    it("should fail if no account is set", () => {
+    it("should fail if no account is set", async () => {
         const amount = newMonetaryAmount(10, wrappedCurrency);
-        assert.isRejected(interBtcAPI.redeem.request(amount, randomBtcAddress));
-    });
+        await assert.isRejected(interBtcAPI.redeem.request(amount, randomBtcAddress));
+    }).timeout(3 * 60000);
 
     it("should issue and request redeem", async () => {
         const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
@@ -101,7 +101,7 @@ describe("redeem", () => {
             false,
             ExecuteRedeem.False
         );
-    }).timeout(500000);
+    }).timeout(8 * 60000);
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();
