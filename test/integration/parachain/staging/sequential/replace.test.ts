@@ -122,24 +122,17 @@ describe("replace", () => {
         }).timeout(1000000);
 
         it("should fail vault replace request if not having enough tokens", async () => {
-            const replaceAmount = dustValue;
-
             interBtcAPI.setAccount(vault_2);
 
-            // check precondition: vault does not hold enough issued tokens to request a replace
+            // fetch tokens held by vault
             const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
                 newAccountId(api, vault_2.address),
                 currencyIdToLiteral(vault_2_id.currencies.collateral)
             );
 
-            // vault 2 should have 0 issued tokens, but tests added later may interfere...
-            // just double check here that we don't have enough to match the replace request.
-            assert.isAbove(
-                replaceAmount.add(feesEstimate).toBig(wrappedCurrency.base).toNumber(), 
-                tokensInVault.toBig(wrappedCurrency.base).toNumber(), 
-                "Pre-condition failed: vault needs fewer tokens than replace request"
-            );
-
+            // make sure vault does not hold enough issued tokens to request a replace
+            const replaceAmount = dustValue.add(tokensInVault);
+            
             try {
                 await interBtcAPI.replace.request(
                     replaceAmount, 
