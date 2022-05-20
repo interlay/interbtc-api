@@ -1,14 +1,13 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { Polkadot } from "@interlay/monetary-js";
 
 import { assert } from "../../../chai";
 import { createAPIRegistry, createSubstrateAPI, DefaultInterBtcApi, InterBtcApi, newMonetaryAmount } from "../../../../src";
 import { SingleAccountSigner } from "../../../utils/SingleAccountSigner";
-import { PARACHAIN_ENDPOINT } from "../../../config";
+import { ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("InterBtcApi", () => {
     const keyring = new Keyring();
-    const keyringPair = keyring.addFromUri("//Bob");
+    const keyringPair = keyring.addFromUri(ORACLE_URI);
     let interBTC: InterBtcApi;
     const registry = createAPIRegistry();
     let api: ApiPromise;
@@ -51,7 +50,8 @@ describe("InterBtcApi", () => {
             interBTC.setAccount(keyringPair);
             interBTC.removeAccount();
 
-            const amount = newMonetaryAmount(1, Polkadot, true);
+            const governanceCurrency = interBTC.getGovernanceCurrency();
+            const amount = newMonetaryAmount(1, governanceCurrency, true);
             const aliceAddress = keyring.addFromUri("//Alice").address;
             const tx = interBTC.tokens.transfer(aliceAddress, amount);
             // Transfer to Alice should be rejected, since Bob's account was removed.
