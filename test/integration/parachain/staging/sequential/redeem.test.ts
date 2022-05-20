@@ -72,13 +72,12 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    it("should fail if no account is set", () => {
+    it("should fail if no account is set", async () => {
         const amount = newMonetaryAmount(10, wrappedCurrency);
-        assert.isRejected(interBtcAPI.redeem.request(amount, randomBtcAddress));
-    });
+        await assert.isRejected(interBtcAPI.redeem.request(amount, randomBtcAddress));
+    }).timeout(3 * 60000);
 
-    // TODO: revisit after patch to figure out how 3000 Satoshi end up eing sent as 10 Sat, making the test fail
-    it.skip("should issue and request redeem", async () => {
+    it("should issue and request redeem", async () => {
         const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
         const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
         await issueAndRedeem(
@@ -102,7 +101,7 @@ describe("redeem", () => {
             false,
             ExecuteRedeem.False
         );
-    }).timeout(500000);
+    }).timeout(8 * 60000);
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();
