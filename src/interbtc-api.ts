@@ -56,6 +56,7 @@ export interface InterBtcApi {
     readonly rewards: RewardsAPI;
     readonly escrow: EscrowAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
+    removeAccount(): void;
     readonly account: AddressOrPair | undefined;
     getGovernanceCurrency(): Currency<GovernanceUnit>;
     getWrappedCurrency(): Currency<BitcoinUnit>;
@@ -163,6 +164,10 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.api.setSigner(signer);
         }
         this.transactionAPI.setAccount(account);
+    }
+
+    removeAccount(): void {
+        this.transactionAPI.removeAccount();
     }
 
     get account(): AddressOrPair | undefined {
