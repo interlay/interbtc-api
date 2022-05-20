@@ -13,8 +13,7 @@ import {
     tickerToCurrencyIdLiteral,
     GovernanceUnit,
     GovernanceIdLiteral,
-    VaultStatusExt, 
-    VaultExt
+    VaultStatusExt
 } from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
@@ -37,7 +36,7 @@ import {
 } from "../../../../config";
 import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../../src";
 import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
-import { callWithExchangeRate, vaultStatusToLabel } from "../../../../utils/helpers";
+import { vaultStatusToLabel } from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
