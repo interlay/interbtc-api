@@ -13,13 +13,43 @@ import type {
 } from "@polkadot/types";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 
-// Modify these consts when using this script for new channels
-const RELAYCHAIN_ENDPOINT = "wss://kusama-rpc.polkadot.io";
-const PARACHAIN_ENDPOINT = "wss://api-kusama.interlay.io/parachain";
-const DEST_PARA = 2085;
+const readline = require('readline');
+const yargs = require("yargs/yargs");
+const { hideBin } = require("yargs/helpers");
+const args = yargs(hideBin(process.argv))
+    .option("submit-proposal", {
+        type: "boolean",
+        description: "Submit the on-chain proposal. The account seed will be queried.",
+        default: false,
+    })
+    .option("relay-endpoint", {
+        description: "The wss url of the relay chain",
+        type: "string",
+        default: "wss://kusama-rpc.polkadot.io",
+    })
+    .option("parachain-endpoint", {
+        description: "The wss url of the parachain",
+        type: "string",
+        default: "wss://api-kusama.interlay.io/parachain",
+    })
+    .option("destination-parachain-id", {
+        description: "The parachain id of the destination",
+        type: "number",
+        demandOption : true,
+    })
+    .option("refund-hex-address", {
+        description: "The hex-encoded account id to return left-over fees to. DO NOT SS58 ENCODE.",
+        type: "string",
+        demandOption : true,
+    })
+    .option("action", {
+        description: "The action to do",
+        demandOption : true,
+        choices: ['request', 'accept', 'batched'],
+    }).argv;
+
 const PROPOSED_MAX_CAPACITY = 1000;
 const PROPOSED_MAX_MESSAGE_SIZE = 102400;
-const REFUND_ADDRESS_HEX = "0xa2e1685f62b2a1a996a2a1ba10ac6836c2b72174cab1bd1c6907454e6365fb70";
 
 main().catch((err) => {
     console.log("Error thrown by script:");
@@ -83,7 +113,7 @@ function construct_xcm(api: ApiPromise, transact: string) {
                 interior: api.createType("XcmV1MultilocationJunctions", {
                     x1: api.createType("XcmV1Junction", { accountId32: {
                         network: api.createType("XcmV0JunctionNetworkId", { any: true }),
-                        id: REFUND_ADDRESS_HEX 
+                        id: args['refund-hex-address'] 
                     }})
                 })
             })
@@ -121,27 +151,64 @@ function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">
     console.log("");
 }
 
+async function maybeSubmitProposal(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string, api: ApiPromise, shouldSubmit: boolean) {
+    printExtrinsic(name, extrinsic, endpoint);
+
+    console.log("Please check the printed extrinsic and enter the seed phrase to submit the proposal.");
+    if (shouldSubmit) {
+        let rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        const it = rl[Symbol.asyncIterator]();
+        const seed = await it.next();
+
+        // construct the proposal
+        const deposit = api.consts.democracy.minimumDeposit.toNumber();
+        const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
+        const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
+        const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
+
+        console.log("Submitting proposal...");
+        const keyring = new Keyring({ type: "sr25519" });
+        const userKeyring = keyring.addFromUri(seed.value);
+        const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
+        await transactionAPI.sendLogged(batched, undefined);
+
+        rl.close();
+    }
+}
+
 async function main(): Promise<void> {
     await cryptoWaitReady();
-    const paraApi = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-    const relayApi = await createSubstrateAPI(RELAYCHAIN_ENDPOINT);
+    const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
+    const relayApi = await createSubstrateAPI(args['relay-endpoint']);
 
-    const requestOpenTransact = relayApi.tx.hrmp.hrmpInitOpenChannel(DEST_PARA, PROPOSED_MAX_CAPACITY, PROPOSED_MAX_MESSAGE_SIZE);
-    const acceptOpenTransact = relayApi.tx.hrmp.hrmpAcceptOpenChannel(DEST_PARA);
+    const requestOpenTransact = relayApi.tx.hrmp.hrmpInitOpenChannel(args['destination-parachain-id'], PROPOSED_MAX_CAPACITY, PROPOSED_MAX_MESSAGE_SIZE);
+    const acceptOpenTransact = relayApi.tx.hrmp.hrmpAcceptOpenChannel(args['destination-parachain-id']);
 
     const requestOpen = construct_xcm(paraApi, requestOpenTransact.method.toHex());
     const acceptOpen = construct_xcm(paraApi, acceptOpenTransact.method.toHex());
     const batched = paraApi.tx.utility.batchAll([requestOpen, acceptOpen]);
 
-    // The transact calls to be executed on the relay chain
-    printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, RELAYCHAIN_ENDPOINT);
-    printExtrinsic("Relaychain::acceptOpenTransact", requestOpen, RELAYCHAIN_ENDPOINT);
-    
-    // To be executed on parachain
-    printExtrinsic("Parachain::RequestOpen", requestOpen, PARACHAIN_ENDPOINT);
-    printExtrinsic("Parachain::AcceptOpen", acceptOpen, PARACHAIN_ENDPOINT);
-    printExtrinsic("Parachain::Batched", batched, PARACHAIN_ENDPOINT);
+    const shouldSubmit = args['submit-proposal'];
 
-    paraApi.disconnect();
-    relayApi.disconnect();
+    switch(args['action']) {
+        case 'request':
+            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args['relay-endpoint']);
+            await maybeSubmitProposal("RequestOpen", requestOpen, args['parachain-endpoint'], paraApi, shouldSubmit);
+            break;
+        case 'accept':
+            printExtrinsic("Relaychain::acceptOpenTransact", requestOpen, args['relay-endpoint']);
+            await maybeSubmitProposal("AcceptOpen", acceptOpen, args['parachain-endpoint'], paraApi, shouldSubmit);
+            break;
+        case 'batched':
+            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args['relay-endpoint']);
+            printExtrinsic("Relaychain::AcceptOpenTransact", acceptOpenTransact, args['relay-endpoint']);
+            await maybeSubmitProposal("Batched", batched, args['parachain-endpoint'], paraApi, shouldSubmit);
+            break;
+    }
+
+    await paraApi.disconnect();
+    await relayApi.disconnect();
 }
