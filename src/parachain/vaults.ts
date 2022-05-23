@@ -494,6 +494,11 @@ export class DefaultVaultsAPI implements VaultsAPI {
                 ).reserved,
                 this.api.consts.timestamp.minimumPeriod,
             ]);
+
+        if (globalStake.toBig().eq(0)) {
+            return Promise.reject(new Error("No issued kBTC"));
+        }
+
         const globalRewardShare = vaultStake.toBig().div(globalStake.toBig());
         const vaultRewardPerBlock = globalRewardPerBlock.mul(globalRewardShare);
         const ownRewardPerBlock = vaultRewardPerBlock.mul(vaultRewardShare);
