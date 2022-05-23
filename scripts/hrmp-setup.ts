@@ -11,20 +11,22 @@ import { XcmV1MultiLocation } from "@polkadot/types/lookup";
 import type { 
     BTreeMap, Bytes, Compact, Enum, Null, Option, Result, Struct, Text, U256, U8aFixed, Vec, bool, i128, i32, i64, u128, u16, u32, u64, u8
 } from "@polkadot/types";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
 
-
-const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9988";
-const ACCOUNT_URI = "//Alice";
-
-// const PARACHAIN_ENDPOINT = "wss://api-dev-moonbeam.interlay.io/parachain";
-// const ACCOUNT_URI = "quick sense network ozone ostrich bone hole possible timber clog urban primary//sudo/1";
+// Modify these consts when using this script for new channels
+const RELAYCHAIN_ENDPOINT = "wss://kusama-rpc.polkadot.io";
+const PARACHAIN_ENDPOINT = "wss://api-kusama.interlay.io/parachain";
+const DEST_PARA = 2085;
+const PROPOSED_MAX_CAPACITY = 1000;
+const PROPOSED_MAX_MESSAGE_SIZE = 102400;
+const REFUND_ADDRESS_HEX = "0xa2e1685f62b2a1a996a2a1ba10ac6836c2b72174cab1bd1c6907454e6365fb70";
 
 main().catch((err) => {
     console.log("Error thrown by script:");
     console.log(err);
 });
 
-function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
+function construct_xcm(api: ApiPromise, transact: string) {
     const withdrawAssetInstruction = api.createType("XcmV2Instruction", {
         withdrawAsset: api.createType("XcmV1MultiassetMultiAssets", [{
             id: api.createType("XcmV1MultiassetAssetId", {
@@ -69,6 +71,9 @@ function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
             })
         }
     });
+    const refundSurplusInstruction = api.createType("XcmV2Instruction", {
+        refundSurplus: true
+    });
     const depositAssetsInstruction = api.createType("XcmV2Instruction", {
         depositAsset: {
             assets:  api.createType("XcmV1MultiassetMultiAssetFilter", { wild: true }),
@@ -76,11 +81,10 @@ function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
             beneficiary: api.createType("XcmV1MultiLocation", {
                 parents: 0,
                 interior: api.createType("XcmV1MultilocationJunctions", {
-                    // x1: api.createType("XcmV1Junction", { parachain: this_chain }) // 2000 on rococo-local
                     x1: api.createType("XcmV1Junction", { accountId32: {
                         network: api.createType("XcmV0JunctionNetworkId", { any: true }),
-                        id: "0x9e5ebde744b381c1fa89428bf4aefd3a09d14789b5dd14ff52dbadd0f3ab3715" // testuser 
-                    }}) // 2000 on rococo-local
+                        id: REFUND_ADDRESS_HEX 
+                    }})
                 })
             })
         }
@@ -88,7 +92,7 @@ function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
 
     const xcmV2 = api.createType(
         "XcmV2Xcm", 
-        [withdrawAssetInstruction, buyExecutionInstruction, transactInstruction, depositAssetsInstruction]
+        [withdrawAssetInstruction, buyExecutionInstruction, transactInstruction, refundSurplusInstruction, depositAssetsInstruction]
     );
     const message = api.createType<XcmVersionedXcm>("XcmVersionedXcm", {
         v2: xcmV2
@@ -106,44 +110,38 @@ function construct_xcm(api: ApiPromise, this_chain: number, transact: string) {
     return api.tx.polkadotXcm.send(dest, message);
 }
 
+function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
+    console.log(name, "Data:", extrinsic.method.toHex());
+    console.log(name, "Hash:", extrinsic.method.hash.toHex());
+    const url = 'https://polkadot.js.org/apps/?rpc=' 
+        + encodeURIComponent(endpoint) 
+        + '#/extrinsics/decode/' 
+        + extrinsic.method.toHex();
+    console.log(name, "url:", url);
+    console.log("");
+}
+
 async function main(): Promise<void> {
     await cryptoWaitReady();
-    const keyring = new Keyring({ type: "sr25519" });
-    const userKeyring = keyring.addFromUri(ACCOUNT_URI);
-    const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+    const paraApi = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+    const relayApi = await createSubstrateAPI(RELAYCHAIN_ENDPOINT);
 
-    const parent = api.createType<XcmV1MultiLocation>("XcmV1MultiLocation", {
-        parents: 1,
-        interior: api.createType("XcmV1MultilocationJunctions", {
-            here: true
-        })
-    });
-    const setupTx = api.tx.sudo.sudo(api.tx.polkadotXcm.forceXcmVersion(parent, 2));
+    const requestOpenTransact = relayApi.tx.hrmp.hrmpInitOpenChannel(DEST_PARA, PROPOSED_MAX_CAPACITY, PROPOSED_MAX_MESSAGE_SIZE);
+    const acceptOpenTransact = relayApi.tx.hrmp.hrmpAcceptOpenChannel(DEST_PARA);
 
-    // transactions used for the purestake alpha test
-    const westendRequestXcmTx = construct_xcm(api, 1002, "0x3300e80300000800000000040000");
-    const westendCancelXcmTx = construct_xcm(api, 1002, "0x3306ea030000e9030000");
-    const westendAcceptXcmTx = construct_xcm(api, 1002, "0x3301e8030000");
+    const requestOpen = construct_xcm(paraApi, requestOpenTransact.method.toHex());
+    const acceptOpen = construct_xcm(paraApi, acceptOpenTransact.method.toHex());
+    const batched = paraApi.tx.utility.batchAll([requestOpen, acceptOpen]);
+
+    // The transact calls to be executed on the relay chain
+    printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, RELAYCHAIN_ENDPOINT);
+    printExtrinsic("Relaychain::acceptOpenTransact", requestOpen, RELAYCHAIN_ENDPOINT);
     
-    // transactions used for rococo-local test
-    const rococoRequestXcmTx = construct_xcm(api, 2000, "0x1700b80b00000800000000900100");
-    const rococoAcceptXcmTx = construct_xcm(api, 2000, "0x1701d0070000");
+    // To be executed on parachain
+    printExtrinsic("Parachain::RequestOpen", requestOpen, PARACHAIN_ENDPOINT);
+    printExtrinsic("Parachain::AcceptOpen", acceptOpen, PARACHAIN_ENDPOINT);
+    printExtrinsic("Parachain::Batched", batched, PARACHAIN_ENDPOINT);
 
-    // transactions to be used on kintsugi
-    const kinstugiRequestXcmTx = construct_xcm(api, 2092, "0x3c00d0070000e803000000900100");
-
-    // note: very important to use `.method`, otherwise it includes signing info. The polkadot.js
-    // app strips the signing info when you try to decode it, but if you use the call data in
-    // an extrinsic (e.g. in democracy), it will fail.
-    console.log("Call data: " + rococoRequestXcmTx.method.toHex());
-    console.log("Call hash: " + rococoRequestXcmTx.method.hash.toHex());
-
-    const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
-
-    console.log("Constructed the tx, broadcasting first...");
-    await transactionAPI.sendLogged(setupTx, undefined);
-    console.log("broadcasting second...");
-    await transactionAPI.sendLogged(api.tx.sudo.sudo(rococoAcceptXcmTx), undefined);
-
-    api.disconnect();
+    paraApi.disconnect();
+    relayApi.disconnect();
 }
