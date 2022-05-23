@@ -685,7 +685,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getTotalIssuedAmount(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
         const issuedTokens = await this.tokensAPI.total(this.wrappedCurrency);
-        return issuedTokens;
+        return issuedTokens.toBig().eq(0) ? Promise.reject(new Error("No issued kBTC")) : issuedTokens;
     }
 
     async getTotalIssuableAmount(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
