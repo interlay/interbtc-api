@@ -154,29 +154,32 @@ function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">
 async function maybeSubmitProposal(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string, api: ApiPromise, shouldSubmit: boolean) {
     printExtrinsic(name, extrinsic, endpoint);
 
-    console.log("Please check the printed extrinsic and enter the seed phrase to submit the proposal.");
-    if (shouldSubmit) {
-        let rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
-        const it = rl[Symbol.asyncIterator]();
-        const seed = await it.next();
-
-        // construct the proposal
-        const deposit = api.consts.democracy.minimumDeposit.toNumber();
-        const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
-        const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
-        const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
-
-        console.log("Submitting proposal...");
-        const keyring = new Keyring({ type: "sr25519" });
-        const userKeyring = keyring.addFromUri(seed.value);
-        const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
-        await transactionAPI.sendLogged(batched, undefined);
-
-        rl.close();
+    if (!shouldSubmit) {
+        return;
     }
+
+    console.log("Please check the printed extrinsic and enter the seed phrase to submit the proposal.");
+
+    let rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    const it = rl[Symbol.asyncIterator]();
+    const seed = await it.next();
+
+    // construct the proposal
+    const deposit = api.consts.democracy.minimumDeposit.toNumber();
+    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
+    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
+    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
+
+    console.log("Submitting proposal...");
+    const keyring = new Keyring({ type: "sr25519" });
+    const userKeyring = keyring.addFromUri(seed.value);
+    const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
+    await transactionAPI.sendLogged(batched, undefined);
+
+    rl.close();
 }
 
 async function main(): Promise<void> {
