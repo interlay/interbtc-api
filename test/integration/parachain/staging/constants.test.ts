@@ -40,13 +40,6 @@ describe("Constants", function () {
         }).timeout(500);
     });
 
-    describe("getTransactionByteFee", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = constantAPI.getTransactionByteFee();
-            assert.isDefined(returnValue);
-        }).timeout(500);
-    });
-
     describe("getTransactionWeightToFee", () => {
         it("should sucessfully return", async () => {
             const returnValue = constantAPI.getTransactionWeightToFee();

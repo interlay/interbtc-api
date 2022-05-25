@@ -25,10 +25,6 @@ export interface ConstantsAPI {
      */
     getTimestampMinimumPeriod(): Moment;
     /**
-     * @returns The fee to be paid for making a transaction; the per-byte portion.
-     */
-    getTransactionByteFee(): BalanceOf;
-    /**
      * @returns The polynomial that is applied in order to derive fee from weight.
      */
     getTransactionWeightToFee(): Vec<WeightToFeeCoefficient>;
@@ -47,10 +43,6 @@ export class DefaultConstantsAPI implements ConstantsAPI {
 
     getTimestampMinimumPeriod(): Moment {
         return this.api.consts.timestamp.minimumPeriod;
-    }
-
-    getTransactionByteFee(): BalanceOf {
-        return this.api.consts.transactionPayment.transactionByteFee;
     }
 
     getTransactionWeightToFee(): Vec<WeightToFeeCoefficient> {
