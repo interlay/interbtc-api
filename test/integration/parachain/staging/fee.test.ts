@@ -56,7 +56,7 @@ describe("fee", () => {
                 assert.equal(griefingCollateral.toBig(griefingCollateral.currency.base).round(5, 0).toString(), "0.00001");
             });
         }
-    }).timeout(collateralCurrencies.length * 200000);
+    }).timeout(2 * 200000);
 
     it("should getGriefingCollateral for replace", async () => {
         for (const collateralCurrency of collateralCurrencies) {
@@ -74,5 +74,5 @@ describe("fee", () => {
                 assert.equal(griefingCollateral.toString(griefingCollateral.currency.base), "16.744");
             });
         }
-    }).timeout(collateralCurrencies.length * 200000);
+    }).timeout(2 * 200000);
 });
