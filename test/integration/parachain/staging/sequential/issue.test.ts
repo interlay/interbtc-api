@@ -6,7 +6,6 @@ import {
     currencyIdToLiteral, 
     currencyIdToMonetaryCurrency, 
     DefaultInterBtcApi, 
-    ElectrsAPI, 
     getCorrespondingCollateralCurrencies, 
     InterBtcApi, 
     InterbtcPrimitivesVaultId, 
@@ -16,7 +15,6 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
-import fc from "fast-check";
 import { 
     USER_1_URI, 
     VAULT_1_URI, 
