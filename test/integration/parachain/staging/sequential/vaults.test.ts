@@ -36,7 +36,7 @@ import {
     ESPLORA_BASE_PATH 
 } from "../../../../config";
 import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId, currencyIdToLiteral, CollateralIdLiteral } from "../../../../../src";
-import { encodeVaultId, getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
+import { encodeVaultId, getCorrespondingCollateralCurrencies, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
 import { callWithExchangeRate, vaultStatusToLabel } from "../../../../utils/helpers";
 import sinon from "sinon";
 
@@ -68,7 +68,7 @@ describe("vaultsAPI", () => {
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
-        collateralCurrency = getCorrespondingCollateralCurrency(governanceCurrency);
+        collateralCurrency = getCorrespondingCollateralCurrencies(governanceCurrency)[0];
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);

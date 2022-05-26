@@ -5,7 +5,7 @@ import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
-import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrency, InterBtcApi, newMonetaryAmount, WrappedCurrency } from "../../../../src";
+import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrencies, InterBtcApi, newMonetaryAmount, WrappedCurrency } from "../../../../src";
 import { GriefingCollateralType } from "../../../../src/parachain/fee";
 import { callWithExchangeRate } from "../../../utils/helpers";
 
@@ -20,7 +20,7 @@ describe("fee", () => {
         const keyring = new Keyring({ type: "sr25519" });
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
-        collateralCurrency = getCorrespondingCollateralCurrency(oracleInterBtcAPI.getGovernanceCurrency()) as Currency<CollateralUnit>;
+        collateralCurrency = getCorrespondingCollateralCurrencies(oracleInterBtcAPI.getGovernanceCurrency())[0] as Currency<CollateralUnit>;
         wrappedCurrency = oracleInterBtcAPI.getWrappedCurrency();
     });
 

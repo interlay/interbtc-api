@@ -23,7 +23,7 @@ import {
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { getCorrespondingCollateralCurrency, issueAndRedeem, newMonetaryAmount } from "../../../../../src/utils";
+import { getCorrespondingCollateralCurrencies, issueAndRedeem, newMonetaryAmount } from "../../../../../src/utils";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
@@ -51,7 +51,7 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        collateralCurrency = getCorrespondingCollateralCurrency(interBtcAPI.getGovernanceCurrency());
+        collateralCurrency = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency())[0];
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);

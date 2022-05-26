@@ -4,7 +4,7 @@ import {
     currencyIdToLiteral,
     DefaultInterBtcApi, 
     DefaultTransactionAPI, 
-    getCorrespondingCollateralCurrency, 
+    getCorrespondingCollateralCurrencies, 
     InterBtcApi, 
     InterbtcPrimitivesVaultId, 
     newMonetaryAmount,
@@ -59,7 +59,7 @@ describe("replace", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
-        collateralCurrency = getCorrespondingCollateralCurrency(interBtcAPI.getGovernanceCurrency());
+        collateralCurrency = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency())[0];
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_id = newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);

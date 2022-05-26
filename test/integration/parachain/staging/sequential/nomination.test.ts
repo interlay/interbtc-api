@@ -5,7 +5,7 @@ import BN from "bn.js";
 import { CollateralUnit, DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId, tickerToCurrencyIdLiteral } from "../../../../../src/index";
 
 import { BitcoinCoreClient, CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, currencyIdToMonetaryCurrency, encodeUnsignedFixedPoint, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
-import { setNumericStorage, issueSingle, newMonetaryAmount, getCorrespondingCollateralCurrency } from "../../../../../src/utils";
+import { setNumericStorage, issueSingle, newMonetaryAmount, getCorrespondingCollateralCurrencies } from "../../../../../src/utils";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { SUDO_URI, USER_1_URI, VAULT_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../../config";
@@ -34,7 +34,7 @@ describe.skip("NominationAPI", () => {
         // TODO: remove all uses of config currencies and query the chain instead
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
-        collateralCurrency = getCorrespondingCollateralCurrency(userInterBtcAPI.getGovernanceCurrency());
+        collateralCurrency = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency())[0];
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);

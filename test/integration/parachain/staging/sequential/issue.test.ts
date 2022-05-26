@@ -4,9 +4,10 @@ import { BitcoinUnit } from "@interlay/monetary-js";
 import { 
     CollateralCurrency, 
     currencyIdToLiteral, 
+    currencyIdToMonetaryCurrency, 
     DefaultInterBtcApi, 
     ElectrsAPI, 
-    getCorrespondingCollateralCurrency, 
+    getCorrespondingCollateralCurrencies, 
     InterBtcApi, 
     InterbtcPrimitivesVaultId, 
     IssueStatus, 
@@ -15,6 +16,7 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
+import fc from "fast-check";
 import { 
     USER_1_URI, 
     VAULT_1_URI, 
@@ -41,24 +43,27 @@ describe("issue", () => {
 
     let userAccount: KeyringPair;
     let vault_1: KeyringPair;
-    let vault_1_id: InterbtcPrimitivesVaultId;
+    let vault_1_ids: Array<InterbtcPrimitivesVaultId>;
     let vault_2: KeyringPair;
-    let vault_2_id: InterbtcPrimitivesVaultId;
+    let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
 
     let wrappedCurrency: WrappedCurrency;
-    let collateralCurrency: CollateralCurrency;
+    let collateralCurrencies: Array<CollateralCurrency>;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        collateralCurrency = getCorrespondingCollateralCurrency(userInterBtcAPI.getGovernanceCurrency());
+        collateralCurrencies = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
+        
         vault_1 = keyring.addFromUri(VAULT_1_URI);
-        vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-        vault_2_id = newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency);
+        vault_1_ids = collateralCurrencies
+            .map(collateralCurrency => newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency));
+        vault_2_ids = collateralCurrencies
+            .map(collateralCurrency => newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency));
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -121,60 +126,66 @@ describe("issue", () => {
     });
 
     it("should fail to request a value finer than 1 Satoshi", async () => {
-        const amount = newMonetaryAmount(0.00000121, wrappedCurrency, true);
-        await assert.isRejected(
-            issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, amount, vault_1_id, true, false)
-        );
+        for (const vault_1_id of vault_1_ids) {
+            const amount = newMonetaryAmount(0.00000121, wrappedCurrency, true);
+            await assert.isRejected(
+                issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, amount, vault_1_id, true, false)
+            );    
+        }
     });
 
     // auto-execution tests may stall indefinitely, due to vault client inaction.
     // This will cause the testing pipeline to time out.
     // TODO: Discuss if we want to test this in the lib. Should rather be tested in the clients
     it.skip("should request and auto-execute issue", async () => {
-        const amount = newMonetaryAmount(0.00121, wrappedCurrency, true);
+        for (const vault_1_id of vault_1_ids) {
+            const amount = newMonetaryAmount(0.00121, wrappedCurrency, true);
 
-        const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
-        const issueResult = await issueSingle(
-            userInterBtcAPI,
-            bitcoinCoreClient,
-            userAccount,
-            amount,
-            vault_1_id,
-            true,
-            false
-        );
-        assert.equal(
-            issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).toString(),
-            amount.sub(feesToPay).toString(),
-            "Final balance was not increased by the exact amount specified"
-        );
+            const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
+            const issueResult = await issueSingle(
+                userInterBtcAPI,
+                bitcoinCoreClient,
+                userAccount,
+                amount,
+                vault_1_id,
+                true,
+                false
+            );
+            assert.equal(
+                issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).toString(),
+                amount.sub(feesToPay).toString(),
+                "Final balance was not increased by the exact amount specified"
+            );
+        }
     }).timeout(500000);
 
     it("should request and manually execute issue", async () => {
-        // Unlike the other `issue` tests that involve DOT, this one locks KSM
-        // covering the multi-collateral feature
-        const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);
-        const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
-        const oneSatoshi = newMonetaryAmount(1, wrappedCurrency, false);
-        const issueResult = await issueSingle(
-            userInterBtcAPI,
-            bitcoinCoreClient,
-            userAccount,
-            amount,
-            vault_2_id,
-            false,
-            false
-        );
+        for (const vault_2_id of vault_2_ids) {
+            const currencyTicker = currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral).ticker;
 
-        // calculate expected final balance and round the fees value as the parachain will do so when calculating fees.
-        const amtInSatoshi = amount.to.Satoshi();
-        const feesInSatoshiRounded = feesToPay.to.Satoshi().round(0);
-        const expectedFinalBalance = amtInSatoshi.sub(feesInSatoshiRounded).sub(oneSatoshi.to.Satoshi()).toString();
-        assert.equal(
-            issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).to.Satoshi().toString(),
-            expectedFinalBalance,
-            "Final balance was not increased by the exact amount specified"
-        );
+            const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);
+            const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
+            const oneSatoshi = newMonetaryAmount(1, wrappedCurrency, false);
+            const issueResult = await issueSingle(
+                userInterBtcAPI,
+                bitcoinCoreClient,
+                userAccount,
+                amount,
+                vault_2_id,
+                false,
+                false
+            );
+    
+            // calculate expected final balance and round the fees value as the parachain will do so when calculating fees.
+            const amtInSatoshi = amount.to.Satoshi();
+            const feesInSatoshiRounded = feesToPay.to.Satoshi().round(0);
+            const expectedFinalBalance = amtInSatoshi.sub(feesInSatoshiRounded).sub(oneSatoshi.to.Satoshi()).toString();
+            assert.equal(
+                issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).to.Satoshi().toString(),
+                expectedFinalBalance,
+                `Final balance was not increased by the exact amount specified (collateral: ${currencyTicker})`
+            );
+        }
     }).timeout(500000);
 
     // TODO: maybe add this to issue API
@@ -221,44 +232,46 @@ describe("issue", () => {
     // TODO: Unskip after `subscribeToIssueExpiry` is reimplemented
     // This test should be kept at the end of the file as it will ban the vault used for issuing
     it.skip("should cancel an issue request", async () => {
-        await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
-            const initialIssuePeriod = await userInterBtcAPI.issue.getIssuePeriod();
-            await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(0));
-            try {
-                // request issue
-                const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
-                const vaultCollateralIdLiteral = currencyIdToLiteral(vault_2_id.currencies.collateral);
-                const requestResults = await userInterBtcAPI.issue.request(
-                    amount, 
-                    newAccountId(api, vault_2.address), 
-                    vaultCollateralIdLiteral
-                );
-                assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
-                const requestResult = requestResults[0];
-
-                // Wait for issue expiry callback
-                await new Promise<void>((resolve, _) => {
-                    // userInterBtcAPI.issue.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
-                    //     if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
-                    //         resolve();
-                    //     }
-                    // });
-                });
-
-                await userInterBtcAPI.issue.cancel(requestResult.id);
-
-                const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
-                assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
-
-                // Set issue period back to its initial value to minimize side effects.
-                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
-
-            } catch (e) {
-                // Set issue period back to its initial value to minimize side effects.
-                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
-                throw e;
-            }
-        });
+        for (const vault_2_id of vault_2_ids) {
+            await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
+                const initialIssuePeriod = await userInterBtcAPI.issue.getIssuePeriod();
+                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(0));
+                try {
+                    // request issue
+                    const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
+                    const vaultCollateralIdLiteral = currencyIdToLiteral(vault_2_id.currencies.collateral);
+                    const requestResults = await userInterBtcAPI.issue.request(
+                        amount, 
+                        newAccountId(api, vault_2.address), 
+                        vaultCollateralIdLiteral
+                    );
+                    assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
+                    const requestResult = requestResults[0];
+    
+                    // Wait for issue expiry callback
+                    await new Promise<void>((resolve, _) => {
+                        // userInterBtcAPI.issue.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
+                        //     if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
+                        //         resolve();
+                        //     }
+                        // });
+                    });
+    
+                    await userInterBtcAPI.issue.cancel(requestResult.id);
+    
+                    const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
+                    assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
+    
+                    // Set issue period back to its initial value to minimize side effects.
+                    await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
+    
+                } catch (e) {
+                    // Set issue period back to its initial value to minimize side effects.
+                    await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
+                    throw e;
+                }
+            });
+        }
     }).timeout(5 * 60000);
 
 });

@@ -8,7 +8,7 @@ import { createSubstrateAPI } from "../../../../src/factory";
 import { USER_1_URI, BITCOIN_CORE_HOST, BITCOIN_CORE_NETWORK, BITCOIN_CORE_PASSWORD, BITCOIN_CORE_PORT, BITCOIN_CORE_USERNAME, BITCOIN_CORE_WALLET, PARACHAIN_ENDPOINT, VAULT_TO_LIQUIDATE_URI, ESPLORA_BASE_PATH, VAULT_TO_BAN_URI, ORACLE_URI } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { DefaultElectrsAPI } from "../../../../src/external/electrs";
-import { getCorrespondingCollateralCurrency, issueSingle, newMonetaryAmount } from "../../../../src/utils";
+import { getCorrespondingCollateralCurrencies, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { CollateralCurrency, CollateralIdLiteral, currencyIdToLiteral, DefaultTransactionAPI, ExecuteRedeem, issueAndRedeem, newVaultId, RedeemStatus, tickerToMonetaryCurrency, waitForBlockFinalization, WrappedCurrency } from "../../../../src";
 import { assert, expect } from "../../../chai";
 import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
@@ -39,7 +39,7 @@ describe("redeem", () => {
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
-        collateralCurrency = getCorrespondingCollateralCurrency(userInterBtcAPI.getGovernanceCurrency());
+        collateralCurrency = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency())[0];
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         vaultToLiquidateId = newVaultId(api, vaultToLiquidate.address, collateralCurrency, wrappedCurrency);
@@ -71,6 +71,7 @@ describe("redeem", () => {
     });
 
     // TODO: discuss where to test this. Should be tested in the vault client rather than on the lib
+    // TODO: (option 1) check with greg how to use instant seal for this test
     it.skip("should liquidate a vault that committed theft", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency as Currency<CollateralUnit>);
@@ -90,6 +91,7 @@ describe("redeem", () => {
             const foreignBitcoinAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountToSteal = newMonetaryAmount(0.00001, wrappedCurrency, true);
             const btcTxId = await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amountToSteal);
+            // TODO: (option 2) send an extrinsic (use VaultsAPI.reportVaultTheft) to report vault theft manually here.
             // it takes about 15 mins for the theft to be reported
             await DefaultTransactionAPI.waitForEvent(api, api.events.relay.VaultTheft, 17 * 60000);
 
@@ -121,6 +123,10 @@ describe("redeem", () => {
             const initialRedeemPeriod = await userInterBtcAPI.redeem.getRedeemPeriod();
             await sudo(userInterBtcAPI, () => userInterBtcAPI.redeem.setRedeemPeriod(1));
             const [, redeemRequest] = await issueAndRedeem(userInterBtcAPI, userBitcoinCoreClient, userAccount, vaultToBanId, issueAmount, redeemAmount, false, ExecuteRedeem.False);
+            // TODO: in the promise: 
+            // grab head
+            //  wait for head + redeem period + 1
+            // then resolve
             // Wait for redeem expiry callback
             await new Promise<void>((resolve, _) => {
                 // redeemAPI.subscribeToRedeemExpiry(newAccountId(api, userAccount.address), (requestId) => {
@@ -132,6 +138,8 @@ describe("redeem", () => {
             await userInterBtcAPI.redeem.cancel(redeemRequest.id.toString(), true);
             const redeemRequestAfterCancellation = await userInterBtcAPI.redeem.getRequestById(redeemRequest.id);
             assert.isTrue(redeemRequestAfterCancellation.status === RedeemStatus.Reimbursed, "Failed to cancel issue request");
+
+            // TODO: check vault status changed to "banned"
             // Set issue period back to its initial value to minimize side effects.
             await sudo(userInterBtcAPI, () => userInterBtcAPI.redeem.setRedeemPeriod(initialRedeemPeriod));
         });

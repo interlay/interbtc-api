@@ -101,12 +101,12 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency<Gover
     }
 }
 
-export function getCorrespondingCollateralCurrency(governanceCurrency: Currency<GovernanceUnit>): CollateralCurrency {
+export function getCorrespondingCollateralCurrencies(governanceCurrency: Currency<GovernanceUnit>): Array<CollateralCurrency> {
     switch (governanceCurrency.ticker) {
         case "KINT":
-            return Kusama;
+            return [Kusama, Kintsugi];
         case "INTR":
-            return Polkadot;
+            return [Polkadot];
         default:
             throw new Error("Provided currency is not a governance currency");
     }
