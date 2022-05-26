@@ -2,7 +2,6 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import {
-    currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
@@ -58,8 +57,7 @@ describe("redeem", () => {
         collateralCurrencies.forEach(collateralCurrency => {
             const vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
             const vault_2_id = newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency);
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
-            collateralTickerToVaultIdsMap.set(currencyTicker, [vault_1_id, vault_2_id]);
+            collateralTickerToVaultIdsMap.set(collateralCurrency.ticker, [vault_1_id, vault_2_id]);
         });
 
         bitcoinCoreClient = new BitcoinCoreClient(
@@ -107,7 +105,7 @@ describe("redeem", () => {
                 ExecuteRedeem.False
             );
         }
-    }).timeout(collateralTickerToVaultIdsMap.size * 8 * 60000);
+    }).timeout(16 * 60000);
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();

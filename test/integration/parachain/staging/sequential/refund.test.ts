@@ -78,7 +78,7 @@ describe("refund", () => {
                 `Expected rejection for refund request with vault 3 (${currencyTicker})`
             );
         }
-    }).timeout(vault_3_ids.length * 1000000);
+    }).timeout(2000000);
 
     it("should generate a refund request", async () => {
         for (const vault_3_id of vault_3_ids) {
@@ -105,5 +105,5 @@ describe("refund", () => {
                 `Expected at leas 1 refund request with vault 3 (${currencyTicker})`
             );
         }
-    }).timeout(vault_3_ids.length * 1000000);
+    }).timeout(2000000);
 });

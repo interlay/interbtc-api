@@ -155,7 +155,7 @@ describe("issue", () => {
                 "Final balance was not increased by the exact amount specified"
             );
         }
-    }).timeout(vault_1_ids.length * 500000);
+    }).timeout(1000000);
 
     it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
@@ -184,7 +184,7 @@ describe("issue", () => {
                 `Final balance was not increased by the exact amount specified (collateral: ${currencyTicker})`
             );
         }
-    }).timeout(vault_2_ids.length * 500000);
+    }).timeout(1000000);
 
     // TODO: maybe add this to issue API
     it("should get issueBtcDustValue", async () => {
@@ -270,6 +270,6 @@ describe("issue", () => {
                 }
             });
         }
-    }).timeout(vault_2_ids.length * 5 * 60000);
+    }).timeout(10 * 60000);
 
 });

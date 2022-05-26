@@ -122,7 +122,7 @@ describe("replace", () => {
                 assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
                 assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
             }    
-        }).timeout(vault_3_ids.length * 1000000);
+        }).timeout(2000000);
 
         it("should fail vault replace request if not having enough tokens", async () => {
             for (const vault_2_id of vault_2_ids) {
@@ -149,7 +149,7 @@ describe("replace", () => {
                     assert.isTrue(e instanceof Error, `Expected replace request to fail with Error (${currencyTicker} vault)`);
                 }
             }
-        }).timeout(vault_2_ids.length * 300000);
+        }).timeout(600000);
     });
 
     it("should getDustValue", async () => {

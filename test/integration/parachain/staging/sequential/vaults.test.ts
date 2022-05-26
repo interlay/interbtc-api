@@ -128,8 +128,8 @@ describe("vaultsAPI", () => {
     it("should deposit and withdraw collateral", async () => {
         const prevAccount = interBtcAPI.account;
         for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = vault_1_id.currencies.collateral as CollateralCurrency;
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency;
+            const currencyTicker = collateralCurrency.ticker;
 
             interBtcAPI.setAccount(vault_1);
             const amount = newMonetaryAmount(100, collateralCurrency as Currency<CollateralUnit>, true);
@@ -142,18 +142,22 @@ describe("vaultsAPI", () => {
                 await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), collateralCurrencyIdLiteral);
             if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
                 assert.fail(`Collateralization is undefined for vault with collateral currency ${currencyTicker}`);
+                return;
             }
             assert.isTrue(
                 collateralizationAfterDeposit.gt(collateralizationBeforeDeposit),
                 `Depositing did not increase collateralization (${currencyTicker} vault),
                 expected ${collateralizationAfterDeposit} greater than ${collateralizationBeforeDeposit}`
             );
+
+
     
             await interBtcAPI.vaults.withdrawCollateral(amount);
             const collateralizationAfterWithdrawal =
                 await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), collateralCurrencyIdLiteral);
             if (collateralizationAfterWithdrawal === undefined) {
                 assert.fail(`Collateralization is undefined for vault with collateral currency ${currencyTicker}`);
+                return;
             }
             assert.isTrue(
                 collateralizationAfterDeposit.gt(collateralizationAfterWithdrawal),
@@ -172,8 +176,8 @@ describe("vaultsAPI", () => {
 
     it("should getPremiumRedeemVaults after a price crash", async () => {
         for (const vault_3_id of vault_3_ids) {
-            const collateralCurrency = vault_3_id.currencies.collateral as CollateralCurrency;
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency;
+            const currencyTicker = collateralCurrency.ticker;
 
             const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
             const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrencyIdLiteral);
@@ -230,11 +234,11 @@ describe("vaultsAPI", () => {
                 `Amount available for premium redeem should be higher (${currencyTicker} vault)`
             );
         }
-    }).timeout(vault_3_ids.length * 5 * 60000);
+    }).timeout(10 * 60000);
 
     it("should getLiquidationCollateralThreshold", async () => {
         for (const collateralCurrency of collateralCurrencies) {
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const currencyTicker = collateralCurrency.ticker;
             const threshold = await interBtcAPI.vaults.getLiquidationCollateralThreshold(collateralCurrency);
             assert.equal(
                 threshold.toString(), 
@@ -246,7 +250,7 @@ describe("vaultsAPI", () => {
 
     it("should getPremiumRedeemThreshold", async () => {
         for (const collateralCurrency of collateralCurrencies) {
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const currencyTicker = collateralCurrency.ticker;
             const threshold = await interBtcAPI.vaults.getPremiumRedeemThreshold(collateralCurrency);
             assert.equal(
                 threshold.toString(), 
@@ -277,8 +281,8 @@ describe("vaultsAPI", () => {
 
     it("should fail to get vault collateralization for vault with zero collateral", async () => {
         for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = vault_1_id.currencies.collateral as CollateralCurrency;
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency;
+            const currencyTicker = collateralCurrency.ticker;
 
             const vault1Id = newAccountId(api, vault_1.address);
             const collateralCurrencyIdLiteral = tickerToCurrencyIdLiteral(collateralCurrency.ticker) as CollateralIdLiteral;
@@ -291,8 +295,8 @@ describe("vaultsAPI", () => {
 
     it("should get the issuable InterBtc for a vault", async () => {
         for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = vault_1_id.currencies.collateral as CollateralCurrency;
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency;
+            const currencyTicker = collateralCurrency.ticker;
 
             const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_1_id.currencies.collateral) as CollateralIdLiteral;
             const vault = await interBtcAPI.vaults.get(vault_1_id.accountId, collateralCurrencyIdLiteral);
@@ -312,8 +316,8 @@ describe("vaultsAPI", () => {
     // TODO: revisit after next publish why intrReward is always zero
     it.skip("should getFees", async () => {
         for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = vault_1_id.currencies.collateral as CollateralCurrency;
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency;
+            const currencyTicker = collateralCurrency.ticker;
 
             const vault1Id = newAccountId(api, vault_1.address);
 
@@ -341,8 +345,8 @@ describe("vaultsAPI", () => {
 
     it("should getAPY", async () => {
         for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = vault_1_id.currencies.collateral as CollateralCurrency;
-            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral) as CollateralCurrency;
+            const currencyTicker = collateralCurrency.ticker;
 
             const apy =
                 await interBtcAPI.vaults.getAPY(
