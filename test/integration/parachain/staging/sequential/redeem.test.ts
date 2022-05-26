@@ -1,12 +1,12 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import { 
-    CollateralCurrency, 
-    DefaultInterBtcApi, 
-    InterBtcApi, 
-    InterbtcPrimitivesVaultId, 
-    VaultRegistryVault 
+import {
+    currencyIdToMonetaryCurrency,
+    DefaultInterBtcApi,
+    InterBtcApi,
+    InterbtcPrimitivesVaultId,
+    VaultRegistryVault
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
@@ -37,12 +37,10 @@ describe("redeem", () => {
     const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let bitcoinCoreClient: BitcoinCoreClient;
     let vault_1: KeyringPair;
-    let vault_1_id: InterbtcPrimitivesVaultId;
     let vault_2: KeyringPair;
-    let vault_2_id: InterbtcPrimitivesVaultId;
+    let collateralTickerToVaultIdsMap: Map<string, InterbtcPrimitivesVaultId[]>;
 
     let wrappedCurrency: WrappedCurrency;
-    let collateralCurrency: CollateralCurrency;
 
     let interBtcAPI: InterBtcApi;
 
@@ -51,12 +49,18 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        collateralCurrency = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency())[0];
+
+        const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);
-        vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-        vault_2_id = newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency);
+
+        collateralCurrencies.forEach(collateralCurrency => {
+            const vault_1_id = newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency);
+            const vault_2_id = newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency);
+            const currencyTicker = currencyIdToMonetaryCurrency(collateralCurrency).ticker;
+            collateralTickerToVaultIdsMap.set(currencyTicker, [vault_1_id, vault_2_id]);
+        });
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -78,30 +82,32 @@ describe("redeem", () => {
     }).timeout(3 * 60000);
 
     it("should issue and request redeem", async () => {
-        const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
-        const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
-        await issueAndRedeem(
-            interBtcAPI,
-            bitcoinCoreClient,
-            userAccount,
-            vault_1_id,
-            issueAmount,
-            redeemAmount,
-            false,
-            ExecuteRedeem.False
-        );
-
-        await issueAndRedeem(
-            interBtcAPI,
-            bitcoinCoreClient,
-            userAccount,
-            vault_2_id,
-            issueAmount,
-            redeemAmount,
-            false,
-            ExecuteRedeem.False
-        );
-    }).timeout(8 * 60000);
+        for (const [vault_1_id, vault_2_id] of collateralTickerToVaultIdsMap.values()) {
+            const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
+            const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
+            await issueAndRedeem(
+                interBtcAPI,
+                bitcoinCoreClient,
+                userAccount,
+                vault_1_id,
+                issueAmount,
+                redeemAmount,
+                false,
+                ExecuteRedeem.False
+            );
+    
+            await issueAndRedeem(
+                interBtcAPI,
+                bitcoinCoreClient,
+                userAccount,
+                vault_2_id,
+                issueAmount,
+                redeemAmount,
+                false,
+                ExecuteRedeem.False
+            );
+        }
+    }).timeout(collateralTickerToVaultIdsMap.size * 8 * 60000);
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();
