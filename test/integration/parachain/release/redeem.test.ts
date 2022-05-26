@@ -4,6 +4,7 @@ import { Hash } from "@polkadot/types/interfaces";
 import { Currency } from "@interlay/monetary-js";
 import { 
     CollateralUnit,
+    currencyIdToMonetaryCurrency,
     DefaultInterBtcApi, 
     InterBtcApi, 
     InterbtcPrimitivesVaultId, 
@@ -103,7 +104,7 @@ describe("redeem", () => {
     // TODO: (option 1) check with greg how to use instant seal for this test
     it.skip("should liquidate a vault that committed theft", async () => {
         for (const vaultToLiquidateId of vaultToLiquidateIds) {
-            const collateralCurrency = vaultToLiquidateId.currencies.collateral as CollateralCurrency;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vaultToLiquidateId.currencies.collateral) as CollateralCurrency;
             await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
                 const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency as Currency<CollateralUnit>);
                 // There should be no burnable tokens
@@ -146,7 +147,7 @@ describe("redeem", () => {
                 await userInterBtcAPI.redeem.burn(amountToSteal, collateralCurrency);
             });
         }
-    }).timeout(vaultToLiquidateIds.length * 18 * 60000);
+    }).timeout(36 * 60000);
 
     // TODO: Unskip after `subscribeToRedeemExpiry` is reimplemented
     it.skip("should cancel a redeem request", async () => {
@@ -188,7 +189,7 @@ describe("redeem", () => {
                 await sudo(userInterBtcAPI, () => userInterBtcAPI.redeem.setRedeemPeriod(initialRedeemPeriod));
             });
         }
-    }).timeout(vaultToBanIds.length * 5 * 60000);
+    }).timeout(10 * 60000);
 
     // TODO: discuss if we need this test ehre since it tests vault behavior
     it.skip("should issue and auto-execute redeem", async () => {
