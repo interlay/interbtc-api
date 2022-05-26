@@ -36,13 +36,12 @@ describe("replace", () => {
     let keyring: Keyring;
     let userAccount: KeyringPair;
     let vault_3: KeyringPair;
-    let vault_3_id: InterbtcPrimitivesVaultId;
+    let vault_3_ids: Array<InterbtcPrimitivesVaultId>;
     let vault_2: KeyringPair;
-    let vault_2_id: InterbtcPrimitivesVaultId;
+    let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
     let interBtcAPI: InterBtcApi;
 
     let wrappedCurrency: WrappedCurrency;
-    let collateralCurrency: CollateralCurrency;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -59,11 +58,13 @@ describe("replace", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
-        collateralCurrency = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency())[0];
+        const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_3_id = newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency);
+        vault_3_ids = collateralCurrencies
+            .map(collateralCurrency => newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency));
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-        vault_2_id = newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency);
+        vault_2_ids = collateralCurrencies
+            .map(collateralCurrency => newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency));
     });
 
     after(async () => {
@@ -80,70 +81,75 @@ describe("replace", () => {
         });
 
         it("should request vault replacement", async () => {
-            // try to set value above dust + estimated fees
-            const issueAmount = dustValue.add(feesEstimate).mul(1.2);
-            const replaceAmount = dustValue;
-            await issueSingle(
-                interBtcAPI,
-                bitcoinCoreClient,
-                userAccount,
-                issueAmount,
-                vault_3_id
-            );
-
-            interBtcAPI.setAccount(vault_3);
-            await interBtcAPI.replace.request(
-                replaceAmount, 
-                currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
-            );
-
-            const finalizedPromise = new Promise<void>((resolve, _) => interBtcAPI.system.subscribeToFinalizedBlockHeads(
-                async (header) => {
-                    const events = await interBtcAPI.api.query.system.events.at(header.parentHash);
-                    if (DefaultTransactionAPI.doesArrayContainEvent(events, api.events.replace.AcceptReplace)) {
-                        resolve();
-                    }
-                })
-            );
-
-            await finalizedPromise;
-
-            const requestsList = await interBtcAPI.replace.list();
-            const requestsMap = await interBtcAPI.replace.map();
-            assert.equal(requestsList.length, 1);
-            assert.equal(requestsMap.size, 1);
-            const firstMapEntry = requestsMap.values().next();
-            // `deepEqual` fails with: Cannot convert 'Pending' via asCancelled
-            // Need to manually compare some fields
-            // Only check the first element to ensure parsing is correct
-            assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
-            assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
-            assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
-        }).timeout(1000000);
-
-        it("should fail vault replace request if not having enough tokens", async () => {
-            interBtcAPI.setAccount(vault_2);
-
-            // fetch tokens held by vault
-            const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
-                newAccountId(api, vault_2.address),
-                currencyIdToLiteral(vault_2_id.currencies.collateral)
-            );
-
-            // make sure vault does not hold enough issued tokens to request a replace
-            const replaceAmount = dustValue.add(tokensInVault);
-            
-            try {
+            for (const vault_3_id of vault_3_ids) {
+                // try to set value above dust + estimated fees
+                const issueAmount = dustValue.add(feesEstimate).mul(1.2);
+                const replaceAmount = dustValue;
+                await issueSingle(
+                    interBtcAPI,
+                    bitcoinCoreClient,
+                    userAccount,
+                    issueAmount,
+                    vault_3_id
+                );
+    
+                interBtcAPI.setAccount(vault_3);
                 await interBtcAPI.replace.request(
                     replaceAmount, 
                     currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
                 );
-                assert.fail("Expected error to be thrown due to lack of issued tokens for vault, but call completed.");
-            } catch (e) {
-                assert.isTrue(e instanceof Error, "Expected replace request to fail with Error");
-            }
+    
+                const finalizedPromise = new Promise<void>((resolve, _) => interBtcAPI.system.subscribeToFinalizedBlockHeads(
+                    async (header) => {
+                        const events = await interBtcAPI.api.query.system.events.at(header.parentHash);
+                        if (DefaultTransactionAPI.doesArrayContainEvent(events, api.events.replace.AcceptReplace)) {
+                            resolve();
+                        }
+                    })
+                );
+    
+                await finalizedPromise;
+    
+                const requestsList = await interBtcAPI.replace.list();
+                const requestsMap = await interBtcAPI.replace.map();
+                assert.equal(requestsList.length, 1);
+                assert.equal(requestsMap.size, 1);
+                const firstMapEntry = requestsMap.values().next();
+                // `deepEqual` fails with: Cannot convert 'Pending' via asCancelled
+                // Need to manually compare some fields
+                // Only check the first element to ensure parsing is correct
+                assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
+                assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
+                assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
+            }    
+        }).timeout(vault_3_ids.length * 1000000);
 
-        }).timeout(300000);
+        it("should fail vault replace request if not having enough tokens", async () => {
+            for (const vault_2_id of vault_2_ids) {
+                const currencyTicker = currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral).ticker;
+                interBtcAPI.setAccount(vault_2);
+    
+                // fetch tokens held by vault
+                const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
+                    newAccountId(api, vault_2.address),
+                    currencyIdToLiteral(vault_2_id.currencies.collateral)
+                );
+    
+                // make sure vault does not hold enough issued tokens to request a replace
+                const replaceAmount = dustValue.add(tokensInVault);
+                
+                try {
+                    await interBtcAPI.replace.request(
+                        replaceAmount, 
+                        currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency
+                    );
+                    assert.fail(`Expected error to be thrown due to lack of issued tokens
+                        for vault (collateral: ${currencyTicker}), but call completed.`);
+                } catch (e) {
+                    assert.isTrue(e instanceof Error, `Expected replace request to fail with Error (${currencyTicker} vault)`);
+                }
+            }
+        }).timeout(vault_2_ids.length * 300000);
     });
 
     it("should getDustValue", async () => {
