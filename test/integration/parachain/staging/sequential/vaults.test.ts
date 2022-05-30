@@ -120,7 +120,12 @@ describe("vaultsAPI", () => {
     
             // The numeric value of the required collateral should be greater than that of issued tokens.
             // e.g. we require `0.8096` KSM for `0.00014` kBTC
-            assert.isTrue(requiredCollateralForVault.toBig().gt(vault.getBackedTokens().toBig()));
+            // edge case: we require 0 KSM for 0 kBTC, so check greater than or equal to
+            assert.isTrue(
+                requiredCollateralForVault.toBig().gte(vault.getBackedTokens().toBig()),
+                `Expect required collateral (${requiredCollateralForVault.toHuman()}) 
+                to be greater than or equal to backed tokens (${vault.getBackedTokens().toHuman()})`
+            );
         }
     });
 
