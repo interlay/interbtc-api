@@ -37,7 +37,7 @@ describe("redeem", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
     let vault_1: KeyringPair;
     let vault_2: KeyringPair;
-    let collateralTickerToVaultIdsMap: Map<string, InterbtcPrimitivesVaultId[]>;
+    const collateralTickerToVaultIdsMap: Map<string, InterbtcPrimitivesVaultId[]> = new Map();
 
     let wrappedCurrency: WrappedCurrency;
 
