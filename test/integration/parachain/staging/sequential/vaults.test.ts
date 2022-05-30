@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, BitcoinUnit, ExchangeRate, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinUnit, ExchangeRate, Currency, MonetaryAmount, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import Big from "big.js";
 import { 
     DefaultInterBtcApi,
@@ -260,25 +260,51 @@ describe("vaultsAPI", () => {
     }).timeout(10 * 60000);
 
     it("should getLiquidationCollateralThreshold", async () => {
+        const expectedThresholdByTicker: Map<string, string> = new Map([
+            [Polkadot.ticker, "1.1"],
+            [Kusama.ticker, "1.1"],
+            [Kintsugi.ticker, "2"]
+        ]);
+
         for (const collateralCurrency of collateralCurrencies) {
             const currencyTicker = collateralCurrency.ticker;
+
+            const expectedThreshold = expectedThresholdByTicker.get(currencyTicker);
+            if (expectedThreshold === undefined) {
+                assert.fail(`Precondition: No expected threshold set for ${currencyTicker}`);
+                return;
+            }
+
             const threshold = await interBtcAPI.vaults.getLiquidationCollateralThreshold(collateralCurrency);
             assert.equal(
                 threshold.toString(), 
-                "1.1",
-                `Liquidation collateral threshold is not 1.1 (${currencyTicker})`
+                expectedThreshold,
+                `Liquidation collateral threshold is not ${expectedThreshold} (${currencyTicker})`
             );
         }
     });
 
     it("should getPremiumRedeemThreshold", async () => {
+        const expectedThresholdByTicker: Map<string, string> = new Map([
+            [Polkadot.ticker, "1.35"],
+            [Kusama.ticker, "1.35"],
+            [Kintsugi.ticker, "3"]
+        ]);
+
         for (const collateralCurrency of collateralCurrencies) {
             const currencyTicker = collateralCurrency.ticker;
+
+            const expectedThreshold = expectedThresholdByTicker.get(currencyTicker);
+            if (expectedThreshold === undefined) {
+                assert.fail(`Precondition: No expected threshold set for ${currencyTicker}`);
+                return;
+            }
+
             const threshold = await interBtcAPI.vaults.getPremiumRedeemThreshold(collateralCurrency);
             assert.equal(
                 threshold.toString(), 
-                "1.35",
-                `Premium redeem threshold is not 1.35 (${currencyTicker})`
+                expectedThreshold,
+                `Premium redeem threshold is not ${expectedThreshold} (${currencyTicker})`
             );
         }
     });
