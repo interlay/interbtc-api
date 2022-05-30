@@ -150,6 +150,7 @@ describe("redeem", () => {
     }).timeout(36 * 60000);
 
     // TODO: Unskip after `subscribeToRedeemExpiry` is reimplemented
+    // TODO: rewrite test to ban one vault, and check the other currency still works
     it.skip("should cancel a redeem request", async () => {
         for (const vaultToBanId of vaultToBanIds) {
             await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {

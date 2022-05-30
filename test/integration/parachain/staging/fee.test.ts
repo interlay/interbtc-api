@@ -41,7 +41,8 @@ describe("fee", () => {
         assert.equal(replaceGriefingCollateralRate.toString(), "0.1");
     }).timeout(2000000);
 
-    it("should getGriefingCollateral for issue", async () => {
+    // TODO: re-enable and use mocking (see oracle test for example)
+    it.skip("should getGriefingCollateral for issue", async () => {
         for (const collateralCurrency of collateralCurrencies) {
             const exchangeRateValue = new Big("3855.23187");
             const exchangeRate = new ExchangeRate<
@@ -58,7 +59,8 @@ describe("fee", () => {
         }
     }).timeout(2 * 200000);
 
-    it("should getGriefingCollateral for replace", async () => {
+    // TODO: re-enable and use mocking (see oracle test for example)
+    it.skip("should getGriefingCollateral for replace", async () => {
         for (const collateralCurrency of collateralCurrencies) {
             const exchangeRateValue = new Big("3855.23187");
             const exchangeRate = new ExchangeRate<
