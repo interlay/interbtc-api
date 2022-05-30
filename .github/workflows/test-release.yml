@@ -20,6 +20,10 @@ jobs:
                   node-version: "16"
             - run: corepack enable
             - run: yarn install
+            - name: Check versions
+              run: yarn --version
+              run: npx node --version
+              run: npx ts-node --version
             - name: Run and set up the parachain, oracle, staked relayer and vault
               run: yarn docker-parachain-start -- -d
             - run: yarn ci:test
