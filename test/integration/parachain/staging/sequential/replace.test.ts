@@ -25,7 +25,7 @@ import {
     VAULT_3_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { assert } from "../../../../chai";
+import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { BitcoinUnit, MonetaryAmount } from "@interlay/monetary-js";
@@ -109,19 +109,35 @@ describe("replace", () => {
                 );
     
                 await finalizedPromise;
-    
-                const requestsList = await interBtcAPI.replace.list();
-                const requestsMap = await interBtcAPI.replace.map();
-                assert.equal(requestsList.length, 1);
-                assert.equal(requestsMap.size, 1);
-                const firstMapEntry = requestsMap.values().next();
-                // `deepEqual` fails with: Cannot convert 'Pending' via asCancelled
-                // Need to manually compare some fields
-                // Only check the first element to ensure parsing is correct
-                assert.equal(requestsList[0].btcAddress, firstMapEntry.value.btcAddress);
-                assert.equal(requestsList[0].amount.toString(), firstMapEntry.value.amount.toString());
-                assert.equal(requestsList[0].btcHeight.toString(), firstMapEntry.value.btcHeight.toString());
-            }    
+            }
+
+            const requestsList = await interBtcAPI.replace.list();
+            const requestsMap = await interBtcAPI.replace.map();
+            assert.equal(
+                requestsList.length, 
+                vault_3_ids.length, 
+                `Expected ${vault_3_ids.length} requests in list, got ${requestsList.length}`
+            );
+            assert.equal(
+                requestsMap.size, 
+                vault_3_ids.length,
+                `Expected ${vault_3_ids.length} requests in map, got ${requestsMap.size}`
+            );
+
+            // Need to manually compare some fields
+            const membersFromListToExpect = requestsList.map(req => ({
+                btcAddress: req.btcAddress,
+                btcHeight: req.btcHeight,
+                amount: req.amount.toString()
+            }));
+
+            const membersFromMapToCheck = Array.from(requestsMap.values()).map(req => ({
+                btcAddress: req.btcAddress,
+                btcHeight: req.btcHeight,
+                amount: req.amount.toString()
+            }));
+
+            expect(membersFromMapToCheck).to.deep.include.members(membersFromListToExpect);
         }).timeout(2000000);
 
         it("should fail vault replace request if not having enough tokens", async () => {
