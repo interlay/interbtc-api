@@ -130,6 +130,7 @@ describe("vaultsAPI", () => {
     });
 
     // WARNING: this test is not idempotent
+    // PRECONDITION: vault_1 must have issued some tokens against all collateral currencies
     it("should deposit and withdraw collateral", async () => {
         const prevAccount = interBtcAPI.account;
         for (const vault_1_id of vault_1_ids) {
@@ -146,7 +147,10 @@ describe("vaultsAPI", () => {
             const collateralizationAfterDeposit =
                 await interBtcAPI.vaults.getVaultCollateralization(newAccountId(api, vault_1.address), collateralCurrencyIdLiteral);
             if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
-                assert.fail(`Collateralization is undefined for vault with collateral currency ${currencyTicker}`);
+                assert.fail(
+                    `Collateralization is undefined for vault with collateral currency ${currencyTicker}
+                    - potential cause: the vault may not have any issued tokens secured by ${currencyTicker}`
+                );
                 return;
             }
             assert.isTrue(
