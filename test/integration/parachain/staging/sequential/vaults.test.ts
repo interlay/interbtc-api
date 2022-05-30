@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, BitcoinUnit, ExchangeRate, Currency } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinUnit, ExchangeRate, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { 
     DefaultInterBtcApi,
@@ -184,6 +184,12 @@ describe("vaultsAPI", () => {
     });
 
     it("should getPremiumRedeemVaults after a price crash", async () => {
+        assert.isAbove(vault_3_ids.length, 0, "Precondition: Expect vault_3_ids to have length > 0");
+
+        // TODO: Look into why requesting the full issuable amount fails, and remove the line below
+        // note: divide 90% by number of loops (issue requests) expected.
+        const issuableAmountModifier = 0.9 / vault_3_ids.length;
+
         for (const vault_3_id of vault_3_ids) {
             const collateralCurrency = currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency;
             const currencyTicker = collateralCurrency.ticker;
@@ -191,8 +197,7 @@ describe("vaultsAPI", () => {
             const collateralCurrencyIdLiteral = currencyIdToLiteral(vault_3_id.currencies.collateral) as CollateralIdLiteral;
             const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrencyIdLiteral);
             let issuableAmount = await vault.getIssuableTokens();
-            // TODO: Look into why requesting the full issuable amount fails, and remove the line below
-            issuableAmount = issuableAmount.mul(0.9);
+            issuableAmount = issuableAmount.mul(issuableAmountModifier);
             await issueSingle(interBtcAPI, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3_id);
     
             const currentVaultCollateralization =
@@ -228,16 +233,25 @@ describe("vaultsAPI", () => {
             // Check that the stub has indeed been called at least once 
             // If not, code has changed and our assumptions when mocking the oracle API are no longer valid
             sinon.assert.called(stub);
+            sinon.restore();
     
             // real assertions here
-            assert.equal(premiumRedeemVaults.size, 1);
-            assert.equal(
-                encodeVaultId(premiumRedeemVaults.keys().next().value),
-                encodeVaultId(vault_3_id),
-                `Premium redeem vault is not the expected one (${currencyTicker} vault)`
-            );
-    
-            const premiumRedeemAmount = premiumRedeemVaults.values().next().value;
+            assert.isAtLeast(premiumRedeemVaults.size, 1);
+
+            // locate the amount for the current vault
+            let premiumRedeemAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> | undefined = undefined;
+            for (const [vaultId, amount] of premiumRedeemVaults) {
+                if (encodeVaultId(vaultId) === encodeVaultId(vault_3_id)) {
+                    premiumRedeemAmount = amount;
+                    break;
+                }
+            }
+
+            if (premiumRedeemAmount === undefined) {
+                assert.fail(`Could not locate expected premium redeem amount for vault (${currencyTicker} collateral)`);
+                return;
+            }
+            
             assert.isTrue(
                 premiumRedeemAmount.gte(issuableAmount),
                 `Amount available for premium redeem should be higher (${currencyTicker} vault)`
