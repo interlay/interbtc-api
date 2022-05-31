@@ -20,6 +20,7 @@ import {
     newCurrencyId,
     newVaultId,
     newVaultCurrencyPair,
+    addHexPrefix,
 } from "../utils";
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
@@ -158,14 +159,12 @@ export interface VaultsAPI {
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
     >;
     /**
-     * @param vaultAccountId The vault account ID
-     * @param collateralCurrency The currency specification, a `Monetary.js` object
+     * @param vaultId The vault ID
      * @param btcTxId ID of the Bitcoin transaction to check
      * @returns A bollean value
      */
     isVaultFlaggedForTheft(
-        vaultAccountId: AccountId,
-        collateralCurrencyIdLiteral: CollateralIdLiteral,
+        vaultId: InterbtcPrimitivesVaultId,
         btcTxId: string
     ): Promise<boolean>;
     /**
@@ -849,18 +848,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async isVaultFlaggedForTheft(
-        vaultAccountId: AccountId,
-        collateralCurrencyIdLiteral: CollateralIdLiteral,
+        vaultId: InterbtcPrimitivesVaultId,
         btcTxId: string
     ): Promise<boolean> {
-        const collateralCurrencyId = newCurrencyId(this.api, collateralCurrencyIdLiteral);
-        const vaultId = newVaultId(
-            this.api,
-            vaultAccountId.toString(),
-            currencyIdToMonetaryCurrency(collateralCurrencyId) as CollateralCurrency,
-            this.wrappedCurrency
-        );
-        const theftReports = await this.api.query.relay.theftReports(vaultId, { content: btcTxId });
+        const theftReports = await this.api.query.relay.theftReports(vaultId, { content: addHexPrefix(btcTxId) });
         return theftReports.isEmpty;
     }
 

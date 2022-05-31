@@ -31,8 +31,6 @@ import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { getCorrespondingCollateralCurrencies, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import { 
     CollateralCurrency, 
-    CollateralIdLiteral, 
-    currencyIdToLiteral, 
     DefaultTransactionAPI, 
     ExecuteRedeem, 
     issueAndRedeem, 
@@ -42,7 +40,7 @@ import {
     WrappedCurrency 
 } from "../../../../src";
 import { assert, expect } from "../../../chai";
-import { runWhileMiningBTCBlocks, SLEEP_TIME_MS, sudo } from "../../../utils/helpers";
+import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -127,19 +125,13 @@ describe("redeem", () => {
             // Steal some bitcoin (spend from the vault's account)
             const foreignBitcoinAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
             const amountToSteal = newMonetaryAmount(0.00001, wrappedCurrency, true);
-            let btcTxId = "";
-            await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
-                btcTxId = await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amountToSteal);
-                
-                // wait for tx inclusion and block finalization.
-                await userInterBtcAPI.electrsAPI.waitForTxInclusion(btcTxId, 2 * 60000, 5 * SLEEP_TIME_MS);
-                await waitForBlockFinalization(bitcoinCoreClient, userInterBtcAPI.btcRelay);
-            });
+            const {txid: btcTxId} = await vaultBitcoinCoreClient.sendBtcTxAndMine(foreignBitcoinAddress, amountToSteal, 3);
+            // wait for tx inclusion and block finalization.
+            await waitForBlockFinalization(bitcoinCoreClient, userInterBtcAPI.btcRelay);
 
             // report theft
             await reporterInterBtcAPI.vaults.reportVaultTheft(vaultToLiquidateId, btcTxId);
 
-            // wait for theft reported event
             const finalizedPromise = new Promise<void>((resolve, _) => userInterBtcAPI.system.subscribeToFinalizedBlockHeads(
                 async (header) => {
                     const events = await userInterBtcAPI.api.query.system.events.at(header.parentHash);
@@ -148,12 +140,12 @@ describe("redeem", () => {
                     }
                 })
             );
-
+                
+            // wait for theft reported event
             await finalizedPromise;
 
             const flaggedForTheft = await userInterBtcAPI.vaults.isVaultFlaggedForTheft(
-                vaultToLiquidateId.accountId,
-                currencyIdToLiteral(vaultToLiquidateId.currencies.collateral) as CollateralIdLiteral,
+                vaultToLiquidateId,
                 btcTxId
             );
             assert.isTrue(
