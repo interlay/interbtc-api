@@ -270,10 +270,11 @@ export interface VaultsAPI {
      * (malicious Bitcoin transaction and transaction inclusion proof).
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
-     * @param vaultId The account of the vault to check.
+     * @param vaultId The vault ID of the vault to be reported.
      * @param btcTxId Bitcoin transaction ID
      */
-    reportVaultTheft(vaultAccountId: AccountId, btcTxId: string): Promise<void>;
+    reportVaultTheft(vaultId: InterbtcPrimitivesVaultId, btcTxId: string): Promise<void>;
+
     /**
      * @returns The wrapped currency issued by the vaults
      */
@@ -961,10 +962,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
         );
     }
 
-    async reportVaultTheft(vaultAccountId: AccountId, btcTxId: string): Promise<void> {
+    async reportVaultTheft(vaultId: InterbtcPrimitivesVaultId, btcTxId: string): Promise<void> {
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
         const tx = this.api.tx.relay.reportVaultTheft(
-            vaultAccountId,
+            vaultId,
             txInclusionDetails.merkleProof,
             txInclusionDetails.rawTx
         );
