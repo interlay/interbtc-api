@@ -24,7 +24,8 @@ import {
     VAULT_TO_LIQUIDATE_URI, 
     ESPLORA_BASE_PATH, 
     VAULT_TO_BAN_URI, 
-    ORACLE_URI 
+    ORACLE_URI, 
+    VAULT_1_URI
 } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { getCorrespondingCollateralCurrencies, issueSingle, newMonetaryAmount } from "../../../../src/utils";
@@ -41,7 +42,7 @@ import {
     WrappedCurrency 
 } from "../../../../src";
 import { assert, expect } from "../../../chai";
-import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
+import { runWhileMiningBTCBlocks, SLEEP_TIME_MS, sudo } from "../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -57,6 +58,7 @@ describe("redeem", () => {
     let bitcoinCoreClient: BitcoinCoreClient;
     let userInterBtcAPI: InterBtcApi;
     let oracleInterBtcAPI: InterBtcApi;
+    let reporterInterBtcAPI: InterBtcApi;
 
     let collateralCurrencies: Array<CollateralCurrency>;
     let wrappedCurrency: WrappedCurrency;
@@ -66,8 +68,10 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
+        const reportingVaultAccount = keyring.addFromUri(VAULT_1_URI);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
+        reporterInterBtcAPI = new DefaultInterBtcApi(api, "regtest", reportingVaultAccount, ESPLORA_BASE_PATH);
         collateralCurrencies = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
@@ -101,53 +105,65 @@ describe("redeem", () => {
     });
 
     // TODO: discuss where to test this. Should be tested in the vault client rather than on the lib
-    // TODO: (option 1) check with greg how to use instant seal for this test
-    it.skip("should liquidate a vault that committed theft", async () => {
+    // TODO: check with greg how to use instant seal for this test
+    it("should liquidate a vault that committed theft", async () => {
         for (const vaultToLiquidateId of vaultToLiquidateIds) {
             const collateralCurrency = currencyIdToMonetaryCurrency(vaultToLiquidateId.currencies.collateral) as CollateralCurrency;
+            const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency as Currency<CollateralUnit>);
+
+            // There should be no burnable tokens
+            await expect(userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>)).to.be.rejected;
+            const issuedTokens = newMonetaryAmount(0.0001, wrappedCurrency, true);
+            await issueSingle(userInterBtcAPI, userBitcoinCoreClient, userAccount, issuedTokens, vaultToLiquidateId, true, false);
+            const vaultBitcoinCoreClient = new BitcoinCoreClient(
+                BITCOIN_CORE_NETWORK,
+                BITCOIN_CORE_HOST,
+                BITCOIN_CORE_USERNAME,
+                BITCOIN_CORE_PASSWORD,
+                BITCOIN_CORE_PORT,
+                `vault_to_liquidate-${collateralCurrency.ticker}-${wrappedCurrency.ticker}`
+            );
+
+            // Steal some bitcoin (spend from the vault's account)
+            const foreignBitcoinAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
+            const amountToSteal = newMonetaryAmount(0.00001, wrappedCurrency, true);
+            let btcTxId = "";
             await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
-                const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency as Currency<CollateralUnit>);
-                // There should be no burnable tokens
-                await expect(userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>)).to.be.rejected;
-                const issuedTokens = newMonetaryAmount(0.0001, wrappedCurrency, true);
-                await issueSingle(userInterBtcAPI, userBitcoinCoreClient, userAccount, issuedTokens, vaultToLiquidateId, true, false);
-                const vaultBitcoinCoreClient = new BitcoinCoreClient(
-                    BITCOIN_CORE_NETWORK,
-                    BITCOIN_CORE_HOST,
-                    BITCOIN_CORE_USERNAME,
-                    BITCOIN_CORE_PASSWORD,
-                    BITCOIN_CORE_PORT,
-                    `vault_to_liquidate-${collateralCurrency.ticker}-${wrappedCurrency.ticker}`
-                );
-                // Steal some bitcoin (spend from the vault's account)
-                const foreignBitcoinAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-                const amountToSteal = newMonetaryAmount(0.00001, wrappedCurrency, true);
-                const btcTxId = await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amountToSteal);
-                // TODO: (option 2) send an extrinsic (use VaultsAPI.reportVaultTheft) to report vault theft manually here.
-                // it takes about 15 mins for the theft to be reported
-                await DefaultTransactionAPI.waitForEvent(api, api.events.relay.VaultTheft, 17 * 60000);
-    
-                const flaggedForTheft = await userInterBtcAPI.vaults.isVaultFlaggedForTheft(
-                    vaultToLiquidateId.accountId,
-                    currencyIdToLiteral(vaultToLiquidateId.currencies.collateral) as CollateralIdLiteral,
-                    btcTxId
-                );
-                assert.isTrue(flaggedForTheft);
-    
+                btcTxId = await vaultBitcoinCoreClient.sendToAddress(foreignBitcoinAddress, amountToSteal);
+                
+                // wait for tx inclusion and block finalization.
+                await userInterBtcAPI.electrsAPI.waitForTxInclusion(btcTxId, 2 * 60000, 5 * SLEEP_TIME_MS);
                 await waitForBlockFinalization(bitcoinCoreClient, userInterBtcAPI.btcRelay);
-                const maxBurnableTokens = await userInterBtcAPI.redeem.getMaxBurnableTokens(collateralCurrency);
-                assert.equal(maxBurnableTokens.str.BTC(), issuedTokens.str.BTC());
-                const burnExchangeRate = await userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>);
-                assert.isTrue(
-                    regularExchangeRate.toBig().lt(burnExchangeRate.toBig()),
-                    `Burn exchange rate (${burnExchangeRate.toHuman()}) is not better than 
-                    the regular one (${regularExchangeRate.toHuman()})`
-                );
-                // Burn InterBtc for a premium, to restore peg
-                await userInterBtcAPI.redeem.burn(amountToSteal, collateralCurrency);
             });
+
+            // report theft
+            await reporterInterBtcAPI.vaults.reportVaultTheft(vaultToLiquidateId, btcTxId);
+
+            // wait for theft reported event
+            await DefaultTransactionAPI.waitForNextFinalizedEvent(api, userInterBtcAPI.system, api.events.relay.VaultTheft, 2 * 60000);
+
+            const flaggedForTheft = await userInterBtcAPI.vaults.isVaultFlaggedForTheft(
+                vaultToLiquidateId.accountId,
+                currencyIdToLiteral(vaultToLiquidateId.currencies.collateral) as CollateralIdLiteral,
+                btcTxId
+            );
+            assert.isTrue(
+                flaggedForTheft,
+                `Expected vault (collateral: ${collateralCurrency.ticker}) to be flagged for theft, but it was not.`
+            );
+
+            const maxBurnableTokens = await userInterBtcAPI.redeem.getMaxBurnableTokens(collateralCurrency);
+            assert.equal(maxBurnableTokens.str.BTC(), issuedTokens.str.BTC());
+            const burnExchangeRate = await userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>);
+            assert.isTrue(
+                regularExchangeRate.toBig().lt(burnExchangeRate.toBig()),
+                `Burn exchange rate (${burnExchangeRate.toHuman()}) is not better than 
+                the regular one (${regularExchangeRate.toHuman()}; context: ${collateralCurrency.ticker})`
+            );
+            // Burn InterBtc for a premium, to restore peg
+            await userInterBtcAPI.redeem.burn(amountToSteal, collateralCurrency);
         }
-    }).timeout(36 * 60000);
+    }).timeout(10 * 60000);
 
     // TODO: Unskip after `subscribeToRedeemExpiry` is reimplemented
     // TODO: rewrite test to ban one vault, and check the other currency still works

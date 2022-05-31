@@ -98,17 +98,8 @@ describe("replace", () => {
                     replaceAmount, 
                     currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
                 );
-    
-                const finalizedPromise = new Promise<void>((resolve, _) => interBtcAPI.system.subscribeToFinalizedBlockHeads(
-                    async (header) => {
-                        const events = await interBtcAPI.api.query.system.events.at(header.parentHash);
-                        if (DefaultTransactionAPI.doesArrayContainEvent(events, api.events.replace.AcceptReplace)) {
-                            resolve();
-                        }
-                    })
-                );
-    
-                await finalizedPromise;
+   
+                await DefaultTransactionAPI.waitForNextFinalizedEvent(api, interBtcAPI.system, api.events.replace.AcceptReplace, 4 * 60000);
             }
 
             const requestsList = await interBtcAPI.replace.list();
