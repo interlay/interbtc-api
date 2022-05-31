@@ -6,7 +6,6 @@ import { AugmentedEvent, ApiTypes } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
-import { SystemAPI } from "./system";
 
 export interface TransactionAPI {
     setAccount(account: AddressOrPair): void;
