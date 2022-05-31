@@ -6,6 +6,7 @@ import { AugmentedEvent, ApiTypes } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
+import { SystemAPI } from "./system";
 
 export interface TransactionAPI {
     setAccount(account: AddressOrPair): void;
@@ -159,6 +160,36 @@ export class DefaultTransactionAPI {
                     }
                 });
             }),
+            timeoutPromise,
+        ]).then((_) => {
+            clearTimeout(timeoutHandle);
+        });
+
+        return true;
+    }
+
+    static async waitForNextFinalizedEvent<T extends AnyTuple>(
+        api: ApiPromise,
+        systemAPI: SystemAPI,
+        event: AugmentedEvent<ApiTypes, T>,
+        timeoutMs: number
+    ): Promise<boolean> {
+        // Use this function with a timeout.
+        // Unless the awaited event occurs, this Promise will never resolve.
+        let timeoutHandle: NodeJS.Timeout;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutHandle = setTimeout(() => reject(), timeoutMs);
+        });
+
+        await Promise.race([
+            new Promise<void>((resolve, _) => systemAPI.subscribeToFinalizedBlockHeads(
+                async (header) => {
+                    const events = await api.query.system.events.at(header.parentHash);
+                    if (this.doesArrayContainEvent(events, event)) {
+                        resolve();
+                    }
+                })
+            ),
             timeoutPromise,
         ]).then((_) => {
             clearTimeout(timeoutHandle);
