@@ -140,7 +140,16 @@ describe("redeem", () => {
             await reporterInterBtcAPI.vaults.reportVaultTheft(vaultToLiquidateId, btcTxId);
 
             // wait for theft reported event
-            await DefaultTransactionAPI.waitForNextFinalizedEvent(api, userInterBtcAPI.system, api.events.relay.VaultTheft, 2 * 60000);
+            const finalizedPromise = new Promise<void>((resolve, _) => userInterBtcAPI.system.subscribeToFinalizedBlockHeads(
+                async (header) => {
+                    const events = await userInterBtcAPI.api.query.system.events.at(header.parentHash);
+                    if (DefaultTransactionAPI.doesArrayContainEvent(events, api.events.relay.VaultTheft)) {
+                        resolve();
+                    }
+                })
+            );
+
+            await finalizedPromise;
 
             const flaggedForTheft = await userInterBtcAPI.vaults.isVaultFlaggedForTheft(
                 vaultToLiquidateId.accountId,
