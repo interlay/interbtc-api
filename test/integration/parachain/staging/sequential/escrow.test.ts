@@ -74,11 +74,14 @@ describe("escrow", () => {
         // FIXME: remove magic multiplier
         for (const [userKeyring, amount] of userIntrPairs) {
             const userAccount = newAccountId(api, userKeyring.address);
+            const existingBalance = await interBtcAPI.tokens.balance(governanceCurrency, userAccount);
+
             await sudo(
                 interBtcAPI,
                 () => interBtcAPI.tokens.setBalance(
                     userAccount,
-                    amount.mul(2).add((chargedFees).mul(3))
+                    amount.mul(2).add((chargedFees).mul(3)).add(existingBalance.free),
+                    existingBalance.reserved
                 )
             );
         }
