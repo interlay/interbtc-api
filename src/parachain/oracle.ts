@@ -211,7 +211,7 @@ export class DefaultOracleAPI implements OracleAPI {
 
     async isOnline(): Promise<boolean> {
         const errors = await this.api.query.security.errors();
-        return !this.hasOracleError(errors.toArray());
+        return !this.hasOracleError(Array.from(errors));
     }
 
     async getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean> {
