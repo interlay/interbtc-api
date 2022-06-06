@@ -462,6 +462,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrencyIdLiteral);
+
+        const backingCollateral = vault.backingCollateral.toBig();
+        if (backingCollateral.eq(0)) {
+            return Promise.reject(new Error("No backing collateral"));
+        }
+
         const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
             this.api,
             collateralCurrencyIdLiteral
@@ -470,7 +476,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency),
             nominatorId
         );
-        return nominatorCollateral.toBig().div(vault.backingCollateral.toBig());
+        return nominatorCollateral.toBig().div(backingCollateral);
     }
 
     async getBlockRewardAPY(
