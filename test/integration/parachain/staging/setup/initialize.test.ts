@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId } from "@polkadot/types/interfaces";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
 
@@ -12,20 +12,16 @@ import {
     newAccountId,
     CollateralUnit,
     CurrencyIdLiteral,
-    newVaultId,
-    WrappedCurrency,
     InterBtcApi,
     DefaultInterBtcApi,
-    getCorrespondingCollateralCurrency,
+    getCorrespondingCollateralCurrencies,
     CollateralCurrency,
     tickerToCurrencyIdLiteral,
-    newMonetaryAmount,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
     initializeExchangeRate,
     initializeStableConfirmations,
-    initializeIssue,
     initializeBtcTxFees
 } from "../../../../../src/utils/setup";
 import {
@@ -63,7 +59,6 @@ describe("Initialize parachain state", () => {
     let vault_to_ban: KeyringPair;
     let vault_to_liquidate: KeyringPair;
 
-    let wrappedCurrency: WrappedCurrency;
     let collateralCurrency: CollateralCurrency;
 
     function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
@@ -103,8 +98,7 @@ describe("Initialize parachain state", () => {
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
-        wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
-        collateralCurrency = getCorrespondingCollateralCurrency(userInterBtcAPI.getGovernanceCurrency());
+        collateralCurrency = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency())[0];
         const collateralCurrencyLiteral = tickerToCurrencyIdLiteral(collateralCurrency.ticker);
         const vaultCollateralPairs: [KeyringPair, CurrencyIdLiteral][] = [
             [vault_1, collateralCurrencyLiteral],
@@ -162,6 +156,7 @@ describe("Initialize parachain state", () => {
         const exchangeRateValue = new Big("3855.23187");
         await setCollateralExchangeRate(exchangeRateValue, Polkadot);
         await setCollateralExchangeRate(exchangeRateValue, Kusama);
+        await setCollateralExchangeRate(exchangeRateValue, Kintsugi);
     });
 
     it("should set BTC tx fees", async () => {
@@ -182,45 +177,5 @@ describe("Initialize parachain state", () => {
             isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         }
         assert.isTrue(isNominationEnabled);
-    });
-
-    it("should issue 0.00007 wrapped", async () => {
-        const wrappedToIssue = newMonetaryAmount(0.00007, wrappedCurrency, true);
-        const feesToPay = await userInterBtcAPI.issue.getFeesToPay(wrappedToIssue);
-        const userAccountId = newAccountId(api, userAccount.address);
-        const userWrappedBefore = (await userInterBtcAPI.tokens.balance(wrappedCurrency, userAccountId)).free;
-
-        await initializeIssue(
-            userInterBtcAPI, bitcoinCoreClient, userAccount, wrappedToIssue, newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency)
-        );
-        const collateralCurrencyLiteral = tickerToCurrencyIdLiteral(collateralCurrency.ticker);
-        const [userWrappedAfter, totalIssuance, vaultIssuedAmount] = await Promise.all([
-            userInterBtcAPI.tokens.balance(wrappedCurrency, userAccountId),
-            userInterBtcAPI.tokens.total(wrappedCurrency),
-            userInterBtcAPI.vaults.getIssuedAmount(newAccountId(api, vault_1.address), collateralCurrencyLiteral)
-        ]);
-
-        assert.equal(
-            userWrappedBefore.add(wrappedToIssue).sub(feesToPay).toString(),
-            userWrappedAfter.free.toString(),
-            "Issued amount is different from the requested amount"
-        );
-        // TODO: get the total issuance and vault issued amount before and calculate difference
-        // so that this test can be run more than once without resetting the chain
-        // assert.equal(totalIssuance.toString(), wrappedToIssue.toString());
-        // assert.equal(vaultIssuedAmount.toString(), wrappedToIssue.toString());
-    });
-
-    it("should redeem 0.00005 InterBtc", async () => {
-        const wrappedToRedeem = newMonetaryAmount(0.00005, wrappedCurrency, true);
-        const redeemAddress = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-        await userInterBtcAPI.redeem.request(wrappedToRedeem, redeemAddress);
-
-        const redeemRequests = await userInterBtcAPI.redeem.list();
-        assert.isAtLeast(
-            redeemRequests.length,
-            1,
-            "Error in initialization setup. Should have at least 1 redeem request"
-        );
     });
 });

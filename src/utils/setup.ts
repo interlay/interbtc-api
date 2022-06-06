@@ -30,7 +30,7 @@ import {
 } from "../../test/config";
 import { CollateralCurrency, CollateralUnit, CurrencyUnit, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
-import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrency } from "..";
+import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrencies } from "..";
 import { AddressOrPair } from "@polkadot/api/types";
 
 // Command line arguments of the initialization script
@@ -213,9 +213,12 @@ async function main<U extends CurrencyUnit>(params: InitializationParams): Promi
     const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
     const wrappedCurrency = sudoAccountInterBtcApi.getWrappedCurrency();
-    const collateralCurrency = getCorrespondingCollateralCurrency(
+    const collateralCurrencies = getCorrespondingCollateralCurrencies(
         sudoAccountInterBtcApi.getGovernanceCurrency()
-    ) as unknown as Currency<U>;
+    ) as unknown as Array<Currency<U>>;
+    // TODO: figure out if we want to initialize alternative collateral currencies (like KINT in additon to KSM), too?
+    const collateralCurrency = collateralCurrencies[0];
+
     const defaultInitializationParams = getDefaultInitializationParams<U>(
         keyring,
         vault_1.address,
