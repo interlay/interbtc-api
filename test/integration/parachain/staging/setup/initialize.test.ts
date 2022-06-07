@@ -147,7 +147,7 @@ describe("Initialize parachain state", () => {
         assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
     });
 
-    it("should set the exchange rate", async () => {
+    it.skip("should set the exchange rate", async () => {
         async function setCollateralExchangeRate<C extends CollateralUnit>(value: Big, currency: Currency<C>) {
             const exchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, typeof currency, typeof currency.units>(Bitcoin, currency, value);
             // result will be medianized
