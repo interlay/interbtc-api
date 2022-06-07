@@ -224,8 +224,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         const rawStakedBalances = await this.api.query.escrow.locked.entries();
 
         const totalCurrentAmount = rawStakedBalances
-            .filter(([_, escrowLockedBalance]) => escrowLockedBalance.end.toBn().gt(height))
-            .reduce((acc, [_, escrowLockedBalance]) => acc.add(escrowLockedBalance.amount), new BN(0));
+            .reduce((acc, [_, escrowLockedBalance]) => acc.add(escrowLockedBalance.amount.toBn()), new BN(0));
 
         return newMonetaryAmount(totalCurrentAmount.toNumber(), this.governanceCurrency as Currency<GovernanceUnit>);
     }
