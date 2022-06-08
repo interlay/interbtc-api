@@ -462,12 +462,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrencyIdLiteral);
-
-        const backingCollateral = vault.backingCollateral.toBig();
-        if (backingCollateral.eq(0)) {
-            return Promise.reject(new Error("No backing collateral"));
-        }
-
+        
         const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
             this.api,
             collateralCurrencyIdLiteral
@@ -476,6 +471,18 @@ export class DefaultVaultsAPI implements VaultsAPI {
             newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency),
             nominatorId
         );
+
+        // short-circuit a potential 0 div 0 scenario where 
+        // the nominator is equal to the vault and has zero collateral
+        if (nominatorCollateral.isZero()) {
+            return nominatorCollateral.toBig();
+        }
+
+        const backingCollateral = vault.backingCollateral.toBig();
+        if (backingCollateral.eq(0)) {
+            return Promise.reject(new Error("No backing collateral"));
+        }
+
         return nominatorCollateral.toBig().div(backingCollateral);
     }
 
