@@ -220,13 +220,14 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async getTotalStakedBalance(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
-        const height = new BN(await this.systemAPI.getCurrentBlockNumber());
+        const govCcy = this.governanceCurrency as Currency<GovernanceUnit>;
         const rawStakedBalances = await this.api.query.escrow.locked.entries();
 
         const totalCurrentAmount = rawStakedBalances
-            .reduce((acc, [_, escrowLockedBalance]) => acc.add(escrowLockedBalance.amount.toBn()), new BN(0));
+            .map(([_, rawStakedBalance]) => parseEscrowLockedBalance(govCcy, rawStakedBalance).amount)
+            .reduce((acc, amount) => acc.add(amount), newMonetaryAmount(0, govCcy));
 
-        return newMonetaryAmount(totalCurrentAmount.toNumber(), this.governanceCurrency as Currency<GovernanceUnit>);
+        return totalCurrentAmount;
     }
 
     async votingBalance(
