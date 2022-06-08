@@ -111,7 +111,10 @@ describe("redeem", () => {
 
             // There should be no burnable tokens
             await expect(userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>)).to.be.rejected;
-            const issuedTokens = newMonetaryAmount(0.0001, wrappedCurrency, true);
+
+            // issue a small amount of tokens (10x dust)
+            const dustValue = await userInterBtcAPI.issue.getDustValue();
+            const issuedTokens = dustValue.mul(10);
             await issueSingle(userInterBtcAPI, userBitcoinCoreClient, userAccount, issuedTokens, vaultToLiquidateId, true, false);
             const vaultBitcoinCoreClient = new BitcoinCoreClient(
                 BITCOIN_CORE_NETWORK,
@@ -124,7 +127,7 @@ describe("redeem", () => {
 
             // Steal some bitcoin (spend from the vault's account)
             const foreignBitcoinAddress = "bcrt1qefxeckts7tkgz7uach9dnwer4qz5nyehl4sjcc";
-            const amountToSteal = newMonetaryAmount(0.00001, wrappedCurrency, true);
+            const amountToSteal = dustValue;
             const {txid: btcTxId} = await vaultBitcoinCoreClient.sendBtcTxAndMine(foreignBitcoinAddress, amountToSteal, 3);
             // wait for tx inclusion and block finalization.
             await waitForBlockFinalization(bitcoinCoreClient, userInterBtcAPI.btcRelay);

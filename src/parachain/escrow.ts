@@ -53,6 +53,13 @@ export interface EscrowAPI {
      */
     getStakedBalance(accountId: AccountId): Promise<StakedBalance<GovernanceUnit>>;
     /**
+     * @returns The total amount of locked governance tokens
+     * @remarks
+     * - Expect poor performance from this function as more blocks are appended to the parachain.
+     * It is not recommended to call this directly, but rather to query through interbtc-squid once implemented.
+     */
+    getTotalStakedBalance():  Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
+    /**
      * @remarks Withdraws all locked governance currency
      */
     withdraw(): Promise<void>;
@@ -210,6 +217,17 @@ export class DefaultEscrowAPI implements EscrowAPI {
     async getStakedBalance(accountId: AccountId): Promise<StakedBalance<GovernanceUnit>> {
         const rawStakedBalance = await this.api.query.escrow.locked(accountId);
         return parseEscrowLockedBalance(this.governanceCurrency as Currency<GovernanceUnit>, rawStakedBalance);
+    }
+
+    async getTotalStakedBalance(): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+        const govCcy = this.governanceCurrency as Currency<GovernanceUnit>;
+        const rawStakedBalances = await this.api.query.escrow.locked.entries();
+
+        const totalCurrentAmount = rawStakedBalances
+            .map(([_, rawStakedBalance]) => parseEscrowLockedBalance(govCcy, rawStakedBalance).amount)
+            .reduce((acc, amount) => acc.add(amount), newMonetaryAmount(0, govCcy));
+
+        return totalCurrentAmount;
     }
 
     async votingBalance(

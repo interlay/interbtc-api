@@ -58,9 +58,9 @@ describe("escrow", () => {
         assert.isTrue(rewardsEstimate.amount.isZero(), `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`);
     });
 
-    it("should compute voting balance and total supply", async () => {
-        const user1_intrAmount = newMonetaryAmount(1000, governanceCurrency, true);
-        const user2_intrAmount = newMonetaryAmount(600, governanceCurrency, true);
+    it("should compute voting balance, total supply, and total staked balance", async () => {
+        const user1_intrAmount = newMonetaryAmount(100, governanceCurrency, true);
+        const user2_intrAmount = newMonetaryAmount(60, governanceCurrency, true);
         const chargedFees = newMonetaryAmount(2, governanceCurrency, true);
 
         const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
@@ -70,6 +70,8 @@ describe("escrow", () => {
             [userAccount_1, user1_intrAmount],
             [userAccount_2, user2_intrAmount],
         ];
+
+        const stakedTotalBefore = await interBtcAPI.escrow.getTotalStakedBalance();
 
         // FIXME: remove magic multiplier
         for (const [userKeyring, amount] of userIntrPairs) {
@@ -97,8 +99,8 @@ describe("escrow", () => {
 
         // Hardcoded value here to match the parachain
         assert.equal(
-            votingSupply.toBig(votingSupply.currency.base).round(1, RoundingMode.RoundDown).toString(),
-            "6.2"
+            votingSupply.toBig(votingSupply.currency.base).round(2, RoundingMode.RoundDown).toString(),
+            "0.62"
         );
         const firstYearRewards = 125000000000000000;
         const blocksPerYear = 5256000;
@@ -120,8 +122,18 @@ describe("escrow", () => {
         await interBtcAPI.escrow.createLock(user2_intrAmount, currentBlockNumber + unlockHeightDiff);
         const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
         assert.equal(
-            votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(1, RoundingMode.RoundDown).toString(),
-            "9.9"
+            votingSupplyAfterSecondUser.toBig(votingSupplyAfterSecondUser.currency.base).round(2, RoundingMode.RoundDown).toString(),
+            "0.99"
+        );
+
+        const stakedTotalAfter = await interBtcAPI.escrow.getTotalStakedBalance();
+        const lockedBalanceTotal = user1_intrAmount.add(user2_intrAmount);
+        const expectedNewBalance = stakedTotalBefore.add(lockedBalanceTotal);
+
+        assert.isTrue(
+            stakedTotalAfter.eq(expectedNewBalance),
+            `Expected total staked balance to have increased by locked amounts: ${lockedBalanceTotal.toHuman()},
+            but old balance was ${stakedTotalBefore.toHuman()} and new balance is ${stakedTotalAfter.toHuman()}`
         );
     }).timeout(15 * 60000);
 
