@@ -40,8 +40,7 @@ import {
     WrappedCurrency 
 } from "../../../../src";
 import { assert, expect } from "../../../chai";
-import { callWith, runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
-import Big from "big.js";
+import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
