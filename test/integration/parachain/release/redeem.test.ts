@@ -157,7 +157,12 @@ describe("redeem", () => {
             );
 
             const maxBurnableTokens = await userInterBtcAPI.redeem.getMaxBurnableTokens(collateralCurrency);
-            assert.equal(maxBurnableTokens.str.BTC(), issuedTokens.str.BTC());
+            assert.isTrue(
+                maxBurnableTokens.gte(issuedTokens), 
+                `Expected max burnable tokens to be greater than or equal to issued tokens
+                (issued tokens: ${issuedTokens.toHuman()}; collateral: ${collateralCurrency.ticker}) 
+                but was ${maxBurnableTokens.toHuman()}`
+            );
             const burnExchangeRate = await userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>);
             assert.isTrue(
                 regularExchangeRate.toBig().lt(burnExchangeRate.toBig()),
