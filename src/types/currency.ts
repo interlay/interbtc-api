@@ -19,6 +19,7 @@ import {
     VoteKintsugi,
     MonetaryAmount,
     KintsugiAmount,
+    InterlayAmount,
 } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import {
@@ -48,13 +49,13 @@ export type CollateralIdLiteral =
     | CurrencyIdLiteral.KINT
     | CurrencyIdLiteral.INTR;
 
-export const CollateralAmount = [PolkadotAmount, KusamaAmount, KintsugiAmount];
+export const CollateralAmount = [PolkadotAmount, KusamaAmount, InterlayAmount, KintsugiAmount];
 export type CollateralAmount = typeof CollateralAmount[number];
 
-export const CollateralCurrency = [Polkadot, Kusama, Kintsugi] as const;
+export const CollateralCurrency = [Polkadot, Kusama, Interlay, Kintsugi] as const;
 export type CollateralCurrency = typeof CollateralCurrency[number];
 
-export const CollateralUnit = [PolkadotUnit, KusamaUnit, KintsugiUnit];
+export const CollateralUnit = [PolkadotUnit, KusamaUnit, InterlayUnit, KintsugiUnit];
 export type CollateralUnit = typeof CollateralUnit[number];
 
 export const CurrencyUnit = [BitcoinUnit, PolkadotUnit, KusamaUnit, KintsugiUnit, InterlayUnit];
