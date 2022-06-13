@@ -29,7 +29,7 @@ describe("OracleAPI", () => {
 
     it("should set exchange rate", async () => {
         for (const collateralCurrency of collateralCurrencies) {
-            const exchangeRateValue = getExchangeRateValueToSetForTesting(collateralCurrency as CollateralCurrency);
+            const exchangeRateValue = getExchangeRateValueToSetForTesting(collateralCurrency);
             const newExchangeRate = new ExchangeRate<
                 Bitcoin,
                 BitcoinUnit,
