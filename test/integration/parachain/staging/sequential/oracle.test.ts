@@ -6,7 +6,8 @@ import Big from "big.js";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
-import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrencies, InterBtcApi } from "../../../../../src";
+import { CollateralCurrency, CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrencies, InterBtcApi } from "../../../../../src";
+import { getExchangeRateValueToSetForTesting } from "../../../../utils/helpers";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
@@ -28,7 +29,7 @@ describe("OracleAPI", () => {
 
     it("should set exchange rate", async () => {
         for (const collateralCurrency of collateralCurrencies) {
-            const exchangeRateValue = new Big("3913.7424920372646687827621");
+            const exchangeRateValue = getExchangeRateValueToSetForTesting(collateralCurrency as CollateralCurrency);
             const newExchangeRate = new ExchangeRate<
                 Bitcoin,
                 BitcoinUnit,

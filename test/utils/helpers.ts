@@ -2,6 +2,7 @@ import { Bitcoin, BitcoinUnit, Currency, ExchangeRate } from "@interlay/monetary
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
+import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient, InterBtcApi, CollateralCurrency, CollateralUnit, OracleAPI, VaultStatusExt } from "../../src";
 import { TransactionAPI } from "../../src/parachain/transaction";
@@ -142,3 +143,8 @@ export const vaultStatusToLabel = (status: VaultStatusExt): string => {
             return "Liquidated";
     }
 };
+
+// use the same exchange rate as the running oracles use 
+// to avoid flaky tests due to updated prices from the oracle client(s)
+// note: currently the same for all collateral currencies - might change in future
+export const getExchangeRateValueToSetForTesting = (collateralCurrency: CollateralCurrency): Big => new Big("230.0");

@@ -41,7 +41,7 @@ import {
     USER_1_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { sleep, SLEEP_TIME_MS } from "../../../../utils/helpers";
+import { getExchangeRateValueToSetForTesting, sleep, SLEEP_TIME_MS } from "../../../../utils/helpers";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -153,10 +153,9 @@ describe("Initialize parachain state", () => {
             // result will be medianized
             await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
         }
-        const exchangeRateValue = new Big("3855.23187");
-        await setCollateralExchangeRate(exchangeRateValue, Polkadot);
-        await setCollateralExchangeRate(exchangeRateValue, Kusama);
-        await setCollateralExchangeRate(exchangeRateValue, Kintsugi);
+        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot);
+        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama);
+        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kintsugi), Kintsugi);
     });
 
     it("should set BTC tx fees", async () => {
