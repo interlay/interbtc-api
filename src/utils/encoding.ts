@@ -270,6 +270,7 @@ export async function parseIssueRequest(
         wrappedAmount: newMonetaryAmount(req.amount.toString(), vaultsAPI.getWrappedCurrency()),
         griefingCollateral: newMonetaryAmount(req.griefingCollateral.toString(), collateralCurrency),
         status,
+        period: req.period.toNumber()
     };
 }
 
@@ -301,6 +302,7 @@ export async function parseRedeemRequest(
         vaultId: req.vault,
         userBTCAddress: encodeBtcAddress(req.btcAddress, network),
         status,
+        period: req.period.toNumber()
     };
 }
 
