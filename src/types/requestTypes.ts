@@ -24,9 +24,7 @@ export interface Issue {
     refundBtcAddress?: string;
     refundAmountWrapped?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
     executedAmountWrapped?: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
-    // ray test touch <
     period: number;
-    // ray test touch >
 }
 
 export enum IssueStatus {
@@ -61,9 +59,7 @@ export interface Redeem {
     confirmations?: number;
     btcBlockHeight?: number;
     status: RedeemStatus;
-    // ray test touch <
     period: number;
-    // ray test touch >
 }
 
 export enum RedeemStatus {
