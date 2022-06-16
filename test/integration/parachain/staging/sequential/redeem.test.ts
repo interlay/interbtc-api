@@ -8,7 +8,7 @@ import {
     VaultRegistryVault
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "../../../../chai";
+import { assert, expect } from "../../../../chai";
 import {
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,
@@ -22,10 +22,11 @@ import {
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { getCorrespondingCollateralCurrencies, issueAndRedeem, newMonetaryAmount } from "../../../../../src/utils";
+import { getCorrespondingCollateralCurrencies, issueAndRedeem, newMonetaryAmount, stripHexPrefix } from "../../../../../src/utils";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
+import Big, { RoundingMode } from "big.js";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -83,6 +84,7 @@ describe("redeem", () => {
         for (const [vault_1_id, vault_2_id] of collateralTickerToVaultIdsMap.values()) {
             const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
             const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
+
             await issueAndRedeem(
                 interBtcAPI,
                 bitcoinCoreClient,
@@ -93,7 +95,7 @@ describe("redeem", () => {
                 false,
                 ExecuteRedeem.False
             );
-    
+            
             await issueAndRedeem(
                 interBtcAPI,
                 bitcoinCoreClient,
@@ -115,6 +117,44 @@ describe("redeem", () => {
             "Error in initialization setup. Should have at least 1 issue request"
         );
     });
+
+    it("should have applied oracle fee rate to redeem transaction", async () => {
+        const oracleBtcFeePerByte = await interBtcAPI.oracle.getBitcoinFees();
+
+        const redeemRequests = await interBtcAPI.redeem.list();
+        for (const redeemRequest of redeemRequests) {
+            const opreturnData = stripHexPrefix(redeemRequest.id.toString());
+            const txId = await interBtcAPI.electrsAPI.getTxIdByOpReturn(opreturnData)
+                .catch((e) => {
+                    // if no opreturn is ready, we may still have to wait for it
+                    return interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, 5 * 60 * 1000, 5000);
+                });
+            if (txId === undefined) {
+                assert.fail(`Could not fetch BTC transaction id for redeem request id ${redeemRequest.id}`);
+                return;
+            }
+
+            // get the actual values on the BTC transaction
+            const btcTx = await interBtcAPI.electrsAPI.getTx(txId);
+
+            const actualTxFeeSatoshi = new Big(btcTx.fee || 0);
+            const actualTxWeight = new Big(btcTx.weight || 0);
+            const actualTxVsize = actualTxWeight.div(4).round(0, RoundingMode.RoundUp);
+            if (actualTxVsize.eq(0)) {
+                assert.fail(`Invalid actual tx vsize of 0, cannot calculate fee rate for redeem request id ${redeemRequest.id}`);
+                return;
+            }
+            
+            const actualFeeRateSatoshiPerByte = actualTxFeeSatoshi.div(actualTxVsize);
+            expect(actualFeeRateSatoshiPerByte.toNumber())
+                .to.be.closeTo(
+                    0.00001,
+                    oracleBtcFeePerByte.toNumber(),
+                    `BTC fee rate for redeem request id ${redeemRequest.id} is not close to expected value.
+                    BTC tx rate is ${actualFeeRateSatoshiPerByte.toString()}, but oracle rate is ${oracleBtcFeePerByte.toString()}`
+                );
+        }
+    }).timeout(10 * 60000);
 
     // TODO: maybe add this to redeem API
     it("should get redeemBtcDustValue", async () => {
