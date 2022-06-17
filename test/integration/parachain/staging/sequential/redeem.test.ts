@@ -26,7 +26,8 @@ import { getCorrespondingCollateralCurrencies, issueAndRedeem, newMonetaryAmount
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
-import Big, { RoundingMode } from "big.js";
+import Big from "big.js";
+import { calculateBtcTxVsize } from "../../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -124,11 +125,7 @@ describe("redeem", () => {
         const redeemRequests = await interBtcAPI.redeem.list();
         for (const redeemRequest of redeemRequests) {
             const opreturnData = stripHexPrefix(redeemRequest.id.toString());
-            const txId = await interBtcAPI.electrsAPI.getTxIdByOpReturn(opreturnData)
-                .catch((e) => {
-                    // if no opreturn is ready, we may still have to wait for it
-                    return interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, 5 * 60 * 1000, 5000);
-                });
+            const txId = await interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, 5 * 60 * 1000, 5000);
             if (txId === undefined) {
                 assert.fail(`Could not fetch BTC transaction id for redeem request id ${redeemRequest.id}`);
                 return;
@@ -138,8 +135,7 @@ describe("redeem", () => {
             const btcTx = await interBtcAPI.electrsAPI.getTx(txId);
 
             const actualTxFeeSatoshi = new Big(btcTx.fee || 0);
-            const actualTxWeight = new Big(btcTx.weight || 0);
-            const actualTxVsize = actualTxWeight.div(4).round(0, RoundingMode.RoundUp);
+            const actualTxVsize = calculateBtcTxVsize(btcTx);
             if (actualTxVsize.eq(0)) {
                 assert.fail(`Invalid actual tx vsize of 0, cannot calculate fee rate for redeem request id ${redeemRequest.id}`);
                 return;
