@@ -1,8 +1,9 @@
+import { Transaction } from "@interlay/esplora-btc-api";
 import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, UnitList } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
-import Big from "big.js";
+import Big, { RoundingMode } from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinCoreClient, InterBtcApi, CollateralCurrency, CollateralUnit, OracleAPI, VaultStatusExt } from "../../src";
 import { SUDO_URI } from "../config";
@@ -147,3 +148,17 @@ export const vaultStatusToLabel = (status: VaultStatusExt): string => {
 // to avoid flaky tests due to updated prices from the oracle client(s)
 // note: currently the same for all collateral currencies - might change in future
 export const getExchangeRateValueToSetForTesting = <U extends UnitList>(collateralCurrency: Currency<U>): Big => new Big("230.0");
+
+
+/**
+ * Returns the vsize (virtual size) of the given transaction.
+ * 
+ * The vsize is calculated by dividing the weight by 4 and rounding up to the next integer.
+ * See also https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#Transaction_size_calculations
+ * @param transaction the transaction to calculate the vsize of
+ * @returns the vsize of the transaction
+ */
+export const calculateBtcTxVsize = (transaction: Transaction): Big => {
+    const txWeight = new Big(transaction.weight || 0);
+    return txWeight.div(4).round(0, RoundingMode.RoundUp);
+};
