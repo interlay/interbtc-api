@@ -136,7 +136,7 @@ describe("redeem", () => {
 
             const actualTxFeeSatoshi = new Big(btcTx.fee || 0);
             const actualTxVsize = calculateBtcTxVsize(btcTx);
-            if (actualTxVsize.eq(0)) {
+            if (actualTxVsize === 0) {
                 assert.fail(`Invalid actual tx vsize of 0, cannot calculate fee rate for redeem request id ${redeemRequest.id}`);
                 return;
             }

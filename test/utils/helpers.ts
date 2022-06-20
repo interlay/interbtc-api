@@ -158,7 +158,7 @@ export const getExchangeRateValueToSetForTesting = <U extends UnitList>(collater
  * @param transaction the transaction to calculate the vsize of
  * @returns the vsize of the transaction
  */
-export const calculateBtcTxVsize = (transaction: Transaction): Big => {
+export const calculateBtcTxVsize = (transaction: Transaction): number => {
     const txWeight = new Big(transaction.weight || 0);
-    return txWeight.div(4).round(0, RoundingMode.RoundUp);
+    return Math.ceil(txWeight.div(4).toNumber());
 };
