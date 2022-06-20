@@ -134,6 +134,10 @@ describe("redeem", () => {
             // get the actual values on the BTC transaction
             const btcTx = await interBtcAPI.electrsAPI.getTx(txId);
 
+            // TODO: remove at later stage. print debug info while we seem to have occasional failures
+            const btcTxDetails = JSON.stringify(btcTx, null, 2);
+            console.log(`BTC transaction details:\n ${btcTxDetails} `);
+
             const actualTxFeeSatoshi = new Big(btcTx.fee || 0);
             const actualTxVsize = calculateBtcTxVsize(btcTx);
             if (actualTxVsize.eq(0)) {
