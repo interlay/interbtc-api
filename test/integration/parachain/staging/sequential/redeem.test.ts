@@ -28,7 +28,7 @@ import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client"
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
 import Big from "big.js";
-import { calculateBtcTxVsize } from "../../../../utils/helpers";
+import { bumpFeesForBtcTx, calculateBtcTxVsize } from "../../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -189,14 +189,7 @@ describe("redeem", () => {
         );
 
         // try to bump fees
-        const result = await vaultBitcoinCoreClient.client.command(
-            "bumpfee",
-            btcTxId,
-            {
-                "conf_target": 6, // let's set target as 1 hour => ~6 blocks
-                "estimate_mode": "economical"
-            }
-        );
+        const result = await bumpFeesForBtcTx(vaultBitcoinCoreClient, btcTxId);
 
         if (result.errors && result.errors.length > 0) {
             // concatenate errors for print
