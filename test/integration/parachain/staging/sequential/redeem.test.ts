@@ -147,12 +147,19 @@ describe("redeem", () => {
                 return;
             }
             
+            // allowable delta from observations: now and then, the fee is off by 1 satoshi, 
+            // so allow for that difference plus some epsilon (1e-5)
+            const expectedFees = oracleBtcFeePerByte.mul(actualTxVsize);
+            const allowedFeesMax = expectedFees.plus(1);
+            const allowedFeeDelta = allowedFeesMax.div(expectedFees).plus(0.00001);
+            
             const actualFeeRateSatoshiPerByte = actualTxFeeSatoshi.div(actualTxVsize);
             expect(actualFeeRateSatoshiPerByte.toNumber())
                 .to.be.closeTo(
-                    0.00001,
+                    allowedFeeDelta.toNumber(),
                     oracleBtcFeePerByte.toNumber(),
                     `BTC fee rate for redeem request id ${redeemRequest.id} is not close to expected value.
+                    Maximum allowed delta is ${allowedFeeDelta.toNumber()}.
                     BTC tx rate is ${actualFeeRateSatoshiPerByte.toString()}, but oracle rate is ${oracleBtcFeePerByte.toString()}`
                 );
         }
