@@ -165,7 +165,9 @@ describe("redeem", () => {
         }
     }).timeout(10 * 60000);
 
-    it("should be able to RBF a redeem transaction", async () => {
+    // The goal of this test is to check that a vault sends the redeem BTC transaction with RBF (replace by fee) enabled.
+    // And while we have the data, we might as well check if the new fee is indeed elevated.
+    it("should be able to perform RBF on a redeem transaction", async () => {
         // grab only first entry (collateral currency), and only vault_1_id
         const [vault_1_id] = collateralTickerToVaultIdsMap.values().next().value as [InterbtcPrimitivesVaultId, InterbtcPrimitivesVaultId];
         const issueAmount = newMonetaryAmount(0.0001, wrappedCurrency, true);
