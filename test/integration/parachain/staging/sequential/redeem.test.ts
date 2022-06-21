@@ -168,8 +168,8 @@ describe("redeem", () => {
     it("should be able to RBF a redeem transaction", async () => {
         // grab only first entry (collateral currency), and only vault_1_id
         const [vault_1_id] = collateralTickerToVaultIdsMap.values().next().value as [InterbtcPrimitivesVaultId, InterbtcPrimitivesVaultId];
-        const issueAmount = newMonetaryAmount(0.00006, wrappedCurrency, true);
-        const redeemAmount = newMonetaryAmount(0.00004, wrappedCurrency, true);
+        const issueAmount = newMonetaryAmount(0.0001, wrappedCurrency, true);
+        const redeemAmount = newMonetaryAmount(0.00007, wrappedCurrency, true);
 
         const [, redeemRequest] = await issueAndRedeem(
             interBtcAPI,
