@@ -20,7 +20,11 @@ const args = yargs(hideBin(process.argv))
     .option("submit-proposal", {
         type: "boolean",
         description: "Submit the on-chain proposal. The account seed will be queried.",
-        default: false,
+    })
+    .option("sudo", {
+        type: "boolean",
+        description: "Print the sudo-wrapped extrinsic",
+        conflicts: "submit-proposal",
     })
     .option("relay-endpoint", {
         description: "The wss url of the relay chain",
@@ -153,6 +157,10 @@ function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">
 
 async function maybeSubmitProposal(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string, api: ApiPromise, shouldSubmit: boolean) {
     printExtrinsic(name, extrinsic, endpoint);
+
+    if (args['sudo']) {
+        printExtrinsic('sudo', api.tx.sudo.sudo(extrinsic), endpoint);
+    }
 
     if (!shouldSubmit) {
         return;
