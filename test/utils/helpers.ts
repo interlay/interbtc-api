@@ -162,3 +162,43 @@ export const calculateBtcTxVsize = (transaction: Transaction): Big => {
     const txWeight = new Big(transaction.weight || 0);
     return txWeight.div(4).round(0, RoundingMode.RoundUp);
 };
+
+
+// types/interface for RBF bumpfee request
+// see: https://developer.bitcoin.org/reference/rpc/bumpfee.html
+export enum RbfEstimateMode {
+    unset = "unset",
+    economical = "economical",
+    conservative = "conservative"
+}
+
+export interface RbfOptions {
+    conf_target?: number;
+    fee_rate?: string | number;
+    replaceable?: boolean;
+    estimate_mode?: RbfEstimateMode;
+}
+
+export interface RbfResponse {
+    psbt?: string
+    txid?: string
+    origfee: number
+    fee: number
+    errors: string[]
+}
+
+/**
+ * Tries to bump fees (replace by fee) on a given bitcoin transaction, using the "bumpfee" RPC call.
+ * See also: https://developer.bitcoin.org/reference/rpc/bumpfee.html .
+ * 
+ * Default options are set to calculate a replacement fee aiming for 72 blocks (~12 hours), using and economical estimate mode.
+ * 
+ * @param bitcoinCoreClient the bitcoin core client to make the call with
+ * @param txId the transaction id
+ * @param options (optional) custom options to pass with "bumpfee" command, default: {conf_target: 72, estimate_mode: "economical"}
+ */
+export const bumpFeesForBtcTx = async (
+    bitcoinCoreClient: BitcoinCoreClient,
+    txId: string, 
+    options: RbfOptions = {conf_target: 72, estimate_mode: RbfEstimateMode.economical}
+): Promise<RbfResponse> => bitcoinCoreClient.client.command("bumpfee", txId, options);

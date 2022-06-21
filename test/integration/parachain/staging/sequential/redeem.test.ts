@@ -2,6 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import {
+    currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
@@ -27,7 +28,7 @@ import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client"
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
 import Big from "big.js";
-import { calculateBtcTxVsize } from "../../../../utils/helpers";
+import { bumpFeesForBtcTx, calculateBtcTxVsize } from "../../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -44,6 +45,13 @@ describe("redeem", () => {
     let wrappedCurrency: WrappedCurrency;
 
     let interBtcAPI: InterBtcApi;
+
+    const fetchBtcTxIdFromOpReturn = async (redeemRequestId: string): Promise<string> => {
+        const opreturnData = stripHexPrefix(redeemRequestId);
+        return interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, 5 * 60 * 1000, 5000).catch((_) => {
+            throw new Error(`Could not fetch BTC transaction id for redeem request id ${redeemRequestId}`);
+        });
+    };
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -124,12 +132,7 @@ describe("redeem", () => {
 
         const redeemRequests = await interBtcAPI.redeem.list();
         for (const redeemRequest of redeemRequests) {
-            const opreturnData = stripHexPrefix(redeemRequest.id.toString());
-            const txId = await interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, 5 * 60 * 1000, 5000);
-            if (txId === undefined) {
-                assert.fail(`Could not fetch BTC transaction id for redeem request id ${redeemRequest.id}`);
-                return;
-            }
+            const txId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
 
             // get the actual values on the BTC transaction
             const btcTx = await interBtcAPI.electrsAPI.getTx(txId);
@@ -144,15 +147,69 @@ describe("redeem", () => {
                 return;
             }
             
+            // allowable delta from observations: now and then, the fee is off by 1 satoshi, 
+            // so allow for that difference plus some epsilon (1e-5)
+            const expectedFees = oracleBtcFeePerByte.mul(actualTxVsize);
+            const allowedFeesMax = expectedFees.plus(1);
+            const allowedFeeDelta = allowedFeesMax.div(expectedFees).plus(0.00001);
+            
             const actualFeeRateSatoshiPerByte = actualTxFeeSatoshi.div(actualTxVsize);
             expect(actualFeeRateSatoshiPerByte.toNumber())
                 .to.be.closeTo(
-                    0.00001,
+                    allowedFeeDelta.toNumber(),
                     oracleBtcFeePerByte.toNumber(),
                     `BTC fee rate for redeem request id ${redeemRequest.id} is not close to expected value.
+                    Maximum allowed delta is ${allowedFeeDelta.toNumber()}.
                     BTC tx rate is ${actualFeeRateSatoshiPerByte.toString()}, but oracle rate is ${oracleBtcFeePerByte.toString()}`
                 );
         }
+    }).timeout(10 * 60000);
+
+    // The goal of this test is to check that a vault sends the redeem BTC transaction with RBF (replace by fee) enabled.
+    // And while we have the data, we might as well check if the new fee is indeed elevated.
+    it("should be able to perform RBF on a redeem transaction", async () => {
+        // grab only first entry (collateral currency), and only vault_1_id
+        const [vault_1_id] = collateralTickerToVaultIdsMap.values().next().value as [InterbtcPrimitivesVaultId, InterbtcPrimitivesVaultId];
+        const issueAmount = newMonetaryAmount(0.0001, wrappedCurrency, true);
+        const redeemAmount = newMonetaryAmount(0.00007, wrappedCurrency, true);
+
+        const [, redeemRequest] = await issueAndRedeem(
+            interBtcAPI,
+            bitcoinCoreClient,
+            userAccount,
+            vault_1_id,
+            issueAmount,
+            redeemAmount,
+            false,
+            ExecuteRedeem.False
+        );
+
+        // get BTC tx id
+        const btcTxId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
+
+        const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral);
+        const vaultBitcoinCoreClient = new BitcoinCoreClient(
+            BITCOIN_CORE_NETWORK,
+            BITCOIN_CORE_HOST,
+            BITCOIN_CORE_USERNAME,
+            BITCOIN_CORE_PASSWORD,
+            BITCOIN_CORE_PORT,
+            `vault_1-${collateralCurrency.ticker}-${wrappedCurrency.ticker}`
+        );
+
+        // try to bump fees
+        const result = await bumpFeesForBtcTx(vaultBitcoinCoreClient, btcTxId);
+
+        if (result.errors && result.errors.length > 0) {
+            // concatenate errors for print
+            const errorMessage = result.errors.join("; ");
+            assert.fail(`Could not bump fees for redeem request id ${redeemRequest.id}, error(s): ${errorMessage}`);
+        }
+
+        const feesBefore = result.origfee;
+        const feesAfter = result.fee;
+
+        assert.isAbove(feesAfter, feesBefore, `Fees did not increase after bumpfee for redeem request id ${redeemRequest.id}`);
     }).timeout(10 * 60000);
 
     // TODO: maybe add this to redeem API
