@@ -189,14 +189,16 @@ export interface RbfResponse {
 
 /**
  * Tries to bump fees (replace by fee) on a given bitcoin transaction, using the "bumpfee" RPC call.
- * See also: https://developer.bitcoin.org/reference/rpc/bumpfee.html
+ * See also: https://developer.bitcoin.org/reference/rpc/bumpfee.html .
+ * 
+ * Default options are set to calculate a replacement fee aiming for 72 blocks (~12 hours), using and economical estimate mode.
  * 
  * @param bitcoinCoreClient the bitcoin core client to make the call with
  * @param txId the transaction id
- * @param options (optional) custom options to pass with "bumpfee" command, default: {conf_target: 6, estimate_mode: "economical"}
+ * @param options (optional) custom options to pass with "bumpfee" command, default: {conf_target: 72, estimate_mode: "economical"}
  */
 export const bumpFeesForBtcTx = async (
     bitcoinCoreClient: BitcoinCoreClient,
     txId: string, 
-    options: RbfOptions = {conf_target: 6, estimate_mode: RbfEstimateMode.economical}
+    options: RbfOptions = {conf_target: 72, estimate_mode: RbfEstimateMode.economical}
 ): Promise<RbfResponse> => bitcoinCoreClient.client.command("bumpfee", txId, options);
