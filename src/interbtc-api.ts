@@ -23,6 +23,7 @@ import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
 import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
 import { currencyIdToMonetaryCurrency, GovernanceCurrency, GovernanceUnit, WrappedCurrency } from "./types";
 import { DefaultEscrowAPI, EscrowAPI } from ".";
+import { AssetRegistryAPI, DefaultAssetRegistryAPI } from "./parachain/asset-registry";
 
 export * from "./factory";
 export * from "./parachain/transaction";
@@ -81,6 +82,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
     public readonly nomination: NominationAPI;
     public readonly rewards: RewardsAPI;
     public readonly escrow: EscrowAPI;
+    public readonly assetRegistry: AssetRegistryAPI;
     private transactionAPI: TransactionAPI;
 
     constructor(
@@ -102,6 +104,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         this.fee = new DefaultFeeAPI(api, this.oracle);
         this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, this.transactionAPI);
         this.escrow = new DefaultEscrowAPI(api, governanceCurrency, this.system, this.transactionAPI);
+        this.assetRegistry = new DefaultAssetRegistryAPI(api);
 
         this.vaults = new DefaultVaultsAPI(
             api,
