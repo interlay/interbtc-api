@@ -1,7 +1,7 @@
 import { Currency, UnitList } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { stripHexPrefix, uint8ArrayToString } from "../utils";
+import { stripHexPrefix } from "../utils";
 
 /**
  * @category BTC Bridge
