@@ -214,7 +214,15 @@ export const bumpFeesForBtcTx = async (
 ): Promise<RbfResponse> => bitcoinCoreClient.client.command("bumpfee", txId, options);
 
 /**
- * Wait for an event to show up as finalized
+ * Wait for an event to show up as finalized.
+ * 
+ * This method will only subscribe to new blocks once called and then look for a specific event. 
+ * Contrary to @see {@link DefaultTransactionAPI.waitForEvent} which looks at all past events 
+ * and may return due to older events using the same name.
+ * 
+ * Note: This method checks the parent blocks in case the event we are looking for 
+ * was finalized in a block just before this method was called.
+ * 
  * @param interBtcApi the api to use for querying
  * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
  */
