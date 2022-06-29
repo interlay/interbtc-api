@@ -1,7 +1,9 @@
 import { Currency, UnitList } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
+import { StorageKey, u32 } from "@polkadot/types";
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { stripHexPrefix } from "../utils";
+import { Option } from "@polkadot/types-codec";
 
 /**
  * @category BTC Bridge
@@ -17,7 +19,8 @@ export interface AssetRegistryAPI {
 export class DefaultAssetRegistryAPI {
     constructor(private api: ApiPromise) { }
 
-    private metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
+    // not private for easier testing
+    metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
         const symbol = Buffer.from(stripHexPrefix(metadata.symbol.toString()), "hex").toString();
         const name = Buffer.from(stripHexPrefix(metadata.name.toString()), "hex").toString();
 
@@ -35,10 +38,13 @@ export class DefaultAssetRegistryAPI {
         };
     }
 
-    async getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>> {
-        const assetsMetadata = await this.api.query.assetRegistry.metadata.entries();
+    // wrapped call for easier mocking in tests
+    async getAssetRegistryEntries(): Promise<[StorageKey<[u32]>, Option<OrmlAssetRegistryAssetMetadata>][]> {
+        return await this.api.query.assetRegistry.metadata.entries();
+    }
 
-        return assetsMetadata
+    async getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>> {
+        return (await this.getAssetRegistryEntries())
             .map(([_, metadata]) => metadata)
             .filter(metadata => metadata.isSome)
             .map(metadata => metadata.unwrap())
