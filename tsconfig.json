@@ -8,10 +8,11 @@
         "strict": true,
         "noImplicitAny": true,
         "esModuleInterop": true,
-        "baseUrl": ".",
+        "baseUrl": "./",
         "resolveJsonModule": true,
         // Generate files for debugging
         "sourceMap": true,
+        "moduleResolution": "node",
         "lib": [
             "ES2019"
         ],
@@ -31,7 +32,8 @@
         }
     },
     "include": [
-        "src"
+        "src/**/*",
+        "test/**/*.ts"
     ],
     "exclude": [
         "./node_modules/*",
