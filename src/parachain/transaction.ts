@@ -61,12 +61,15 @@ export class DefaultTransactionAPI {
 
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
+                const eventFound = //true;
+                    successEventType === undefined || 
+                    DefaultTransactionAPI.doesArrayContainEvent(callbackObject.result.events, successEventType);
                 if (onlyInBlock) {
-                    if (status.isInBlock) {
+                    if (status.isInBlock && eventFound) {
                         resolve(callbackObject);
                     }
                 } else {
-                    if (status.isFinalized) {
+                    if (status.isFinalized && eventFound) {
                         resolve(callbackObject);
                     }
                 }
