@@ -1,11 +1,21 @@
 import { Transaction } from "@interlay/esplora-btc-api";
 import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, UnitList } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
+import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { AnyTuple } from "@polkadot/types/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import Big, { RoundingMode } from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { BitcoinCoreClient, InterBtcApi, CollateralCurrency, CollateralUnit, OracleAPI, VaultStatusExt } from "../../src";
+import { 
+    BitcoinCoreClient,
+    InterBtcApi,
+    CollateralCurrency,
+    CollateralUnit,
+    OracleAPI,
+    VaultStatusExt,
+    DefaultTransactionAPI
+} from "../../src";
 import { SUDO_URI } from "../config";
 
 export const SLEEP_TIME_MS = 1000;
@@ -202,3 +212,30 @@ export const bumpFeesForBtcTx = async (
     txId: string, 
     options: RbfOptions = {conf_target: 72, estimate_mode: RbfEstimateMode.economical}
 ): Promise<RbfResponse> => bitcoinCoreClient.client.command("bumpfee", txId, options);
+
+/**
+ * Wait for an event to show up as finalized.
+ * 
+ * This method will only subscribe to new blocks once called and then look for a specific event. 
+ * Contrary to @see {@link DefaultTransactionAPI.waitForEvent} which looks at all past events 
+ * and may return due to older events using the same name.
+ * 
+ * Note: This method checks the parent blocks in case the event we are looking for 
+ * was finalized in a block just before this method was called.
+ * 
+ * @param interBtcApi the api to use for querying
+ * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
+ */
+export const waitForFinalizedEvent = async <T extends AnyTuple>(
+    interBtcApi: InterBtcApi,
+    event: AugmentedEvent<ApiTypes, T>
+): Promise<void> => {
+    return new Promise<void>((resolve, _) => interBtcApi.system.subscribeToFinalizedBlockHeads(
+        async (header) => {
+            const events = await interBtcApi.api.query.system.events.at(header.parentHash);
+            if (DefaultTransactionAPI.doesArrayContainEvent(events, event)) {
+                resolve();
+            }
+        })
+    );
+};
