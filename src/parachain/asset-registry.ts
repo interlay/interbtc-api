@@ -14,9 +14,13 @@ export interface AssetRegistryAPI {
      * @returns A list of currencies.
      */
     getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>>;
- }
+}
 
+// shorthand type for the unwieldy tuple
+export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlAssetRegistryAssetMetadata>];
+ 
 export class DefaultAssetRegistryAPI {
+
     constructor(private api: ApiPromise) { }
 
     // not private for easier testing
@@ -39,15 +43,26 @@ export class DefaultAssetRegistryAPI {
     }
 
     // wrapped call for easier mocking in tests
-    async getAssetRegistryEntries(): Promise<[StorageKey<[u32]>, Option<OrmlAssetRegistryAssetMetadata>][]> {
+    async getAssetRegistryEntries(): Promise<AssetRegistryMetadataTuple[]> {
         return await this.api.query.assetRegistry.metadata.entries();
     }
 
+    /**
+     * Static method to grab onle metadata from entries provided by the asset registry.
+     * Ignores entries with no metadata (ie. `Option.isSome !== true`).
+     * @param entries The entries from the asset registry.
+     * @returns A list of metadata.
+     */
+    static extractMetadataFromEntries(entries: AssetRegistryMetadataTuple[]): OrmlAssetRegistryAssetMetadata[] {
+        return entries
+            .filter(([,metadata]) => metadata.isSome)
+            .map(([, metadata]) => metadata.unwrap());
+    }
+
     async getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>> {
-        return (await this.getAssetRegistryEntries())
-            .map(([_, metadata]) => metadata)
-            .filter(metadata => metadata.isSome)
-            .map(metadata => metadata.unwrap())
+        const entries = await this.getAssetRegistryEntries();
+
+        return DefaultAssetRegistryAPI.extractMetadataFromEntries(entries)
             .map(metadata => this.metadataToCurrency(metadata));
     }
 }

@@ -3,10 +3,12 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
-import { DefaultInterBtcApi, getStorageKey, stripHexPrefix } from "../../../../../src";
+import { DefaultAssetRegistryAPI, DefaultInterBtcApi, getStorageKey, stripHexPrefix } from "../../../../../src";
 
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
+
+import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { waitForFinalizedEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
@@ -54,12 +56,19 @@ describe("AssetRegistry", () => {
         return api.disconnect();
     });
 
-    it("should get registered foreign assets as currencies", async () => {
+    /**
+     * This test checks that the returned metadata from the chain has all the fields we need to construct 
+     * a `Currency<UnitList>` object. 
+     * To see the fields required, take a look at {@link DefaultAssetRegistryAPI.metadataToCurrency}.
+     * 
+     * Note: More detailed tests around the internal logic are in the unit tests.
+     */
+    it("should get expected shape of AssetRegistry metadata", async () => {
         // check if any assets have been registered
         const existingKeys = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
 
         if (existingKeys.length === 0) {
-            // register a new foreign asset for the test
+            // no existing foreign assets; register a new foreign asset for the test
             const nextAssetId = (await interBtcAPI.api.query.assetRegistry.lastAssetId()).toNumber() + 1;
 
             const callToRegister = interBtcAPI.api.tx.assetRegistry.registerAsset({ 
@@ -76,36 +85,42 @@ describe("AssetRegistry", () => {
             // wait for finalized event
             await waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset);
         }
+        
+        // get the metadata for the asset we just registered
+        const assetRegistryAPI = new DefaultAssetRegistryAPI(api);
+        const foreignAssetEntries = (await assetRegistryAPI.getAssetRegistryEntries());
+        const metadataArray = DefaultAssetRegistryAPI.extractMetadataFromEntries(foreignAssetEntries);
+        
+        type OrmlARAMetadataKey = keyof OrmlAssetRegistryAssetMetadata;
+       
+        // now check that we have the fields we absolutely need on the returned metadata
+        // check {@link DefaultAssetRegistryAPI.metadataToCurrency} to see which fields are needed.
+        const requiredFieldClassnames = new Map<OrmlARAMetadataKey, string>([
+            ["name" as OrmlARAMetadataKey, "Bytes"],
+            ["symbol" as OrmlARAMetadataKey, "Bytes"],
+            ["decimals" as OrmlARAMetadataKey, "u32"],
+        ]);
 
-        // if this doesn't throw here we're in a good spot, but we can check a few more fields
-        const currencies = await interBtcAPI.assetRegistry.getForeignAssetsAsCurrencies();
-        assert.isNotEmpty(
-            currencies,
-            "Expected at least one currency, but got none"
-        );
-
-        for (const currency of currencies) {
-            const currencyName = currency.name;
+        for (const metadata of metadataArray) {
             assert.isDefined(
-                currencyName,
-                "Expected currency name to be defined"
+                metadata, 
+                "Expected metadata to be defined, but it is not."
             );
 
-            const currencyTicker = currency.ticker;
-            assert.isDefined(
-                currencyTicker,
-                `currency '${currencyName}' has no ticker`
-            );
+            for (const [key, className] of requiredFieldClassnames) {
+                assert.isDefined(
+                    metadata[key],
+                    `Expected metadata to have field ${key.toString()}, but it does not.`
+                );
 
-            assert.isDefined(
-                currency.base,
-                `currency '${currencyName}' has no base`
-            );
-
-            assert.isDefined(
-                currency.rawBase,
-                `currency '${currencyName}' has no raw base`
-            );
+                // check type
+                assert.equal(
+                    metadata[key]?.constructor.name,
+                    className,
+                    `Expected metadata to have field ${key.toString()} of type ${className}, 
+                    but its type is ${metadata[key]?.constructor.name}.`
+                );
+            }
         }
     }).timeout(5 * 60000);
 });

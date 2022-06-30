@@ -2,9 +2,9 @@ import { expect } from "../../chai";
 import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
-import { Option } from "@polkadot/types-codec";
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { DefaultAssetRegistryAPI } from "../../../src/";
+import { AssetRegistryMetadataTuple } from "@interlay/interbtc/parachain/asset-registry";
 
 describe("DefaultAssetRegistryAPI", () => {
     let api: ApiPromise;
@@ -70,7 +70,7 @@ describe("DefaultAssetRegistryAPI", () => {
         });
 
         it("should ignore empty optionals in foreign assets data from chain", async () => {
-            const chainDataReturned: [StorageKey<[u32]>, Option<OrmlAssetRegistryAssetMetadata>][] = [
+            const chainDataReturned: AssetRegistryMetadataTuple[] = [
                 // one "good" returned value
                 [
                     api.createType("StorageKey<[u32]>", "0x0000000000000001") as StorageKey<[u32]>,
