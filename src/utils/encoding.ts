@@ -123,7 +123,7 @@ export function decodeFixedPointType(x: SignedFixedPoint | UnsignedFixedPoint): 
  * @returns the decoded string
  */
 export function decodeBytesAsString(bytes: Bytes): string {
-    return Buffer.from(stripHexPrefix(bytes.toString())).toString();
+    return Buffer.from(stripHexPrefix(bytes.toString()), "hex").toString();
 }
 
 export function encodeUnsignedFixedPoint(api: ApiPromise, x: Big): UnsignedFixedPoint {
