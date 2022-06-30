@@ -102,7 +102,7 @@ describe("DefaultAssetRegistryAPI", () => {
 
     describe("metadataToCurrency", () => {
         it("should convert foreign asset metadata to currency", async () => {
-            const actual = assetRegistryApi.metadataToCurrency(mockMetadata);
+            const actual = DefaultAssetRegistryAPI.metadataToCurrency(mockMetadata);
 
             expect(actual.ticker).to.equal(
                 mockMetadataValues.symbol,

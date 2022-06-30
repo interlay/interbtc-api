@@ -24,7 +24,7 @@ export class DefaultAssetRegistryAPI {
     constructor(private api: ApiPromise) { }
 
     // not private for easier testing
-    metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
+    static metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
         const symbol = Buffer.from(stripHexPrefix(metadata.symbol.toString()), "hex").toString();
         const name = Buffer.from(stripHexPrefix(metadata.name.toString()), "hex").toString();
 
@@ -63,6 +63,6 @@ export class DefaultAssetRegistryAPI {
         const entries = await this.getAssetRegistryEntries();
 
         return DefaultAssetRegistryAPI.extractMetadataFromEntries(entries)
-            .map(metadata => this.metadataToCurrency(metadata));
+            .map(DefaultAssetRegistryAPI.metadataToCurrency);
     }
 }
