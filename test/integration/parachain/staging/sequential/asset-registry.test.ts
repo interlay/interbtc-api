@@ -3,12 +3,13 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
-import { DefaultAssetRegistryAPI, DefaultInterBtcApi, DefaultTransactionAPI, getStorageKey, stripHexPrefix } from "../../../../../src";
+import { DefaultAssetRegistryAPI, DefaultInterBtcApi, getStorageKey, stripHexPrefix } from "../../../../../src";
 
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+import { waitForFinalizedEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
     let api: ApiPromise;
@@ -45,16 +46,11 @@ describe("AssetRegistry", () => {
         if (newKeys.length > 0) {
             // clean up assets registered in test(s)
             const deleteKeysInstruction = interBtcAPI.api.tx.system.killStorage(newKeys);
+            await interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction).signAndSend(sudoAccount);
 
-            const sudoWrappedDeleteInstruction = interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction);
+            // wait for finalized event
+            await waitForFinalizedEvent(interBtcAPI, api.events.sudo.Sudid);
 
-            await DefaultTransactionAPI.sendLogged(
-                interBtcAPI.api, 
-                sudoAccount, 
-                sudoWrappedDeleteInstruction,
-                api.events.sudo.Sudid,
-                true
-            );
         }
         
         return api.disconnect();
@@ -83,23 +79,17 @@ describe("AssetRegistry", () => {
             api.createType("u32", nextAssetId)
             );
 
-            const sudoWrappedRegisterInstruction = interBtcAPI.api.tx.sudo.sudo(callToRegister);
-
-            await DefaultTransactionAPI.sendLogged(
-                interBtcAPI.api,
-                sudoAccount,
-                sudoWrappedRegisterInstruction,
-                api.events.assetRegistry.RegisteredAsset,
-                true
-            );
+            // need sudo to add new foreign asset
+            await interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount);
+    
+            // wait for finalized event
+            await waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset);
         }
         
         // get the metadata for the asset we just registered
         const assetRegistryAPI = new DefaultAssetRegistryAPI(api);
         const foreignAssetEntries = (await assetRegistryAPI.getAssetRegistryEntries());
         const metadataArray = DefaultAssetRegistryAPI.extractMetadataFromEntries(foreignAssetEntries);
-
-        assert.isAtLeast(metadataArray.length, 1, "Expected to get at least one foreign asset, but got none.");
         
         type OrmlARAMetadataKey = keyof OrmlAssetRegistryAssetMetadata;
        
