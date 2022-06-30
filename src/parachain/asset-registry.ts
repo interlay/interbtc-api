@@ -2,7 +2,7 @@ import { Currency, UnitList } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { stripHexPrefix } from "../utils";
+import { decodeBytesAsString } from "../utils";
 import { Option } from "@polkadot/types-codec";
 
 /**
@@ -25,8 +25,8 @@ export class DefaultAssetRegistryAPI {
 
     // not private for easier testing
     static metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
-        const symbol = Buffer.from(stripHexPrefix(metadata.symbol.toString()), "hex").toString();
-        const name = Buffer.from(stripHexPrefix(metadata.name.toString()), "hex").toString();
+        const symbol = decodeBytesAsString(metadata.symbol);
+        const name = decodeBytesAsString(metadata.name);
 
         const DynamicUnit: UnitList = {
             atomic: 0

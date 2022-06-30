@@ -8,6 +8,7 @@ import { Codec } from "@polkadot/types/types";
 import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 import { Moment } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types/codec";
+import { Bytes } from "@polkadot/types-codec";
 import {
     InterbtcPrimitivesRedeemRedeemRequest,
     InterbtcPrimitivesReplaceReplaceRequest,
@@ -114,6 +115,15 @@ export function decodeFixedPointType(x: SignedFixedPoint | UnsignedFixedPoint): 
     const xBig = new Big(x.toString());
     const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
     return xBig.div(scalingFactor);
+}
+
+/**
+ * Convert Bytes to a string. Will remove `0x` prefix if present.
+ * @param bytes Bytes to decode
+ * @returns the decoded string
+ */
+export function decodeBytesAsString(bytes: Bytes): string {
+    return Buffer.from(stripHexPrefix(bytes.toString())).toString();
 }
 
 export function encodeUnsignedFixedPoint(api: ApiPromise, x: Big): UnsignedFixedPoint {
