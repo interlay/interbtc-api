@@ -18,10 +18,9 @@ export interface AssetRegistryAPI {
 
 // shorthand type for the unwieldy tuple
 export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlAssetRegistryAssetMetadata>];
- 
-export class DefaultAssetRegistryAPI {
 
-    constructor(private api: ApiPromise) { }
+export class DefaultAssetRegistryAPI {
+    constructor(private api: ApiPromise) {}
 
     // not private for easier testing
     static metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
@@ -29,7 +28,7 @@ export class DefaultAssetRegistryAPI {
         const name = decodeBytesAsString(metadata.name);
 
         const DynamicUnit: UnitList = {
-            atomic: 0
+            atomic: 0,
         };
         DynamicUnit[symbol] = metadata.decimals.toNumber();
 
@@ -38,7 +37,7 @@ export class DefaultAssetRegistryAPI {
             base: DynamicUnit[symbol],
             rawBase: DynamicUnit.atomic,
             units: DynamicUnit,
-            ticker: symbol
+            ticker: symbol,
         };
     }
 
@@ -54,15 +53,14 @@ export class DefaultAssetRegistryAPI {
      * @returns A list of metadata.
      */
     static extractMetadataFromEntries(entries: AssetRegistryMetadataTuple[]): OrmlAssetRegistryAssetMetadata[] {
-        return entries
-            .filter(([,metadata]) => metadata.isSome)
-            .map(([, metadata]) => metadata.unwrap());
+        return entries.filter(([, metadata]) => metadata.isSome).map(([, metadata]) => metadata.unwrap());
     }
 
     async getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>> {
         const entries = await this.getAssetRegistryEntries();
 
-        return DefaultAssetRegistryAPI.extractMetadataFromEntries(entries)
-            .map(DefaultAssetRegistryAPI.metadataToCurrency);
+        return DefaultAssetRegistryAPI.extractMetadataFromEntries(entries).map(
+            DefaultAssetRegistryAPI.metadataToCurrency
+        );
     }
 }

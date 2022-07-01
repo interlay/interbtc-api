@@ -5,7 +5,15 @@ import { Currency } from "@interlay/monetary-js";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
-import { ChainBalance, CollateralCurrency, CurrencyUnit, DefaultInterBtcApi, InterBtcApi, newAccountId, newMonetaryAmount } from "../../../../src";
+import {
+    ChainBalance,
+    CollateralCurrency,
+    CurrencyUnit,
+    DefaultInterBtcApi,
+    InterBtcApi,
+    newAccountId,
+    newMonetaryAmount,
+} from "../../../../src";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
@@ -35,14 +43,20 @@ describe("TokensAPI", () => {
         // Subscribe and receive two balance updates
         let updatedBalance = new ChainBalance<U>(currency);
         let updatedAccount = "";
-        function balanceUpdateCallback(account: string, newBalance:  ChainBalance<U>) {
+        function balanceUpdateCallback(account: string, newBalance: ChainBalance<U>) {
             updatedBalance = newBalance;
             updatedAccount = account;
         }
         const amountToUpdateUser2sAccountBy = newMonetaryAmount(10, currency, true);
-        const user2BalanceBeforeTransfer =
-            await interBtcAPI.tokens.balance<typeof currency.units>(currency, newAccountId(api, user2Account.address));
-        const unsubscribe = await interBtcAPI.tokens.subscribeToBalance(currency, user2Account.address, balanceUpdateCallback);
+        const user2BalanceBeforeTransfer = await interBtcAPI.tokens.balance<typeof currency.units>(
+            currency,
+            newAccountId(api, user2Account.address)
+        );
+        const unsubscribe = await interBtcAPI.tokens.subscribeToBalance(
+            currency,
+            user2Account.address,
+            balanceUpdateCallback
+        );
 
         // Send the first transfer, expect the callback to be called with correct values
         await interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy);
