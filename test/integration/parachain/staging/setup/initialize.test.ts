@@ -22,7 +22,7 @@ import {
     initializeVaultNomination,
     initializeExchangeRate,
     initializeStableConfirmations,
-    initializeBtcTxFees
+    initializeBtcTxFees,
 } from "../../../../../src/utils/setup";
 import {
     SUDO_URI,
@@ -66,11 +66,13 @@ describe("Initialize parachain state", () => {
     }
 
     async function waitForRegister(api: VaultsAPI, accountId: AccountId, collateralCurrency: CurrencyIdLiteral) {
-        while (true) {
+        for (;;) {
             try {
                 await api.get(accountId, collateralCurrency);
                 return;
-            } catch (e) { console.log(e); }
+            } catch (e) {
+                console.log(e);
+            }
             await sleep(SLEEP_TIME_MS);
         }
     }
@@ -105,12 +107,15 @@ describe("Initialize parachain state", () => {
             [vault_2, collateralCurrencyLiteral],
             [vault_3, collateralCurrencyLiteral],
             [vault_to_ban, collateralCurrencyLiteral],
-            [vault_to_liquidate, collateralCurrencyLiteral]
+            [vault_to_liquidate, collateralCurrencyLiteral],
         ];
         // wait for all vaults to register
         await Promise.all(
             vaultCollateralPairs
-                .map(([keyring, collateral]): [AccountId, CurrencyIdLiteral] => [accountIdFromKeyring(keyring), collateral])
+                .map(([keyring, collateral]): [AccountId, CurrencyIdLiteral] => [
+                    accountIdFromKeyring(keyring),
+                    collateral,
+                ])
                 .map(([accountId, collateral]) => waitForRegister(userInterBtcAPI.vaults, accountId, collateral))
         );
     });
@@ -125,7 +130,7 @@ describe("Initialize parachain state", () => {
         const stableParachainConfirmationsToSet = 0;
         let [stableBitcoinConfirmations, stableParachainConfirmations] = await Promise.all([
             userInterBtcAPI.btcRelay.getStableBitcoinConfirmations(),
-            userInterBtcAPI.btcRelay.getStableParachainConfirmations()
+            userInterBtcAPI.btcRelay.getStableParachainConfirmations(),
         ]);
 
         if (stableBitcoinConfirmations != 0 || stableParachainConfirmations != 0) {
@@ -133,23 +138,35 @@ describe("Initialize parachain state", () => {
                 api,
                 {
                     bitcoinConfirmations: stableBitcoinConfirmationsToSet,
-                    parachainConfirmations: stableParachainConfirmationsToSet
+                    parachainConfirmations: stableParachainConfirmationsToSet,
                 },
                 sudoAccount,
                 bitcoinCoreClient
             );
             [stableBitcoinConfirmations, stableParachainConfirmations] = await Promise.all([
                 userInterBtcAPI.btcRelay.getStableBitcoinConfirmations(),
-                userInterBtcAPI.btcRelay.getStableParachainConfirmations()
+                userInterBtcAPI.btcRelay.getStableParachainConfirmations(),
             ]);
         }
-        assert.equal(stableBitcoinConfirmationsToSet, stableBitcoinConfirmations, "Setting the Bitcoin confirmations failed");
-        assert.equal(stableParachainConfirmationsToSet, stableParachainConfirmations, "Setting the Parachain confirmations failed");
+        assert.equal(
+            stableBitcoinConfirmationsToSet,
+            stableBitcoinConfirmations,
+            "Setting the Bitcoin confirmations failed"
+        );
+        assert.equal(
+            stableParachainConfirmationsToSet,
+            stableParachainConfirmations,
+            "Setting the Parachain confirmations failed"
+        );
     });
 
     it("should set the exchange rate", async () => {
         async function setCollateralExchangeRate<C extends CollateralUnit>(value: Big, currency: Currency<C>) {
-            const exchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, typeof currency, typeof currency.units>(Bitcoin, currency, value);
+            const exchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, typeof currency, typeof currency.units>(
+                Bitcoin,
+                currency,
+                value
+            );
             // result will be medianized
             await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
         }

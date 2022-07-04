@@ -1,16 +1,8 @@
-import { btcAddressFromParams, decodeBtcAddress, encodeBtcAddress } from "../../../src/utils";
+import { decodeBtcAddress } from "../../../src/utils";
 import { assert } from "../../chai";
-import { TypeRegistry } from "@polkadot/types";
-import { createAPIRegistry } from "../../../src/factory";
 import * as bitcoinjs from "bitcoinjs-lib";
 
 describe("Bitcoin", () => {
-    let registry: TypeRegistry;
-
-    before(() => {
-        registry = createAPIRegistry();
-    });
-
     it("should get correct hash for address", () => {
         // compare hex because type lib has trouble with this enum
         assert.deepEqual(decodeBtcAddress("bcrt1qjvmc5dtm4qxgtug8faa5jdedlyq4v76ngpqgrl", bitcoinjs.networks.regtest), {

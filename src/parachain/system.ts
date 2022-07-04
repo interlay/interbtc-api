@@ -28,9 +28,9 @@ export interface SystemAPI {
      * On every new parachain block, call the callback function with the new block header
      * @param callback Function to be called with every new unfinalized block header
      */
-     subscribeToCurrentBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
+    subscribeToCurrentBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
 
-     /**
+    /**
      * @returns The parachain status code object.
      */
     getStatusCode(): Promise<SecurityStatusCode>;

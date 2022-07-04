@@ -1,12 +1,11 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinAmount, BitcoinUnit, Currency, ExchangeRate } from "@interlay/monetary-js";
-import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
-import { CollateralCurrency, CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrencies, InterBtcApi } from "../../../../../src";
+import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrencies, InterBtcApi } from "../../../../../src";
 import { getExchangeRateValueToSetForTesting } from "../../../../utils/helpers";
 
 describe("OracleAPI", () => {

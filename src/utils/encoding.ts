@@ -264,8 +264,8 @@ export async function parseIssueRequest(
     const status = req.status.isCompleted
         ? IssueStatus.Completed
         : req.status.isCancelled
-            ? IssueStatus.Cancelled
-            : IssueStatus.PendingWithBtcTxNotFound;
+        ? IssueStatus.Cancelled
+        : IssueStatus.PendingWithBtcTxNotFound;
     const collateralCurrency = currencyIdToMonetaryCurrency(
         req.vault.currencies.collateral
     ) as Currency<CollateralUnit>;
@@ -280,7 +280,7 @@ export async function parseIssueRequest(
         wrappedAmount: newMonetaryAmount(req.amount.toString(), vaultsAPI.getWrappedCurrency()),
         griefingCollateral: newMonetaryAmount(req.griefingCollateral.toString(), collateralCurrency),
         status,
-        period: req.period.toNumber()
+        period: req.period.toNumber(),
     };
 }
 
@@ -293,10 +293,10 @@ export async function parseRedeemRequest(
     const status = req.status.isCompleted
         ? RedeemStatus.Completed
         : req.status.isRetried
-            ? RedeemStatus.Retried
-            : req.status.isReimbursed
-                ? RedeemStatus.Reimbursed
-                : RedeemStatus.PendingWithBtcTxNotFound;
+        ? RedeemStatus.Retried
+        : req.status.isReimbursed
+        ? RedeemStatus.Reimbursed
+        : RedeemStatus.PendingWithBtcTxNotFound;
 
     const currencyIdLiteral = currencyIdToLiteral(req.vault.currencies.collateral);
     const vault = await vaultsAPI.get(req.vault.accountId, currencyIdLiteral);
@@ -312,7 +312,7 @@ export async function parseRedeemRequest(
         vaultId: req.vault,
         userBTCAddress: encodeBtcAddress(req.btcAddress, network),
         status,
-        period: req.period.toNumber()
+        period: req.period.toNumber(),
     };
 }
 

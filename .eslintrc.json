@@ -4,13 +4,13 @@
         "browser": true,
         "es2020": true
     },
-    "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+    "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": 11,
         "sourceType": "module"
     },
-    "plugins": ["@typescript-eslint"],
+    "plugins": ["@typescript-eslint", "unused-imports"],
     "settings": {},
     "rules": {
         "semi": ["error", "always"],
@@ -21,7 +21,6 @@
                 "avoidEscape": true
             }
         ],
-        "indent": ["error", 4, { "SwitchCase": 1 }],
         "max-len": [
             "error",
             {
@@ -37,11 +36,26 @@
             }
         ],
         "@typescript-eslint/no-unused-vars": [
-          "warn",
-          {
-            "argsIgnorePattern": "^_"
-          }
-        ]
-
+            "warn",
+            {
+                "argsIgnorePattern": "^_"
+            }
+        ],
+        "@typescript-eslint/type-annotation-spacing": [
+            "error",
+            {
+                "before": false,
+                "after": true,
+                "overrides": {
+                    "arrow": {
+                        "before": true,
+                        "after": true
+                    }
+                }
+            }
+        ],
+        "no-constant-condition": "warn",
+        "no-unused-vars": "off",
+        "unused-imports/no-unused-imports": "error"
     }
 }
