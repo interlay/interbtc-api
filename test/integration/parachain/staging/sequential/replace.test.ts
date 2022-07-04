@@ -72,8 +72,8 @@ describe("replace", () => {
     });
 
     describe("request", () => {
-        let dustValue : MonetaryAmount<WrappedCurrency, BitcoinUnit>;
-        let feesEstimate : MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+        let dustValue: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+        let feesEstimate: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
 
         before(async () => {
             dustValue = await interBtcAPI.replace.getDustValue();

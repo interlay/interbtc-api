@@ -1,13 +1,13 @@
 import Big, { BigSource } from "big.js";
 import sinon from "sinon";
-import { 
+import {
     CollateralCurrency,
     CurrencyUnit,
     DefaultRewardsAPI,
     DefaultVaultsAPI,
     InterbtcPrimitivesVaultId,
     newMonetaryAmount,
-    VaultExt 
+    VaultExt,
 } from "../../../src";
 import * as allThingsCurrency from "../../../src/types/currency";
 import * as allThingsEncoding from "../../../src/utils/encoding";
@@ -15,9 +15,9 @@ import { AccountId } from "@polkadot/types/interfaces";
 import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 
 export type NominatorVaultAccountIds = {
-    nominatorId: AccountId,
-    vaultId: AccountId
-}
+    nominatorId: AccountId;
+    vaultId: AccountId;
+};
 
 /**
  * Helper function to mock calls outside of the function backingCollateralProportion
@@ -43,12 +43,17 @@ export const prepareBackingCollateralProportionMocks = (
     // prepare mocks
     const mockVault = createMockVaultWithBacking(vaultBackingCollateralAmount, collateralCurrency);
     mockVaultsApiGetMethod(sinon, vaultsApi, mockVault);
-    mockComputeCollateralInStakingPoolMethod(sinon, stubbedRewardsApi, nominatorCollateralStakedAmount, collateralCurrency as any);
+    mockComputeCollateralInStakingPoolMethod(
+        sinon,
+        stubbedRewardsApi,
+        nominatorCollateralStakedAmount,
+        collateralCurrency as any
+    );
     mockCurrencyIdLiteralToMonetaryCurrency(sinon, collateralCurrency);
 
     return {
         nominatorId,
-        vaultId
+        vaultId,
     };
 };
 
@@ -61,7 +66,7 @@ export const createMockAccountId = (someString: string): AccountId => {
     return <AccountId>{
         toString: () => someString,
         toHuman: () => toString(),
-        toRawType: ()=> "MockAccountId",
+        toRawType: () => "MockAccountId",
         eq: (other?: AccountId) => !!other && toString() === other.toString(),
     };
 };
@@ -84,8 +89,7 @@ export const mockComputeCollateralInStakingPoolMethod = <U extends CurrencyUnit>
     sinon.stub(allThingsEncoding, "newVaultId").returns(tempId);
 
     // the actual mock that matters
-    stubbedRewardsApi.computeCollateralInStakingPool
-        .resolves(newMonetaryAmount(amount, currency) as any);
+    stubbedRewardsApi.computeCollateralInStakingPool.resolves(newMonetaryAmount(amount, currency) as never);
 };
 
 /**
@@ -94,7 +98,10 @@ export const mockComputeCollateralInStakingPoolMethod = <U extends CurrencyUnit>
  * @param collateralCurrency The collateral currency for the mocked backing collateral amount
  * @returns A mocked VaultExt instance with only backingCollateral property set
  */
-export const createMockVaultWithBacking = (amount: BigSource, collateralCurrency: CollateralCurrency): VaultExt<BitcoinUnit> => {
+export const createMockVaultWithBacking = (
+    amount: BigSource,
+    collateralCurrency: CollateralCurrency
+): VaultExt<BitcoinUnit> => {
     // VaultExt-ish; only need .backingCollateral to be available for this test
     return {
         backingCollateral: newMonetaryAmount(amount, collateralCurrency as any),
@@ -107,7 +114,11 @@ export const createMockVaultWithBacking = (amount: BigSource, collateralCurrency
  * @param vaultsApi The vaultsAPI instance for which to mock .get() methed
  * @param vault The vault to return
  */
-export const mockVaultsApiGetMethod = (sinon: sinon.SinonSandbox, vaultsApi: DefaultVaultsAPI, vault: VaultExt<BitcoinUnit>): void => {
+export const mockVaultsApiGetMethod = (
+    sinon: sinon.SinonSandbox,
+    vaultsApi: DefaultVaultsAPI,
+    vault: VaultExt<BitcoinUnit>
+): void => {
     // make VaultAPI.get() return a mocked vault
     sinon.stub(vaultsApi, "get").returns(Promise.resolve(vault));
 };
@@ -117,6 +128,9 @@ export const mockVaultsApiGetMethod = (sinon: sinon.SinonSandbox, vaultsApi: Def
  * @param sinon The sinon sandbox to use for mocking
  * @param currency The currency to return when calling currencyIdLiteralToMonetaryCurrency
  */
-export const mockCurrencyIdLiteralToMonetaryCurrency = (sinon: sinon.SinonSandbox, currency: CollateralCurrency): void => {
+export const mockCurrencyIdLiteralToMonetaryCurrency = (
+    sinon: sinon.SinonSandbox,
+    currency: CollateralCurrency
+): void => {
     sinon.stub(allThingsCurrency, "currencyIdLiteralToMonetaryCurrency").returns(currency as any);
 };

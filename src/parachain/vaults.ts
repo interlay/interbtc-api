@@ -163,10 +163,7 @@ export interface VaultsAPI {
      * @param btcTxId ID of the Bitcoin transaction to check
      * @returns A bollean value
      */
-    isVaultFlaggedForTheft(
-        vaultId: InterbtcPrimitivesVaultId,
-        btcTxId: string
-    ): Promise<boolean>;
+    isVaultFlaggedForTheft(vaultId: InterbtcPrimitivesVaultId, btcTxId: string): Promise<boolean>;
     /**
      * @param collateralCurrency
      * @returns The lower bound for vault collateralization.
@@ -462,7 +459,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrencyIdLiteral);
-        
+
         const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
             this.api,
             collateralCurrencyIdLiteral
@@ -472,7 +469,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             nominatorId
         );
 
-        // short-circuit a potential 0 div 0 scenario where 
+        // short-circuit a potential 0 div 0 scenario where
         // the nominator is equal to the vault and has zero collateral
         if (nominatorCollateral.isZero()) {
             return nominatorCollateral.toBig();
@@ -638,7 +635,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             if (this.isNoTokensIssuedError(e as string)) {
                 return Promise.resolve(undefined);
             }
-            return Promise.reject(new Error(`Error during collateralization computation: ${(e)}`));
+            return Promise.reject(new Error(`Error during collateralization computation: ${e}`));
         }
         if (!collateralization) {
             return Promise.resolve(undefined);
@@ -783,13 +780,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getPremiumRedeemVaults(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
-        > {
+    > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const vaults = await this.getVaultsEligibleForRedeeming();
-        
+
         const premiumRedeemVaultPredicates = await Promise.all(
-            vaults
-                .map((vault) => this.isBelowPremiumThreshold(vault.id))
+            vaults.map((vault) => this.isBelowPremiumThreshold(vault.id))
         );
         vaults
             .filter((_, index) => premiumRedeemVaultPredicates[index])
@@ -799,7 +795,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getVaultsWithIssuableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>
-        > {
+    > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const [vaults, activeBlockNumber] = await Promise.all([
             this.list(),
@@ -834,7 +830,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const [vaults, activeBlockNumber] = await Promise.all([
             this.list(),
             this.systemAPI.getCurrentActiveBlockNumber(),
-        ]);        
+        ]);
 
         // only non-banned, non-liquidated vaults with liquidity are eligible for redeems
         const redeemVaults = vaults.filter((vault) => {
@@ -846,7 +842,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getVaultsWithRedeemableTokens(): Promise<
         Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
-        > {
+    > {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>> = new Map();
         const vaults = await this.getVaultsEligibleForRedeeming();
         vaults
@@ -860,10 +856,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return map;
     }
 
-    async isVaultFlaggedForTheft(
-        vaultId: InterbtcPrimitivesVaultId,
-        btcTxId: string
-    ): Promise<boolean> {
+    async isVaultFlaggedForTheft(vaultId: InterbtcPrimitivesVaultId, btcTxId: string): Promise<boolean> {
         const theftReports = await this.api.query.relay.theftReports(vaultId, { content: addHexPrefix(btcTxId) });
         return theftReports.isEmpty;
     }

@@ -165,7 +165,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
             : await this.getStakingPoolNonce(
                   currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral,
                   vaultId.accountId
-            );
+              );
         const tx = this.api.tx.fee.withdrawRewards(vaultId, definedNonce.toString());
         await this.transactionAPI.sendLogged(tx, this.api.events.vaultStaking.WithdrawReward, true);
     }
