@@ -110,6 +110,12 @@ export interface VaultsAPI {
         collateralCurrency: Currency<C>
     ): Promise<MonetaryAmount<Currency<C>, C>>;
     /**
+     * Get the minimum secured collateral amount required to activate a vault
+     * @param collateralCurrency The currency specification, a `Monetary.js` object
+     * @returns the collateral value as a percentage string
+     */
+    getMinimumCollateral(collateralCurrency: CollateralCurrency): Promise<Big>;
+    /**
      * @param vaultAccountId The vault account ID
      * @param collateralCurrency The currency specification, a `Monetary.js` object
      * @returns The amount of wrapped tokens issued by the given vault
@@ -534,6 +540,21 @@ export class DefaultVaultsAPI implements VaultsAPI {
             ),
             vaultAccountId
         );
+    }
+
+    async getMinimumCollateral(
+        collateralCurrency: CollateralCurrency
+    ): Promise<Big> {
+        const collateralCurrencyId = newCurrencyId(
+            this.api,
+            tickerToCurrencyIdLiteral(collateralCurrency.ticker)
+        );
+        const minimumCollateral =
+            await this.api.query.vaultRegistry.minimumCollateralVault(
+                collateralCurrencyId
+            );
+
+        return decodeFixedPointType(minimumCollateral);
     }
 
     async getMaxNominationRatio(
