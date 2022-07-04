@@ -298,14 +298,16 @@ export class DefaultRedeemAPI implements RedeemAPI {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault(
             collateralCurrency as unknown as CollateralCurrency
         );
-        const issuedAmount = liquidationVault.issuedTokens.add(liquidationVault.toBeIssuedTokens);
-        if (issuedAmount.isZero()) {
+        const burnableAmount = liquidationVault.issuedTokens
+            .add(liquidationVault.toBeIssuedTokens)
+            .sub(liquidationVault.toBeRedeemedTokens);
+        if (burnableAmount.isZero()) {
             return Promise.reject(new Error("There are no burnable tokens. The burn exchange rate is undefined"));
         }
         const collateralAmount = liquidationVault.collateral;
         const exchangeRate = collateralAmount
             .toBig(collateralAmount.currency.base)
-            .div(issuedAmount.toBig(Bitcoin.units.BTC));
+            .div(burnableAmount.toBig(Bitcoin.units.BTC));
         return new ExchangeRate<Bitcoin, BitcoinUnit, typeof collateralCurrency, typeof collateralCurrency.units>(
             Bitcoin,
             collateralCurrency,
