@@ -14,6 +14,7 @@ import {
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
     CollateralCurrencyExt,
+    getStorageKey,
     CurrencyExt,
 } from "../../../../../src";
 import {
@@ -21,6 +22,7 @@ import {
     initializeExchangeRate,
     initializeStableConfirmations,
     initializeBtcTxFees,
+    initializeForeignAssetExchangeRate,
 } from "../../../../../src/utils/setup";
 import {
     SUDO_URI,
@@ -39,7 +41,14 @@ import {
     USER_1_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { getExchangeRateValueToSetForTesting, sleep, SLEEP_TIME_MS } from "../../../../utils/helpers";
+import {
+    foreignAssetExchangeRateValueForTesting,
+    getExchangeRateValueToSetForTesting,
+    sleep,
+    SLEEP_TIME_MS,
+    waitForFinalizedEvent,
+} from "../../../../utils/helpers";
+import { AssetRegistryMetadataTuple, DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -157,9 +166,63 @@ describe("Initialize parachain state", () => {
         );
     });
 
-    it("should set the exchange rate", async () => {
+    it("should have at least one foreign asset registered", async () => {
+        const assetRegistryMetadataHash = getStorageKey("AssetRegistry", "Metadata");
+        const existingKeys = (await sudoInterBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+
+        if (existingKeys.length === 0) {
+            // register a new foreign asset for the test
+            const nextAssetId = (await sudoInterBtcAPI.api.query.assetRegistry.lastAssetId()).toNumber() + 1;
+
+            const callToRegister = sudoInterBtcAPI.api.tx.assetRegistry.registerAsset(
+                {
+                    name: api.createType("Bytes", "Acala USD"),
+                    symbol: api.createType("Bytes", "aUSD"),
+                    decimals: api.createType("u32", 6),
+                    existentialDeposit: api.createType("u128", 1000000),
+                },
+                api.createType("u32", nextAssetId)
+            );
+
+            // need sudo to add new foreign asset
+            await sudoInterBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount);
+
+            // wait for finalized event
+            await waitForFinalizedEvent(sudoInterBtcAPI, api.events.assetRegistry.RegisteredAsset);
+        }
+
+        const currencies = await sudoInterBtcAPI.assetRegistry.getForeignAssets();
+        assert.isAtLeast(
+            currencies.length,
+            1,
+            `Expected at least one foreign asset registered, but found ${currencies.length}`
+        );
+    });
+
+    it("should set the exchange rate for foreign assets", async () => {
+        const setForeignAssetExchangeRate = async (value: Big, assetTuple: AssetRegistryMetadataTuple) => {
+            const [assetKey, assetMetadata] = assetTuple;
+            if (assetMetadata.isNone) {
+                // nothing to set
+                return;
+            }
+
+            const currency = DefaultAssetRegistryAPI.metadataToCurrency(assetMetadata.unwrap());
+            const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
+            await initializeForeignAssetExchangeRate(exchangeRate, assetKey, sudoInterBtcAPI.oracle);
+        };
+
+        const assetRegistryApi: DefaultAssetRegistryAPI = new DefaultAssetRegistryAPI(sudoInterBtcAPI.api);
+        const foreignAssets: AssetRegistryMetadataTuple[] = await assetRegistryApi.getAssetRegistryEntries();
+
+        for (const assetTuple of foreignAssets) {
+            await setForeignAssetExchangeRate(foreignAssetExchangeRateValueForTesting, assetTuple);
+        }
+    });
+
+    it("should set the exchange rate for collateral tokens", async () => {
         async function setCollateralExchangeRate(value: Big, currency: CurrencyExt) {
-            const exchangeRate = new ExchangeRate<Bitcoin, typeof currency>(Bitcoin, currency, value);
+            const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
             // result will be medianized
             await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
         }

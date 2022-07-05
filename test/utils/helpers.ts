@@ -126,6 +126,8 @@ export const vaultStatusToLabel = (status: VaultStatusExt): string => {
 // note: currently the same for all collateral currencies - might change in future
 export const getExchangeRateValueToSetForTesting = (_collateralCurrency: CurrencyExt): Big => new Big("230.0");
 
+export const foreignAssetExchangeRateValueForTesting = new Big("230.0");
+
 /**
  * Returns the vsize (virtual size) of the given transaction.
  *
