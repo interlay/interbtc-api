@@ -14,7 +14,8 @@ const exec = (cmd: string, fatal = true) => {
     return res;
 };
 
-const chain = minimist(process.argv.slice(2)).chain || "KINT";
+const chain: string = minimist(process.argv.slice(2)).chain || "KINT";
+console.log(`./scripts/docker-setup.sh ${chain}`);
 
-exec("chmod +x ./scripts/docker-setup.sh");
-exec(`./scripts/docker-setup.sh ${chain}`);
+// exec("chmod +x ./scripts/docker-setup.sh");
+// exec(`./scripts/docker-setup.sh ${chain}`);

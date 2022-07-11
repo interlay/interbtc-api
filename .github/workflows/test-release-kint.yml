@@ -1,0 +1,20 @@
+name: integration test (KINT)
+
+on:
+  pull_request:
+    branches:
+      - master
+  # todo: remove push trigger after initial tests
+  push:
+    branches:
+      - master
+
+concurrency: 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test_kint:
+    uses: ./.github/workflows/test-release-reusable.yml
+    with:
+      parachain: KINT
