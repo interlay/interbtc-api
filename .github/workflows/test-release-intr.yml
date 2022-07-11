@@ -10,7 +10,7 @@ on:
       - master
 
 concurrency:
-  group: ${{ github.ref }}
+  group: ${{ github.ref }}_intr
   cancel-in-progress: true
 
 jobs:
