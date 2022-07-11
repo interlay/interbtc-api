@@ -33,4 +33,4 @@ case $CHAIN in
         ;;
 esac
 
-# cd local-setup && docker-compose up --build --detach
+cd local-setup && docker-compose up --build --detach
