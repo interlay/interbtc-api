@@ -1,0 +1,20 @@
+name: integration tests (INTR)
+
+on:
+    # todo: remove pull request trigger after initial tests
+    pull_request:
+        branches:
+            - master
+    push:
+        branches:
+            - master
+
+concurrency:
+    group: ${{ github.ref }}_intr
+    cancel-in-progress: true
+
+jobs:
+    test_intr:
+        uses: ./.github/workflows/reusable-wf-integration-tests.yml
+        with:
+            parachain: INTR
