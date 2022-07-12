@@ -60,11 +60,23 @@ export interface VaultsAPI {
      */
     list(atBlock?: BlockHash): Promise<VaultExt<BitcoinUnit>[]>;
     /**
+     * Get a vault by account ID and collateral currency. 
+     * Does not reject if the vault does not exist, but returns null instead.
      * @param vaultAccountId The ID of the vault to fetch
      * @param collateralCurrencyIdLiteral Collateral used by vault
-     * @returns A vault object
+     * @returns A vault object, or null if no vault with the given ID and currency pair exists
      */
-    get(
+    getOrNull(
+        vaultAccountId: AccountId,
+        collateralCurrencyIdLiteral: CurrencyIdLiteral
+    ): Promise<VaultExt<BitcoinUnit> | null>;
+    /**
+     * Get a vault by account ID and collateral currency. Rejects if no vault exists.
+     * @param vaultAccountId The ID of the vault to fetch
+     * @param collateralCurrencyIdLiteral Collateral used by vault
+     * @returns A vault object, rejects if no vault with the given ID and currency pair exists
+     */
+     get(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CurrencyIdLiteral
     ): Promise<VaultExt<BitcoinUnit>>;
@@ -493,10 +505,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
         );
     }
 
-    async get(
+    async getOrNull(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral
-    ): Promise<VaultExt<BitcoinUnit>> {
+    ): Promise<VaultExt<BitcoinUnit> | null> {
         try {
             const collateralCurrency = currencyIdLiteralToMonetaryCurrency(
                 this.api,
@@ -512,7 +524,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
                 Option<VaultRegistryVault>
             >(vaultId);
             if (!vault.isSome) {
-                return Promise.reject(`No vault registered with id ${vaultId}`);
+                return null;
             }
             return this.parseVault(
                 vault.value as VaultRegistryVault,
@@ -521,6 +533,23 @@ export class DefaultVaultsAPI implements VaultsAPI {
         } catch (error) {
             return Promise.reject(error);
         }
+    }
+
+    async get(
+        vaultAccountId: AccountId,
+        collateralCurrencyIdLiteral: CollateralIdLiteral
+    ): Promise<VaultExt<BitcoinUnit>> {
+        const vault = await this.getOrNull(
+            vaultAccountId,
+            collateralCurrencyIdLiteral
+        );
+
+        if (vault === null) {
+            return Promise.reject(
+                new Error(`Vault does not exist for id '${vaultAccountId}' and collateral '${collateralCurrencyIdLiteral}'`)
+            );
+        }
+        return vault;
     }
 
     async getCollateral(
