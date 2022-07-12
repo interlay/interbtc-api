@@ -37,7 +37,6 @@ describe("refund", () => {
     let vault_3_ids: Array<InterbtcPrimitivesVaultId>;
     let wrappedCurrency: WrappedCurrency;
     let interBtcAPI: InterBtcApi;
-    let governanceCcyTicker: string;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -52,9 +51,7 @@ describe("refund", () => {
         );
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        const governanceCurrency = interBtcAPI.getGovernanceCurrency();
-        const collateralCurrencies = getCorrespondingCollateralCurrencies(governanceCurrency);
-        governanceCcyTicker = governanceCurrency.ticker;
+        const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
