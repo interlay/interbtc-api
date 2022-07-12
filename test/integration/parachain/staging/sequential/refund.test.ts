@@ -1,27 +1,27 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
-import { 
+import {
     currencyIdToMonetaryCurrency,
-    DefaultInterBtcApi, 
-    getCorrespondingCollateralCurrencies, 
-    InterBtcApi, 
-    InterbtcPrimitivesVaultId, 
-    newMonetaryAmount 
+    DefaultInterBtcApi,
+    getCorrespondingCollateralCurrencies,
+    InterBtcApi,
+    InterbtcPrimitivesVaultId,
+    newMonetaryAmount,
 } from "../../../../../src/index";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { 
-    USER_1_URI, 
-    VAULT_3_URI, 
-    BITCOIN_CORE_HOST, 
-    BITCOIN_CORE_NETWORK, 
-    BITCOIN_CORE_PASSWORD, 
-    BITCOIN_CORE_PORT, 
-    BITCOIN_CORE_USERNAME, 
-    BITCOIN_CORE_WALLET, 
-    PARACHAIN_ENDPOINT, 
-    ESPLORA_BASE_PATH 
+import {
+    USER_1_URI,
+    VAULT_3_URI,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    PARACHAIN_ENDPOINT,
+    ESPLORA_BASE_PATH,
 } from "../../../../config";
 import { assert } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
@@ -53,8 +53,9 @@ describe("refund", () => {
         const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_3_ids = collateralCurrencies
-            .map(collateralCurrency => newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency));
+        vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
+            newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency)
+        );
     });
 
     after(async () => {
@@ -74,7 +75,7 @@ describe("refund", () => {
                 false
             );
             assert.isRejected(
-                interBtcAPI.refund.getRequestByIssueId(issueResult.request.id), 
+                interBtcAPI.refund.getRequestByIssueId(issueResult.request.id),
                 `Expected rejection for refund request with vault 3 (${currencyTicker})`
             );
         }
@@ -94,13 +95,13 @@ describe("refund", () => {
             );
             const refund = await interBtcAPI.refund.getRequestByIssueId(issueResult.request.id);
             assert.notEqual(
-                refund.amountBtc.toString(), 
-                "0", 
+                refund.amountBtc.toString(),
+                "0",
                 `Expected non-zero amount for refund request with vault 3 (${currencyTicker})`
             );
             const refundRequests = await interBtcAPI.refund.list();
             assert.isAtLeast(
-                refundRequests.length, 
+                refundRequests.length,
                 1,
                 `Expected at leas 1 refund request with vault 3 (${currencyTicker})`
             );
