@@ -26,6 +26,7 @@ import {
 import { assert } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
+import { Interlay } from "@interlay/monetary-js";
 
 describe("refund", () => {
     let api: ApiPromise;
@@ -36,6 +37,7 @@ describe("refund", () => {
     let vault_3_ids: Array<InterbtcPrimitivesVaultId>;
     let wrappedCurrency: WrappedCurrency;
     let interBtcAPI: InterBtcApi;
+    let governanceCcyTicker: string;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -50,7 +52,9 @@ describe("refund", () => {
         );
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
+        const governanceCurrency = interBtcAPI.getGovernanceCurrency();
+        const collateralCurrencies = getCorrespondingCollateralCurrencies(governanceCurrency);
+        governanceCcyTicker = governanceCurrency.ticker;
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
@@ -81,7 +85,13 @@ describe("refund", () => {
         }
     }).timeout(2000000);
 
-    it("should generate a refund request", async () => {
+    it("should generate a refund request", async function () {
+        if (interBtcAPI.getGovernanceCurrency().ticker === Interlay.ticker) {
+            // Skip this test when running the INTR parachain (gov currency: INTR).
+            // Vaults have had too much collateral, resulting in issuing more IBTC rather than
+            // refunding the overpaid amount. So we had false negative failed tests.
+            this.skip();
+        }
         for (const vault_3_id of vault_3_ids) {
             const currencyTicker = currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral).ticker;
             const issueResult = await issueSingle(
