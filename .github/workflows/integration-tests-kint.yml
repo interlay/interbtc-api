@@ -4,10 +4,6 @@ on:
     pull_request:
         branches:
             - master
-    # todo: remove push trigger after initial tests
-    push:
-        branches:
-            - master
 
 concurrency:
     group: ${{ github.ref }}_kint
