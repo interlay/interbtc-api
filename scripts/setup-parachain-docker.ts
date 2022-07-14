@@ -1,5 +1,5 @@
 import shell from "shelljs";
-import minimist from "minimist";
+import yargs from "yargs/yargs";
 
 const exec = (cmd: string, fatal = true) => {
     console.log(`$ ${cmd}`);
@@ -14,7 +14,16 @@ const exec = (cmd: string, fatal = true) => {
     return res;
 };
 
-const chain = minimist(process.argv.slice(2)).chain || "KINT";
+const argv = yargs(process.argv.slice(2))
+    .alias("c", "chain")
+    .option("chain", {
+        choices: ["KINT", "INTR"],
+        description: "The type of parachain to setup. Defaults to KINT.",
+        default: "KINT",
+    })
+    .parseSync();
+
+const chain = argv.chain;
 
 exec("chmod +x ./scripts/docker-setup.sh");
 exec(`./scripts/docker-setup.sh ${chain}`);
