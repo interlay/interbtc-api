@@ -7,9 +7,10 @@ import { assert } from "../../../chai";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import {
     ChainBalance,
-    CollateralCurrency,
+    CollateralUnit,
     CurrencyUnit,
     DefaultInterBtcApi,
+    getCorrespondingCollateralCurrencies,
     InterBtcApi,
     newAccountId,
     newMonetaryAmount,
@@ -20,6 +21,7 @@ describe("TokensAPI", () => {
     let user1Account: KeyringPair;
     let user2Account: KeyringPair;
     let interBtcAPI: InterBtcApi;
+    let collateralCurrencies: Array<Currency<CollateralUnit>>;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -27,6 +29,8 @@ describe("TokensAPI", () => {
         user1Account = keyring.addFromUri(USER_1_URI);
         user2Account = keyring.addFromUri(USER_2_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", user1Account, ESPLORA_BASE_PATH);
+        collateralCurrencies = 
+            getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency()) as Array<Currency<CollateralUnit>>;
     });
 
     after(() => {
@@ -34,8 +38,8 @@ describe("TokensAPI", () => {
     });
 
     it("should subscribe to balance updates", async () => {
-        for (const currency of [...CollateralCurrency]) {
-            await testBalanceSubscription(currency as Currency<CurrencyUnit>);
+        for (const currency of collateralCurrencies) {
+            await testBalanceSubscription(currency);
         }
     });
 
