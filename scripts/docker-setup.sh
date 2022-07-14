@@ -2,9 +2,10 @@
 CHAIN=$(echo $1 | tr '[:lower:]' '[:upper:]')
 
 case $CHAIN in
-  INTR)
+  INTR | KINT)
     ;;
   *)
+    echo "Unknown parachain: $1. Using default: KINT"
     CHAIN=KINT
     ;;
 esac
