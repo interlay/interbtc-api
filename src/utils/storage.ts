@@ -1,4 +1,4 @@
-import { xxhashAsHex } from "@polkadot/util-crypto";
+import { xxhashAsHex, blake2AsHex } from "@polkadot/util-crypto";
 import { bnToHex } from "@polkadot/util";
 import { StorageKey, Bytes } from "@polkadot/types/primitive";
 import { ApiPromise } from "@polkadot/api";
@@ -11,6 +11,23 @@ import { DefaultTransactionAPI } from "../parachain";
 
 export function getStorageKey(moduleName: string, storageItemName: string): string {
     return xxhashAsHex(moduleName, 128) + stripHexPrefix(xxhashAsHex(storageItemName, 128));
+}
+
+export function blake2_128Concat(data: `0x${string}`): string {
+    return blake2AsHex(data, 128) + stripHexPrefix(data);
+}
+
+export function getStorageMapItemKey(
+    moduleName: string,
+    storageItemName: string,
+    mapItemKey: `0x${string}`,
+    nestedMapItemKey?: `0x${string}`
+): string {
+    let storageKey = getStorageKey(moduleName, storageItemName) + stripHexPrefix(blake2_128Concat(mapItemKey));
+    if (nestedMapItemKey) {
+        storageKey += stripHexPrefix(blake2_128Concat(nestedMapItemKey));
+    }
+    return storageKey;
 }
 
 export async function setNumericStorage(
