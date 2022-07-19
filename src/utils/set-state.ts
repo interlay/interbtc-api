@@ -1,16 +1,20 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
+import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { StorageKey } from "@polkadot/types";
-import { VaultRegistrySystemVault } from "@polkadot/types/lookup";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
+import Big from "big.js";
 
 import {
     CollateralCurrency,
+    CollateralIdLiteral,
+    CollateralUnit,
     CurrencyIdLiteral,
     currencyIdLiteralToMonetaryCurrency,
+    CurrencyUnit,
     DefaultInterBtcApi,
     DefaultTransactionAPI,
+    FIXEDI128_SCALING_FACTOR,
     getStorageMapItemKey,
     InterbtcPrimitivesVaultId,
     newMonetaryAmount,
@@ -20,7 +24,7 @@ import {
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_1_URI } from "../../test/config";
 import { sudo } from "../../test/utils/helpers";
 import { createSubstrateAPI } from "../factory";
-import { newAccountId, newVaultCurrencyPair, newVaultId } from "./encoding";
+import { decodeFixedPointType, newAccountId, newVaultCurrencyPair, newVaultId } from "./encoding";
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -47,6 +51,12 @@ interface SetLiquidationVaultParams {
     collateral: string;
 }
 
+interface SetPremiumRedeemParams {
+    accountId: string;
+    collateralSymbol: string;
+    wrappedSymbol: string;
+}
+
 type Writable<T> = { -readonly [k in keyof T]: Writable<T[k]> };
 type MutableVaultData = Writable<VaultRegistryVault>;
 
@@ -54,11 +64,11 @@ let vault_1: KeyringPair;
 let sudoAccount: KeyringPair;
 let oracleAccount: KeyringPair;
 
-const getCurrencyFromSymbol = (api: ApiPromise, symbol: string) => {
+const getCurrencyFromSymbol = <U extends CurrencyUnit>(api: ApiPromise, symbol: string) => {
     if (!Object.values(CurrencyIdLiteral).includes(symbol as CurrencyIdLiteral)) {
         throw new Error(`Unknown currency symbol: ${symbol}`);
     }
-    return currencyIdLiteralToMonetaryCurrency(api, symbol as CurrencyIdLiteral);
+    return currencyIdLiteralToMonetaryCurrency<U>(api, symbol as CurrencyIdLiteral);
 };
 
 const setStorageAtKey = async (api: ApiPromise, key: string, data: `0x${string}`) => {
@@ -105,20 +115,36 @@ const modifyVaultData = async (
 };
 
 // Changes deposited collateral and issued tokens of the vault to allow premium redeem
-const setPremiumRedeem = (api: ApiPromise) => async (accountId: string, collateralSymbol: string, wrappedSymbol: string) => {
-    //TODO: get premium redeem threshold and compute desired change of the deposited collateral
-    
-    // Set vault backing collateral
+const setPremiumRedeem = (
+    interBtcApi: DefaultInterBtcApi
+) => async ({accountId, collateralSymbol, wrappedSymbol}: SetPremiumRedeemParams) => {
+    const { api } = interBtcApi;
     const collateralCurrency = getCurrencyFromSymbol(api, collateralSymbol) as CollateralCurrency;
     const wrappedCurrency = getCurrencyFromSymbol(api, wrappedSymbol) as WrappedCurrency;
-    const vaultId = newVaultId(api, accountId, collateralCurrency, wrappedCurrency).toHex();
-    // 0 nonce by default
-    const nonce = api.createType("u32", 0).toHex();
+    const vaultId = newVaultId(api, accountId, collateralCurrency, wrappedCurrency);
 
-    const totalStakeStorageKey = getStorageMapItemKey("VaultStaking", "TotalCurrentStake",nonce , vaultId);
-    const totalStakeData = api.createType("i128").toHex();
-    await setStorageAtKey(api, totalStakeStorageKey, totalStakeData);
+    // Sets issued tokens amount to 1 BTC
+    const newIssuedTokensAmount = newMonetaryAmount<BitcoinUnit>("100000000", wrappedCurrency);
+    await setVaultIssuedTokens(interBtcApi)({ accountId, collateralSymbol, wrappedSymbol, value: newIssuedTokensAmount.toString() });
 
+    // Sets vault backing collateral to average between premium redeem threshold and liquidation threshold
+    const premiumRedeemThreshold = await interBtcApi.vaults.getPremiumRedeemThreshold(collateralCurrency);
+    const liquidationThreshold = await interBtcApi.vaults.getLiquidationCollateralThreshold(collateralCurrency);
+    const newCollateralizationRatio = premiumRedeemThreshold.add(liquidationThreshold).div(2);
+    const newIssuedTokensInCollateralAmount = await interBtcApi.oracle.convertWrappedToCurrency(
+        newIssuedTokensAmount,
+        collateralCurrency as Currency<CollateralUnit>
+    );
+    const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+    const newCollateralAmount = newIssuedTokensInCollateralAmount.toBig().mul(newCollateralizationRatio).mul(scalingFactor);
+    const totalStakeDataHex = api.createType("u128", newCollateralAmount.toFixed()).toHex(true);
+
+    const nonceHex = api.createType("u32", 0).toHex();     // 0 nonce by default
+    const totalStakeStorageKey = getStorageMapItemKey("VaultStaking", "TotalCurrentStake", nonceHex, vaultId.toHex());
+    
+    console.log("Setting backing collateral...");
+    await setStorageAtKey(api, totalStakeStorageKey, totalStakeDataHex);
+    console.log(`OK: Vault collateralization ratio succesfully set to premium redeem value: ${newCollateralizationRatio.toString()}.`);
 };
 
 const setLiquidationVault = (
@@ -143,7 +169,6 @@ const setLiquidationVault = (
     console.log(`Setting the liquidation vault for currency pair ${collateralSymbol}-${wrappedSymbol}...`);
     await setStorageAtKey(api, storageKey, storageData);
     console.log("OK: Liquidation vault successfully set.");
-
 };
 
 const setBalance = (interBtcApi: DefaultInterBtcApi) => async ({ address, currencySymbol, value }: SetBalanceParams) => {
@@ -261,7 +286,7 @@ async function main(): Promise<void> {
                         type: "string",
                         demandOption: false,
                         default: "30000000",
-                        describe: "issuedTokens value of liquidation vault" 
+                        describe: "issuedTokens value of liquidation vault"
                     },
                     toBeRedeemed: {
                         type: "string",
@@ -276,6 +301,27 @@ async function main(): Promise<void> {
                         describe: "collateral value of liquidation vault"
                     }
                 }, setLiquidationVault(sudoAccountInterBtcApi))
+            .command("premiumRedeem", "sets collateral ratio of vault to be within premium redeem range",
+                {
+                    accountId: {
+                        alias: "a",
+                        type: "string",
+                        demandOption: true,
+                        describe: "accountId of the vault",
+                    },
+                    collateralSymbol: {
+                        alias: "c",
+                        type: "string",
+                        demandOption: true,
+                        describe: "collateral currency symbol of the vault",
+                    },
+                    wrappedSymbol: {
+                        alias: "w",
+                        type: "string",
+                        demandOption: true,
+                        describe: "wrapped currency symbol of the vault"
+                    }
+                }, setPremiumRedeem(sudoAccountInterBtcApi))
             .help()
             .argv;
     } catch (error) {
