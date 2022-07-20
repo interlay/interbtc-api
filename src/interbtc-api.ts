@@ -2,7 +2,6 @@ import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/submittable/types";
 import { Signer } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 
 import { ElectrsAPI, DefaultElectrsAPI } from "./external/electrs";
 import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
@@ -21,7 +20,7 @@ import { Network, networks } from "bitcoinjs-lib";
 import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
 import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
-import { currencyIdToMonetaryCurrency, GovernanceCurrency, GovernanceUnit, WrappedCurrency } from "./types";
+import { currencyIdToMonetaryCurrency, GovernanceCurrency, WrappedCurrency } from "./types";
 import { DefaultEscrowAPI, EscrowAPI } from ".";
 import { AssetRegistryAPI, DefaultAssetRegistryAPI } from "./parachain/asset-registry";
 
@@ -59,8 +58,8 @@ export interface InterBtcApi {
     setAccount(account: AddressOrPair, signer?: Signer): void;
     removeAccount(): void;
     readonly account: AddressOrPair | undefined;
-    getGovernanceCurrency(): Currency<GovernanceUnit>;
-    getWrappedCurrency(): Currency<BitcoinUnit>;
+    getGovernanceCurrency(): GovernanceCurrency;
+    getWrappedCurrency(): WrappedCurrency;
 }
 
 /**
@@ -177,12 +176,12 @@ export class DefaultInterBtcApi implements InterBtcApi {
         return this.transactionAPI.getAccount();
     }
 
-    public getGovernanceCurrency(): Currency<GovernanceUnit> {
+    public getGovernanceCurrency(): GovernanceCurrency {
         const currencyId = this.api.consts.escrowRewards.getNativeCurrencyId;
         return currencyIdToMonetaryCurrency(currencyId);
     }
 
-    public getWrappedCurrency(): Currency<BitcoinUnit> {
+    public getWrappedCurrency(): WrappedCurrency {
         const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
         return currencyIdToMonetaryCurrency(currencyId);
     }

@@ -1,15 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import {
-    Bitcoin,
-    BitcoinUnit,
-    ExchangeRate,
-    Currency,
-    MonetaryAmount,
-    Kintsugi,
-    Kusama,
-    Polkadot,
-} from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, MonetaryAmount, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import Big from "big.js";
 import {
     DefaultInterBtcApi,
@@ -17,12 +8,11 @@ import {
     InterbtcPrimitivesVaultId,
     WrappedIdLiteral,
     currencyIdToMonetaryCurrency,
-    CollateralUnit,
     CollateralCurrency,
     tickerToCurrencyIdLiteral,
-    GovernanceUnit,
     GovernanceIdLiteral,
     VaultStatusExt,
+    GovernanceCurrency,
 } from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
@@ -74,7 +64,7 @@ describe("vaultsAPI", () => {
 
     let wrappedCurrency: WrappedCurrency;
     let collateralCurrencies: Array<CollateralCurrency>;
-    let governanceCurrency: Currency<GovernanceUnit>;
+    let governanceCurrency: GovernanceCurrency;
 
     let interBtcAPI: InterBtcApi;
 
@@ -136,9 +126,7 @@ describe("vaultsAPI", () => {
 
     it("should get the required collateral for the vault", async () => {
         for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = currencyIdToMonetaryCurrency(
-                vault_1_id.currencies.collateral
-            ) as Currency<CollateralUnit>;
+            const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral);
             const requiredCollateralForVault = await interBtcAPI.vaults.getRequiredCollateralForVault(
                 vault_1_id.accountId,
                 collateralCurrency
@@ -171,7 +159,7 @@ describe("vaultsAPI", () => {
             const currencyTicker = collateralCurrency.ticker;
 
             interBtcAPI.setAccount(vault_1);
-            const amount = newMonetaryAmount(100, collateralCurrency as Currency<CollateralUnit>, true);
+            const amount = newMonetaryAmount(100, collateralCurrency, true);
             const collateralCurrencyIdLiteral = tickerToCurrencyIdLiteral(
                 collateralCurrency.ticker
             ) as CollateralIdLiteral;
@@ -254,28 +242,25 @@ describe("vaultsAPI", () => {
                 throw new Error("Collateralization is undefined");
             }
 
-            const collateralCurrencyTyped = collateralCurrency as Currency<CollateralUnit>;
-
             // The factor to adjust the exchange rate by. Calculated such that the resulting collateralization
             // will be 90% of the premium redeem threshold. (e.g. 1.35 * 90% = 1.215)
             const premiumRedeemThreshold = await interBtcAPI.vaults.getPremiumRedeemThreshold(collateralCurrency);
             const modifyExchangeRateBy = premiumRedeemThreshold.mul(0.9).div(currentVaultCollateralization);
 
-            const initialExchangeRate = await interBtcAPI.oracle.getExchangeRate(collateralCurrencyTyped);
+            const initialExchangeRate = await interBtcAPI.oracle.getExchangeRate(collateralCurrency);
             // crash the exchange rate so that the vault falls below the premium redeem threshold
             const exchangeRateValue = initialExchangeRate.toBig().div(modifyExchangeRateBy);
-            const mockExchangeRate = new ExchangeRate<
+            const mockExchangeRate = new ExchangeRate<Bitcoin, typeof collateralCurrency>(
                 Bitcoin,
-                BitcoinUnit,
-                typeof collateralCurrencyTyped,
-                typeof collateralCurrencyTyped.units
-            >(Bitcoin, collateralCurrencyTyped, exchangeRateValue);
+                collateralCurrency,
+                exchangeRateValue
+            );
 
             // stub the oracle API to always return the new exchange rate
             const stub = sinon
                 .stub(interBtcAPI.oracle, "getExchangeRate")
                 .withArgs(sinon.match.any)
-                .returns(Promise.resolve(mockExchangeRate as any)); // "as any" to help eslint play nicely
+                .returns(Promise.resolve(mockExchangeRate)); // "as any" to help eslint play nicely
 
             const premiumRedeemVaults = await interBtcAPI.vaults.getPremiumRedeemVaults();
 
@@ -288,7 +273,7 @@ describe("vaultsAPI", () => {
             assert.isAtLeast(premiumRedeemVaults.size, 1);
 
             // locate the amount for the current vault
-            let premiumRedeemAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> | undefined = undefined;
+            let premiumRedeemAmount: MonetaryAmount<WrappedCurrency> | undefined = undefined;
             for (const [vaultId, amount] of premiumRedeemVaults) {
                 if (encodeVaultId(vaultId) === encodeVaultId(vault_3_id)) {
                     premiumRedeemAmount = amount;

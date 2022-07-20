@@ -1,8 +1,9 @@
 // disabling linting as `bitcoin-core` has no types, causing the import to fail
 
-import { BitcoinUnit, Bitcoin, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { WrappedCurrency } from "../types";
+import { ATOMIC_UNIT } from "./currency";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
@@ -34,7 +35,7 @@ export class BitcoinCoreClient {
 
     async sendBtcTxAndMine(
         recipient: string,
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+        amount: MonetaryAmount<WrappedCurrency>,
         blocksToMine: number,
         data?: string
     ): Promise<{
@@ -58,7 +59,7 @@ export class BitcoinCoreClient {
 
     async broadcastTx(
         recipient: string,
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+        amount: MonetaryAmount<WrappedCurrency>,
         data?: string
     ): Promise<{
         txid: string;
@@ -67,11 +68,11 @@ export class BitcoinCoreClient {
         if (!this.client) {
             throw new Error("Client needs to be initialized before usage");
         }
-        console.log(`Broadcasting tx: ${amount.toString(Bitcoin.base)} BTC to ${recipient}`);
+        console.log(`Broadcasting tx: ${amount.toString()} BTC to ${recipient}`);
         const raw = await this.client.command(
             "createrawtransaction",
             [],
-            this.formatRawTxInput(recipient, amount.toBig(Bitcoin.units.BTC), data)
+            this.formatRawTxInput(recipient, amount.toBig(ATOMIC_UNIT), data)
         );
         const funded = await this.client.command("fundrawtransaction", raw);
         const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
@@ -93,8 +94,8 @@ export class BitcoinCoreClient {
         return await this.client.command("getbalance");
     }
 
-    async sendToAddress(address: string, amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>): Promise<string> {
-        return await this.client.command("sendtoaddress", address, amount.toString(Bitcoin.units.BTC));
+    async sendToAddress(address: string, amount: MonetaryAmount<WrappedCurrency>): Promise<string> {
+        return await this.client.command("sendtoaddress", address, amount.toString());
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

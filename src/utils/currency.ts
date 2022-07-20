@@ -2,7 +2,6 @@ import Big, { BigSource } from "big.js";
 import BN from "bn.js";
 import {
     Bitcoin,
-    BitcoinUnit,
     Currency,
     ExchangeRate,
     Interlay,
@@ -14,13 +13,7 @@ import {
     VoteKintsugi,
 } from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import {
-    CurrencyUnit,
-    tickerToCurrencyIdLiteral,
-    GovernanceCurrency,
-    GovernanceUnit,
-    CollateralCurrency,
-} from "../types/currency";
+import { tickerToCurrencyIdLiteral, GovernanceCurrency, CollateralCurrency } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId } from "./encoding";
@@ -30,6 +23,7 @@ Big.PE = 21;
 Big.NE = -12;
 
 export const MBTC_IN_SAT = 100_000;
+export const ATOMIC_UNIT = 0;
 
 export function roundTwoDecimals(input: string): string {
     const number = new Big(input);
@@ -52,57 +46,51 @@ export function roundLastNDigits(n: number, x: BN | Big | string): string {
     return bigNumber.div(new BN(power)).mul(new BN(power)).toString();
 }
 
-export function newMonetaryAmount<U extends CurrencyUnit>(
-    amount: BigSource,
-    currency: Currency<U>,
-    base = false
-): MonetaryAmount<Currency<U>, U> {
-    const unit = base ? currency.base : currency.rawBase;
-    return new MonetaryAmount<Currency<U>, U>(currency, amount, unit);
+export function atomicToBaseAmount(atomicAmount: BigSource, currency: Currency): Big {
+    return new Big(atomicAmount).div(new Big(10).pow(currency.decimals));
 }
 
-export function newCollateralBTCExchangeRate<U extends CurrencyUnit>(
+export function newMonetaryAmount(amount: BigSource, currency: Currency, base = false): MonetaryAmount<Currency> {
+    const finalAmount = base ? new Big(amount) : atomicToBaseAmount(amount, currency);
+    return new MonetaryAmount<Currency>(currency, finalAmount);
+}
+
+export function newCollateralBTCExchangeRate(
     rate: Big,
-    counterCurrency: Currency<U>,
+    counterCurrency: Currency,
     useBaseUnits = false
-): ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U> {
+): ExchangeRate<Bitcoin, Currency> {
     const [baseCurrencyUnit, counterCurrencyUnit] = useBaseUnits
-        ? [Bitcoin.base, counterCurrency.base]
-        : [Bitcoin.rawBase, counterCurrency.rawBase];
-    return new ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U>(
-        Bitcoin,
-        counterCurrency,
-        rate,
-        baseCurrencyUnit,
-        counterCurrencyUnit
-    );
+        ? [Bitcoin.decimals, counterCurrency.decimals]
+        : [ATOMIC_UNIT, ATOMIC_UNIT];
+    return new ExchangeRate<Bitcoin, Currency>(Bitcoin, counterCurrency, rate, baseCurrencyUnit, counterCurrencyUnit);
 }
 
 export function createInclusionOracleKey(api: ApiPromise, type: FeeEstimationType): InterbtcPrimitivesOracleKey {
     return api.createType("InterbtcPrimitivesOracleKey", { FeeEstimation: type });
 }
 
-export function createExchangeRateOracleKey<U extends CurrencyUnit>(
+export function createExchangeRateOracleKey(
     api: ApiPromise,
-    collateralCurrency: Currency<U>
+    collateralCurrency: Currency
 ): InterbtcPrimitivesOracleKey {
     const currencyId = newCurrencyId(api, tickerToCurrencyIdLiteral(collateralCurrency.ticker));
     return api.createType("InterbtcPrimitivesOracleKey", { ExchangeRate: currencyId });
 }
 
-export function toVoting(governanceCurrency: GovernanceCurrency): Currency<GovernanceUnit> {
+export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
     switch (governanceCurrency) {
         case Interlay:
-            return VoteInterlay as Currency<GovernanceUnit>;
+            return VoteInterlay;
         case Kintsugi:
-            return VoteKintsugi as Currency<GovernanceUnit>;
+            return VoteKintsugi;
         default:
             throw new Error("Provided currency is not a governance currency");
     }
 }
 
 export function getCorrespondingCollateralCurrencies(
-    governanceCurrency: Currency<GovernanceUnit>
+    governanceCurrency: GovernanceCurrency
 ): Array<CollateralCurrency> {
     switch (governanceCurrency.ticker) {
         case "KINT":
