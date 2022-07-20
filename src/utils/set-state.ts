@@ -208,7 +208,7 @@ const setVaultTheft = (
 ) => async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultTheftParams) => {
     const vaultId = constructVaultId(interBtcApi.api, accountId, collateralSymbol, wrappedSymbol);
 
-    const theftCommittedStatus = { "active": true } as unknown as VaultRegistryVaultStatus;
+    const theftCommittedStatus = { "committedTheft": true } as unknown as VaultRegistryVaultStatus;
 
     const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, status: theftCommittedStatus });
 
@@ -217,7 +217,24 @@ const setVaultTheft = (
     console.log("OK: Succesfully set vault to 'CommittedTheft' status.");
 };
 
+const setVaultBan = (
+    interBtcApi: DefaultInterBtcApi
+) => async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultTheftParams) => {
+    const vaultId = constructVaultId(interBtcApi.api, accountId, collateralSymbol, wrappedSymbol);
+    const currentBlockNumber = await interBtcApi.system.getCurrentBlockNumber();
+
+    // Bans vault for the next 1000 blocks
+    const newBannedUntil = interBtcApi.api.createType("Option<u32>", currentBlockNumber + 1000);
+
+    const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, bannedUntil: newBannedUntil });
+
+    console.log("Setting vault to be banned for the next 1,000 blocks...");
+    await modifyVaultData(interBtcApi.api, vaultId, modifier);
+    console.log(`OK: Succesfully banned vault until block ${newBannedUntil}.`);
+};
+
 async function main(): Promise<void> {
+    console.log("Initializing crypto functions...");
     await cryptoWaitReady();
 
     const keyring = new Keyring({ type: "sr25519" });
@@ -225,14 +242,16 @@ async function main(): Promise<void> {
     sudoAccount = keyring.addFromUri(SUDO_URI);
     oracleAccount = keyring.addFromUri(ORACLE_URI);
 
-    const api = await createSubstrateAPI("PARACHAIN_ENDPOINT");
+    console.log("Connecting to parachain...");
+    const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+    console.log("OK: Successfully connected to parachain.\n");
 
     const oracleAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
     const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
     try {
         await yargs(hideBin(process.argv))
-            .command("balance", "set token balance of an account",
+            .command("balance", "sets token balance of an account",
                 {
                     value: {
                         alias: "v",
@@ -244,44 +263,17 @@ async function main(): Promise<void> {
                         alias: "c",
                         type: "string",
                         demandOption: true,
-                        describe: "currency in which balance to set, e.g. KINT`"
+                        describe: "currency symbol in which to set balance `"
                     },
                     address: {
                         alias: "a",
                         type: "string",
                         demandOption: false,
-                        describe: "address of which balance to set",
+                        describe: "address of which to set balance",
                         default: vault_1.address
                     }
                 },
                 setBalance(sudoAccountInterBtcApi))
-            .command("issuedTokens", "set issued tokens of a vault",
-                {
-                    value: {
-                        alias: "v",
-                        type: "string",
-                        demandOption: true,
-                        describe: "new issued tokens value"
-                    },
-                    accountId: {
-                        alias: "a",
-                        type: "string",
-                        demandOption: true,
-                        describe: "accountId of the vault",
-                    },
-                    collateralSymbol: {
-                        alias: "c",
-                        type: "string",
-                        demandOption: true,
-                        describe: "collateral currency symbol of the vault",
-                    },
-                    wrappedSymbol: {
-                        alias: "w",
-                        type: "string",
-                        demandOption: true,
-                        describe: "wrapped currency symbol of the vault"
-                    }
-                }, setVaultIssuedTokens(sudoAccountInterBtcApi))
             .command("liquidationVault", "sets system liquidation value",
                 {
                     collateralSymbol: {
@@ -321,7 +313,34 @@ async function main(): Promise<void> {
                         describe: "collateral value of liquidation vault"
                     }
                 }, setLiquidationVault(sudoAccountInterBtcApi))
-            .command("premiumRedeem", "sets collateral ratio of vault to be within premium redeem range",
+                .command("vaultIssuedTokens", "sets issued tokens of a vault",
+                {
+                    value: {
+                        alias: "v",
+                        type: "string",
+                        demandOption: true,
+                        describe: "new issued tokens value"
+                    },
+                    accountId: {
+                        alias: "a",
+                        type: "string",
+                        demandOption: true,
+                        describe: "accountId of the vault",
+                    },
+                    collateralSymbol: {
+                        alias: "c",
+                        type: "string",
+                        demandOption: true,
+                        describe: "collateral currency symbol of the vault",
+                    },
+                    wrappedSymbol: {
+                        alias: "w",
+                        type: "string",
+                        demandOption: true,
+                        describe: "wrapped currency symbol of the vault"
+                    }
+                }, setVaultIssuedTokens(sudoAccountInterBtcApi))
+            .command("vaultPremiumRedeem", "sets collateral ratio of vault to be within premium redeem range",
                 {
                     accountId: {
                         alias: "a",
@@ -363,6 +382,27 @@ async function main(): Promise<void> {
                         describe: "wrapped currency symbol of the vault"
                     }
                 }, setVaultTheft(sudoAccountInterBtcApi))
+                .command("vaultBan", "bans vault for next 1000 blocks",
+                {
+                    accountId: {
+                        alias: "a",
+                        type: "string",
+                        demandOption: true,
+                        describe: "accountId of the vault",
+                    },
+                    collateralSymbol: {
+                        alias: "c",
+                        type: "string",
+                        demandOption: true,
+                        describe: "collateral currency symbol of the vault",
+                    },
+                    wrappedSymbol: {
+                        alias: "w",
+                        type: "string",
+                        demandOption: true,
+                        describe: "wrapped currency symbol of the vault"
+                    }
+                }, setVaultBan(sudoAccountInterBtcApi))
             .help()
             .argv;
     } catch (error) {
