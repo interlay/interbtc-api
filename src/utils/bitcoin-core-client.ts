@@ -3,7 +3,6 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { WrappedCurrency } from "../types";
-import { ATOMIC_UNIT } from "./currency";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
@@ -72,7 +71,7 @@ export class BitcoinCoreClient {
         const raw = await this.client.command(
             "createrawtransaction",
             [],
-            this.formatRawTxInput(recipient, amount.toBig(ATOMIC_UNIT), data)
+            this.formatRawTxInput(recipient, amount.toBig(), data)
         );
         const funded = await this.client.command("fundrawtransaction", raw);
         const signed = await this.client.command("signrawtransactionwithwallet", funded.hex);
