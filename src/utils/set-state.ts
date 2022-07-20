@@ -2,12 +2,12 @@
 import { BitcoinUnit, Currency } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { VaultRegistryVaultStatus } from "@polkadot/types/lookup";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import Big from "big.js";
 
 import {
     CollateralCurrency,
-    CollateralIdLiteral,
     CollateralUnit,
     CurrencyIdLiteral,
     currencyIdLiteralToMonetaryCurrency,
@@ -24,7 +24,7 @@ import {
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_1_URI } from "../../test/config";
 import { sudo } from "../../test/utils/helpers";
 import { createSubstrateAPI } from "../factory";
-import { decodeFixedPointType, newAccountId, newVaultCurrencyPair, newVaultId } from "./encoding";
+import { newAccountId, newVaultCurrencyPair, newVaultId } from "./encoding";
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -52,6 +52,12 @@ interface SetLiquidationVaultParams {
 }
 
 interface SetPremiumRedeemParams {
+    accountId: string;
+    collateralSymbol: string;
+    wrappedSymbol: string;
+}
+
+interface SetVaultTheftParams {
     accountId: string;
     collateralSymbol: string;
     wrappedSymbol: string;
@@ -117,7 +123,7 @@ const modifyVaultData = async (
 // Changes deposited collateral and issued tokens of the vault to allow premium redeem
 const setPremiumRedeem = (
     interBtcApi: DefaultInterBtcApi
-) => async ({accountId, collateralSymbol, wrappedSymbol}: SetPremiumRedeemParams) => {
+) => async ({ accountId, collateralSymbol, wrappedSymbol }: SetPremiumRedeemParams) => {
     const { api } = interBtcApi;
     const collateralCurrency = getCurrencyFromSymbol(api, collateralSymbol) as CollateralCurrency;
     const wrappedCurrency = getCurrencyFromSymbol(api, wrappedSymbol) as WrappedCurrency;
@@ -141,7 +147,7 @@ const setPremiumRedeem = (
 
     const nonceHex = api.createType("u32", 0).toHex();     // 0 nonce by default
     const totalStakeStorageKey = getStorageMapItemKey("VaultStaking", "TotalCurrentStake", nonceHex, vaultId.toHex());
-    
+
     console.log("Setting backing collateral...");
     await setStorageAtKey(api, totalStakeStorageKey, totalStakeDataHex);
     console.log(`OK: Vault collateralization ratio succesfully set to premium redeem value: ${newCollateralizationRatio.toString()}.`);
@@ -197,6 +203,20 @@ const setVaultIssuedTokens = (
     console.log("OK: Succesfully set vault issued tokens.");
 };
 
+const setVaultTheft = (
+    interBtcApi: DefaultInterBtcApi
+) => async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultTheftParams) => {
+    const vaultId = constructVaultId(interBtcApi.api, accountId, collateralSymbol, wrappedSymbol);
+
+    const theftCommittedStatus = { "active": true } as unknown as VaultRegistryVaultStatus;
+
+    const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, status: theftCommittedStatus });
+
+    console.log("Setting vault to 'CommittedTheft' status...");
+    await modifyVaultData(interBtcApi.api, vaultId, modifier);
+    console.log("OK: Succesfully set vault to 'CommittedTheft' status.");
+};
+
 async function main(): Promise<void> {
     await cryptoWaitReady();
 
@@ -205,7 +225,7 @@ async function main(): Promise<void> {
     sudoAccount = keyring.addFromUri(SUDO_URI);
     oracleAccount = keyring.addFromUri(ORACLE_URI);
 
-    const api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+    const api = await createSubstrateAPI("PARACHAIN_ENDPOINT");
 
     const oracleAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
     const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
@@ -322,6 +342,27 @@ async function main(): Promise<void> {
                         describe: "wrapped currency symbol of the vault"
                     }
                 }, setPremiumRedeem(sudoAccountInterBtcApi))
+            .command("vaultTheft", "sets vault status to theft",
+                {
+                    accountId: {
+                        alias: "a",
+                        type: "string",
+                        demandOption: true,
+                        describe: "accountId of the vault",
+                    },
+                    collateralSymbol: {
+                        alias: "c",
+                        type: "string",
+                        demandOption: true,
+                        describe: "collateral currency symbol of the vault",
+                    },
+                    wrappedSymbol: {
+                        alias: "w",
+                        type: "string",
+                        demandOption: true,
+                        describe: "wrapped currency symbol of the vault"
+                    }
+                }, setVaultTheft(sudoAccountInterBtcApi))
             .help()
             .argv;
     } catch (error) {
