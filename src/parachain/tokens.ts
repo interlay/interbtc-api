@@ -97,7 +97,7 @@ export class DefaultTokensAPI implements TokensAPI {
     }
 
     async transfer(destination: string, amount: MonetaryAmount<Currency>): Promise<void> {
-        const amountAtomicUnit = this.api.createType("Balance", amount.toString());
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const currencyIdLiteral = tickerToCurrencyIdLiteral(amount.currency.ticker);
         const transferTransaction = this.api.tx.tokens.transfer(
             destination,

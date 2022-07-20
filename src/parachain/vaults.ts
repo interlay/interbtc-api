@@ -347,7 +347,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async register(amount: MonetaryAmount<CollateralCurrency>, publicKey: string): Promise<void> {
-        const amountAtomicUnit = this.api.createType("Balance", amount.toString());
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const currencyPair = newVaultCurrencyPair(
             this.api,
             tickerToMonetaryCurrency(this.api, amount.currency.ticker) as CollateralCurrency,
@@ -368,7 +368,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async withdrawCollateral(amount: MonetaryAmount<CollateralCurrency>): Promise<void> {
-        const amountAtomicUnit = this.api.createType("Balance", amount.toString());
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const currencyPair = newVaultCurrencyPair(
             this.api,
             tickerToMonetaryCurrency(this.api, amount.currency.ticker) as CollateralCurrency,
@@ -379,7 +379,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async depositCollateral(amount: MonetaryAmount<CollateralCurrency>): Promise<void> {
-        const amountAsPlanck = this.api.createType("Balance", amount.toString());
+        const amountAsPlanck = this.api.createType("Balance", amount.toString(true));
         const currencyPair = newVaultCurrencyPair(
             this.api,
             tickerToMonetaryCurrency(this.api, amount.currency.ticker) as CollateralCurrency,
@@ -921,7 +921,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     private wrapCurrency(amount: MonetaryAmount<CollateralCurrency>): BalanceWrapper {
         return this.api.createType("BalanceWrapper", {
-            amount: this.api.createType("u128", amount.toString()),
+            amount: this.api.createType("u128", amount.toString(true)),
             currencyId: newCurrencyId(this.api, tickerToCurrencyIdLiteral(amount.currency.ticker)),
         });
     }

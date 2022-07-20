@@ -157,7 +157,7 @@ export class DefaultNominationAPI implements NominationAPI {
             amount.currency as unknown as CollateralCurrency,
             this.wrappedCurrency
         );
-        const amountAsPlanck = this.api.createType("Balance", amount.toString());
+        const amountAsPlanck = this.api.createType("Balance", amount.toString(true));
         const tx = this.api.tx.nomination.depositCollateral(vaultId, amountAsPlanck);
         await this.transactionAPI.sendLogged(tx, this.api.events.nomination.DepositCollateral, true);
     }
@@ -172,7 +172,7 @@ export class DefaultNominationAPI implements NominationAPI {
         const definedNonce = nonce
             ? nonce
             : await this.rewardsAPI.getStakingPoolNonce(currencyIdLiteral, vaultAccountId);
-        const amountAsPlanck = this.api.createType("Balance", amount.toString());
+        const amountAsPlanck = this.api.createType("Balance", amount.toString(true));
         const parsedNonce = this.api.createType("Index", definedNonce);
         const tx = this.api.tx.nomination.withdrawCollateral(vaultId, amountAsPlanck, parsedNonce);
         await this.transactionAPI.sendLogged(tx, this.api.events.nomination.WithdrawCollateral, true);
