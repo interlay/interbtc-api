@@ -5,11 +5,17 @@ import { StorageKey, u32 } from "@polkadot/types";
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { DefaultAssetRegistryAPI } from "../../../src/";
 import { AssetRegistryMetadataTuple } from "@interlay/interbtc/parachain/asset-registry";
+import * as allThingsEncoding from "../../../src/utils/encoding";
 
 describe("DefaultAssetRegistryAPI", () => {
     let api: ApiPromise;
     let assetRegistryApi: DefaultAssetRegistryAPI;
     let mockMetadata: OrmlAssetRegistryAssetMetadata;
+    let mockStorageKey: StorageKey<[u32]>;
+    // scraped from integration tests
+    const scrapedStorageKey =
+        "0x6e9a9b71050cd23f2d7d1b72e8c1a625b5f3822e35ca2f31ce3526eab1363fd25153cb1f00942ff401000000";
+    const mockStorageKeyValue = 42;
     const mockMetadataValues = {
         name: "Mock Coin One",
         symbol: "MCO",
@@ -43,6 +49,8 @@ describe("DefaultAssetRegistryAPI", () => {
     beforeEach(() => {
         assetRegistryApi = new DefaultAssetRegistryAPI(api);
 
+        mockStorageKey = api.createType("StorageKey<[u32]>", scrapedStorageKey);
+
         // reset to base values
         mockMetadata = {
             name: api.createType("Bytes", mockMetadataValues.name),
@@ -53,6 +61,10 @@ describe("DefaultAssetRegistryAPI", () => {
                 feePerSecond: api.createType("u128", mockMetadataValues.feesPerMinute),
             }),
         } as OrmlAssetRegistryAssetMetadata;
+
+        // mock return type of storageKeyToNthInner method which only works correctly in integration tests
+        const mockedReturn = api.createType("AssetId", mockStorageKeyValue);
+        sinon.stub(allThingsEncoding, "storageKeyToNthInner").returns(mockedReturn);
     });
 
     afterEach(() => {
@@ -60,32 +72,26 @@ describe("DefaultAssetRegistryAPI", () => {
         sinon.reset();
     });
 
-    describe("getForeignAssetsAsCurrencies", () => {
+    describe("getForeignAssets", () => {
         it("should return empty list if chain returns no foreign assets", async () => {
             // mock empty list returned from chain
             sinon.stub(assetRegistryApi, "getAssetRegistryEntries").returns(Promise.resolve([]));
 
-            const actual = await assetRegistryApi.getForeignAssetsAsCurrencies();
+            const actual = await assetRegistryApi.getForeignAssets();
             expect(actual).to.be.empty;
         });
 
         it("should ignore empty optionals in foreign assets data from chain", async () => {
             const chainDataReturned: AssetRegistryMetadataTuple[] = [
                 // one "good" returned value
-                [
-                    api.createType("StorageKey<[u32]>", "0x0000000000000001") as StorageKey<[u32]>,
-                    api.createType("Option<OrmlAssetRegistryAssetMetadata>", mockMetadata),
-                ],
+                [mockStorageKey, api.createType("Option<OrmlAssetRegistryAssetMetadata>", mockMetadata)],
                 // one empty option
-                [
-                    api.createType("StorageKey<[u32]>", "0x0000000000000002") as StorageKey<[u32]>,
-                    api.createType("Option<OrmlAssetRegistryAssetMetadata>", undefined),
-                ],
+                [mockStorageKey, api.createType("Option<OrmlAssetRegistryAssetMetadata>", undefined)],
             ];
 
             sinon.stub(assetRegistryApi, "getAssetRegistryEntries").returns(Promise.resolve(chainDataReturned));
 
-            const actual = await assetRegistryApi.getForeignAssetsAsCurrencies();
+            const actual = await assetRegistryApi.getForeignAssets();
 
             expect(actual).to.have.lengthOf(1, `Expected only one currency to be returned, but got ${actual.length}`);
 
@@ -97,9 +103,9 @@ describe("DefaultAssetRegistryAPI", () => {
         });
     });
 
-    describe("metadataToCurrency", () => {
+    describe("unwrapMetadataFromEntries", () => {
         it("should convert foreign asset metadata to currency", async () => {
-            const actual = DefaultAssetRegistryAPI.metadataToCurrency(mockMetadata);
+            const actual = DefaultAssetRegistryAPI.metadataTupleToForeignAsset([mockStorageKey, mockMetadata]);
 
             expect(actual.ticker).to.equal(
                 mockMetadataValues.symbol,

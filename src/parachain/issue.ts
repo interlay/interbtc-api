@@ -24,14 +24,8 @@ import {
 import { FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
-import {
-    CollateralCurrency,
-    CollateralIdLiteral,
-    CurrencyIdLiteral,
-    currencyIdToMonetaryCurrency,
-    Issue,
-    WrappedCurrency,
-} from "../types";
+import { CollateralCurrencyExt, Issue, WrappedCurrency } from "../types";
+import { AssetRegistryAPI, currencyIdToMonetaryCurrency } from "..";
 
 export type IssueLimits = {
     singleVaultMaxIssuable: MonetaryAmount<WrappedCurrency>;
@@ -55,7 +49,7 @@ export interface IssueAPI {
      * Request issuing wrapped tokens (e.g. interBTC, kBTC).
      * @param amount wrapped token amount to issue.
      * @param vaultId (optional) Account ID of the vault to issue with.
-     * @param collateralCurrencyIdLiteral (optional) Collateral currency for backing wrapped tokens
+     * @param collateralCurrency (optional) Collateral currency for backing wrapped tokens
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to retry issuing, if some of the requests fail. Defaults to 0.
@@ -65,7 +59,7 @@ export interface IssueAPI {
     request(
         amount: MonetaryAmount<WrappedCurrency>,
         vaultAccountId?: AccountId,
-        collateralCurrencyIdLiteral?: CurrencyIdLiteral,
+        collateralCurrency?: CollateralCurrencyExt,
         atomic?: boolean,
         retries?: number,
         availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
@@ -148,7 +142,7 @@ export interface IssueAPI {
      */
     getVaultIssuableAmount(
         vaultAccountId: AccountId,
-        collateralCurrency: CurrencyIdLiteral
+        collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>>;
 }
 
@@ -160,7 +154,8 @@ export class DefaultIssueAPI implements IssueAPI {
         private wrappedCurrency: WrappedCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
-        private transactionAPI: TransactionAPI
+        private transactionAPI: TransactionAPI,
+        private assetRegistryAPI: AssetRegistryAPI
     ) {}
 
     async getRequestLimits(
@@ -197,25 +192,25 @@ export class DefaultIssueAPI implements IssueAPI {
     async request(
         amount: MonetaryAmount<WrappedCurrency>,
         vaultAccountId?: AccountId,
-        collateralCurrencyIdLiteral?: CurrencyIdLiteral,
+        collateralCurrency?: CollateralCurrencyExt,
         atomic: boolean = true,
         retries: number = 0,
         cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
     ): Promise<Issue[]> {
         try {
             if (vaultAccountId) {
-                if (!collateralCurrencyIdLiteral) {
+                if (!collateralCurrency) {
                     return Promise.reject(
                         new Error("A collateral currency must be specified along with the vault account ID")
                     );
                 }
                 // If a vault account id is defined, request to issue with that vault only.
                 // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
-                const collateralCurrencyId = newCurrencyId(this.api, collateralCurrencyIdLiteral);
+                const collateralCurrencyId = newCurrencyId(this.api, collateralCurrency);
                 const vaultId = newVaultId(
                     this.api,
                     vaultAccountId.toString(),
-                    currencyIdToMonetaryCurrency(collateralCurrencyId) as CollateralCurrency,
+                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, collateralCurrencyId),
                     this.wrappedCurrency
                 );
                 const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>([
@@ -237,7 +232,7 @@ export class DefaultIssueAPI implements IssueAPI {
                     await this.request(
                         remainder,
                         vaultAccountId,
-                        collateralCurrencyIdLiteral,
+                        collateralCurrency,
                         atomic,
                         retries - 1,
                         availableVaults
@@ -315,7 +310,13 @@ export class DefaultIssueAPI implements IssueAPI {
                 .filter(([_, req]) => req.isSome.valueOf())
                 // Can be unwrapped because the filter removes `None` values
                 .map(([id, req]) =>
-                    parseIssueRequest(this.vaultsAPI, req.unwrap(), this.btcNetwork, storageKeyToNthInner(id))
+                    parseIssueRequest(
+                        this.vaultsAPI,
+                        this.assetRegistryAPI,
+                        req.unwrap(),
+                        this.btcNetwork,
+                        storageKeyToNthInner(id)
+                    )
                 )
         );
     }
@@ -356,14 +357,20 @@ export class DefaultIssueAPI implements IssueAPI {
             issueRequestData
                 .filter(([option, _]) => option.isSome)
                 .map(([issueRequest, issueId]) =>
-                    parseIssueRequest(this.vaultsAPI, issueRequest.unwrap(), this.btcNetwork, issueId)
+                    parseIssueRequest(
+                        this.vaultsAPI,
+                        this.assetRegistryAPI,
+                        issueRequest.unwrap(),
+                        this.btcNetwork,
+                        issueId
+                    )
                 )
         );
     }
 
     async getVaultIssuableAmount(
         vaultAccountId: AccountId,
-        collateralCurrency: CollateralIdLiteral
+        collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>> {
         const vault = await this.vaultsAPI.get(vaultAccountId, collateralCurrency);
         const wrappedTokenCapacity = await this.vaultsAPI.calculateCapacity(vault.backingCollateral);

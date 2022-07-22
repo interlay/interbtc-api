@@ -2,8 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import {
     ATOMIC_UNIT,
-    CollateralCurrency,
-    currencyIdToLiteral,
+    CollateralCurrencyExt,
     currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
@@ -46,7 +45,7 @@ describe("issue", () => {
     let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
 
     let wrappedCurrency: WrappedCurrency;
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -157,7 +156,9 @@ describe("issue", () => {
 
     it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
-            const currencyTicker = currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral).ticker;
+            const currencyTicker = (
+                await currencyIdToMonetaryCurrency(userInterBtcAPI.assetRegistry, vault_2_id.currencies.collateral)
+            ).ticker;
 
             const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);
             const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
@@ -242,11 +243,14 @@ describe("issue", () => {
                 try {
                     // request issue
                     const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
-                    const vaultCollateralIdLiteral = currencyIdToLiteral(vault_2_id.currencies.collateral);
+                    const vaultCollateral = await currencyIdToMonetaryCurrency(
+                        userInterBtcAPI.assetRegistry,
+                        vault_2_id.currencies.collateral
+                    );
                     const requestResults = await userInterBtcAPI.issue.request(
                         amount,
                         newAccountId(api, vault_2.address),
-                        vaultCollateralIdLiteral
+                        vaultCollateral
                     );
                     assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                     const requestResult = requestResults[0];

@@ -4,9 +4,9 @@ import { TypeRegistry } from "@polkadot/types";
 import { Constructor } from "@polkadot/types/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import { JsonRpcClient } from "./client";
-import { CollateralIdLiteral } from "../types";
 import { newCurrencyId } from "../utils";
 import { ApiPromise } from "@polkadot/api";
+import { CollateralCurrencyExt } from "../types";
 
 /**
  * @category Clients
@@ -28,8 +28,8 @@ export class FaucetClient extends JsonRpcClient<void> {
         };
     }
 
-    async fundAccount(account: AccountId, currencyIdLiteral: CollateralIdLiteral): Promise<void> {
-        const currencyId = newCurrencyId(this.api, currencyIdLiteral);
+    async fundAccount(account: AccountId, currency: CollateralCurrencyExt): Promise<void> {
+        const currencyId = newCurrencyId(this.api, currency);
         const request = new this.constr["FundAccountJsonRpcRequest"](this.registry, {
             account_id: account,
             currency_id: currencyId,

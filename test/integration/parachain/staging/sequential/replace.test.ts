@@ -1,7 +1,8 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import {
-    currencyIdToLiteral,
+    AssetRegistryAPI,
+    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     DefaultTransactionAPI,
     getCorrespondingCollateralCurrencies,
@@ -27,13 +28,7 @@ import {
 } from "../../../../config";
 import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
-import {
-    CollateralCurrency,
-    currencyIdToMonetaryCurrency,
-    newAccountId,
-    newVaultId,
-    WrappedCurrency,
-} from "../../../../../src";
+import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
 
 describe("replace", () => {
@@ -46,6 +41,7 @@ describe("replace", () => {
     let vault_2: KeyringPair;
     let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
     let interBtcAPI: InterBtcApi;
+    let assetRegistry: AssetRegistryAPI;
 
     let wrappedCurrency: WrappedCurrency;
 
@@ -62,6 +58,7 @@ describe("replace", () => {
         );
 
         userAccount = keyring.addFromUri(USER_1_URI);
+        assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
@@ -98,7 +95,7 @@ describe("replace", () => {
                 interBtcAPI.setAccount(vault_3);
                 await interBtcAPI.replace.request(
                     replaceAmount,
-                    currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
+                    await currencyIdToMonetaryCurrency(assetRegistry, vault_3_id.currencies.collateral)
                 );
 
                 const finalizedPromise = new Promise<void>((resolve, _) =>
@@ -144,13 +141,15 @@ describe("replace", () => {
 
         it("should fail vault replace request if not having enough tokens", async () => {
             for (const vault_2_id of vault_2_ids) {
-                const currencyTicker = currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral).ticker;
+                const currencyTicker = (
+                    await currencyIdToMonetaryCurrency(assetRegistry, vault_2_id.currencies.collateral)
+                ).ticker;
                 interBtcAPI.setAccount(vault_2);
 
                 // fetch tokens held by vault
                 const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
                     newAccountId(api, vault_2.address),
-                    currencyIdToLiteral(vault_2_id.currencies.collateral)
+                    await currencyIdToMonetaryCurrency(assetRegistry, vault_2_id.currencies.collateral)
                 );
 
                 // make sure vault does not hold enough issued tokens to request a replace
@@ -159,7 +158,7 @@ describe("replace", () => {
                 try {
                     await interBtcAPI.replace.request(
                         replaceAmount,
-                        currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency
+                        await currencyIdToMonetaryCurrency(assetRegistry, vault_2_id.currencies.collateral)
                     );
                     assert.fail(`Expected error to be thrown due to lack of issued tokens
                         for vault (collateral: ${currencyTicker}), but call completed.`);

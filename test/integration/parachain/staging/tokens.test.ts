@@ -1,6 +1,5 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Currency } from "@interlay/monetary-js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
@@ -8,7 +7,8 @@ import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from ".
 import {
     ATOMIC_UNIT,
     ChainBalance,
-    CollateralCurrency,
+    CollateralCurrencyExt,
+    CurrencyExt,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
     InterBtcApi,
@@ -21,7 +21,7 @@ describe("TokensAPI", () => {
     let user1Account: KeyringPair;
     let user2Account: KeyringPair;
     let interBtcAPI: InterBtcApi;
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -42,7 +42,7 @@ describe("TokensAPI", () => {
         }
     });
 
-    async function testBalanceSubscription(currency: Currency): Promise<void> {
+    async function testBalanceSubscription(currency: CurrencyExt): Promise<void> {
         // Subscribe and receive two balance updates
         let updatedBalance = new ChainBalance(currency);
         let updatedAccount = "";

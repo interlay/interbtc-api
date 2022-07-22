@@ -29,7 +29,8 @@ import { allocateAmountsToVaults, getRequestIdsFromEvents } from "../utils/issue
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
-import { CollateralCurrency, Redeem, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, Redeem, WrappedCurrency } from "../types";
+import { AssetRegistryAPI } from "..";
 
 /**
  * @category BTC Bridge
@@ -139,19 +140,19 @@ export interface RedeemAPI {
      * @param amount The amount of wrapped tokens to burn
      * @param collateralCurrency Liquidated collateral currency to use when burning wrapped tokens
      */
-    burn(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrency): Promise<void>;
+    burn(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<void>;
     /**
      * @param collateralCurrency Liquidated collateral currency to use when burning wrapped tokens
      * @returns The maximum amount of tokens that can be burned through a liquidation redeem
      */
-    getMaxBurnableTokens(collateralCurrency: CollateralCurrency): Promise<MonetaryAmount<WrappedCurrency>>;
+    getMaxBurnableTokens(collateralCurrency: CollateralCurrencyExt): Promise<MonetaryAmount<WrappedCurrency>>;
     /**
      * @param collateralCurrency Currency whose exchange rate with BTC to fetch
      * @returns The exchange rate (collateral currency to wrapped token currency)
      * used when burning tokens
      */
     getBurnExchangeRate(
-        collateralCurrency: CollateralCurrency
+        collateralCurrency: CollateralCurrencyExt
     ): Promise<ExchangeRate<Bitcoin, typeof collateralCurrency>>;
     /**
      * @returns The current inclusion fee based on the expected number of bytes
@@ -168,7 +169,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
         private wrappedCurrency: WrappedCurrency,
         private vaultsAPI: VaultsAPI,
         private oracleAPI: OracleAPI,
-        private transactionAPI: TransactionAPI
+        private transactionAPI: TransactionAPI,
+        private assetRgistryAPI: AssetRegistryAPI
     ) {}
 
     private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
@@ -253,7 +255,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
         await this.transactionAPI.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem, true);
     }
 
-    async burn(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrency): Promise<void> {
+    async burn(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<void> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(vaultCurrencyPair, amountAtomicUnit);
@@ -271,7 +273,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
         return blockNumber.toNumber();
     }
 
-    async getMaxBurnableTokens(collateralCurrency: CollateralCurrency): Promise<MonetaryAmount<WrappedCurrency>> {
+    async getMaxBurnableTokens(collateralCurrency: CollateralCurrencyExt): Promise<MonetaryAmount<WrappedCurrency>> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault(collateralCurrency);
         // This should never be below 0, but still...
         const burnableTokens = liquidationVault.issuedTokens.sub(liquidationVault.toBeRedeemedTokens);
@@ -283,7 +285,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
     }
 
     async getBurnExchangeRate(
-        collateralCurrency: CollateralCurrency
+        collateralCurrency: CollateralCurrencyExt
     ): Promise<ExchangeRate<Bitcoin, typeof collateralCurrency>> {
         const liquidationVault = await this.vaultsAPI.getLiquidationVault(collateralCurrency);
         const burnableAmount = liquidationVault.issuedTokens
@@ -314,7 +316,13 @@ export class DefaultRedeemAPI implements RedeemAPI {
                 .filter(([_, req]) => req.isSome.valueOf())
                 // Can be unwrapped because the filter removes `None` values
                 .map(([id, req]) => {
-                    return parseRedeemRequest(this.vaultsAPI, req.unwrap(), this.btcNetwork, storageKeyToNthInner(id));
+                    return parseRedeemRequest(
+                        this.vaultsAPI,
+                        this.assetRgistryAPI,
+                        req.unwrap(),
+                        this.btcNetwork,
+                        storageKeyToNthInner(id)
+                    );
                 })
         );
     }
@@ -360,7 +368,13 @@ export class DefaultRedeemAPI implements RedeemAPI {
             redeemRequestData
                 .filter(([option, _]) => option.isSome)
                 .map(([redeemRequest, redeemId]) =>
-                    parseRedeemRequest(this.vaultsAPI, redeemRequest.unwrap(), this.btcNetwork, redeemId)
+                    parseRedeemRequest(
+                        this.vaultsAPI,
+                        this.assetRgistryAPI,
+                        redeemRequest.unwrap(),
+                        this.btcNetwork,
+                        redeemId
+                    )
                 )
         );
     }

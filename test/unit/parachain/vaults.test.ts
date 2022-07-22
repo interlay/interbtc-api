@@ -1,14 +1,13 @@
 import { assert, expect } from "../../chai";
 import Big from "big.js";
 import sinon from "sinon";
-import { CollateralCurrency, CurrencyIdLiteral, DefaultRewardsAPI, DefaultVaultsAPI } from "../../../src";
+import { DefaultRewardsAPI, DefaultVaultsAPI } from "../../../src";
 import { Kusama } from "@interlay/monetary-js";
 import { prepareBackingCollateralProportionMocks } from "../mocks/vaultsTestMocks";
 
 describe("DefaultVaultsAPI", () => {
     let vaultsApi: DefaultVaultsAPI;
-    const testCollCcyId: CurrencyIdLiteral = CurrencyIdLiteral.KSM;
-    const testCollateralCurrency: CollateralCurrency = Kusama;
+    const testCollateralCurrency = Kusama;
 
     let stubbedRewardsApi: sinon.SinonStubbedInstance<DefaultRewardsAPI>;
 
@@ -26,6 +25,7 @@ describe("DefaultVaultsAPI", () => {
             null as any,
             null as any,
             stubbedRewardsApi,
+            null as any,
             null as any,
             null as any
         );
@@ -49,7 +49,11 @@ describe("DefaultVaultsAPI", () => {
             );
 
             // do the thing
-            const proportion = await vaultsApi.backingCollateralProportion(vaultId, nominatorId, testCollCcyId);
+            const proportion = await vaultsApi.backingCollateralProportion(
+                vaultId,
+                nominatorId,
+                testCollateralCurrency
+            );
 
             // check result
             const expectedProportion = new Big(0);
@@ -74,7 +78,11 @@ describe("DefaultVaultsAPI", () => {
             );
 
             // do & check
-            const proportionPromise = vaultsApi.backingCollateralProportion(vaultId, nominatorId, testCollCcyId);
+            const proportionPromise = vaultsApi.backingCollateralProportion(
+                vaultId,
+                nominatorId,
+                testCollateralCurrency
+            );
             expect(proportionPromise).to.be.rejectedWith(Error);
         });
 
@@ -92,7 +100,11 @@ describe("DefaultVaultsAPI", () => {
             );
 
             // do the thing
-            const proportion = await vaultsApi.backingCollateralProportion(vaultId, nominatorId, testCollCcyId);
+            const proportion = await vaultsApi.backingCollateralProportion(
+                vaultId,
+                nominatorId,
+                testCollateralCurrency
+            );
 
             // check result
             const expectedProportion = nominatorAmount.div(vaultAmount);

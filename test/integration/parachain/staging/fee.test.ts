@@ -6,7 +6,7 @@ import Big from "big.js";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
 import {
-    CollateralCurrency,
+    CollateralCurrencyExt,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
     InterBtcApi,
@@ -19,7 +19,7 @@ import { callWithExchangeRate } from "../../../utils/helpers";
 describe("fee", () => {
     let api: ApiPromise;
     let oracleInterBtcAPI: InterBtcApi;
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
     let wrappedCurrency: WrappedCurrency;
 
     before(async function () {

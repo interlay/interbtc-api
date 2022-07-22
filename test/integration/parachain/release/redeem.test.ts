@@ -2,7 +2,9 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import {
+    AssetRegistryAPI,
     currencyIdToMonetaryCurrency,
+    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
@@ -28,7 +30,7 @@ import {
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { getCorrespondingCollateralCurrencies, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import {
-    CollateralCurrency,
+    CollateralCurrencyExt,
     DefaultTransactionAPI,
     ExecuteRedeem,
     issueAndRedeem,
@@ -55,8 +57,9 @@ describe("redeem", () => {
     let userInterBtcAPI: InterBtcApi;
     let oracleInterBtcAPI: InterBtcApi;
     let reporterInterBtcAPI: InterBtcApi;
+    let assetRegistry: AssetRegistryAPI;
 
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
     let wrappedCurrency: WrappedCurrency;
 
     before(async () => {
@@ -65,6 +68,7 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         const reportingVaultAccount = keyring.addFromUri(VAULT_1_URI);
+        assetRegistry = new DefaultAssetRegistryAPI(api);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         reporterInterBtcAPI = new DefaultInterBtcApi(api, "regtest", reportingVaultAccount, ESPLORA_BASE_PATH);
@@ -105,9 +109,10 @@ describe("redeem", () => {
     // TODO: check with greg how to use instant seal for this test
     it("should liquidate a vault that committed theft", async () => {
         for (const vaultToLiquidateId of vaultToLiquidateIds) {
-            const collateralCurrency = currencyIdToMonetaryCurrency(
+            const collateralCurrency = await currencyIdToMonetaryCurrency(
+                assetRegistry,
                 vaultToLiquidateId.currencies.collateral
-            ) as CollateralCurrency;
+            );
             const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency);
 
             // There should be no burnable tokens
