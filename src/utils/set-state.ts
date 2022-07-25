@@ -430,7 +430,7 @@ async function main(): Promise<void> {
             )
             .command(
                 "liquidationVault",
-                "Sets system liquidation value",
+                "Sets system liquidation vault",
                 {
                     collateralSymbol: {
                         alias: "c",
