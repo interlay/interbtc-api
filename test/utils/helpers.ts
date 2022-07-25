@@ -3,18 +3,13 @@ import { Bitcoin, ExchangeRate } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { FrameSystemEventRecord } from "@polkadot/types/lookup";
 import { AnyTuple } from "@polkadot/types/types";
+import { Vec } from "@polkadot/types-codec";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import Big, { RoundingMode } from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
-import {
-    BitcoinCoreClient,
-    InterBtcApi,
-    OracleAPI,
-    VaultStatusExt,
-    DefaultTransactionAPI,
-    CurrencyExt,
-} from "../../src";
+import { BitcoinCoreClient, InterBtcApi, OracleAPI, VaultStatusExt, CurrencyExt } from "../../src";
 import { SUDO_URI } from "../config";
 
 export const SLEEP_TIME_MS = 1000;
@@ -203,9 +198,43 @@ export const waitForFinalizedEvent = async <T extends AnyTuple>(
     return new Promise<void>((resolve, _) =>
         interBtcApi.system.subscribeToFinalizedBlockHeads(async (header) => {
             const events = await interBtcApi.api.query.system.events.at(header.parentHash);
-            if (DefaultTransactionAPI.doesArrayContainEvent(events, event)) {
+            if (eventRecordVectorContains(events, event)) {
                 resolve();
             }
         })
     );
+};
+
+/**
+ * Wait for an event to show up on chain (unfinalized).
+ *
+ * This method will only subscribe to new blocks once called and then look for a specific event.
+ * Contrary to @see {@link DefaultTransactionAPI.waitForEvent} which looks at all past events
+ * and may return due to older events using the same name.
+ *
+ * Note: This method checks the parent blocks in case the event we are looking for
+ * was finalized in a block just before this method was called.
+ *
+ * @param interBtcApi the api to use for querying
+ * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
+ */
+export const waitForIncludedEvent = async <T extends AnyTuple>(
+    interBtcApi: InterBtcApi,
+    event: AugmentedEvent<ApiTypes, T>
+): Promise<void> => {
+    return new Promise<void>((resolve, _) =>
+        interBtcApi.system.subscribeToCurrentBlockHeads(async (header) => {
+            const events = await interBtcApi.api.query.system.events.at(header.parentHash);
+            if (eventRecordVectorContains(events, event)) {
+                resolve();
+            }
+        })
+    );
+};
+
+const eventRecordVectorContains = <T extends AnyTuple>(
+    eventRecords: Vec<FrameSystemEventRecord>,
+    event: AugmentedEvent<ApiTypes, T>
+): boolean => {
+    return eventRecords.find((record) => event.is(record.event)) !== undefined;
 };

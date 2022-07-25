@@ -10,7 +10,7 @@ import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { waitForFinalizedEvent } from "../../../../utils/helpers";
+import { waitForIncludedEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
     let api: ApiPromise;
@@ -51,7 +51,7 @@ describe("AssetRegistry", () => {
             await interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction).signAndSend(sudoAccount);
 
             // wait for finalized event
-            await waitForFinalizedEvent(interBtcAPI, api.events.sudo.Sudid);
+            await waitForIncludedEvent(interBtcAPI, api.events.sudo.Sudid);
         }
 
         return api.disconnect();
@@ -59,8 +59,8 @@ describe("AssetRegistry", () => {
 
     /**
      * This test checks that the returned metadata from the chain has all the fields we need to construct
-     * a `Currency<UnitList>` object.
-     * To see the fields required, take a look at {@link DefaultAssetRegistryAPI.metadataTupleToForeignAsset}.
+     * a `Currency` object.
+     * To see the fields required, take a look at {@link DefaultAssetRegistryAPI.metadataToCurrency}.
      *
      * Note: More detailed tests around the internal logic are in the unit tests.
      */
@@ -84,8 +84,7 @@ describe("AssetRegistry", () => {
             // need sudo to add new foreign asset
             await interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount);
 
-            // wait for finalized event
-            await waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset);
+            await waitForIncludedEvent(interBtcAPI, api.events.sudo.Sudid);
         }
 
         // get the metadata for the asset we just registered
@@ -122,5 +121,5 @@ describe("AssetRegistry", () => {
                 );
             }
         }
-    }).timeout(5 * 60000);
+    }).timeout(3 * 60000);
 });
