@@ -277,6 +277,7 @@ const setVaultUnban = ({ api }: DefaultInterBtcApi) =>
 
             const newBannedUntil = null;
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, bannedUntil: <any>newBannedUntil });
 
             console.log("Setting vault to be unbanned...");
