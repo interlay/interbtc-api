@@ -3,13 +3,8 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
-import {
-    DefaultAssetRegistryAPI,
-    DefaultInterBtcApi,
-    getStorageKey,
-    storageKeyToNthInner,
-    stripHexPrefix,
-} from "../../../../../src";
+import { DefaultAssetRegistryAPI, DefaultInterBtcApi, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
+import { getStorageKey } from "../../../../../src/utils/storage";
 
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
@@ -35,7 +30,8 @@ describe("AssetRegistry", () => {
 
         assetRegistryMetadataHash = getStorageKey("AssetRegistry", "Metadata");
         // check which keys exist before the tests
-        registeredKeysBefore = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+        const keys = await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash);
+        registeredKeysBefore = keys.toArray();
     });
 
     after(async () => {
