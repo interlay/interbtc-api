@@ -4,7 +4,6 @@ import {
     AssetRegistryAPI,
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
-    DefaultTransactionAPI,
     getCorrespondingCollateralCurrencies,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
@@ -30,6 +29,7 @@ import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
+import { waitForEvent } from "test/utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -99,7 +99,7 @@ describe("replace", () => {
                     vault_3_id.currencies.collateral
                 );
                 const [foundEvent] = await Promise.all([
-                    DefaultTransactionAPI.waitForEvent(api, api.events.replace.AcceptReplace, APPROX_TEN_BLOCKS_MS),
+                    waitForEvent(interBtcAPI, api.events.replace.AcceptReplace, false, APPROX_TEN_BLOCKS_MS),
                     interBtcAPI.replace.request(replaceAmount, collateralCurrency),
                 ]);
 
