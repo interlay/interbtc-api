@@ -99,7 +99,7 @@ describe("replace", () => {
                     vault_3_id.currencies.collateral
                 );
                 const [foundEvent] = await Promise.all([
-                    waitForEvent(interBtcAPI, api.events.replace.AcceptReplace, false, APPROX_TEN_BLOCKS_MS),
+                    waitForEvent(interBtcAPI, api.events.replace.AcceptReplace, true, APPROX_TEN_BLOCKS_MS),
                     interBtcAPI.replace.request(replaceAmount, collateralCurrency),
                 ]);
 
