@@ -25,7 +25,8 @@ import { FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, Issue, WrappedCurrency } from "../types";
-import { AssetRegistryAPI, currencyIdToMonetaryCurrency } from "..";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { currencyIdToMonetaryCurrency } from "../utils";
 
 export type IssueLimits = {
     singleVaultMaxIssuable: MonetaryAmount<WrappedCurrency>;

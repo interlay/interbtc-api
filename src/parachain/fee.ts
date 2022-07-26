@@ -5,7 +5,7 @@ import { Bitcoin, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "../utils/encoding";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
-import { AssetRegistryAPI } from "..";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { currencyIdToMonetaryCurrency } from "../utils";
 
 export enum GriefingCollateralType {

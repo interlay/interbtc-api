@@ -12,7 +12,7 @@ import { stripHexPrefix } from "../utils/encoding";
 import { Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
 import { waitForBlockFinalization } from "./bitcoin";
 import { atomicToBaseAmount, currencyIdToMonetaryCurrency, newMonetaryAmount } from "./currency";
-import { InterBtcApi } from "..";
+import { InterBtcApi } from "../interbtc-api";
 
 export const SLEEP_TIME_MS = 1000;
 

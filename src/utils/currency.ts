@@ -20,7 +20,7 @@ import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId } from "./encoding";
 import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../interfaces";
-import { AssetRegistryAPI } from "..";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
 
 // set maximum exponents
 Big.PE = 21;

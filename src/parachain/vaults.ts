@@ -38,7 +38,7 @@ import {
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
-import { AssetRegistryAPI, SystemAPI } from ".";
+import { AssetRegistryAPI, SystemAPI } from "./index";
 
 /**
  * @category BTC Bridge

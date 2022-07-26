@@ -30,7 +30,7 @@ import {
 } from "../../test/config";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
-import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrencies } from "..";
+import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrencies } from "../";
 import { AddressOrPair } from "@polkadot/api/types";
 
 // Command line arguments of the initialization script

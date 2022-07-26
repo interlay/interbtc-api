@@ -17,7 +17,8 @@ import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, NominationStatus, WrappedCurrency } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
-import { AssetRegistryAPI, currencyIdToMonetaryCurrency } from "..";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { currencyIdToMonetaryCurrency } from "../utils/currency";
 
 export enum NominationAmountType {
     Raw = "raw",

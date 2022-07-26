@@ -30,7 +30,7 @@ import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
 import { CollateralCurrencyExt, Redeem, WrappedCurrency } from "../types";
-import { AssetRegistryAPI } from "..";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
 
 /**
  * @category BTC Bridge
