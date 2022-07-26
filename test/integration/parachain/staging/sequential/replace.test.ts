@@ -86,6 +86,7 @@ describe("replace", () => {
         });
 
         it("should request vault replacement", async () => {
+            const APPROX_TEN_BLOCKS_MS = 10 * 12 * 1000;
             for (const vault_3_id of vault_3_ids) {
                 // try to set value above dust + estimated fees
                 const issueAmount = dustValue.add(feesEstimate).mul(1.2);
@@ -93,21 +94,21 @@ describe("replace", () => {
                 await issueSingle(interBtcAPI, bitcoinCoreClient, userAccount, issueAmount, vault_3_id);
 
                 interBtcAPI.setAccount(vault_3);
-                await interBtcAPI.replace.request(
-                    replaceAmount,
-                    await currencyIdToMonetaryCurrency(assetRegistry, vault_3_id.currencies.collateral)
+                const collateralCurrency = await currencyIdToMonetaryCurrency(
+                    assetRegistry,
+                    vault_3_id.currencies.collateral
                 );
+                const [foundEvent] = await Promise.all([
+                    DefaultTransactionAPI.waitForEvent(api, api.events.replace.AcceptReplace, APPROX_TEN_BLOCKS_MS),
+                    interBtcAPI.replace.request(replaceAmount, collateralCurrency),
+                ]);
 
-                const finalizedPromise = new Promise<void>((resolve, _) =>
-                    interBtcAPI.system.subscribeToFinalizedBlockHeads(async (header) => {
-                        const events = await interBtcAPI.api.query.system.events.at(header.parentHash);
-                        if (DefaultTransactionAPI.doesArrayContainEvent(events, api.events.replace.AcceptReplace)) {
-                            resolve();
-                        }
-                    })
+                interBtcAPI.setAccount(userAccount);
+
+                assert.isTrue(
+                    foundEvent,
+                    `Unexpected timeout while waiting for AcceptReplace event (collateral currency: ${collateralCurrency.ticker})`
                 );
-
-                await finalizedPromise;
             }
 
             const requestsList = await interBtcAPI.replace.list();
@@ -141,25 +142,24 @@ describe("replace", () => {
 
         it("should fail vault replace request if not having enough tokens", async () => {
             for (const vault_2_id of vault_2_ids) {
-                const currencyTicker = (
-                    await currencyIdToMonetaryCurrency(assetRegistry, vault_2_id.currencies.collateral)
-                ).ticker;
+                const collateralCurrency = await currencyIdToMonetaryCurrency(
+                    assetRegistry,
+                    vault_2_id.currencies.collateral
+                );
+                const currencyTicker = collateralCurrency.ticker;
                 interBtcAPI.setAccount(vault_2);
 
                 // fetch tokens held by vault
                 const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
                     newAccountId(api, vault_2.address),
-                    await currencyIdToMonetaryCurrency(assetRegistry, vault_2_id.currencies.collateral)
+                    collateralCurrency
                 );
 
                 // make sure vault does not hold enough issued tokens to request a replace
                 const replaceAmount = dustValue.add(tokensInVault);
 
                 try {
-                    await interBtcAPI.replace.request(
-                        replaceAmount,
-                        await currencyIdToMonetaryCurrency(assetRegistry, vault_2_id.currencies.collateral)
-                    );
+                    await interBtcAPI.replace.request(replaceAmount, collateralCurrency);
                     assert.fail(`Expected error to be thrown due to lack of issued tokens
                         for vault (collateral: ${currencyTicker}), but call completed.`);
                 } catch (e) {
