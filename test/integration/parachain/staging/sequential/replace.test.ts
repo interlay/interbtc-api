@@ -29,7 +29,7 @@ import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { waitForEvent } from "test/utils/helpers";
+import { waitForEvent } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
