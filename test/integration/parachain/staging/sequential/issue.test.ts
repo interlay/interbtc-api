@@ -1,9 +1,8 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BitcoinUnit } from "@interlay/monetary-js";
 import {
-    CollateralCurrency,
-    currencyIdToLiteral,
+    ATOMIC_UNIT,
+    CollateralCurrencyExt,
     currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
@@ -46,7 +45,7 @@ describe("issue", () => {
     let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
 
     let wrappedCurrency: WrappedCurrency;
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -92,8 +91,8 @@ describe("issue", () => {
         const requestResult = requestResults[0];
         const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
         assert.equal(
-            issueRequest.wrappedAmount.str.BTC(),
-            amount.sub(feesToPay).str.BTC(),
+            issueRequest.wrappedAmount.toString(),
+            amount.sub(feesToPay).toString(),
             "Amount different than expected"
         );
     });
@@ -115,8 +114,8 @@ describe("issue", () => {
         const issuedAmount2 = issueRequests[1].wrappedAmount;
         const issueFee2 = issueRequests[1].bridgeFee;
         assert.equal(
-            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BitcoinUnit.BTC).round(5).toString(),
-            amount.toBig(BitcoinUnit.BTC).round(5).toString(),
+            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig().round(5).toString(),
+            amount.toBig().round(5).toString(),
             "Issued amount is not equal to requested amount"
         );
     });
@@ -157,7 +156,9 @@ describe("issue", () => {
 
     it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
-            const currencyTicker = currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral).ticker;
+            const currencyTicker = (
+                await currencyIdToMonetaryCurrency(userInterBtcAPI.assetRegistry, vault_2_id.currencies.collateral)
+            ).ticker;
 
             const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);
             const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
@@ -173,13 +174,16 @@ describe("issue", () => {
             );
 
             // calculate expected final balance and round the fees value as the parachain will do so when calculating fees.
-            const amtInSatoshi = amount.to.Satoshi();
-            const feesInSatoshiRounded = feesToPay.to.Satoshi().round(0);
-            const expectedFinalBalance = amtInSatoshi.sub(feesInSatoshiRounded).sub(oneSatoshi.to.Satoshi()).toString();
+            const amtInSatoshi = amount.toBig(ATOMIC_UNIT);
+            const feesInSatoshiRounded = feesToPay.toBig(ATOMIC_UNIT).round(0);
+            const expectedFinalBalance = amtInSatoshi
+                .sub(feesInSatoshiRounded)
+                .sub(oneSatoshi.toBig(ATOMIC_UNIT))
+                .toString();
             assert.equal(
                 issueResult.finalWrappedTokenBalance
                     .sub(issueResult.initialWrappedTokenBalance)
-                    .to.Satoshi()
+                    .toBig(ATOMIC_UNIT)
                     .toString(),
                 expectedFinalBalance,
                 `Final balance was not increased by the exact amount specified (collateral: ${currencyTicker})`
@@ -198,10 +202,10 @@ describe("issue", () => {
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
         const feeRate = await userInterBtcAPI.issue.getFeeRate();
 
-        const expectedFeesInBTC = amount.to.BTC().toNumber() * feeRate.toNumber();
+        const expectedFeesInBTC = amount.toBig().toNumber() * feeRate.toNumber();
         // compare floating point values in BTC, allowing for small delta difference
         assert.closeTo(
-            feesToPay.to.BTC().toNumber(),
+            feesToPay.toBig().toNumber(),
             expectedFeesInBTC,
             0.00001,
             "Calculated fees in BTC do not match expectations"
@@ -239,11 +243,14 @@ describe("issue", () => {
                 try {
                     // request issue
                     const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
-                    const vaultCollateralIdLiteral = currencyIdToLiteral(vault_2_id.currencies.collateral);
+                    const vaultCollateral = await currencyIdToMonetaryCurrency(
+                        userInterBtcAPI.assetRegistry,
+                        vault_2_id.currencies.collateral
+                    );
                     const requestResults = await userInterBtcAPI.issue.request(
                         amount,
                         newAccountId(api, vault_2.address),
-                        vaultCollateralIdLiteral
+                        vaultCollateral
                     );
                     assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                     const requestResult = requestResults[0];

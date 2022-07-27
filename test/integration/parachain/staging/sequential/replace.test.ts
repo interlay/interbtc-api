@@ -1,12 +1,12 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { 
-    currencyIdToLiteral,
-    DefaultInterBtcApi, 
-    DefaultTransactionAPI, 
-    getCorrespondingCollateralCurrencies, 
-    InterBtcApi, 
-    InterbtcPrimitivesVaultId, 
+import {
+    AssetRegistryAPI,
+    DefaultAssetRegistryAPI,
+    DefaultInterBtcApi,
+    getCorrespondingCollateralCurrencies,
+    InterBtcApi,
+    InterbtcPrimitivesVaultId,
     newMonetaryAmount,
 } from "../../../../../src/index";
 
@@ -27,8 +27,9 @@ import {
 } from "../../../../config";
 import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
-import { CollateralCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
-import { BitcoinUnit, MonetaryAmount } from "@interlay/monetary-js";
+import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
+import { MonetaryAmount } from "@interlay/monetary-js";
+import { waitForEvent } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -40,6 +41,7 @@ describe("replace", () => {
     let vault_2: KeyringPair;
     let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
     let interBtcAPI: InterBtcApi;
+    let assetRegistry: AssetRegistryAPI;
 
     let wrappedCurrency: WrappedCurrency;
 
@@ -56,15 +58,18 @@ describe("replace", () => {
         );
 
         userAccount = keyring.addFromUri(USER_1_URI);
+        assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_3_ids = collateralCurrencies
-            .map(collateralCurrency => newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency));
+        vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
+            newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency)
+        );
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-        vault_2_ids = collateralCurrencies
-            .map(collateralCurrency => newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency));
+        vault_2_ids = collateralCurrencies.map((collateralCurrency) =>
+            newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency)
+        );
     });
 
     after(async () => {
@@ -72,69 +77,64 @@ describe("replace", () => {
     });
 
     describe("request", () => {
-        let dustValue: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
-        let feesEstimate: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+        let dustValue: MonetaryAmount<WrappedCurrency>;
+        let feesEstimate: MonetaryAmount<WrappedCurrency>;
 
         before(async () => {
             dustValue = await interBtcAPI.replace.getDustValue();
-            feesEstimate = newMonetaryAmount((await interBtcAPI.oracle.getBitcoinFees()), wrappedCurrency, false);
+            feesEstimate = newMonetaryAmount(await interBtcAPI.oracle.getBitcoinFees(), wrappedCurrency, false);
         });
 
         it("should request vault replacement", async () => {
+            const APPROX_TEN_BLOCKS_MS = 10 * 12 * 1000;
             for (const vault_3_id of vault_3_ids) {
                 // try to set value above dust + estimated fees
                 const issueAmount = dustValue.add(feesEstimate).mul(1.2);
                 const replaceAmount = dustValue;
-                await issueSingle(
-                    interBtcAPI,
-                    bitcoinCoreClient,
-                    userAccount,
-                    issueAmount,
-                    vault_3_id
-                );
-    
+                await issueSingle(interBtcAPI, bitcoinCoreClient, userAccount, issueAmount, vault_3_id);
+
                 interBtcAPI.setAccount(vault_3);
-                await interBtcAPI.replace.request(
-                    replaceAmount, 
-                    currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral) as CollateralCurrency
+                const collateralCurrency = await currencyIdToMonetaryCurrency(
+                    assetRegistry,
+                    vault_3_id.currencies.collateral
                 );
-    
-                const finalizedPromise = new Promise<void>((resolve, _) => interBtcAPI.system.subscribeToFinalizedBlockHeads(
-                    async (header) => {
-                        const events = await interBtcAPI.api.query.system.events.at(header.parentHash);
-                        if (DefaultTransactionAPI.doesArrayContainEvent(events, api.events.replace.AcceptReplace)) {
-                            resolve();
-                        }
-                    })
+                const [foundEvent] = await Promise.all([
+                    waitForEvent(interBtcAPI, api.events.replace.AcceptReplace, true, APPROX_TEN_BLOCKS_MS),
+                    interBtcAPI.replace.request(replaceAmount, collateralCurrency),
+                ]);
+
+                interBtcAPI.setAccount(userAccount);
+
+                assert.isTrue(
+                    foundEvent,
+                    `Unexpected timeout while waiting for AcceptReplace event (collateral currency: ${collateralCurrency.ticker})`
                 );
-    
-                await finalizedPromise;
             }
 
             const requestsList = await interBtcAPI.replace.list();
             const requestsMap = await interBtcAPI.replace.map();
             assert.equal(
-                requestsList.length, 
-                vault_3_ids.length, 
+                requestsList.length,
+                vault_3_ids.length,
                 `Expected ${vault_3_ids.length} requests in list, got ${requestsList.length}`
             );
             assert.equal(
-                requestsMap.size, 
+                requestsMap.size,
                 vault_3_ids.length,
                 `Expected ${vault_3_ids.length} requests in map, got ${requestsMap.size}`
             );
 
             // Need to manually compare some fields
-            const membersFromListToExpect = requestsList.map(req => ({
+            const membersFromListToExpect = requestsList.map((req) => ({
                 btcAddress: req.btcAddress,
                 btcHeight: req.btcHeight,
-                amount: req.amount.toString()
+                amount: req.amount.toString(),
             }));
 
-            const membersFromMapToCheck = Array.from(requestsMap.values()).map(req => ({
+            const membersFromMapToCheck = Array.from(requestsMap.values()).map((req) => ({
                 btcAddress: req.btcAddress,
                 btcHeight: req.btcHeight,
-                amount: req.amount.toString()
+                amount: req.amount.toString(),
             }));
 
             expect(membersFromMapToCheck).to.deep.include.members(membersFromListToExpect);
@@ -142,27 +142,31 @@ describe("replace", () => {
 
         it("should fail vault replace request if not having enough tokens", async () => {
             for (const vault_2_id of vault_2_ids) {
-                const currencyTicker = currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral).ticker;
+                const collateralCurrency = await currencyIdToMonetaryCurrency(
+                    assetRegistry,
+                    vault_2_id.currencies.collateral
+                );
+                const currencyTicker = collateralCurrency.ticker;
                 interBtcAPI.setAccount(vault_2);
-    
+
                 // fetch tokens held by vault
                 const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
                     newAccountId(api, vault_2.address),
-                    currencyIdToLiteral(vault_2_id.currencies.collateral)
+                    collateralCurrency
                 );
-    
+
                 // make sure vault does not hold enough issued tokens to request a replace
                 const replaceAmount = dustValue.add(tokensInVault);
-                
+
                 try {
-                    await interBtcAPI.replace.request(
-                        replaceAmount, 
-                        currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral) as CollateralCurrency
-                    );
+                    await interBtcAPI.replace.request(replaceAmount, collateralCurrency);
                     assert.fail(`Expected error to be thrown due to lack of issued tokens
                         for vault (collateral: ${currencyTicker}), but call completed.`);
                 } catch (e) {
-                    assert.isTrue(e instanceof Error, `Expected replace request to fail with Error (${currencyTicker} vault)`);
+                    assert.isTrue(
+                        e instanceof Error,
+                        `Expected replace request to fail with Error (${currencyTicker} vault)`
+                    );
                 }
             }
         }).timeout(600000);
@@ -170,7 +174,7 @@ describe("replace", () => {
 
     it("should getDustValue", async () => {
         const dustValue = await interBtcAPI.replace.getDustValue();
-        assert.equal(dustValue.str.BTC(), "0.00001");
+        assert.equal(dustValue.toString(), "0.00001");
     }).timeout(500);
 
     it("should getReplacePeriod", async () => {
@@ -185,5 +189,4 @@ describe("replace", () => {
             assert.deepEqual(request.oldVault.accountId, vault3Id);
         });
     });
-
 });

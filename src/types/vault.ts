@@ -1,12 +1,12 @@
-import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
 
 import { UnsignedFixedPoint } from "../interfaces";
-import { OracleAPI, SystemAPI } from "../parachain";
-import { decodeFixedPointType, newMonetaryAmount } from "../utils";
-import { CollateralUnit, currencyIdToMonetaryCurrency } from "./currency";
+import { AssetRegistryAPI, OracleAPI, SystemAPI } from "../parachain";
+import { decodeFixedPointType, currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
+import { CollateralCurrencyExt, WrappedCurrency } from "./currency";
 
 export interface WalletExt {
     // network encoded btc addresses
@@ -20,34 +20,35 @@ export enum VaultStatusExt {
     CommittedTheft,
 }
 
-export class VaultExt<WrappedUnit extends BitcoinUnit> {
+export class VaultExt {
     wallet: WalletExt;
-    backingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    backingCollateral: MonetaryAmount<CollateralCurrencyExt>;
     id: InterbtcPrimitivesVaultId;
     status: VaultStatusExt;
     bannedUntil: number | undefined;
-    toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
-    issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
-    toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
-    toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
-    replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
-    liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    toBeIssuedTokens: MonetaryAmount<WrappedCurrency>;
+    issuedTokens: MonetaryAmount<WrappedCurrency>;
+    toBeRedeemedTokens: MonetaryAmount<WrappedCurrency>;
+    toBeReplacedTokens: MonetaryAmount<WrappedCurrency>;
+    replaceCollateral: MonetaryAmount<CollateralCurrencyExt>;
+    liquidatedCollateral: MonetaryAmount<CollateralCurrencyExt>;
 
     constructor(
         private api: ApiPromise,
         private oracleAPI: OracleAPI,
         private systemAPI: SystemAPI,
+        private assetRegistryAPI: AssetRegistryAPI,
         wallet: WalletExt,
-        backingCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
+        backingCollateral: MonetaryAmount<CollateralCurrencyExt>,
         id: InterbtcPrimitivesVaultId,
         status: VaultStatusExt,
         bannedUntil: number | undefined,
-        toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
-        issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
-        toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
-        toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
-        replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
-        liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>
+        toBeIssuedTokens: MonetaryAmount<WrappedCurrency>,
+        issuedTokens: MonetaryAmount<WrappedCurrency>,
+        toBeRedeemedTokens: MonetaryAmount<WrappedCurrency>,
+        toBeReplacedTokens: MonetaryAmount<WrappedCurrency>,
+        replaceCollateral: MonetaryAmount<CollateralCurrencyExt>,
+        liquidatedCollateral: MonetaryAmount<CollateralCurrencyExt>
     ) {
         this.wallet = wallet;
         this.backingCollateral = backingCollateral;
@@ -62,23 +63,23 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         this.liquidatedCollateral = liquidatedCollateral;
     }
 
-    getRedeemableTokens(): MonetaryAmount<Currency<WrappedUnit>, WrappedUnit> {
+    getRedeemableTokens(): MonetaryAmount<WrappedCurrency> {
         return this.issuedTokens.sub(this.toBeRedeemedTokens);
     }
 
-    async getIssuableTokens(): Promise<MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>> {
+    async getIssuableTokens(): Promise<MonetaryAmount<WrappedCurrency>> {
         const isBanned = await this.isBanned();
         if (isBanned) {
-            return newMonetaryAmount(0, currencyIdToMonetaryCurrency(this.id.currencies.wrapped));
+            return newMonetaryAmount(
+                0,
+                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.id.currencies.wrapped)
+            );
         }
         const freeCollateral = await this.getFreeCollateral();
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
         const backableWrappedTokens = await this.oracleAPI.convertCollateralToWrapped(freeCollateral);
         // Force type-assert here as the oracle API only uses wrapped Bitcoin
-        return backableWrappedTokens.div(secureCollateralThreshold) as unknown as MonetaryAmount<
-            Currency<WrappedUnit>,
-            WrappedUnit
-        >;
+        return backableWrappedTokens.div(secureCollateralThreshold);
     }
 
     async isBanned(): Promise<boolean> {
@@ -89,22 +90,22 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         return this.bannedUntil >= currentBlockNumber;
     }
 
-    getBackedTokens(): MonetaryAmount<Currency<WrappedUnit>, WrappedUnit> {
+    getBackedTokens(): MonetaryAmount<WrappedCurrency> {
         return this.issuedTokens.add(this.toBeIssuedTokens);
     }
 
-    async getFreeCollateral(): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
+    async getFreeCollateral(): Promise<MonetaryAmount<CollateralCurrencyExt>> {
         const usedCollateral = await this.getUsedCollateral();
         const totalCollateral = await this.computeBackingCollateral();
         return totalCollateral.sub(usedCollateral);
     }
 
-    async getUsedCollateral(): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
+    async getUsedCollateral(): Promise<MonetaryAmount<CollateralCurrencyExt>> {
         const backedTokens = this.getBackedTokens();
         const backedTokensInCollateral = await this.oracleAPI.convertWrappedToCurrency(
             // Force type-assert here as the oracle API only uses wrapped Bitcoin
-            backedTokens as unknown as MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-            currencyIdToMonetaryCurrency(this.id.currencies.collateral) as Currency<CollateralUnit>
+            backedTokens,
+            await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.id.currencies.collateral)
         );
         const secureCollateralThreshold = await this.getSecureCollateralThreshold();
         const usedCollateral = backedTokensInCollateral.mul(secureCollateralThreshold);
@@ -120,16 +121,16 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         return decodeFixedPointType(threshold.value as UnsignedFixedPoint);
     }
 
-    async computeBackingCollateral(nonce?: number): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
+    async computeBackingCollateral(nonce?: number): Promise<MonetaryAmount<CollateralCurrencyExt>> {
         if (nonce === undefined) {
             nonce = await this.getStakingPoolNonce();
         }
         const rawBackingCollateral = await this.api.query.vaultStaking.totalCurrentStake(nonce, this.id);
-        const collateralCurrency = currencyIdToMonetaryCurrency(this.id.currencies.collateral);
-        return newMonetaryAmount(
-            decodeFixedPointType(rawBackingCollateral),
-            collateralCurrency as Currency<CollateralUnit>
+        const collateralCurrency = await currencyIdToMonetaryCurrency(
+            this.assetRegistryAPI,
+            this.id.currencies.collateral
         );
+        return newMonetaryAmount(decodeFixedPointType(rawBackingCollateral), collateralCurrency);
     }
 
     async getStakingPoolNonce(): Promise<number> {
@@ -138,13 +139,13 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     }
 }
 
-export interface SystemVaultExt<WrappedUnit extends BitcoinUnit> {
-    toBeIssuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
-    issuedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
-    toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
-    collateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+export interface SystemVaultExt {
+    toBeIssuedTokens: MonetaryAmount<WrappedCurrency>;
+    issuedTokens: MonetaryAmount<WrappedCurrency>;
+    toBeRedeemedTokens: MonetaryAmount<WrappedCurrency>;
+    collateral: MonetaryAmount<CollateralCurrencyExt>;
     currencyPair: {
-        collateralCurrency: Currency<CollateralUnit>;
-        wrappedCurrency: Currency<WrappedUnit>;
+        collateralCurrency: CollateralCurrencyExt;
+        wrappedCurrency: WrappedCurrency;
     };
 }

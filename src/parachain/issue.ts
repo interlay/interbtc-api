@@ -4,7 +4,7 @@ import { Option } from "@polkadot/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
-import { BitcoinUnit, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import { InterbtcPrimitivesIssueIssueRequest, InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import { VaultsAPI } from "./vaults";
@@ -24,18 +24,13 @@ import {
 import { FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
-import {
-    CollateralCurrency,
-    CollateralIdLiteral,
-    CurrencyIdLiteral,
-    currencyIdToMonetaryCurrency,
-    Issue,
-    WrappedCurrency,
-} from "../types";
+import { CollateralCurrencyExt, Issue, WrappedCurrency } from "../types";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { currencyIdToMonetaryCurrency } from "../utils";
 
 export type IssueLimits = {
-    singleVaultMaxIssuable: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
-    totalMaxIssuable: MonetaryAmount<WrappedCurrency, BitcoinUnit>;
+    singleVaultMaxIssuable: MonetaryAmount<WrappedCurrency>;
+    totalMaxIssuable: MonetaryAmount<WrappedCurrency>;
 };
 
 /**
@@ -49,15 +44,13 @@ export interface IssueAPI {
      * parachain (incurring an extra request).
      * @returns An object of type {singleVault, maxTotal, vaultsCache}
      */
-    getRequestLimits(
-        vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
-    ): Promise<IssueLimits>;
+    getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>): Promise<IssueLimits>;
 
     /**
      * Request issuing wrapped tokens (e.g. interBTC, kBTC).
      * @param amount wrapped token amount to issue.
      * @param vaultId (optional) Account ID of the vault to issue with.
-     * @param collateralCurrencyIdLiteral (optional) Collateral currency for backing wrapped tokens
+     * @param collateralCurrency (optional) Collateral currency for backing wrapped tokens
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param retries (optional) Number of times to retry issuing, if some of the requests fail. Defaults to 0.
@@ -65,12 +58,12 @@ export interface IssueAPI {
      * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
      */
     request(
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+        amount: MonetaryAmount<WrappedCurrency>,
         vaultAccountId?: AccountId,
-        collateralCurrencyIdLiteral?: CurrencyIdLiteral,
+        collateralCurrency?: CollateralCurrencyExt,
         atomic?: boolean,
         retries?: number,
-        availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+        availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
     ): Promise<Issue[]>;
 
     /**
@@ -82,7 +75,7 @@ export interface IssueAPI {
      * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
      */
     requestAdvanced(
-        amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>,
+        amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
         atomic: boolean
     ): Promise<Issue[]>;
 
@@ -133,7 +126,7 @@ export interface IssueAPI {
      * @returns The minimum amount of wrapped tokens that is accepted for issue requests; any lower values would
      * risk the bitcoin client to reject the payment
      */
-    getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    getDustValue(): Promise<MonetaryAmount<WrappedCurrency>>;
     /**
      * @returns The fee charged for issuing. For instance, "0.005" stands for 0.5%
      */
@@ -142,9 +135,7 @@ export interface IssueAPI {
      * @param amount The amount, in BTC, for which to compute the issue fees
      * @returns The fees, in BTC
      */
-    getFeesToPay(
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
-    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+    getFeesToPay(amount: MonetaryAmount<WrappedCurrency>): Promise<MonetaryAmount<WrappedCurrency>>;
     /**
      * @param vaultAccountId The vault account ID
      * @param collateralCurrency The currency specification, a `Monetary.js` object
@@ -152,8 +143,8 @@ export interface IssueAPI {
      */
     getVaultIssuableAmount(
         vaultAccountId: AccountId,
-        collateralCurrency: CurrencyIdLiteral
-    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<MonetaryAmount<WrappedCurrency>>;
 }
 
 export class DefaultIssueAPI implements IssueAPI {
@@ -164,11 +155,12 @@ export class DefaultIssueAPI implements IssueAPI {
         private wrappedCurrency: WrappedCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
-        private transactionAPI: TransactionAPI
+        private transactionAPI: TransactionAPI,
+        private assetRegistryAPI: AssetRegistryAPI
     ) {}
 
     async getRequestLimits(
-        vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+        vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
     ): Promise<IssueLimits> {
         if (!vaults) vaults = await this.vaultsAPI.getVaultsWithIssuableTokens();
         const vaultsArr = [...vaults.entries()].sort(
@@ -199,33 +191,32 @@ export class DefaultIssueAPI implements IssueAPI {
     }
 
     async request(
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+        amount: MonetaryAmount<WrappedCurrency>,
         vaultAccountId?: AccountId,
-        collateralCurrencyIdLiteral?: CurrencyIdLiteral,
+        collateralCurrency?: CollateralCurrencyExt,
         atomic: boolean = true,
         retries: number = 0,
-        cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>
+        cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
     ): Promise<Issue[]> {
         try {
             if (vaultAccountId) {
-                if (!collateralCurrencyIdLiteral) {
+                if (!collateralCurrency) {
                     return Promise.reject(
                         new Error("A collateral currency must be specified along with the vault account ID")
                     );
                 }
                 // If a vault account id is defined, request to issue with that vault only.
                 // Initialize the `amountsPerVault` map with a single entry, the (vaultId, amount) pair
-                const collateralCurrencyId = newCurrencyId(this.api, collateralCurrencyIdLiteral);
+                const collateralCurrencyId = newCurrencyId(this.api, collateralCurrency);
                 const vaultId = newVaultId(
                     this.api,
                     vaultAccountId.toString(),
-                    currencyIdToMonetaryCurrency(collateralCurrencyId) as CollateralCurrency,
+                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, collateralCurrencyId),
                     this.wrappedCurrency
                 );
-                const amountsPerVault = new Map<
-                    InterbtcPrimitivesVaultId,
-                    MonetaryAmount<WrappedCurrency, BitcoinUnit>
-                >([[vaultId, amount]]);
+                const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>([
+                    [vaultId, amount],
+                ]);
                 return await this.requestAdvanced(amountsPerVault, atomic);
             }
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
@@ -242,7 +233,7 @@ export class DefaultIssueAPI implements IssueAPI {
                     await this.request(
                         remainder,
                         vaultAccountId,
-                        collateralCurrencyIdLiteral,
+                        collateralCurrency,
                         atomic,
                         retries - 1,
                         availableVaults
@@ -256,13 +247,13 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async craftRequestTx(
         vaultId: InterbtcPrimitivesVaultId,
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
+        amount: MonetaryAmount<WrappedCurrency>
     ): Promise<SubmittableExtrinsic<"promise">> {
-        return this.api.tx.issue.requestIssue(amount.toString(amount.currency.rawBase), vaultId);
+        return this.api.tx.issue.requestIssue(amount.toString(true), vaultId);
     }
 
     async requestAdvanced(
-        amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency, BitcoinUnit>>,
+        amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
         atomic: boolean
     ): Promise<Issue[]> {
         const txs = await Promise.all(
@@ -320,19 +311,23 @@ export class DefaultIssueAPI implements IssueAPI {
                 .filter(([_, req]) => req.isSome.valueOf())
                 // Can be unwrapped because the filter removes `None` values
                 .map(([id, req]) =>
-                    parseIssueRequest(this.vaultsAPI, req.unwrap(), this.btcNetwork, storageKeyToNthInner(id))
+                    parseIssueRequest(
+                        this.vaultsAPI,
+                        this.assetRegistryAPI,
+                        req.unwrap(),
+                        this.btcNetwork,
+                        storageKeyToNthInner(id)
+                    )
                 )
         );
     }
 
-    async getFeesToPay(
-        amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>
-    ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
+    async getFeesToPay(amount: MonetaryAmount<WrappedCurrency>): Promise<MonetaryAmount<WrappedCurrency>> {
         const feePercentage = await this.getFeeRate();
         return amount.mul(feePercentage);
     }
 
-    async getDustValue(): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
+    async getDustValue(): Promise<MonetaryAmount<WrappedCurrency>> {
         const dustValueSat = await this.api.query.issue.issueBtcDustValue();
         return newMonetaryAmount(dustValueSat.toString(), this.wrappedCurrency);
     }
@@ -363,15 +358,21 @@ export class DefaultIssueAPI implements IssueAPI {
             issueRequestData
                 .filter(([option, _]) => option.isSome)
                 .map(([issueRequest, issueId]) =>
-                    parseIssueRequest(this.vaultsAPI, issueRequest.unwrap(), this.btcNetwork, issueId)
+                    parseIssueRequest(
+                        this.vaultsAPI,
+                        this.assetRegistryAPI,
+                        issueRequest.unwrap(),
+                        this.btcNetwork,
+                        issueId
+                    )
                 )
         );
     }
 
     async getVaultIssuableAmount(
         vaultAccountId: AccountId,
-        collateralCurrency: CollateralIdLiteral
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<MonetaryAmount<WrappedCurrency>> {
         const vault = await this.vaultsAPI.get(vaultAccountId, collateralCurrency);
         const wrappedTokenCapacity = await this.vaultsAPI.calculateCapacity(vault.backingCollateral);
         const issuedAmount = vault.issuedTokens.add(vault.toBeIssuedTokens);

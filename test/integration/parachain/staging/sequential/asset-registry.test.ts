@@ -3,13 +3,14 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
-import { DefaultAssetRegistryAPI, DefaultInterBtcApi, getStorageKey, stripHexPrefix } from "../../../../../src";
+import { DefaultAssetRegistryAPI, DefaultInterBtcApi, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
+import { getStorageKey } from "../../../../../src/utils/storage";
 
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
-
+import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { waitForFinalizedEvent } from "../../../../utils/helpers";
+import { waitForIncludedEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
     let api: ApiPromise;
@@ -29,7 +30,8 @@ describe("AssetRegistry", () => {
 
         assetRegistryMetadataHash = getStorageKey("AssetRegistry", "Metadata");
         // check which keys exist before the tests
-        registeredKeysBefore = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+        const keys = await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash);
+        registeredKeysBefore = keys.toArray();
     });
 
     after(async () => {
@@ -49,7 +51,7 @@ describe("AssetRegistry", () => {
             await interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction).signAndSend(sudoAccount);
 
             // wait for finalized event
-            await waitForFinalizedEvent(interBtcAPI, api.events.sudo.Sudid);
+            await waitForIncludedEvent(interBtcAPI, api.events.sudo.Sudid);
         }
 
         return api.disconnect();
@@ -57,7 +59,7 @@ describe("AssetRegistry", () => {
 
     /**
      * This test checks that the returned metadata from the chain has all the fields we need to construct
-     * a `Currency<UnitList>` object.
+     * a `Currency` object.
      * To see the fields required, take a look at {@link DefaultAssetRegistryAPI.metadataToCurrency}.
      *
      * Note: More detailed tests around the internal logic are in the unit tests.
@@ -82,14 +84,13 @@ describe("AssetRegistry", () => {
             // need sudo to add new foreign asset
             await interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount);
 
-            // wait for finalized event
-            await waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset);
+            await waitForIncludedEvent(interBtcAPI, api.events.sudo.Sudid);
         }
 
         // get the metadata for the asset we just registered
         const assetRegistryAPI = new DefaultAssetRegistryAPI(api);
         const foreignAssetEntries = await assetRegistryAPI.getAssetRegistryEntries();
-        const metadataArray = DefaultAssetRegistryAPI.extractMetadataFromEntries(foreignAssetEntries);
+        const unwrappedMetadataTupleArray = DefaultAssetRegistryAPI.unwrapMetadataFromEntries(foreignAssetEntries);
 
         type OrmlARAMetadataKey = keyof OrmlTraitsAssetRegistryAssetMetadata;
 
@@ -101,8 +102,12 @@ describe("AssetRegistry", () => {
             ["decimals" as OrmlARAMetadataKey, "u32"],
         ]);
 
-        for (const metadata of metadataArray) {
+        for (const [storageKey, metadata] of unwrappedMetadataTupleArray) {
             assert.isDefined(metadata, "Expected metadata to be defined, but it is not.");
+            assert.isDefined(storageKey, "Expected storage key to be defined, but it is not.");
+
+            const storageKeyValue = storageKeyToNthInner<AssetId>(storageKey);
+            assert.isDefined(storageKeyValue, "Expected storage key can be decoded but it cannot.");
 
             for (const [key, className] of requiredFieldClassnames) {
                 assert.isDefined(metadata[key], `Expected metadata to have field ${key.toString()}, but it does not.`);
@@ -116,5 +121,5 @@ describe("AssetRegistry", () => {
                 );
             }
         }
-    }).timeout(5 * 60000);
+    }).timeout(3 * 60000);
 });

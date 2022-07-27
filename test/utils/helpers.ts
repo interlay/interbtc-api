@@ -1,20 +1,15 @@
 import { Transaction } from "@interlay/esplora-btc-api";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, UnitList } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { FrameSystemEventRecord } from "@polkadot/types/lookup";
 import { AnyTuple } from "@polkadot/types/types";
+import { Vec } from "@polkadot/types-codec";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import Big, { RoundingMode } from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
-import {
-    BitcoinCoreClient,
-    InterBtcApi,
-    CollateralUnit,
-    OracleAPI,
-    VaultStatusExt,
-    DefaultTransactionAPI,
-} from "../../src";
+import { BitcoinCoreClient, InterBtcApi, OracleAPI, VaultStatusExt, CurrencyExt } from "../../src";
 import { SUDO_URI } from "../config";
 
 export const SLEEP_TIME_MS = 1000;
@@ -37,9 +32,9 @@ export async function wait_success<R>(call: () => Promise<R>): Promise<R> {
     }
 }
 
-export async function callWithExchangeRate<C extends CollateralUnit>(
+export async function callWithExchangeRate(
     oracleAPI: OracleAPI,
-    exchangeRate: ExchangeRate<Bitcoin, BitcoinUnit, Currency<C>, C>,
+    exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>,
     fn: () => Promise<void>
 ): Promise<void> {
     const initialExchangeRate = await oracleAPI.getExchangeRate(exchangeRate.counter);
@@ -129,8 +124,7 @@ export const vaultStatusToLabel = (status: VaultStatusExt): string => {
 // use the same exchange rate as the running oracles use
 // to avoid flaky tests due to updated prices from the oracle client(s)
 // note: currently the same for all collateral currencies - might change in future
-export const getExchangeRateValueToSetForTesting = <U extends UnitList>(_collateralCurrency: Currency<U>): Big =>
-    new Big("230.0");
+export const getExchangeRateValueToSetForTesting = (_collateralCurrency: CurrencyExt): Big => new Big("230.0");
 
 /**
  * Returns the vsize (virtual size) of the given transaction.
@@ -204,9 +198,81 @@ export const waitForFinalizedEvent = async <T extends AnyTuple>(
     return new Promise<void>((resolve, _) =>
         interBtcApi.system.subscribeToFinalizedBlockHeads(async (header) => {
             const events = await interBtcApi.api.query.system.events.at(header.parentHash);
-            if (DefaultTransactionAPI.doesArrayContainEvent(events, event)) {
+            if (eventRecordVectorContains(events, event)) {
                 resolve();
             }
         })
     );
+};
+
+/**
+ * Wait for an event to show up on chain (unfinalized).
+ *
+ * This method will only subscribe to new blocks once called and then look for a specific event.
+ * Contrary to @see {@link DefaultTransactionAPI.waitForEvent} which looks at all past events
+ * and may return due to older events using the same name.
+ *
+ * Note: This method checks the parent blocks in case the event we are looking for
+ * was finalized in a block just before this method was called.
+ *
+ * @param interBtcApi the api to use for querying
+ * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
+ */
+export const waitForIncludedEvent = async <T extends AnyTuple>(
+    interBtcApi: InterBtcApi,
+    event: AugmentedEvent<ApiTypes, T>
+): Promise<void> => {
+    return new Promise<void>((resolve, _) =>
+        interBtcApi.system.subscribeToCurrentBlockHeads(async (header) => {
+            const events = await interBtcApi.api.query.system.events.at(header.parentHash);
+            if (eventRecordVectorContains(events, event)) {
+                resolve();
+            }
+        })
+    );
+};
+
+const eventRecordVectorContains = <T extends AnyTuple>(
+    eventRecords: Vec<FrameSystemEventRecord>,
+    event: AugmentedEvent<ApiTypes, T>
+): boolean => {
+    return eventRecords.find((record) => event.is(record.event)) !== undefined;
+};
+
+/**
+ * Wait for an event to show up on chain.
+ *
+ * This method will only subscribe to new blocks once called and then look for a specific event.
+ *
+ * Note: This method checks the parent blocks in case the event we are looking for
+ * was finalized/included in a block just before this method was called.
+ * @param interBtcApi the api to use for querying
+ * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
+ * @param finalized [optional] true to wait for finalized event, false (default) to only wait for included event
+ * @param timeoutMs [optional] a timeout in milliseconds to wait for the event. Rejects if not found before timeout. Default: no timeout
+ * @returns a promise that resolves when the event is found, and if a timeout is provided, rejects if not found before timeout.
+ */
+export const waitForEvent = async <T extends AnyTuple>(
+    interBtcApi: InterBtcApi,
+    event: AugmentedEvent<ApiTypes, T>,
+    finalized: boolean = false,
+    timeoutMs?: number
+): Promise<boolean> => {
+    let timeoutHandle: NodeJS.Timeout;
+    const timeoutPromise =
+        timeoutMs !== undefined
+            ? new Promise<void>((_, reject) => {
+                  timeoutHandle = setTimeout(() => reject(), timeoutMs);
+              })
+            : Promise.resolve();
+
+    const waitForEventPromise = finalized
+        ? waitForFinalizedEvent(interBtcApi, event)
+        : waitForIncludedEvent(interBtcApi, event);
+
+    await Promise.race([waitForEventPromise, timeoutPromise]).then((_) => {
+        clearTimeout(timeoutHandle);
+    });
+
+    return true;
 };

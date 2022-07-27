@@ -3,23 +3,23 @@ import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BitcoinAmount, BitcoinUnit, Currency, InterBtcAmount, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinAmount, InterBtcAmount, MonetaryAmount } from "@interlay/monetary-js";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 
 import { newAccountId } from "../utils";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
-import { currencyIdToLiteral, Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
+import { Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
 import { waitForBlockFinalization } from "./bitcoin";
-import { newMonetaryAmount } from "./currency";
-import { InterBtcApi } from "..";
+import { atomicToBaseAmount, currencyIdToMonetaryCurrency, newMonetaryAmount } from "./currency";
+import { InterBtcApi } from "../interbtc-api";
 
 export const SLEEP_TIME_MS = 1000;
 
-export interface IssueResult<U extends BitcoinUnit> {
+export interface IssueResult {
     request: Issue;
-    initialWrappedTokenBalance: MonetaryAmount<Currency<U>, U>;
-    finalWrappedTokenBalance: MonetaryAmount<Currency<U>, U>;
+    initialWrappedTokenBalance: MonetaryAmount<WrappedCurrency>;
+    finalWrappedTokenBalance: MonetaryAmount<WrappedCurrency>;
 }
 
 export enum ExecuteRedeem {
@@ -60,12 +60,12 @@ export function getRequestIdsFromEvents(
  * with highest available amount and tries again for the remainder. If at leaast
  * one vault can fulfil a request alone, a random one among them is selected.
  **/
-export function allocateAmountsToVaults<U extends BitcoinUnit>(
-    vaultsWithAvailableAmounts: Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>>,
-    amountToAllocate: MonetaryAmount<Currency<U>, U>
-): Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>> {
+export function allocateAmountsToVaults(
+    vaultsWithAvailableAmounts: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
+    amountToAllocate: MonetaryAmount<WrappedCurrency>
+): Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> {
     const maxReservationPercent = 95; // don't reserve more than 95% of a vault's collateral
-    const allocations = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<Currency<U>, U>>();
+    const allocations = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>();
     // iterable array in ascending order of issuing capacity:
     const vaultsArray = [...vaultsWithAvailableAmounts.entries()]
         .reverse()
@@ -73,7 +73,7 @@ export function allocateAmountsToVaults<U extends BitcoinUnit>(
             (entry) =>
                 [entry[0], entry[1].div(100).mul(maxReservationPercent)] as [
                     InterbtcPrimitivesVaultId,
-                    MonetaryAmount<Currency<U>, U>
+                    MonetaryAmount<WrappedCurrency>
                 ]
         );
     while (amountToAllocate.gt(newMonetaryAmount(0, amountToAllocate.currency))) {
@@ -104,12 +104,12 @@ export async function issueSingle(
     interBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     issuingAccount: KeyringPair,
-    amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+    amount: MonetaryAmount<WrappedCurrency>,
     vaultId?: InterbtcPrimitivesVaultId,
     autoExecute = true,
     triggerRefund = false,
     atomic = true
-): Promise<IssueResult<BitcoinUnit>> {
+): Promise<IssueResult> {
     const prevAccount = interBtcApi.account;
     interBtcApi.setAccount(issuingAccount);
     try {
@@ -117,11 +117,13 @@ export async function issueSingle(
         const initialWrappedTokenBalance = (await interBtcApi.tokens.balance(amount.currency, requesterAccountId)).free;
         const blocksToMine = 3;
 
-        const collateralIdLiteral = vaultId ? currencyIdToLiteral(vaultId.currencies.collateral) : undefined;
+        const collateralCurrency = vaultId
+            ? await currencyIdToMonetaryCurrency(interBtcApi.assetRegistry, vaultId.currencies.collateral)
+            : undefined;
         const rawRequestResult = await interBtcApi.issue.request(
             amount,
             vaultId?.accountId,
-            collateralIdLiteral,
+            collateralCurrency,
             atomic
         );
         if (rawRequestResult.length !== 1) {
@@ -132,11 +134,12 @@ export async function issueSingle(
         let amountAsBtc = issueRequest.wrappedAmount.add(issueRequest.bridgeFee);
         if (triggerRefund) {
             // Send 1 more Btc than needed
-            amountAsBtc = amountAsBtc.add(BitcoinAmount.from.BTC(1));
+            amountAsBtc = amountAsBtc.add(new BitcoinAmount(1));
         } else if (autoExecute === false) {
             // Send 1 less Satoshi than requested
             // to trigger the user failsafe and disable auto-execution.
-            const oneSatoshi = BitcoinAmount.from.Satoshi(1);
+            const oneSatoshiInBtc = atomicToBaseAmount(1, Bitcoin);
+            const oneSatoshi = new BitcoinAmount(oneSatoshiInBtc);
             amountAsBtc = amountAsBtc.sub(oneSatoshi);
         }
 
@@ -185,7 +188,7 @@ export async function redeem(
     interBtcApi: InterBtcApi,
     bitcoinCoreClient: BitcoinCoreClient,
     redeemingAccount: KeyringPair,
-    amount: MonetaryAmount<WrappedCurrency, BitcoinUnit>,
+    amount: MonetaryAmount<WrappedCurrency>,
     vaultId?: InterbtcPrimitivesVaultId,
     autoExecute = ExecuteRedeem.Auto,
     atomic = true,
@@ -229,8 +232,8 @@ export async function issueAndRedeem(
     bitcoinCoreClient: BitcoinCoreClient,
     account: KeyringPair,
     vaultId?: InterbtcPrimitivesVaultId,
-    issueAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.1),
-    redeemAmount: MonetaryAmount<WrappedCurrency, BitcoinUnit> = InterBtcAmount.from.BTC(0.009),
+    issueAmount: MonetaryAmount<WrappedCurrency> = new InterBtcAmount(0.1),
+    redeemAmount: MonetaryAmount<WrappedCurrency> = new InterBtcAmount(0.009),
     autoExecuteIssue = true,
     autoExecuteRedeem = ExecuteRedeem.Auto,
     triggerRefund = false,

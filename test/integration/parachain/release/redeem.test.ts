@@ -1,10 +1,10 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import { Currency } from "@interlay/monetary-js";
 import {
-    CollateralUnit,
+    AssetRegistryAPI,
     currencyIdToMonetaryCurrency,
+    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
@@ -30,7 +30,7 @@ import {
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { getCorrespondingCollateralCurrencies, issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import {
-    CollateralCurrency,
+    CollateralCurrencyExt,
     DefaultTransactionAPI,
     ExecuteRedeem,
     issueAndRedeem,
@@ -57,8 +57,9 @@ describe("redeem", () => {
     let userInterBtcAPI: InterBtcApi;
     let oracleInterBtcAPI: InterBtcApi;
     let reporterInterBtcAPI: InterBtcApi;
+    let assetRegistry: AssetRegistryAPI;
 
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
     let wrappedCurrency: WrappedCurrency;
 
     before(async () => {
@@ -67,6 +68,7 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         const reportingVaultAccount = keyring.addFromUri(VAULT_1_URI);
+        assetRegistry = new DefaultAssetRegistryAPI(api);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         reporterInterBtcAPI = new DefaultInterBtcApi(api, "regtest", reportingVaultAccount, ESPLORA_BASE_PATH);
@@ -107,16 +109,14 @@ describe("redeem", () => {
     // TODO: check with greg how to use instant seal for this test
     it("should liquidate a vault that committed theft", async () => {
         for (const vaultToLiquidateId of vaultToLiquidateIds) {
-            const collateralCurrency = currencyIdToMonetaryCurrency(
+            const collateralCurrency = await currencyIdToMonetaryCurrency(
+                assetRegistry,
                 vaultToLiquidateId.currencies.collateral
-            ) as CollateralCurrency;
-            const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(
-                collateralCurrency as Currency<CollateralUnit>
             );
+            const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency);
 
             // There should be no burnable tokens
-            await expect(userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>)).to
-                .be.rejected;
+            await expect(userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency)).to.be.rejected;
 
             // issue a small amount of tokens (10x dust)
             const dustValue = await userInterBtcAPI.issue.getDustValue();
@@ -178,9 +178,7 @@ describe("redeem", () => {
                 (issued tokens: ${issuedTokens.toHuman()}; collateral: ${collateralCurrency.ticker}) 
                 but was ${maxBurnableTokens.toHuman()}`
             );
-            const burnExchangeRate = await userInterBtcAPI.redeem.getBurnExchangeRate(
-                collateralCurrency as Currency<CollateralUnit>
-            );
+            const burnExchangeRate = await userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency);
             assert.isTrue(
                 regularExchangeRate.toBig().lt(burnExchangeRate.toBig()),
                 `Burn exchange rate (${burnExchangeRate.toHuman()}) is not better than 

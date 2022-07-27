@@ -1,9 +1,11 @@
-import { Currency, UnitList } from "@interlay/monetary-js";
+import { Currency } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
+import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { decodeBytesAsString } from "../utils";
+import { decodeBytesAsString, newForeignAssetId, storageKeyToNthInner } from "../utils";
 import { Option } from "@polkadot/types-codec";
+import { ForeignAsset } from "../types";
 
 /**
  * @category BTC Bridge
@@ -13,31 +15,41 @@ export interface AssetRegistryAPI {
      * Get all currencies (foreign assets) in the asset registry.
      * @returns A list of currencies.
      */
-    getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>>;
+    getForeignAssets(): Promise<Array<ForeignAsset>>;
+
+    /**
+     * Get foreign asset by its id.
+     * @param id The id of the foreign asset.
+     * @returns The foreign asset.
+     */
+    getForeignAsset(id: number | u32): Promise<ForeignAsset>;
 }
 
 // shorthand type for the unwieldy tuple
 export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlTraitsAssetRegistryAssetMetadata>];
+export type UnwrappedAssetRegistryMetadataTuple = [StorageKey<[u32]>, OrmlTraitsAssetRegistryAssetMetadata];
 
 export class DefaultAssetRegistryAPI {
     constructor(private api: ApiPromise) {}
 
-    // not private for easier testing
-    static metadataToCurrency(metadata: OrmlTraitsAssetRegistryAssetMetadata): Currency<UnitList> {
+    static metadataToCurrency(metadata: OrmlTraitsAssetRegistryAssetMetadata): Currency {
         const symbol = decodeBytesAsString(metadata.symbol);
         const name = decodeBytesAsString(metadata.name);
-
-        const DynamicUnit: UnitList = {
-            atomic: 0,
-        };
-        DynamicUnit[symbol] = metadata.decimals.toNumber();
-
         return {
             name: name,
-            base: DynamicUnit[symbol],
-            rawBase: DynamicUnit.atomic,
-            units: DynamicUnit,
             ticker: symbol,
+            decimals: metadata.decimals.toNumber(),
+        };
+    }
+
+    // not private for easier testing
+    static metadataTupleToForeignAsset([key, metadata]: UnwrappedAssetRegistryMetadataTuple): ForeignAsset {
+        const keyInner = storageKeyToNthInner<AssetId>(key);
+        const currencyPart = DefaultAssetRegistryAPI.metadataToCurrency(metadata);
+
+        return {
+            id: keyInner.toNumber(),
+            ...currencyPart,
         };
     }
 
@@ -47,20 +59,38 @@ export class DefaultAssetRegistryAPI {
     }
 
     /**
-     * Static method to grab onle metadata from entries provided by the asset registry.
-     * Ignores entries with no metadata (ie. `Option.isSome !== true`).
+     * Static method to filter out metadata that can be unwrapped.ie. `Option.isSome !== true`.
      * @param entries The entries from the asset registry.
-     * @returns A list of metadata.
+     * @returns A list of all entries containing metadata.
      */
-    static extractMetadataFromEntries(entries: AssetRegistryMetadataTuple[]): OrmlTraitsAssetRegistryAssetMetadata[] {
-        return entries.filter(([, metadata]) => metadata.isSome).map(([, metadata]) => metadata.unwrap());
+    static unwrapMetadataFromEntries(entries: AssetRegistryMetadataTuple[]): UnwrappedAssetRegistryMetadataTuple[] {
+        return entries
+            .filter(([, metadata]) => metadata.isSome)
+            .map(([storageKey, metadata]) => [storageKey, metadata.unwrap()]);
     }
 
-    async getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>> {
+    async getForeignAssets(): Promise<Array<ForeignAsset>> {
         const entries = await this.getAssetRegistryEntries();
 
-        return DefaultAssetRegistryAPI.extractMetadataFromEntries(entries).map(
-            DefaultAssetRegistryAPI.metadataToCurrency
+        return DefaultAssetRegistryAPI.unwrapMetadataFromEntries(entries).map(
+            DefaultAssetRegistryAPI.metadataTupleToForeignAsset
         );
+    }
+
+    async getForeignAsset(id: number | u32): Promise<ForeignAsset> {
+        const u32Id = id instanceof u32 ? id : newForeignAssetId(this.api, id);
+        const optionMetadata = await this.api.query.assetRegistry.metadata(u32Id);
+
+        if (!optionMetadata.isSome) {
+            return Promise.reject(new Error("Foreign asset not found"));
+        }
+        const currencyPart = DefaultAssetRegistryAPI.metadataToCurrency(optionMetadata.unwrap());
+
+        const numberId = id instanceof u32 ? id.toNumber() : id;
+
+        return {
+            id: numberId,
+            ...currencyPart,
+        };
     }
 }
