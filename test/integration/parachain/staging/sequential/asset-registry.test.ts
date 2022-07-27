@@ -79,11 +79,12 @@ describe("AssetRegistry", () => {
                 api.createType("u32", nextAssetId)
             );
 
-            // need sudo to add new foreign asset
-            await interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount);
-
-            // wait for finalized event
-            await waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset);
+            await Promise.all([
+                // wait for finalized event
+                waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.Sudid),
+                // need sudo to add new foreign asset
+                interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
+            ]);
         }
 
         // get the metadata for the asset we just registered
