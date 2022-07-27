@@ -9,17 +9,15 @@ import { TransactionAPI } from "../parachain/transaction";
 import {
     tickerToCurrencyIdLiteral,
     CurrencyIdLiteral,
-    CollateralUnit,
     CollateralCurrency,
     CollateralIdLiteral,
     currencyIdToMonetaryCurrency,
     WrappedCurrency,
     WrappedIdLiteral,
     currencyIdToLiteral,
-    CurrencyUnit,
     currencyIdLiteralToMonetaryCurrency,
-    GovernanceUnit,
     GovernanceIdLiteral,
+    GovernanceCurrency,
 } from "../types";
 
 export interface RewardsAPI {
@@ -35,7 +33,7 @@ export interface RewardsAPI {
         collateralCurrencyId: CollateralIdLiteral,
         rewardCurrencyId?: CurrencyIdLiteral,
         nonce?: number
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
+    ): Promise<MonetaryAmount<Currency>>;
     /**
      * @param collateralCurrencyId The staked currency
      * @param vaultId The account ID of the staking pool nominee
@@ -103,7 +101,7 @@ export interface RewardsAPI {
         rewardCurrencyIdLiteral: CurrencyIdLiteral,
         vaultCollateralIdLiteral: CollateralIdLiteral,
         vaultAccountId: AccountId
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
+    ): Promise<MonetaryAmount<Currency>>;
     /**
      * @param vaultId The account ID of the staking pool nominee
      * @param nominatorId The account ID of the staking pool nominator
@@ -113,7 +111,7 @@ export interface RewardsAPI {
     computeCollateralInStakingPool(
         vaultId: InterbtcPrimitivesVaultId,
         nominatorId: AccountId
-    ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>>;
+    ): Promise<MonetaryAmount<CollateralCurrency>>;
     /**
      * @param currencyId The reward currency
      * @param accountId An account ID string
@@ -147,9 +145,7 @@ export interface RewardsAPI {
      * Gets the vault annuity systemwide per-block reward.
      * @param governanceCurrency The ID of the currency the reward is paid out in.
      */
-    getRewardPerBlock(
-        governanceCurrency: GovernanceIdLiteral
-    ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>>;
+    getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<GovernanceCurrency>>;
 }
 
 export class DefaultRewardsAPI implements RewardsAPI {
@@ -176,7 +172,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         collateralCurrencyId: CollateralIdLiteral,
         rewardCurrencyId?: CurrencyIdLiteral,
         nonce?: number
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
+    ): Promise<MonetaryAmount<Currency>> {
         const wrappedCurrencyId = tickerToCurrencyIdLiteral(this.wrappedCurrency.ticker) as WrappedIdLiteral;
         rewardCurrencyId = (rewardCurrencyId ? rewardCurrencyId : wrappedCurrencyId) as CurrencyIdLiteral;
         const [stake, rewardPerToken, rewardTally] = await Promise.all([
@@ -277,7 +273,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
     async computeCollateralInStakingPool(
         vaultId: InterbtcPrimitivesVaultId,
         nominatorId: AccountId
-    ): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
+    ): Promise<MonetaryAmount<CollateralCurrency>> {
         const collateralCurrencyIdLiteral = currencyIdToLiteral(vaultId.currencies.collateral) as CollateralIdLiteral;
         const [stake, slashPerToken, slashTally] = await Promise.all([
             this.getStakingPoolStake(collateralCurrencyIdLiteral, vaultId.accountId, nominatorId),
@@ -324,7 +320,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         rewardCurrencyIdLiteral: CurrencyIdLiteral,
         vaultCollateralIdLiteral: CollateralIdLiteral,
         vaultAccountId: AccountId
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
+    ): Promise<MonetaryAmount<Currency>> {
         const stake = await this.getRewardsPoolStake(vaultCollateralIdLiteral, vaultAccountId);
         const rewardPerToken = await this.getRewardsPoolRewardPerToken(rewardCurrencyIdLiteral);
         const rewardTally = await this.getRewardsPoolRewardTally(
@@ -367,13 +363,11 @@ export class DefaultRewardsAPI implements RewardsAPI {
         );
     }
 
-    async getRewardPerBlock(
-        governanceCurrency: GovernanceIdLiteral
-    ): Promise<MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>> {
+    async getRewardPerBlock(governanceCurrency: GovernanceIdLiteral): Promise<MonetaryAmount<GovernanceCurrency>> {
         const rawRewardPerBlock = await this.api.query.vaultAnnuity.rewardPerBlock();
         return newMonetaryAmount(
             rawRewardPerBlock.toString(),
-            currencyIdLiteralToMonetaryCurrency(this.api, governanceCurrency) as Currency<GovernanceUnit>
+            currencyIdLiteralToMonetaryCurrency(this.api, governanceCurrency)
         );
     }
 }

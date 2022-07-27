@@ -2,10 +2,11 @@ import { ApiPromise } from "@polkadot/api";
 import { Option, Bool } from "@polkadot/types";
 import { Moment } from "@polkadot/types/interfaces";
 import Big from "big.js";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { SecurityErrorCode, InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 
 import {
+    ATOMIC_UNIT,
     convertMoment,
     createExchangeRateOracleKey,
     createInclusionOracleKey,
@@ -18,7 +19,7 @@ import {
 } from "../utils";
 import { UnsignedFixedPoint } from "../interfaces/default";
 import { TransactionAPI } from "./transaction";
-import { CurrencyUnit, WrappedCurrency } from "../types/currency";
+import { CollateralCurrency, WrappedCurrency } from "../types/currency";
 import { FeeEstimationType } from "../types/oracleTypes";
 
 export const DEFAULT_FEED_NAME = "DOT/BTC";
@@ -33,10 +34,7 @@ export interface OracleAPI {
      * @param wrappedCurrency The wrapped currency to use in the returned exchange rate type, defaults to `Bitcoin`
      * @returns The exchange rate between Bitcoin and the provided collateral currency
      */
-    getExchangeRate<C extends CurrencyUnit>(
-        collateralCurrency: Currency<C>,
-        wrappedCurrency?: Currency<BitcoinUnit>
-    ): Promise<ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>>;
+    getExchangeRate(collateralCurrency: Currency, wrappedCurrency?: Bitcoin): Promise<ExchangeRate<Bitcoin, Currency>>;
     /**
      * Obtains the current fees for BTC transactions, in satoshi/byte.
      * @returns Big value for the current inclusion fees.
@@ -45,7 +43,7 @@ export interface OracleAPI {
     /**
      * @returns Last exchange rate time
      */
-    getValidUntil<U extends CurrencyUnit>(counterCurrency: Currency<U>): Promise<Date>;
+    getValidUntil(counterCurrency: Currency): Promise<Date>;
     /**
      * @returns A map from the oracle's account id to its name
      */
@@ -58,9 +56,7 @@ export interface OracleAPI {
      * Send a transaction to set the exchange rate between Bitcoin and a collateral currency
      * @param exchangeRate The rate to set
      */
-    setExchangeRate<C extends CurrencyUnit>(
-        exchangeRate: ExchangeRate<Bitcoin, BitcoinUnit, Currency<C>, C>
-    ): Promise<void>;
+    setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, Currency>): Promise<void>;
     /**
      * Send a transaction to set the current fee estimate for BTC transactions
      * @param fees Estimated Satoshis per bytes to get a transaction included
@@ -71,17 +67,15 @@ export interface OracleAPI {
      * @param currency A `Monetary.js` object
      * @returns Converted value
      */
-    convertWrappedToCurrency<C extends CurrencyUnit>(
-        amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        currency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>>;
+    convertWrappedToCurrency(
+        amount: MonetaryAmount<WrappedCurrency>,
+        currency: Currency
+    ): Promise<MonetaryAmount<Currency>>;
     /**
      * @param amount The amount of collateral tokens to convert
      * @returns Converted value
      */
-    convertCollateralToWrapped<C extends CurrencyUnit>(
-        amount: MonetaryAmount<Currency<C>, C>
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>>;
+    convertCollateralToWrapped(amount: MonetaryAmount<Currency>): Promise<MonetaryAmount<WrappedCurrency>>;
     /**
      * @returns The period of time (in milliseconds) after an oracle's last submission
      * during which it is considered online
@@ -102,9 +96,7 @@ export interface OracleAPI {
      * (with respect to BTC)
      * @remark Awaits an oracle update to the exchange rate
      */
-    waitForExchangeRateUpdate<C extends CurrencyUnit, U extends BitcoinUnit>(
-        exchangeRate: ExchangeRate<Currency<U>, U, Currency<C>, C>
-    ): Promise<void>;
+    waitForExchangeRateUpdate(exchangeRate: ExchangeRate<Bitcoin, Currency>): Promise<void>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -114,36 +106,34 @@ export class DefaultOracleAPI implements OracleAPI {
         private transactionAPI: TransactionAPI
     ) {}
 
-    async getExchangeRate<C extends CurrencyUnit>(
-        collateralCurrency: Currency<C>
-    ): Promise<ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>> {
-        const oracleKey = createExchangeRateOracleKey(this.api, collateralCurrency);
+    async getExchangeRate(currency: Currency): Promise<ExchangeRate<Bitcoin, Currency>> {
+        const oracleKey = createExchangeRateOracleKey(this.api, currency);
 
         const encodedRawRate = unwrapRawExchangeRate(await this.api.query.oracle.aggregate(oracleKey));
         if (encodedRawRate === undefined) {
-            return Promise.reject(new Error(`No exchange rate for given currency: ${collateralCurrency.ticker}`));
+            return Promise.reject(new Error(`No exchange rate for given currency: ${currency.ticker}`));
         }
         const decodedRawRate = decodeFixedPointType(encodedRawRate);
-        return new ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>(
+        return new ExchangeRate<Bitcoin, Currency>(
             this.wrappedCurrency,
-            collateralCurrency,
+            currency,
             decodedRawRate,
-            this.wrappedCurrency.rawBase,
-            collateralCurrency.rawBase
+            ATOMIC_UNIT,
+            ATOMIC_UNIT
         );
     }
 
-    async convertWrappedToCurrency<C extends CurrencyUnit>(
-        amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        currency: Currency<C>
-    ): Promise<MonetaryAmount<Currency<C>, C>> {
+    async convertWrappedToCurrency(
+        amount: MonetaryAmount<WrappedCurrency>,
+        currency: Currency
+    ): Promise<MonetaryAmount<Currency>> {
         const rate = await this.getExchangeRate(currency);
         return rate.toCounter(amount);
     }
 
-    async convertCollateralToWrapped<C extends CurrencyUnit>(
-        amount: MonetaryAmount<Currency<C>, C>
-    ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
+    async convertCollateralToWrapped(
+        amount: MonetaryAmount<CollateralCurrency>
+    ): Promise<MonetaryAmount<WrappedCurrency>> {
         const rate = await this.getExchangeRate(amount.currency);
         return rate.toBase(amount);
     }
@@ -153,16 +143,8 @@ export class DefaultOracleAPI implements OracleAPI {
         return moment.toNumber();
     }
 
-    async setExchangeRate<C extends CurrencyUnit>(
-        exchangeRate: ExchangeRate<Bitcoin, BitcoinUnit, Currency<C>, C>
-    ): Promise<void> {
-        const encodedExchangeRate = encodeUnsignedFixedPoint(
-            this.api,
-            exchangeRate.toBig({
-                baseUnit: exchangeRate.base.rawBase,
-                counterUnit: exchangeRate.counter.rawBase,
-            })
-        );
+    async setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, Currency>): Promise<void> {
+        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate.toBig([ATOMIC_UNIT, ATOMIC_UNIT]));
         const oracleKey = createExchangeRateOracleKey(this.api, exchangeRate.counter);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedExchangeRate]]);
         await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
@@ -203,7 +185,7 @@ export class DefaultOracleAPI implements OracleAPI {
         return nameMap;
     }
 
-    async getValidUntil<U extends CurrencyUnit>(counterCurrency: Currency<U>): Promise<Date> {
+    async getValidUntil(counterCurrency: Currency): Promise<Date> {
         const oracleKey = createExchangeRateOracleKey(this.api, counterCurrency);
         const validUntil = await this.api.query.oracle.validUntil(oracleKey);
         return validUntil.isSome ? convertMoment(validUntil.value as Moment) : Promise.reject("No such oracle key");
@@ -226,9 +208,7 @@ export class DefaultOracleAPI implements OracleAPI {
         }
     }
 
-    async waitForExchangeRateUpdate<C extends CurrencyUnit, U extends BitcoinUnit>(
-        exchangeRate: ExchangeRate<Currency<U>, U, Currency<C>, C>
-    ): Promise<void> {
+    async waitForExchangeRateUpdate(exchangeRate: ExchangeRate<Bitcoin, Currency>): Promise<void> {
         const key = createExchangeRateOracleKey(this.api, exchangeRate.counter);
         while (await this.getRawValuesUpdated(key)) {
             sleep(SLEEP_TIME_MS);

@@ -1,6 +1,5 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { assert } from "chai";
-import { Currency } from "@interlay/monetary-js";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
 import Big, { RoundingMode } from "big.js";
@@ -16,7 +15,7 @@ import {
 } from "../../../../config";
 import {
     DefaultInterBtcApi,
-    GovernanceUnit,
+    GovernanceCurrency,
     newAccountId,
     newMonetaryAmount,
     setNumericStorage,
@@ -32,7 +31,7 @@ describe("escrow", () => {
     let userAccount_3: KeyringPair;
     let sudoAccount: KeyringPair;
 
-    let governanceCurrency: Currency<GovernanceUnit>;
+    let governanceCurrency: GovernanceCurrency;
 
     before(async function () {
         const keyring = new Keyring({ type: "sr25519" });
@@ -111,16 +110,10 @@ describe("escrow", () => {
             currentBlockNumber + 0.4 * unlockHeightDiff
         );
         const votingSupply = await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
-        assert.equal(
-            votingBalance.toString(votingBalance.currency.base),
-            votingSupply.toString(votingSupply.currency.base)
-        );
+        assert.equal(votingBalance.toString(), votingSupply.toString());
 
         // Hardcoded value here to match the parachain
-        assert.equal(
-            votingSupply.toBig(votingSupply.currency.base).round(2, RoundingMode.RoundDown).toString(),
-            "0.62"
-        );
+        assert.equal(votingSupply.toBig().round(2, RoundingMode.RoundDown).toString(), "0.62");
         const firstYearRewards = 125000000000000000;
         const blocksPerYear = 5256000;
 
@@ -155,13 +148,7 @@ describe("escrow", () => {
         const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(
             currentBlockNumber + 0.4 * unlockHeightDiff
         );
-        assert.equal(
-            votingSupplyAfterSecondUser
-                .toBig(votingSupplyAfterSecondUser.currency.base)
-                .round(2, RoundingMode.RoundDown)
-                .toString(),
-            "0.99"
-        );
+        assert.equal(votingSupplyAfterSecondUser.toBig().round(2, RoundingMode.RoundDown).toString(), "0.99");
 
         const stakedTotalAfter = await interBtcAPI.escrow.getTotalStakedBalance();
         const lockedBalanceTotal = user1_intrAmount.add(user2_intrAmount);

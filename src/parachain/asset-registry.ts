@@ -1,4 +1,4 @@
-import { Currency, UnitList } from "@interlay/monetary-js";
+import { Currency } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
 import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
@@ -13,7 +13,7 @@ export interface AssetRegistryAPI {
      * Get all currencies (foreign assets) in the asset registry.
      * @returns A list of currencies.
      */
-    getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>>;
+    getForeignAssetsAsCurrencies(): Promise<Array<Currency>>;
 }
 
 // shorthand type for the unwieldy tuple
@@ -23,20 +23,13 @@ export class DefaultAssetRegistryAPI {
     constructor(private api: ApiPromise) {}
 
     // not private for easier testing
-    static metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
+    static metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency {
         const symbol = decodeBytesAsString(metadata.symbol);
         const name = decodeBytesAsString(metadata.name);
 
-        const DynamicUnit: UnitList = {
-            atomic: 0,
-        };
-        DynamicUnit[symbol] = metadata.decimals.toNumber();
-
         return {
             name: name,
-            base: DynamicUnit[symbol],
-            rawBase: DynamicUnit.atomic,
-            units: DynamicUnit,
+            decimals: metadata.decimals.toNumber(),
             ticker: symbol,
         };
     }
@@ -56,7 +49,7 @@ export class DefaultAssetRegistryAPI {
         return entries.filter(([, metadata]) => metadata.isSome).map(([, metadata]) => metadata.unwrap());
     }
 
-    async getForeignAssetsAsCurrencies(): Promise<Array<Currency<UnitList>>> {
+    async getForeignAssetsAsCurrencies(): Promise<Array<Currency>> {
         const entries = await this.getAssetRegistryEntries();
 
         return DefaultAssetRegistryAPI.extractMetadataFromEntries(entries).map(

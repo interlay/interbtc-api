@@ -10,12 +10,12 @@ describe("DefaultAssetRegistryAPI", () => {
     let api: ApiPromise;
     let assetRegistryApi: DefaultAssetRegistryAPI;
     let mockMetadata: OrmlAssetRegistryAssetMetadata;
-    const mockMetadataValues =  {
+    const mockMetadataValues = {
         name: "Mock Coin One",
         symbol: "MCO",
         decimals: 8,
         existentialDeposit: 42,
-        feesPerMinute: 15
+        feesPerMinute: 15,
     };
 
     before(() => {
@@ -24,7 +24,7 @@ describe("DefaultAssetRegistryAPI", () => {
         // we only need the instance to create variables
         api.disconnect();
 
-        // register just enough from OrmlAssetRegistryAssetMetadata to construct 
+        // register just enough from OrmlAssetRegistryAssetMetadata to construct
         // meaningful representations for our tests
         api.registerTypes({
             OrmlAssetRegistryAssetMetadata: {
@@ -32,11 +32,11 @@ describe("DefaultAssetRegistryAPI", () => {
                 symbol: "Bytes",
                 decimals: "u32",
                 existentialDeposit: "u128",
-                additional: "InterbtcPrimitivesCustomMetadata"
+                additional: "InterbtcPrimitivesCustomMetadata",
             },
             InterbtcPrimitivesCustomMetadata: {
-                feePerSecond: "u128"
-            }
+                feePerSecond: "u128",
+            },
         });
     });
 
@@ -50,8 +50,8 @@ describe("DefaultAssetRegistryAPI", () => {
             decimals: api.createType("u32", mockMetadataValues.decimals),
             existentialDeposit: api.createType("u128", mockMetadataValues.existentialDeposit),
             additional: api.createType("InterbtcPrimitivesCustomMetadata", {
-                feePerSecond: api.createType("u128", mockMetadataValues.feesPerMinute)
-            })
+                feePerSecond: api.createType("u128", mockMetadataValues.feesPerMinute),
+            }),
         } as OrmlAssetRegistryAssetMetadata;
     });
 
@@ -74,23 +74,20 @@ describe("DefaultAssetRegistryAPI", () => {
                 // one "good" returned value
                 [
                     api.createType("StorageKey<[u32]>", "0x0000000000000001") as StorageKey<[u32]>,
-                    api.createType("Option<OrmlAssetRegistryAssetMetadata>", mockMetadata)
+                    api.createType("Option<OrmlAssetRegistryAssetMetadata>", mockMetadata),
                 ],
                 // one empty option
                 [
                     api.createType("StorageKey<[u32]>", "0x0000000000000002") as StorageKey<[u32]>,
-                    api.createType("Option<OrmlAssetRegistryAssetMetadata>", undefined)
-                ]
+                    api.createType("Option<OrmlAssetRegistryAssetMetadata>", undefined),
+                ],
             ];
 
             sinon.stub(assetRegistryApi, "getAssetRegistryEntries").returns(Promise.resolve(chainDataReturned));
 
             const actual = await assetRegistryApi.getForeignAssetsAsCurrencies();
 
-            expect(actual).to.have.lengthOf(
-                1,
-                `Expected only one currency to be returned, but got ${actual.length}`
-            );
+            expect(actual).to.have.lengthOf(1, `Expected only one currency to be returned, but got ${actual.length}`);
 
             const actualCurrency = actual[0];
             expect(actualCurrency.ticker).to.equal(
@@ -114,27 +111,9 @@ describe("DefaultAssetRegistryAPI", () => {
                 `Expected currency name to be ${mockMetadataValues.name}, but was ${actual.name}`
             );
 
-            expect(actual.base).to.equal(
+            expect(actual.decimals).to.equal(
                 mockMetadataValues.decimals,
-                `Expected currency base to be ${mockMetadataValues.decimals}, but was ${actual.base}`
-            );
-
-            // rawBase should always be zero
-            expect(actual.rawBase).to.equal(
-                0,
-                `Expected currency rawBase to be zero, but was ${actual.rawBase}`
-            );
-            
-            // check atomic units are defined and zero
-            expect(actual.units.atomic).to.exist;
-            expect(actual.units.atomic).to.equal(
-                0,
-                `Expected currency atomic unit value to be zero, but was ${actual.units.atomic}`
-            );
-            // check "main" unit is defined and has expected decimals value
-            expect(actual.units[actual.ticker]).to.equal(
-                actual.base,
-                `Expected currency unit value for ${actual.ticker} to be ${actual.base}, but was ${actual.units[actual.ticker]}`
+                `Expected currency base to be ${mockMetadataValues.decimals}, but was ${actual.decimals}`
             );
         });
     });

@@ -1,9 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
-import { Currency } from "@interlay/monetary-js";
 import {
-    CollateralUnit,
     currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     InterBtcApi,
@@ -110,13 +108,10 @@ describe("redeem", () => {
             const collateralCurrency = currencyIdToMonetaryCurrency(
                 vaultToLiquidateId.currencies.collateral
             ) as CollateralCurrency;
-            const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(
-                collateralCurrency as Currency<CollateralUnit>
-            );
+            const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency);
 
             // There should be no burnable tokens
-            await expect(userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency as Currency<CollateralUnit>)).to
-                .be.rejected;
+            await expect(userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency)).to.be.rejected;
 
             // issue a small amount of tokens (10x dust)
             const dustValue = await userInterBtcAPI.issue.getDustValue();
@@ -178,9 +173,7 @@ describe("redeem", () => {
                 (issued tokens: ${issuedTokens.toHuman()}; collateral: ${collateralCurrency.ticker}) 
                 but was ${maxBurnableTokens.toHuman()}`
             );
-            const burnExchangeRate = await userInterBtcAPI.redeem.getBurnExchangeRate(
-                collateralCurrency as Currency<CollateralUnit>
-            );
+            const burnExchangeRate = await userInterBtcAPI.redeem.getBurnExchangeRate(collateralCurrency);
             assert.isTrue(
                 regularExchangeRate.toBig().lt(burnExchangeRate.toBig()),
                 `Burn exchange rate (${burnExchangeRate.toHuman()}) is not better than 

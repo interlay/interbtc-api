@@ -4,11 +4,6 @@ import {
     Currency,
     PolkadotAmount,
     KusamaAmount,
-    PolkadotUnit,
-    KusamaUnit,
-    BitcoinUnit,
-    KintsugiUnit,
-    InterlayUnit,
     InterBtc,
     KBtc,
     InterBtcAmount,
@@ -55,12 +50,6 @@ export type CollateralAmount = typeof CollateralAmount[number];
 export const CollateralCurrency = [Polkadot, Kusama, Interlay, Kintsugi] as const;
 export type CollateralCurrency = typeof CollateralCurrency[number];
 
-export const CollateralUnit = [PolkadotUnit, KusamaUnit, InterlayUnit, KintsugiUnit];
-export type CollateralUnit = typeof CollateralUnit[number];
-
-export const CurrencyUnit = [BitcoinUnit, PolkadotUnit, KusamaUnit, KintsugiUnit, InterlayUnit];
-export type CurrencyUnit = typeof CurrencyUnit[number];
-
 export const WrappedCurrency = [InterBtc, KBtc];
 export type WrappedCurrency = typeof WrappedCurrency[number];
 
@@ -70,17 +59,11 @@ export type WrappedAmount = typeof WrappedAmount[number];
 export const GovernanceCurrency = [Interlay, Kintsugi];
 export type GovernanceCurrency = typeof GovernanceCurrency[number];
 
-export const GovernanceUnit = [InterlayUnit, KintsugiUnit];
-export type GovernanceUnit = typeof GovernanceUnit[number];
-
 export const VotingCurrency = [VoteInterlay, VoteKintsugi];
 export type VotingCurrency = typeof VotingCurrency[number];
 
-export const VoteUnit = GovernanceUnit;
-export type VoteUnit = GovernanceUnit;
-
-export type StakedBalance<U extends GovernanceUnit> = {
-    amount: MonetaryAmount<Currency<U>, U>;
+export type StakedBalance = {
+    amount: MonetaryAmount<GovernanceCurrency>;
     endBlock: number;
 };
 
@@ -108,34 +91,29 @@ export function tickerToCurrencyIdLiteral(ticker: string): CurrencyIdLiteral {
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
-export function currencyIdToMonetaryCurrency<U extends CurrencyUnit>(
-    currencyId: InterbtcPrimitivesCurrencyId
-): Currency<U> {
+export function currencyIdToMonetaryCurrency(currencyId: InterbtcPrimitivesCurrencyId): Currency {
     // The currencyId is always a token, since it is just a tuple struct
     if (!currencyId.isToken) {
         throw new Error("The currency ID must be a token");
     }
     const token = currencyId.asToken;
     if (token.isIbtc) {
-        return InterBtc as unknown as Currency<U>;
+        return InterBtc;
     } else if (token.isDot) {
-        return Polkadot as unknown as Currency<U>;
+        return Polkadot;
     } else if (token.isKsm) {
-        return Kusama as unknown as Currency<U>;
+        return Kusama;
     } else if (token.isKbtc) {
-        return KBtc as unknown as Currency<U>;
+        return KBtc;
     } else if (token.isKint) {
-        return Kintsugi as unknown as Currency<U>;
+        return Kintsugi;
     } else if (token.isIntr) {
-        return Interlay as unknown as Currency<U>;
+        return Interlay;
     }
     throw new Error("No CurrencyId entry for provided ticker");
 }
 
-export function currencyIdLiteralToMonetaryCurrency<U extends CurrencyUnit>(
-    api: ApiPromise,
-    currencyIdLiteral: CurrencyIdLiteral
-): Currency<U> {
+export function currencyIdLiteralToMonetaryCurrency(api: ApiPromise, currencyIdLiteral: CurrencyIdLiteral): Currency {
     return currencyIdToMonetaryCurrency(newCurrencyId(api, currencyIdLiteral));
 }
 
@@ -144,7 +122,7 @@ export function currencyIdToLiteral(currencyId: InterbtcPrimitivesCurrencyId): C
     return tickerToCurrencyIdLiteral(monetaryCurrency.ticker);
 }
 
-export function tickerToMonetaryCurrency<U extends CurrencyUnit>(api: ApiPromise, ticker: string): Currency<U> {
+export function tickerToMonetaryCurrency(api: ApiPromise, ticker: string): Currency {
     const currencyIdLiteral = tickerToCurrencyIdLiteral(ticker);
     return currencyIdToMonetaryCurrency(newCurrencyId(api, currencyIdLiteral));
 }
@@ -163,13 +141,13 @@ export function parseEscrowPoint(e: EscrowPoint): RWEscrowPoint {
     };
 }
 
-export class ChainBalance<U extends CurrencyUnit> {
-    free: MonetaryAmount<Currency<U>, U>;
-    transferable: MonetaryAmount<Currency<U>, U>;
-    reserved: MonetaryAmount<Currency<U>, U>;
-    currency: Currency<U>;
+export class ChainBalance {
+    free: MonetaryAmount<Currency>;
+    transferable: MonetaryAmount<Currency>;
+    reserved: MonetaryAmount<Currency>;
+    currency: Currency;
 
-    constructor(currency: Currency<U>, free?: BigSource, transferable?: BigSource, reserved?: BigSource) {
+    constructor(currency: Currency, free?: BigSource, transferable?: BigSource, reserved?: BigSource) {
         this.currency = currency;
         this.free = newMonetaryAmount(free || 0, currency);
         this.transferable = newMonetaryAmount(transferable || 0, currency);
@@ -180,18 +158,13 @@ export class ChainBalance<U extends CurrencyUnit> {
         First stringifies the `MonetaryAmount`s, then the entire object.
         Allows for simple comparison in tests.
     */
-    toString(base?: U[keyof U]): string {
-        const stringifiedChainBalance = Object.fromEntries(
-            Object.entries(this).map(([k, v]) => [k, v.toString(base || this.currency.base)])
-        );
+    toString(): string {
+        const stringifiedChainBalance = Object.fromEntries(Object.entries(this).map(([k, v]) => [k, v.toString()]));
         return JSON.stringify(stringifiedChainBalance);
     }
 }
 
-export function parseOrmlTokensAccountData<U extends CurrencyUnit>(
-    data: OrmlTokensAccountData,
-    currency: Currency<U>
-): ChainBalance<U> {
+export function parseOrmlTokensAccountData(data: OrmlTokensAccountData, currency: Currency): ChainBalance {
     return new ChainBalance(
         currency,
         data.free.toString(),
@@ -201,9 +174,9 @@ export function parseOrmlTokensAccountData<U extends CurrencyUnit>(
 }
 
 export function parseEscrowLockedBalance(
-    governanceCurrency: Currency<GovernanceUnit>,
+    governanceCurrency: GovernanceCurrency,
     escrowLockedBalance: EscrowLockedBalance
-): StakedBalance<GovernanceUnit> {
+): StakedBalance {
     return {
         amount: newMonetaryAmount(escrowLockedBalance.amount.toString(), governanceCurrency),
         endBlock: escrowLockedBalance.end.toNumber(),

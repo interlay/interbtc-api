@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId } from "@polkadot/types/interfaces";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, Currency, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
 
@@ -10,7 +10,6 @@ import {
     createSubstrateAPI,
     VaultsAPI,
     newAccountId,
-    CollateralUnit,
     CurrencyIdLiteral,
     InterBtcApi,
     DefaultInterBtcApi,
@@ -161,12 +160,8 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the exchange rate", async () => {
-        async function setCollateralExchangeRate<C extends CollateralUnit>(value: Big, currency: Currency<C>) {
-            const exchangeRate = new ExchangeRate<Bitcoin, BitcoinUnit, typeof currency, typeof currency.units>(
-                Bitcoin,
-                currency,
-                value
-            );
+        async function setCollateralExchangeRate(value: Big, currency: Currency) {
+            const exchangeRate = new ExchangeRate<Bitcoin, typeof currency>(Bitcoin, currency, value);
             // result will be medianized
             await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
         }

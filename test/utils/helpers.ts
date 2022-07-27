@@ -1,5 +1,5 @@
 import { Transaction } from "@interlay/esplora-btc-api";
-import { Bitcoin, BitcoinUnit, Currency, ExchangeRate, UnitList } from "@interlay/monetary-js";
+import { Bitcoin, Currency, ExchangeRate } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
@@ -7,14 +7,7 @@ import { AnyTuple } from "@polkadot/types/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import Big, { RoundingMode } from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
-import {
-    BitcoinCoreClient,
-    InterBtcApi,
-    CollateralUnit,
-    OracleAPI,
-    VaultStatusExt,
-    DefaultTransactionAPI,
-} from "../../src";
+import { BitcoinCoreClient, InterBtcApi, OracleAPI, VaultStatusExt, DefaultTransactionAPI } from "../../src";
 import { SUDO_URI } from "../config";
 
 export const SLEEP_TIME_MS = 1000;
@@ -37,9 +30,9 @@ export async function wait_success<R>(call: () => Promise<R>): Promise<R> {
     }
 }
 
-export async function callWithExchangeRate<C extends CollateralUnit>(
+export async function callWithExchangeRate(
     oracleAPI: OracleAPI,
-    exchangeRate: ExchangeRate<Bitcoin, BitcoinUnit, Currency<C>, C>,
+    exchangeRate: ExchangeRate<Bitcoin, Currency>,
     fn: () => Promise<void>
 ): Promise<void> {
     const initialExchangeRate = await oracleAPI.getExchangeRate(exchangeRate.counter);
@@ -129,8 +122,7 @@ export const vaultStatusToLabel = (status: VaultStatusExt): string => {
 // use the same exchange rate as the running oracles use
 // to avoid flaky tests due to updated prices from the oracle client(s)
 // note: currently the same for all collateral currencies - might change in future
-export const getExchangeRateValueToSetForTesting = <U extends UnitList>(_collateralCurrency: Currency<U>): Big =>
-    new Big("230.0");
+export const getExchangeRateValueToSetForTesting = (_collateralCurrency: Currency): Big => new Big("230.0");
 
 /**
  * Returns the vsize (virtual size) of the given transaction.

@@ -13,7 +13,8 @@ import { AxiosResponse } from "axios";
 import * as bitcoinjs from "bitcoinjs-lib";
 import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
-import { BitcoinAmount } from "@interlay/monetary-js";
+import { Bitcoin, BitcoinAmount } from "@interlay/monetary-js";
+import { atomicToBaseAmount } from "../utils";
 
 export const MAINNET_ESPLORA_BASE_PATH = "https://btc-mainnet.interlay.io";
 export const TESTNET_ESPLORA_BASE_PATH = "https://btc-testnet.interlay.io";
@@ -262,7 +263,8 @@ export class DefaultElectrsAPI implements ElectrsAPI {
             if (txo.value === undefined) {
                 return false;
             } else {
-                const utxoValue = BitcoinAmount.from.Satoshi(txo.value);
+                const atomicValue = atomicToBaseAmount(txo.value, Bitcoin);
+                const utxoValue = new BitcoinAmount(atomicValue);
                 return utxoValue.gte(amount);
             }
         }
