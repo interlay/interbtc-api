@@ -8,7 +8,7 @@ import { DefaultAssetRegistryAPI, DefaultInterBtcApi, getStorageKey, stripHexPre
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 
-import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { waitForFinalizedEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
@@ -31,14 +31,14 @@ describe("AssetRegistry", () => {
         // check which keys exist before the tests
         registeredKeysBefore = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
     });
-    
+
     after(async () => {
         // clean up keys created in tests if necessary
         const registeredKeysAfter = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
 
-        const previousKeyHashes = registeredKeysBefore.map(key => stripHexPrefix(key.toHex()));
+        const previousKeyHashes = registeredKeysBefore.map((key) => stripHexPrefix(key.toHex()));
         // need to use string comparison since the raw StorageKeys don't play nicely with .filter()
-        const newKeys = registeredKeysAfter.filter(key => {
+        const newKeys = registeredKeysAfter.filter((key) => {
             const newKeyHash = stripHexPrefix(key.toHex());
             return !previousKeyHashes.includes(newKeyHash);
         });
@@ -50,17 +50,16 @@ describe("AssetRegistry", () => {
 
             // wait for finalized event
             await waitForFinalizedEvent(interBtcAPI, api.events.sudo.Sudid);
-
         }
-        
+
         return api.disconnect();
     });
 
     /**
-     * This test checks that the returned metadata from the chain has all the fields we need to construct 
-     * a `Currency<UnitList>` object. 
+     * This test checks that the returned metadata from the chain has all the fields we need to construct
+     * a `Currency<UnitList>` object.
      * To see the fields required, take a look at {@link DefaultAssetRegistryAPI.metadataToCurrency}.
-     * 
+     *
      * Note: More detailed tests around the internal logic are in the unit tests.
      */
     it("should get expected shape of AssetRegistry metadata", async () => {
@@ -71,28 +70,29 @@ describe("AssetRegistry", () => {
             // no existing foreign assets; register a new foreign asset for the test
             const nextAssetId = (await interBtcAPI.api.query.assetRegistry.lastAssetId()).toNumber() + 1;
 
-            const callToRegister = interBtcAPI.api.tx.assetRegistry.registerAsset({ 
-                decimals: 6,
-                name: "Test coin",
-                symbol: "TSC",
-            },
-            api.createType("u32", nextAssetId)
+            const callToRegister = interBtcAPI.api.tx.assetRegistry.registerAsset(
+                {
+                    decimals: 6,
+                    name: "Test coin",
+                    symbol: "TSC",
+                },
+                api.createType("u32", nextAssetId)
             );
 
             // need sudo to add new foreign asset
             await interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount);
-    
+
             // wait for finalized event
             await waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset);
         }
-        
+
         // get the metadata for the asset we just registered
         const assetRegistryAPI = new DefaultAssetRegistryAPI(api);
-        const foreignAssetEntries = (await assetRegistryAPI.getAssetRegistryEntries());
+        const foreignAssetEntries = await assetRegistryAPI.getAssetRegistryEntries();
         const metadataArray = DefaultAssetRegistryAPI.extractMetadataFromEntries(foreignAssetEntries);
-        
-        type OrmlARAMetadataKey = keyof OrmlAssetRegistryAssetMetadata;
-       
+
+        type OrmlARAMetadataKey = keyof OrmlTraitsAssetRegistryAssetMetadata;
+
         // now check that we have the fields we absolutely need on the returned metadata
         // check {@link DefaultAssetRegistryAPI.metadataToCurrency} to see which fields are needed.
         const requiredFieldClassnames = new Map<OrmlARAMetadataKey, string>([
@@ -102,16 +102,10 @@ describe("AssetRegistry", () => {
         ]);
 
         for (const metadata of metadataArray) {
-            assert.isDefined(
-                metadata, 
-                "Expected metadata to be defined, but it is not."
-            );
+            assert.isDefined(metadata, "Expected metadata to be defined, but it is not.");
 
             for (const [key, className] of requiredFieldClassnames) {
-                assert.isDefined(
-                    metadata[key],
-                    `Expected metadata to have field ${key.toString()}, but it does not.`
-                );
+                assert.isDefined(metadata[key], `Expected metadata to have field ${key.toString()}, but it does not.`);
 
                 // check type
                 assert.equal(
