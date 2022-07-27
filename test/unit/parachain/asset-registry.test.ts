@@ -2,7 +2,7 @@ import { expect } from "../../chai";
 import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
-import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { DefaultAssetRegistryAPI } from "../../../src/";
 import { AssetRegistryMetadataTuple } from "@interlay/interbtc/parachain/asset-registry";
 import * as allThingsEncoding from "../../../src/utils/encoding";
@@ -10,7 +10,7 @@ import * as allThingsEncoding from "../../../src/utils/encoding";
 describe("DefaultAssetRegistryAPI", () => {
     let api: ApiPromise;
     let assetRegistryApi: DefaultAssetRegistryAPI;
-    let mockMetadata: OrmlAssetRegistryAssetMetadata;
+    let mockMetadata: OrmlTraitsAssetRegistryAssetMetadata;
     let mockStorageKey: StorageKey<[u32]>;
     // scraped from integration tests
     const scrapedStorageKey =
@@ -30,10 +30,10 @@ describe("DefaultAssetRegistryAPI", () => {
         // we only need the instance to create variables
         api.disconnect();
 
-        // register just enough from OrmlAssetRegistryAssetMetadata to construct
+        // register just enough from OrmlTraitsAssetRegistryAssetMetadata to construct
         // meaningful representations for our tests
         api.registerTypes({
-            OrmlAssetRegistryAssetMetadata: {
+            OrmlTraitsAssetRegistryAssetMetadata: {
                 name: "Bytes",
                 symbol: "Bytes",
                 decimals: "u32",
@@ -60,7 +60,7 @@ describe("DefaultAssetRegistryAPI", () => {
             additional: api.createType("InterbtcPrimitivesCustomMetadata", {
                 feePerSecond: api.createType("u128", mockMetadataValues.feesPerMinute),
             }),
-        } as OrmlAssetRegistryAssetMetadata;
+        } as OrmlTraitsAssetRegistryAssetMetadata;
 
         // mock return type of storageKeyToNthInner method which only works correctly in integration tests
         const mockedReturn = api.createType("AssetId", mockStorageKeyValue);
@@ -84,9 +84,9 @@ describe("DefaultAssetRegistryAPI", () => {
         it("should ignore empty optionals in foreign assets data from chain", async () => {
             const chainDataReturned: AssetRegistryMetadataTuple[] = [
                 // one "good" returned value
-                [mockStorageKey, api.createType("Option<OrmlAssetRegistryAssetMetadata>", mockMetadata)],
+                [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", mockMetadata)],
                 // one empty option
-                [mockStorageKey, api.createType("Option<OrmlAssetRegistryAssetMetadata>", undefined)],
+                [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", undefined)],
             ];
 
             sinon.stub(assetRegistryApi, "getAssetRegistryEntries").returns(Promise.resolve(chainDataReturned));

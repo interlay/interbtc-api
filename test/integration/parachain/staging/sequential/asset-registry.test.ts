@@ -9,7 +9,7 @@ import { getStorageKey } from "../../../../../src/utils/storage";
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
-import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { waitForIncludedEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
@@ -92,7 +92,7 @@ describe("AssetRegistry", () => {
         const foreignAssetEntries = await assetRegistryAPI.getAssetRegistryEntries();
         const unwrappedMetadataTupleArray = DefaultAssetRegistryAPI.unwrapMetadataFromEntries(foreignAssetEntries);
 
-        type OrmlARAMetadataKey = keyof OrmlAssetRegistryAssetMetadata;
+        type OrmlARAMetadataKey = keyof OrmlTraitsAssetRegistryAssetMetadata;
 
         // now check that we have the fields we absolutely need on the returned metadata
         // check {@link DefaultAssetRegistryAPI.metadataToCurrency} to see which fields are needed.

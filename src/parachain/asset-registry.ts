@@ -2,7 +2,7 @@ import { Currency } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
-import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { decodeBytesAsString, newForeignAssetId, storageKeyToNthInner } from "../utils";
 import { Option } from "@polkadot/types-codec";
 import { ForeignAsset } from "../types";
@@ -26,13 +26,13 @@ export interface AssetRegistryAPI {
 }
 
 // shorthand type for the unwieldy tuple
-export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlAssetRegistryAssetMetadata>];
-export type UnwrappedAssetRegistryMetadataTuple = [StorageKey<[u32]>, OrmlAssetRegistryAssetMetadata];
+export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlTraitsAssetRegistryAssetMetadata>];
+export type UnwrappedAssetRegistryMetadataTuple = [StorageKey<[u32]>, OrmlTraitsAssetRegistryAssetMetadata];
 
 export class DefaultAssetRegistryAPI {
     constructor(private api: ApiPromise) {}
 
-    static metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency {
+    static metadataToCurrency(metadata: OrmlTraitsAssetRegistryAssetMetadata): Currency {
         const symbol = decodeBytesAsString(metadata.symbol);
         const name = decodeBytesAsString(metadata.name);
         return {
