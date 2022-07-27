@@ -1,7 +1,7 @@
 import { Currency, UnitList } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
-import { OrmlAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { decodeBytesAsString } from "../utils";
 import { Option } from "@polkadot/types-codec";
 
@@ -17,13 +17,13 @@ export interface AssetRegistryAPI {
 }
 
 // shorthand type for the unwieldy tuple
-export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlAssetRegistryAssetMetadata>];
+export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlTraitsAssetRegistryAssetMetadata>];
 
 export class DefaultAssetRegistryAPI {
     constructor(private api: ApiPromise) {}
 
     // not private for easier testing
-    static metadataToCurrency(metadata: OrmlAssetRegistryAssetMetadata): Currency<UnitList> {
+    static metadataToCurrency(metadata: OrmlTraitsAssetRegistryAssetMetadata): Currency<UnitList> {
         const symbol = decodeBytesAsString(metadata.symbol);
         const name = decodeBytesAsString(metadata.name);
 
@@ -52,7 +52,7 @@ export class DefaultAssetRegistryAPI {
      * @param entries The entries from the asset registry.
      * @returns A list of metadata.
      */
-    static extractMetadataFromEntries(entries: AssetRegistryMetadataTuple[]): OrmlAssetRegistryAssetMetadata[] {
+    static extractMetadataFromEntries(entries: AssetRegistryMetadataTuple[]): OrmlTraitsAssetRegistryAssetMetadata[] {
         return entries.filter(([, metadata]) => metadata.isSome).map(([, metadata]) => metadata.unwrap());
     }
 

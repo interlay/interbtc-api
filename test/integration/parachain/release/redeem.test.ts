@@ -105,7 +105,7 @@ describe("redeem", () => {
 
     // TODO: discuss where to test this. Should be tested in the vault client rather than on the lib
     // TODO: check with greg how to use instant seal for this test
-    it("should liquidate a vault that committed theft", async () => {
+    it.skip("should liquidate a vault that committed theft", async () => {
         for (const vaultToLiquidateId of vaultToLiquidateIds) {
             const collateralCurrency = currencyIdToMonetaryCurrency(
                 vaultToLiquidateId.currencies.collateral

@@ -39,11 +39,4 @@ describe("Constants", function () {
             assert.isDefined(returnValue);
         }).timeout(500);
     });
-
-    describe("getTransactionWeightToFee", () => {
-        it("should sucessfully return", async () => {
-            const returnValue = constantAPI.getTransactionWeightToFee();
-            assert.isDefined(returnValue);
-        }).timeout(500);
-    });
 });
