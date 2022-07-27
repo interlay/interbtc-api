@@ -2,7 +2,9 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import {
+    AssetRegistryAPI,
     currencyIdToMonetaryCurrency,
+    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
     InterBtcApi,
@@ -37,6 +39,7 @@ describe("refund", () => {
     let vault_3_ids: Array<InterbtcPrimitivesVaultId>;
     let wrappedCurrency: WrappedCurrency;
     let interBtcAPI: InterBtcApi;
+    let assetRegistry: AssetRegistryAPI;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -50,6 +53,7 @@ describe("refund", () => {
             BITCOIN_CORE_WALLET
         );
         userAccount = keyring.addFromUri(USER_1_URI);
+        assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
@@ -65,7 +69,8 @@ describe("refund", () => {
 
     it("should not generate a refund request", async () => {
         for (const vault_3_id of vault_3_ids) {
-            const currencyTicker = currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral).ticker;
+            const currencyTicker = (await currencyIdToMonetaryCurrency(assetRegistry, vault_3_id.currencies.collateral))
+                .ticker;
             const issueResult = await issueSingle(
                 interBtcAPI,
                 bitcoinCoreClient,
@@ -90,7 +95,8 @@ describe("refund", () => {
             this.skip();
         }
         for (const vault_3_id of vault_3_ids) {
-            const currencyTicker = currencyIdToMonetaryCurrency(vault_3_id.currencies.collateral).ticker;
+            const currencyTicker = (await currencyIdToMonetaryCurrency(assetRegistry, vault_3_id.currencies.collateral))
+                .ticker;
             const issueResult = await issueSingle(
                 interBtcAPI,
                 bitcoinCoreClient,

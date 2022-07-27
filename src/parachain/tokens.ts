@@ -1,10 +1,10 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { ApiPromise } from "@polkadot/api";
-import { Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
 import { TransactionAPI } from "./transaction";
-import { ChainBalance, parseOrmlTokensAccountData, tickerToCurrencyIdLiteral } from "../types";
+import { ChainBalance, CurrencyExt, parseOrmlTokensAccountData } from "../types";
 import { OrmlTokensAccountData } from "@polkadot/types/lookup";
 
 /**
@@ -12,30 +12,30 @@ import { OrmlTokensAccountData } from "@polkadot/types/lookup";
  */
 export interface TokensAPI {
     /**
-     * @param currency The currency specification, a `Monetary.js` object
+     * @param currency The currency specification, a `Monetary.js` object or `ForeignAsset`
      * @returns The total amount in the system
      */
-    total(currency: Currency): Promise<MonetaryAmount<Currency>>;
+    total(currency: CurrencyExt): Promise<MonetaryAmount<CurrencyExt>>;
     /**
-     * @param currency The currency specification, a `Monetary.js` object
+     * @param currency The currency specification, `Monetary.js` object or `ForeignAsset`
      * @param id The AccountId of a user
      * @returns The user's balance
      */
-    balance(currency: Currency, id: AccountId): Promise<ChainBalance>;
+    balance(currency: CurrencyExt, id: AccountId): Promise<ChainBalance>;
     /**
      * @param destination The address of a user
-     * @param amount The amount to transfer, as a `Monetary.js` object
+     * @param amount The amount to transfer, as `Monetary.js` object or `ForeignAsset`
      */
-    transfer(destination: string, amount: MonetaryAmount<Currency>): Promise<void>;
+    transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
     /**
      * Subscribe to balance updates
-     * @param currency The currency specification, a `Monetary.js` object
+     * @param currency The currency specification, `Monetary.js` object or `ForeignAsset`
      * @param account AccountId string
      * @param callback Function to be called whenever the balance of an account is updated.
      * Its parameters are (accountIdString, freeBalance)
      */
     subscribeToBalance(
-        currency: Currency,
+        currency: CurrencyExt,
         account: string,
         callback: (account: string, balance: ChainBalance) => void
     ): Promise<() => void>;
@@ -47,41 +47,39 @@ export interface TokensAPI {
      */
     setBalance(
         accountId: AccountId,
-        freeBalance: MonetaryAmount<Currency>,
-        lockedBalance?: MonetaryAmount<Currency>
+        freeBalance: MonetaryAmount<CurrencyExt>,
+        lockedBalance?: MonetaryAmount<CurrencyExt>
     ): Promise<void>;
 }
 
 export class DefaultTokensAPI implements TokensAPI {
     constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
-    async total(currency: Currency): Promise<MonetaryAmount<Currency>> {
-        const currencyId = newCurrencyId(this.api, tickerToCurrencyIdLiteral(currency.ticker));
+    async total(currency: CurrencyExt): Promise<MonetaryAmount<CurrencyExt>> {
+        const currencyId = newCurrencyId(this.api, currency);
         const rawAmount = await this.api.query.tokens.totalIssuance(currencyId);
         return newMonetaryAmount(rawAmount.toString(), currency);
     }
 
-    async getAccountData(currency: Currency, id: AccountId): Promise<OrmlTokensAccountData> {
-        const currencyIdLiteral = tickerToCurrencyIdLiteral(currency.ticker);
-        return await this.api.query.tokens.accounts(id, newCurrencyId(this.api, currencyIdLiteral));
+    async getAccountData(currency: CurrencyExt, id: AccountId): Promise<OrmlTokensAccountData> {
+        return await this.api.query.tokens.accounts(id, newCurrencyId(this.api, currency));
     }
 
-    async balance(currency: Currency, id: AccountId): Promise<ChainBalance> {
+    async balance(currency: CurrencyExt, id: AccountId): Promise<ChainBalance> {
         const accountData = await this.getAccountData(currency, id);
         return parseOrmlTokensAccountData(accountData, currency);
     }
 
     async subscribeToBalance(
-        currency: Currency,
+        currency: CurrencyExt,
         account: string,
         callback: (account: string, accountData: ChainBalance) => void
     ): Promise<() => void> {
         try {
             const accountId = newAccountId(this.api, account);
-            const currencyIdLiteral = tickerToCurrencyIdLiteral(currency.ticker);
             const unsubscribe = await this.api.query.tokens.accounts(
                 accountId,
-                newCurrencyId(this.api, currencyIdLiteral),
+                newCurrencyId(this.api, currency),
                 (accountData) => {
                     callback(account, parseOrmlTokensAccountData(accountData, currency));
                 }
@@ -96,12 +94,11 @@ export class DefaultTokensAPI implements TokensAPI {
         };
     }
 
-    async transfer(destination: string, amount: MonetaryAmount<Currency>): Promise<void> {
+    async transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
         const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
-        const currencyIdLiteral = tickerToCurrencyIdLiteral(amount.currency.ticker);
         const transferTransaction = this.api.tx.tokens.transfer(
             destination,
-            newCurrencyId(this.api, currencyIdLiteral),
+            newCurrencyId(this.api, amount.currency),
             amountAtomicUnit
         );
         await this.transactionAPI.sendLogged(transferTransaction, this.api.events.tokens.Transfer, true);
@@ -109,14 +106,14 @@ export class DefaultTokensAPI implements TokensAPI {
 
     async setBalance(
         accountId: AccountId,
-        freeBalance: MonetaryAmount<Currency>,
-        lockedBalance?: MonetaryAmount<Currency>
+        freeBalance: MonetaryAmount<CurrencyExt>,
+        lockedBalance?: MonetaryAmount<CurrencyExt>
     ): Promise<void> {
         lockedBalance = lockedBalance ? lockedBalance : newMonetaryAmount(0, freeBalance.currency);
         const tx = this.api.tx.sudo.sudo(
             this.api.tx.tokens.setBalance(
                 accountId,
-                newCurrencyId(this.api, tickerToCurrencyIdLiteral(freeBalance.currency.ticker)),
+                newCurrencyId(this.api, freeBalance.currency),
                 freeBalance.toString(true),
                 lockedBalance.toString(true)
             )

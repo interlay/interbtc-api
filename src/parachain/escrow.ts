@@ -18,7 +18,6 @@ import {
     parseEscrowPoint,
     RWEscrowPoint,
     StakedBalance,
-    tickerToCurrencyIdLiteral,
     VotingCurrency,
 } from "../types";
 import { SystemAPI } from "./system";
@@ -198,13 +197,13 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async getRewardTally(accountId: AccountId): Promise<Big> {
-        const governanceCurrencyId = newCurrencyId(this.api, tickerToCurrencyIdLiteral(this.governanceCurrency.ticker));
+        const governanceCurrencyId = newCurrencyId(this.api, this.governanceCurrency);
         const rawRewardTally = await this.api.query.escrowRewards.rewardTally(governanceCurrencyId, accountId);
         return decodeFixedPointType(rawRewardTally);
     }
 
     async getRewardPerToken(): Promise<Big> {
-        const governanceCurrencyId = newCurrencyId(this.api, tickerToCurrencyIdLiteral(this.governanceCurrency.ticker));
+        const governanceCurrencyId = newCurrencyId(this.api, this.governanceCurrency);
         const rawRewardPerToken = await this.api.query.escrowRewards.rewardPerToken(governanceCurrencyId);
         return decodeFixedPointType(rawRewardPerToken);
     }

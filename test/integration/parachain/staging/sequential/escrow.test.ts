@@ -13,13 +13,8 @@ import {
     VAULT_TO_BAN_URI,
     VAULT_TO_LIQUIDATE_URI,
 } from "../../../../config";
-import {
-    DefaultInterBtcApi,
-    GovernanceCurrency,
-    newAccountId,
-    newMonetaryAmount,
-    setNumericStorage,
-} from "../../../../../src";
+import { DefaultInterBtcApi, GovernanceCurrency, newAccountId, newMonetaryAmount } from "../../../../../src";
+import { setNumericStorage } from "../../../../../src/utils/storage";
 import { sudo } from "../../../../utils/helpers";
 
 describe("escrow", () => {

@@ -1,6 +1,6 @@
-import { Bitcoin, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, Currency, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
-import { CollateralCurrency, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, WrappedCurrency } from "../types";
 import { InterbtcPrimitivesVaultId, InterbtcPrimitivesReplaceReplaceRequestStatus } from "@polkadot/types/lookup";
 
 export interface Issue {
@@ -8,7 +8,7 @@ export interface Issue {
     wrappedAmount: MonetaryAmount<WrappedCurrency>;
     userParachainAddress: string;
     bridgeFee: MonetaryAmount<WrappedCurrency>;
-    griefingCollateral: MonetaryAmount<CollateralCurrency>;
+    griefingCollateral: MonetaryAmount<Currency>;
     vaultWalletPubkey: string;
     creationBlock: number;
     creationTimestamp?: number;
@@ -47,7 +47,7 @@ export interface Redeem {
     id: string;
     userParachainAddress: string;
     amountBTC: MonetaryAmount<WrappedCurrency>;
-    collateralPremium: MonetaryAmount<CollateralCurrency>;
+    collateralPremium: MonetaryAmount<CollateralCurrencyExt>;
     bridgeFee: MonetaryAmount<WrappedCurrency>;
     btcTransferFee: MonetaryAmount<Bitcoin>;
     creationTimestamp?: number;
@@ -89,8 +89,8 @@ export interface ReplaceRequestExt {
     newVault: InterbtcPrimitivesVaultId;
     oldVault: InterbtcPrimitivesVaultId;
     amount: MonetaryAmount<WrappedCurrency>;
-    griefingCollateral: MonetaryAmount<CollateralCurrency>;
-    collateral: MonetaryAmount<CollateralCurrency>;
+    griefingCollateral: MonetaryAmount<Currency>;
+    collateral: MonetaryAmount<CollateralCurrencyExt>;
     acceptTime: number;
     period: number;
     btcHeight: number;

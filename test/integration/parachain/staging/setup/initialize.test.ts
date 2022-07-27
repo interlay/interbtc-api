@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId } from "@polkadot/types/interfaces";
-import { Bitcoin, Currency, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
 
@@ -10,12 +10,11 @@ import {
     createSubstrateAPI,
     VaultsAPI,
     newAccountId,
-    CurrencyIdLiteral,
     InterBtcApi,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
-    CollateralCurrency,
-    tickerToCurrencyIdLiteral,
+    CollateralCurrencyExt,
+    CurrencyExt,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -58,13 +57,13 @@ describe("Initialize parachain state", () => {
     let vault_to_ban: KeyringPair;
     let vault_to_liquidate: KeyringPair;
 
-    let collateralCurrency: CollateralCurrency;
+    let collateralCurrency: CollateralCurrencyExt;
 
     function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
         return newAccountId(api, keyPair.address);
     }
 
-    async function waitForRegister(api: VaultsAPI, accountId: AccountId, collateralCurrency: CurrencyIdLiteral) {
+    async function waitForRegister(api: VaultsAPI, accountId: AccountId, collateralCurrency: CollateralCurrencyExt) {
         for (;;) {
             try {
                 await api.get(accountId, collateralCurrency);
@@ -100,20 +99,19 @@ describe("Initialize parachain state", () => {
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
         collateralCurrency = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency())[0];
-        const collateralCurrencyLiteral = tickerToCurrencyIdLiteral(collateralCurrency.ticker);
-        const vaultCollateralPairs: [KeyringPair, CurrencyIdLiteral][] = [
-            [vault_1, collateralCurrencyLiteral],
-            [vault_2, collateralCurrencyLiteral],
-            [vault_3, collateralCurrencyLiteral],
-            [vault_to_ban, collateralCurrencyLiteral],
-            [vault_to_liquidate, collateralCurrencyLiteral],
+        const vaultCollateralPairs: [KeyringPair, CollateralCurrencyExt][] = [
+            [vault_1, collateralCurrency],
+            [vault_2, collateralCurrency],
+            [vault_3, collateralCurrency],
+            [vault_to_ban, collateralCurrency],
+            [vault_to_liquidate, collateralCurrency],
         ];
         // wait for all vaults to register
         await Promise.all(
             vaultCollateralPairs
-                .map(([keyring, collateral]): [AccountId, CurrencyIdLiteral] => [
+                .map(([keyring, collateralCurrency]): [AccountId, CollateralCurrencyExt] => [
                     accountIdFromKeyring(keyring),
-                    collateral,
+                    collateralCurrency,
                 ])
                 .map(([accountId, collateral]) => waitForRegister(userInterBtcAPI.vaults, accountId, collateral))
         );
@@ -160,7 +158,7 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the exchange rate", async () => {
-        async function setCollateralExchangeRate(value: Big, currency: Currency) {
+        async function setCollateralExchangeRate(value: Big, currency: CurrencyExt) {
             const exchangeRate = new ExchangeRate<Bitcoin, typeof currency>(Bitcoin, currency, value);
             // result will be medianized
             await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);

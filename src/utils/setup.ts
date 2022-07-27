@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { ExchangeRate, Bitcoin, Currency, MonetaryAmount } from "@interlay/monetary-js";
+import { ExchangeRate, Bitcoin, MonetaryAmount } from "@interlay/monetary-js";
 import { Big } from "big.js";
 import BN from "bn.js";
 import { ApiPromise, Keyring } from "@polkadot/api";
@@ -28,9 +28,9 @@ import {
     USER_1_URI,
     VAULT_1_URI,
 } from "../../test/config";
-import { CollateralCurrency, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
-import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrencies } from "..";
+import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrencies } from "../";
 import { AddressOrPair } from "@polkadot/api/types";
 
 // Command line arguments of the initialization script
@@ -93,7 +93,7 @@ export interface InitializeRedeem {
 export interface InitializationParams {
     initialize?: boolean;
     setStableConfirmations?: true | ChainConfirmations;
-    setExchangeRate?: true | ExchangeRate<Bitcoin, CollateralCurrency>;
+    setExchangeRate?: true | ExchangeRate<Bitcoin, CollateralCurrencyExt>;
     btcTxFees?: true | Big;
     enableNomination?: boolean;
     issue?: true | InitializeIssue;
@@ -105,14 +105,14 @@ function getDefaultInitializationParams(
     keyring: Keyring,
     vaultAddress: string,
     wrappedCurrency: WrappedCurrency,
-    collateralCurrency: CollateralCurrency
+    collateralCurrency: CollateralCurrencyExt
 ): InitializationParams {
     return {
         setStableConfirmations: {
             bitcoinConfirmations: 0,
             parachainConfirmations: 0,
         },
-        setExchangeRate: new ExchangeRate<Bitcoin, CollateralCurrency>(
+        setExchangeRate: new ExchangeRate<Bitcoin, CollateralCurrencyExt>(
             Bitcoin,
             collateralCurrency,
             new Big("3855.23187")
@@ -158,7 +158,7 @@ export async function initializeStableConfirmations(
 }
 
 export async function initializeExchangeRate(
-    exchangeRateToSet: ExchangeRate<Bitcoin, Currency>,
+    exchangeRateToSet: ExchangeRate<Bitcoin, CurrencyExt>,
     oracleAPI: OracleAPI
 ): Promise<void> {
     console.log("Initializing the exchange rate...");
@@ -243,7 +243,10 @@ async function main(params: InitializationParams): Promise<void> {
     if (params.setExchangeRate !== undefined) {
         const exchangeRateToSet =
             params.setExchangeRate === true
-                ? (defaultInitializationParams.setExchangeRate as unknown as ExchangeRate<Bitcoin, CollateralCurrency>)
+                ? (defaultInitializationParams.setExchangeRate as unknown as ExchangeRate<
+                      Bitcoin,
+                      CollateralCurrencyExt
+                  >)
                 : params.setExchangeRate;
         await initializeExchangeRate(exchangeRateToSet, oracleAccountInterBtcApi.oracle);
     }

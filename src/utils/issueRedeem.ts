@@ -9,10 +9,10 @@ import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import { newAccountId } from "../utils";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../utils/encoding";
-import { currencyIdToLiteral, Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
+import { Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../types";
 import { waitForBlockFinalization } from "./bitcoin";
-import { atomicToBaseAmount, newMonetaryAmount } from "./currency";
-import { InterBtcApi } from "..";
+import { atomicToBaseAmount, currencyIdToMonetaryCurrency, newMonetaryAmount } from "./currency";
+import { InterBtcApi } from "../interbtc-api";
 
 export const SLEEP_TIME_MS = 1000;
 
@@ -117,11 +117,13 @@ export async function issueSingle(
         const initialWrappedTokenBalance = (await interBtcApi.tokens.balance(amount.currency, requesterAccountId)).free;
         const blocksToMine = 3;
 
-        const collateralIdLiteral = vaultId ? currencyIdToLiteral(vaultId.currencies.collateral) : undefined;
+        const collateralCurrency = vaultId
+            ? await currencyIdToMonetaryCurrency(interBtcApi.assetRegistry, vaultId.currencies.collateral)
+            : undefined;
         const rawRequestResult = await interBtcApi.issue.request(
             amount,
             vaultId?.accountId,
-            collateralIdLiteral,
+            collateralCurrency,
             atomic
         );
         if (rawRequestResult.length !== 1) {

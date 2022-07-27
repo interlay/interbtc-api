@@ -1,7 +1,8 @@
 import { Currency, Kintsugi, KintsugiAmount } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
-import { newMonetaryAmount, estimateReward, atomicToBaseAmount, ATOMIC_UNIT } from "../../../src";
+import { newMonetaryAmount, atomicToBaseAmount, ATOMIC_UNIT } from "../../../src";
+import { estimateReward } from "../../../src/utils/rewards";
 
 const WEEK_IN_BLOCKS = 54000;
 const MINIMUM_BLOCK_PERIOD = 6000; // 6s parachain constant

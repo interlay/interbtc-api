@@ -4,6 +4,7 @@ on:
     pull_request:
         branches:
             - master
+            - brendon/feat-add-foreign-asset-model
 
 concurrency:
     group: ${{ github.ref }}_kint

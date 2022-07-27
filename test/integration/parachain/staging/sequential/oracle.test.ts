@@ -6,7 +6,7 @@ import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
 import {
-    CollateralCurrency,
+    CollateralCurrencyExt,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
     InterBtcApi,
@@ -16,7 +16,7 @@ import { getExchangeRateValueToSetForTesting } from "../../../../utils/helpers";
 describe("OracleAPI", () => {
     let api: ApiPromise;
     let interBtcAPI: InterBtcApi;
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
     let oracleAccount: KeyringPair;
 
     before(async () => {

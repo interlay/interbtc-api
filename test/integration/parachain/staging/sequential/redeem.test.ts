@@ -2,7 +2,9 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import {
+    AssetRegistryAPI,
     currencyIdToMonetaryCurrency,
+    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
@@ -50,6 +52,7 @@ describe("redeem", () => {
     let wrappedCurrency: WrappedCurrency;
 
     let interBtcAPI: InterBtcApi;
+    let assetRegistry: AssetRegistryAPI;
 
     const fetchBtcTxIdFromOpReturn = async (redeemRequestId: string): Promise<string> => {
         const opreturnData = stripHexPrefix(redeemRequestId);
@@ -63,6 +66,7 @@ describe("redeem", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
+        assetRegistry = new DefaultAssetRegistryAPI(api);
 
         const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
@@ -196,7 +200,7 @@ describe("redeem", () => {
         // get BTC tx id
         const btcTxId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
 
-        const collateralCurrency = currencyIdToMonetaryCurrency(vault_1_id.currencies.collateral);
+        const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, vault_1_id.currencies.collateral);
         const vaultBitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
