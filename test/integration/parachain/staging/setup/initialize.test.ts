@@ -18,6 +18,7 @@ import {
     newVaultCurrencyPair,
     ForeignAsset,
     encodeUnsignedFixedPoint,
+    getStorageKey,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -47,6 +48,7 @@ import {
     AUSD_TICKER,
     getAUSDForeignAsset,
     getExchangeRateValueToSetForTesting,
+    ORACLE_MAX_DELAY,
     sleep,
     SLEEP_TIME_MS,
     sudo,
@@ -228,12 +230,16 @@ describe("Initialize parachain state", () => {
         }
     });
 
-    it("should set oracle value expiry to a longer period", async () => {
+    it.only("should set oracle value expiry to a longer period", async () => {
+        // previous: values provided by Sander
+        // const keyValue: [string, string][]
+        //   = [["0x6ecdde33e5d791e9c15595f33fdaafd6274fa0ce974831e362c6e5afca42e154", "0x80eeff0000000000"]];
+
         // set the oracle value expiry to be approximately 4.5 hours
-        // value provided by Sander
-        const keyValue: [string, string][] = [
-            ["0x6ecdde33e5d791e9c15595f33fdaafd6274fa0ce974831e362c6e5afca42e154", "0x80eeff0000000000"],
-        ];
+        const key = getStorageKey("Oracle", "MaxDelay");
+        const maxDelay = api.createType("u64", ORACLE_MAX_DELAY);
+        const keyValue: [string, Uint8Array][] = [[key, maxDelay.toU8a()]];
+
         const setStorageExtrinsic = sudoInterBtcAPI.api.tx.system.setStorage(keyValue);
         const timeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
         const [sudidEventFound] = await Promise.all([

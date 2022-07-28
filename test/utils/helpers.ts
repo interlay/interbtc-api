@@ -31,6 +31,9 @@ export const AUSD_TICKER = "aUSD";
 // approximate time per block in ms
 export const APPROX_BLOCK_TIME_MS = 12 * 1000;
 
+// oracle max delay value (set during setup and checked in test later)
+export const ORACLE_MAX_DELAY = 16772736;
+
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -11,7 +11,7 @@ import {
     getCorrespondingCollateralCurrencies,
     InterBtcApi,
 } from "../../../../../src";
-import { getExchangeRateValueToSetForTesting } from "../../../../utils/helpers";
+import { getExchangeRateValueToSetForTesting, ORACLE_MAX_DELAY } from "../../../../utils/helpers";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
@@ -75,7 +75,7 @@ describe("OracleAPI", () => {
 
     it("should getOnlineTimeout", async () => {
         const onlineTimeout = await interBtcAPI.oracle.getOnlineTimeout();
-        const expectedOnlineTimeout = 3600000;
+        const expectedOnlineTimeout = ORACLE_MAX_DELAY;
         assert.equal(onlineTimeout, expectedOnlineTimeout);
     });
 
