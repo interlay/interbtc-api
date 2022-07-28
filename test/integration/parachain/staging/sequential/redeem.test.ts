@@ -110,7 +110,7 @@ describe("redeem", () => {
             vaultsInScope.push([vault_1_id_ausd, vault_2_id_ausd]);
         }
 
-        for (const [vault_1_id, vault_2_id] of vaultsInScope) {
+        for (const [vault_1_id] of vaultsInScope) {
             const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
             const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
 
@@ -124,19 +124,8 @@ describe("redeem", () => {
                 false,
                 ExecuteRedeem.False
             );
-
-            await issueAndRedeem(
-                interBtcAPI,
-                bitcoinCoreClient,
-                userAccount,
-                vault_2_id,
-                issueAmount,
-                redeemAmount,
-                false,
-                ExecuteRedeem.False
-            );
         }
-    }).timeout(16 * 60000);
+    }).timeout(12 * 60000);
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();
