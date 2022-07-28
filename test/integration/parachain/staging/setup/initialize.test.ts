@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId } from "@polkadot/types/interfaces";
-import { Bitcoin, ExchangeRate, Interlay, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, Kintsugi, Kusama, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
 
@@ -14,8 +14,11 @@ import {
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
     CollateralCurrencyExt,
-    getStorageKey,
     CurrencyExt,
+    newVaultCurrencyPair,
+    ForeignAsset,
+    encodeUnsignedFixedPoint,
+    newCurrencyId,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -40,8 +43,18 @@ import {
     USER_1_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { getExchangeRateValueToSetForTesting, sleep, SLEEP_TIME_MS, waitForEvent } from "../../../../utils/helpers";
+import {
+    APPROX_BLOCK_TIME_MS,
+    AUSD_TICKER,
+    getAUSDForeignAsset,
+    getExchangeRateValueToSetForTesting,
+    sleep,
+    SLEEP_TIME_MS,
+    waitForEvent,
+} from "../../../../utils/helpers";
 import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -60,6 +73,8 @@ describe("Initialize parachain state", () => {
     let vault_to_liquidate: KeyringPair;
 
     let collateralCurrency: CollateralCurrencyExt;
+
+    let aUSD: ForeignAsset | undefined;
 
     function accountIdFromKeyring(keyPair: KeyringPair): AccountId {
         return newAccountId(api, keyPair.address);
@@ -159,27 +174,26 @@ describe("Initialize parachain state", () => {
         );
     });
 
-    it("should have at least one foreign asset registered", async () => {
-        const assetRegistryMetadataHash = getStorageKey("AssetRegistry", "Metadata");
-        const existingKeys = (await sudoInterBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+    it("should have or register aUSD as foreign asset", async () => {
+        aUSD = await getAUSDForeignAsset(sudoInterBtcAPI.assetRegistry);
 
-        if (existingKeys.length === 0) {
-            // register a new foreign asset for the test
+        if (aUSD === undefined) {
+            // register aUSD as foreign asset for tests
             const nextAssetId = (await sudoInterBtcAPI.api.query.assetRegistry.lastAssetId()).toNumber() + 1;
 
             const callToRegister = sudoInterBtcAPI.api.tx.assetRegistry.registerAsset(
                 {
                     name: api.createType("Bytes", "Acala USD"),
-                    symbol: api.createType("Bytes", "aUSD"),
+                    symbol: api.createType("Bytes", AUSD_TICKER), // we will try to find it again in tests through this ticker
                     decimals: api.createType("u32", 6),
-                    existentialDeposit: api.createType("u128", 1000000),
+                    existentialDeposit: api.createType("u128", 1000),
                 },
                 api.createType("u32", nextAssetId)
             );
 
-            const timeoutMs = 10 * 12 * 1000; // aproximately 10 blocks (assuming ~12 sec per block)
+            const timeoutMs = 10 * APPROX_BLOCK_TIME_MS; // aproximately 10 blocks
             const [eventFound] = await Promise.all([
-                waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, timeoutMs),
+                waitForEvent(sudoInterBtcAPI, api.events.assetRegistry.RegisteredAsset, false, timeoutMs),
                 sudoInterBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
             ]);
             assert.isTrue(
@@ -194,6 +208,9 @@ describe("Initialize parachain state", () => {
             1,
             `Expected at least one foreign asset registered, but found ${currencies.length}`
         );
+
+        aUSD = await getAUSDForeignAsset(sudoInterBtcAPI.assetRegistry);
+        assert.isDefined(aUSD, "aUSD not found after registration");
     });
 
     it("should set the exchange rate for foreign assets", async () => {
@@ -201,16 +218,14 @@ describe("Initialize parachain state", () => {
 
         const foreignAssets = await assetRegistryApi.getForeignAssets();
 
-        const initXchangePromises = foreignAssets.map((foreignAsset) => {
+        for (const foreignAsset of foreignAssets) {
             const exchangeRate = new ExchangeRate(
                 Bitcoin,
                 foreignAsset,
                 getExchangeRateValueToSetForTesting(foreignAsset)
             );
-            return initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
-        });
-
-        await Promise.all(initXchangePromises);
+            await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
+        }
     });
 
     it("should set the exchange rate for collateral tokens", async () => {
@@ -219,12 +234,9 @@ describe("Initialize parachain state", () => {
             // result will be medianized
             return initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
         }
-        await Promise.all([
-            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot),
-            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama),
-            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kintsugi), Kintsugi),
-            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Interlay), Interlay),
-        ]);
+        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot);
+        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama);
+        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kintsugi), Kintsugi);
     });
 
     it("should set BTC tx fees", async () => {
@@ -245,5 +257,147 @@ describe("Initialize parachain state", () => {
             isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         }
         assert.isTrue(isNominationEnabled);
+    });
+
+    it("should set collateral ceiling and thresholds for aUSD", async function () {
+        // todo remove when done testing this in isolation
+        !aUSD ? (aUSD = await getAUSDForeignAsset(sudoInterBtcAPI.assetRegistry)) : undefined;
+
+        if (aUSD === undefined) {
+            // no point in completing this if aUSD is not registered
+            this.skip();
+        }
+
+        const sudoThis = async (extrinsic: SubmittableExtrinsic<"promise", ISubmittableResult>) =>
+            sudoInterBtcAPI.api.tx.sudo.sudo(extrinsic).signAndSend(sudoAccount);
+
+        // (unsafely) get first collateral currency's ceiling and thresholds
+        const existingCollCcy = getCorrespondingCollateralCurrencies(sudoInterBtcAPI.getGovernanceCurrency())[0];
+        const existingCcyPair = newVaultCurrencyPair(api, existingCollCcy, sudoInterBtcAPI.getWrappedCurrency());
+        // borrow values from existing currency pair
+        const [optionCeilValue, existingSecureThreshold, existingPremiumThreshold, existingLiquidationThreshold] =
+            await Promise.all([
+                sudoInterBtcAPI.api.query.vaultRegistry.systemCollateralCeiling(existingCcyPair),
+                sudoInterBtcAPI.vaults.getSecureCollateralThreshold(existingCollCcy),
+                sudoInterBtcAPI.vaults.getPremiumRedeemThreshold(existingCollCcy),
+                sudoInterBtcAPI.vaults.getLiquidationCollateralThreshold(existingCollCcy),
+            ]);
+        // boldly assume the value is set
+        const existingCeiling = optionCeilValue.unwrap();
+
+        // encode thresholds
+        const encodedSecThresh = encodeUnsignedFixedPoint(sudoInterBtcAPI.api, new Big(existingSecureThreshold));
+        const encodedPremThresh = encodeUnsignedFixedPoint(sudoInterBtcAPI.api, new Big(existingPremiumThreshold));
+        const encodedLiqThresh = encodeUnsignedFixedPoint(sudoInterBtcAPI.api, new Big(existingLiquidationThreshold));
+
+        const aUsdCcyPair = newVaultCurrencyPair(api, aUSD, sudoInterBtcAPI.getWrappedCurrency());
+
+        // set the collateral ceiling
+        const setCeilingExtrinsic = sudoInterBtcAPI.api.tx.vaultRegistry.setSystemCollateralCeiling(
+            aUsdCcyPair,
+            existingCeiling
+        );
+
+        // set normal threshold
+        const setThresholdExtrinsic = sudoInterBtcAPI.api.tx.vaultRegistry.setSecureCollateralThreshold(
+            aUsdCcyPair,
+            encodedSecThresh
+        );
+
+        // set premium threshold
+        const setPremiumThresholdExtrinsic = sudoInterBtcAPI.api.tx.vaultRegistry.setPremiumRedeemThreshold(
+            aUsdCcyPair,
+            encodedPremThresh
+        );
+
+        // set liquidation threshold
+        const setLiquidationThresholdExtrinsic = sudoInterBtcAPI.api.tx.vaultRegistry.setLiquidationCollateralThreshold(
+            aUsdCcyPair,
+            encodedLiqThresh
+        );
+
+        // batch all
+        const batch = sudoInterBtcAPI.api.tx.utility.batchAll([
+            setCeilingExtrinsic,
+            setThresholdExtrinsic,
+            setPremiumThresholdExtrinsic,
+            setLiquidationThresholdExtrinsic,
+        ]);
+
+        const timeoutMs = 5 * APPROX_BLOCK_TIME_MS;
+        const [foundEvent] = await Promise.all([
+            waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, timeoutMs),
+            sudoThis(batch),
+        ]);
+
+        assert.isTrue(
+            foundEvent,
+            `Cannot find Sudid event for setting thresholds in batch - timeout after ${timeoutMs} ms`
+        );
+    });
+
+    it("should fund and register aUSD foreign asset vaults", async function () {
+        // todo remove when done testing this in isolation
+        !aUSD ? (aUSD = await getAUSDForeignAsset(sudoInterBtcAPI.assetRegistry)) : undefined;
+
+        if (aUSD === undefined) {
+            // no point in completing this if aUSD is not registered
+            this.skip();
+        }
+
+        // assign locally to make TS understand it isn't undefined
+        const aUsd: ForeignAsset = aUSD;
+
+        // free money to set with the help of sudo
+        const freeBalanceToSet = new MonetaryAmount(aUsd, 1000000000);
+        const collateralAmount = new MonetaryAmount(aUsd, 10000);
+        const currencyPair = newVaultCurrencyPair(api, aUsd, sudoInterBtcAPI.getWrappedCurrency());
+
+        const vaultAccountIdAndKeyrings: [KeyringPair, AccountId][] = [vault_1, vault_2, vault_3].map((keyringPair) => {
+            return [keyringPair, accountIdFromKeyring(keyringPair)];
+        });
+
+        // collect extrinsic commands
+        const setBalanceExtrinsics = vaultAccountIdAndKeyrings.map(([_, vaultAccountId]) =>
+            sudoInterBtcAPI.api.tx.tokens.setBalance(
+                vaultAccountId,
+                newCurrencyId(api, aUsd),
+                freeBalanceToSet.toString(true),
+                0
+            )
+        );
+        // batch commands
+        const setBalancesBatch = sudoInterBtcAPI.api.tx.utility.batchAll(setBalanceExtrinsics);
+
+        const batchTimeoutMs = 5 * APPROX_BLOCK_TIME_MS;
+        // send and wait for event
+        const [foundBalanceEvent] = await Promise.all([
+            waitForEvent(sudoInterBtcAPI, api.events.tokens.BalanceSet, false, batchTimeoutMs),
+            sudoInterBtcAPI.api.tx.sudo.sudo(setBalancesBatch).signAndSend(sudoAccount),
+        ]);
+
+        assert.isTrue(
+            foundBalanceEvent,
+            `Cannot find BalanceSet event for setting balances in batch - timeout after ${batchTimeoutMs} ms`
+        );
+
+        // register the vaults with aUSD collateral
+        for (const [vaultKeyringPair, vaultAccountId] of vaultAccountIdAndKeyrings) {
+            const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultAccountId, ESPLORA_BASE_PATH);
+            const amountAtomicUnit = api.createType("Balance", collateralAmount.toString(true));
+            const waitForEventTimeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
+
+            const [foundRegisterEvent] = await Promise.all([
+                waitForEvent(vaultInterBtcApi, api.events.vaultRegistry.RegisterVault, false, waitForEventTimeoutMs),
+                vaultInterBtcApi.api.tx.vaultRegistry
+                    .registerVault(currencyPair, amountAtomicUnit)
+                    .signAndSend(vaultKeyringPair),
+            ]);
+
+            assert.isTrue(
+                foundRegisterEvent,
+                `Vault registration event not found for account id ${vaultAccountId} - timeout of ${waitForEventTimeoutMs} ms exceeded`
+            );
+        }
     });
 });

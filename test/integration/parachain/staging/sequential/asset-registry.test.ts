@@ -10,10 +10,10 @@ import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { waitForEvent } from "../../../../utils/helpers";
+import { APPROX_BLOCK_TIME_MS, waitForEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
-    const approx10Blocks = 10 * 12 * 1000;
+    const approx10Blocks = 10 * APPROX_BLOCK_TIME_MS;
     let api: ApiPromise;
     let interBtcAPI: DefaultInterBtcApi;
 
@@ -84,7 +84,7 @@ describe("AssetRegistry", () => {
 
             // need sudo to add new foreign asset
             const [eventFound] = await Promise.all([
-                waitForEvent(interBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
+                waitForEvent(interBtcAPI, api.events.sudo.RegisteredAsset, false, approx10Blocks),
                 interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
             ]);
 
