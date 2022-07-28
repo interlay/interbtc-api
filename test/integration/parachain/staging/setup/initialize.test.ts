@@ -18,7 +18,7 @@ import {
     newVaultCurrencyPair,
     ForeignAsset,
     encodeUnsignedFixedPoint,
-    getStorageKey,
+    setNumericStorage,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -57,6 +57,7 @@ import {
 import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
+import { BN } from "bn.js";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -236,15 +237,10 @@ describe("Initialize parachain state", () => {
         //   = [["0x6ecdde33e5d791e9c15595f33fdaafd6274fa0ce974831e362c6e5afca42e154", "0x80eeff0000000000"]];
 
         // set the oracle value expiry to be approximately 4.5 hours
-        const key = getStorageKey("Oracle", "MaxDelay");
-        const maxDelay = api.createType("u64", ORACLE_MAX_DELAY);
-        const keyValue: [string, Uint8Array][] = [[key, maxDelay.toU8a()]];
-
-        const setStorageExtrinsic = sudoInterBtcAPI.api.tx.system.setStorage(keyValue);
         const timeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
         const [sudidEventFound] = await Promise.all([
             waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, timeoutMs),
-            sudoInterBtcAPI.api.tx.sudo.sudo(setStorageExtrinsic).signAndSend(sudoAccount),
+            setNumericStorage(sudoInterBtcAPI.api, "Oracle", "MaxDelay", new BN(ORACLE_MAX_DELAY), sudoAccount, 64),
         ]);
 
         assert.isTrue(
