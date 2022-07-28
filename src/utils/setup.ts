@@ -32,7 +32,6 @@ import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newVaultId } from "./encoding";
 import { InterBtcApi, DefaultInterBtcApi, newMonetaryAmount, getCorrespondingCollateralCurrencies } from "../";
 import { AddressOrPair } from "@polkadot/api/types";
-import { AssetKey } from "../parachain/asset-registry";
 
 // Command line arguments of the initialization script
 const yargs = require("yargs/yargs");
@@ -164,16 +163,6 @@ export async function initializeExchangeRate(
 ): Promise<void> {
     console.log("Initializing the exchange rate...");
     await oracleAPI.setExchangeRate(exchangeRateToSet);
-}
-
-export async function initializeForeignAssetExchangeRate(
-    exchangeRateToSet: ExchangeRate<Bitcoin, CurrencyExt>,
-    assetKey: AssetKey,
-    oracleAPI: OracleAPI
-): Promise<void> {
-    console.log("Initializing the foreign assst exchange rate...");
-
-    await oracleAPI.setForeignAssetExchangeRate(exchangeRateToSet, assetKey);
 }
 
 export async function initializeBtcTxFees(fees: Big, oracleAPI: OracleAPI): Promise<void> {

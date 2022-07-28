@@ -1,7 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { AccountId } from "@polkadot/types/interfaces";
-import { Bitcoin, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, Interlay, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
 
@@ -22,7 +22,6 @@ import {
     initializeExchangeRate,
     initializeStableConfirmations,
     initializeBtcTxFees,
-    initializeForeignAssetExchangeRate,
 } from "../../../../../src/utils/setup";
 import {
     SUDO_URI,
@@ -42,13 +41,12 @@ import {
     ESPLORA_BASE_PATH,
 } from "../../../../config";
 import {
-    foreignAssetExchangeRateValueForTesting,
     getExchangeRateValueToSetForTesting,
     sleep,
     SLEEP_TIME_MS,
     waitForFinalizedEvent,
 } from "../../../../utils/helpers";
-import { AssetRegistryMetadataTuple, DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
+import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -200,35 +198,34 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set the exchange rate for foreign assets", async () => {
-        const setForeignAssetExchangeRate = async (value: Big, assetTuple: AssetRegistryMetadataTuple) => {
-            const [assetKey, assetMetadata] = assetTuple;
-            if (assetMetadata.isNone) {
-                // nothing to set
-                return;
-            }
-
-            const currency = DefaultAssetRegistryAPI.metadataToCurrency(assetMetadata.unwrap());
-            const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
-            await initializeForeignAssetExchangeRate(exchangeRate, assetKey, sudoInterBtcAPI.oracle);
-        };
-
         const assetRegistryApi: DefaultAssetRegistryAPI = new DefaultAssetRegistryAPI(sudoInterBtcAPI.api);
-        const foreignAssets: AssetRegistryMetadataTuple[] = await assetRegistryApi.getAssetRegistryEntries();
 
-        for (const assetTuple of foreignAssets) {
-            await setForeignAssetExchangeRate(foreignAssetExchangeRateValueForTesting, assetTuple);
-        }
+        const foreignAssets = await assetRegistryApi.getForeignAssets();
+
+        const initXchangePromises = foreignAssets.map((foreignAsset) => {
+            const exchangeRate = new ExchangeRate(
+                Bitcoin,
+                foreignAsset,
+                getExchangeRateValueToSetForTesting(foreignAsset)
+            );
+            return initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
+        });
+
+        await Promise.all(initXchangePromises);
     });
 
     it("should set the exchange rate for collateral tokens", async () => {
         async function setCollateralExchangeRate(value: Big, currency: CurrencyExt) {
             const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
             // result will be medianized
-            await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
+            return initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
         }
-        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot);
-        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama);
-        await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kintsugi), Kintsugi);
+        await Promise.all([
+            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot),
+            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama),
+            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kintsugi), Kintsugi),
+            setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Interlay), Interlay),
+        ]);
     });
 
     it("should set BTC tx fees", async () => {

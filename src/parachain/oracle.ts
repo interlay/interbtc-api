@@ -21,7 +21,6 @@ import { UnsignedFixedPoint } from "../interfaces/default";
 import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types/currency";
 import { FeeEstimationType } from "../types/oracleTypes";
-import { AssetKey } from "./asset-registry";
 
 export const DEFAULT_FEED_NAME = "DOT/BTC";
 export const DEFAULT_INCLUSION_TIME: FeeEstimationType = "Fast";
@@ -61,11 +60,6 @@ export interface OracleAPI {
      * @param exchangeRate The rate to set
      */
     setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): Promise<void>;
-    /**
-     * Send a transaction to set the exchange rate between Bitcoin and a collateral currency
-     * @param exchangeRate The rate to set
-     */
-    setForeignAssetExchangeRate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>, assetKey: AssetKey): Promise<void>;
     /**
      * Send a transaction to set the current fee estimate for BTC transactions
      * @param fees Estimated Satoshis per bytes to get a transaction included
@@ -156,19 +150,6 @@ export class DefaultOracleAPI implements OracleAPI {
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate.toBig([ATOMIC_UNIT, ATOMIC_UNIT]));
         const oracleKey = createExchangeRateOracleKey(this.api, exchangeRate.counter);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedExchangeRate]]);
-        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
-    }
-
-    async setForeignAssetExchangeRate(
-        exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>,
-        assetKey: AssetKey
-    ): Promise<void> {
-        const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate.toBig([ATOMIC_UNIT, ATOMIC_UNIT]));
-        const assetId = storageKeyToNthInner(assetKey);
-        const asset = this.api.createType("InterbtcPrimitivesCurrencyId", { foreignAsset: assetId });
-        const oracleKey = this.api.createType("InterbtcPrimitivesOracleKey", { ExchangeRate: asset });
-
-        const tx = this.api.tx.oracle.feedValues([[oracleKey as InterbtcPrimitivesOracleKey, encodedExchangeRate]]);
         await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
     }
 
