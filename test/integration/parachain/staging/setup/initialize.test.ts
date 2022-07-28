@@ -216,21 +216,6 @@ describe("Initialize parachain state", () => {
         assert.isDefined(aUSD, "aUSD not found after registration");
     });
 
-    it("should set the exchange rate for foreign assets", async () => {
-        const assetRegistryApi: DefaultAssetRegistryAPI = new DefaultAssetRegistryAPI(sudoInterBtcAPI.api);
-
-        const foreignAssets = await assetRegistryApi.getForeignAssets();
-
-        for (const foreignAsset of foreignAssets) {
-            const exchangeRate = new ExchangeRate(
-                Bitcoin,
-                foreignAsset,
-                getExchangeRateValueToSetForTesting(foreignAsset)
-            );
-            await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
-        }
-    });
-
     it("should set oracle value expiry to a longer period", async () => {
         // previous: values provided by Sander
         // const keyValue: [string, string][]
@@ -247,6 +232,21 @@ describe("Initialize parachain state", () => {
             sudidEventFound,
             `Sudo event to set oracle values expiry not found - timeout of ${timeoutMs} ms exceeded`
         );
+    });
+
+    it("should set the exchange rate for foreign assets", async () => {
+        const assetRegistryApi: DefaultAssetRegistryAPI = new DefaultAssetRegistryAPI(sudoInterBtcAPI.api);
+
+        const foreignAssets = await assetRegistryApi.getForeignAssets();
+
+        for (const foreignAsset of foreignAssets) {
+            const exchangeRate = new ExchangeRate(
+                Bitcoin,
+                foreignAsset,
+                getExchangeRateValueToSetForTesting(foreignAsset)
+            );
+            await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
+        }
     });
 
     it("should set the exchange rate for collateral tokens", async () => {
