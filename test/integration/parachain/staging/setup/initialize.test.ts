@@ -40,12 +40,7 @@ import {
     USER_1_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import {
-    getExchangeRateValueToSetForTesting,
-    sleep,
-    SLEEP_TIME_MS,
-    waitForFinalizedEvent,
-} from "../../../../utils/helpers";
+import { getExchangeRateValueToSetForTesting, sleep, SLEEP_TIME_MS, waitForEvent } from "../../../../utils/helpers";
 import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
 
 describe("Initialize parachain state", () => {
@@ -182,11 +177,15 @@ describe("Initialize parachain state", () => {
                 api.createType("u32", nextAssetId)
             );
 
-            // need sudo to add new foreign asset
-            await sudoInterBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount);
-
-            // wait for finalized event
-            await waitForFinalizedEvent(sudoInterBtcAPI, api.events.assetRegistry.RegisteredAsset);
+            const timeoutMs = 10 * 12 * 1000; // aproximately 10 blocks (assuming ~12 sec per block)
+            const [eventFound] = await Promise.all([
+                waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, timeoutMs),
+                sudoInterBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
+            ]);
+            assert.isTrue(
+                eventFound,
+                `Sudo event to register new foreign asset not found - timeout of ${timeoutMs} ms exceeded`
+            );
         }
 
         const currencies = await sudoInterBtcAPI.assetRegistry.getForeignAssets();
