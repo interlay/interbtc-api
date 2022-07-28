@@ -35,7 +35,7 @@ import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client"
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
 import Big from "big.js";
-import { bumpFeesForBtcTx, calculateBtcTxVsize } from "../../../../utils/helpers";
+import { bumpFeesForBtcTx, calculateBtcTxVsize, getAUSDForeignAsset } from "../../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -99,7 +99,18 @@ describe("redeem", () => {
     }).timeout(3 * 60000);
 
     it("should issue and request redeem", async () => {
-        for (const [vault_1_id, vault_2_id] of collateralTickerToVaultIdsMap.values()) {
+        // "usual" scope with hard coded collateral currency (or currencies)
+        const vaultsInScope = Array.from(collateralTickerToVaultIdsMap.values());
+
+        // add a pair of aUSD vaults to the list if aUSD has been registered
+        const aUSD = await getAUSDForeignAsset(interBtcAPI.assetRegistry);
+        if (aUSD !== undefined) {
+            const vault_1_id_ausd = newVaultId(api, vault_1.address, aUSD, wrappedCurrency);
+            const vault_2_id_ausd = newVaultId(api, vault_2.address, aUSD, wrappedCurrency);
+            vaultsInScope.push([vault_1_id_ausd, vault_2_id_ausd]);
+        }
+
+        for (const [vault_1_id, vault_2_id] of vaultsInScope) {
             const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
             const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
 
