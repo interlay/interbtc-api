@@ -228,6 +228,25 @@ describe("Initialize parachain state", () => {
         }
     });
 
+    it("should set oracle value expiry to a longer period", async () => {
+        // set the oracle value expiry to be approximately 4.5 hours
+        // value provided by Sander
+        const keyValue: [string, string][] = [
+            ["0x6ecdde33e5d791e9c15595f33fdaafd6274fa0ce974831e362c6e5afca42e154", "0x80eeff0000000000"],
+        ];
+        const setStorageExtrinsic = sudoInterBtcAPI.api.tx.system.setStorage(keyValue);
+        const timeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
+        const [sudidEventFound] = await Promise.all([
+            waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, timeoutMs),
+            sudoInterBtcAPI.api.tx.sudo.sudo(setStorageExtrinsic).signAndSend(sudoAccount),
+        ]);
+
+        assert.isTrue(
+            sudidEventFound,
+            `Sudo event to set oracle values expiry not found - timeout of ${timeoutMs} ms exceeded`
+        );
+    });
+
     it("should set the exchange rate for collateral tokens", async () => {
         async function setCollateralExchangeRate(value: Big, currency: CurrencyExt) {
             const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
