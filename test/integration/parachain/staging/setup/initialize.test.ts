@@ -231,7 +231,7 @@ describe("Initialize parachain state", () => {
         }
     });
 
-    it.only("should set oracle value expiry to a longer period", async () => {
+    it("should set oracle value expiry to a longer period", async () => {
         // previous: values provided by Sander
         // const keyValue: [string, string][]
         //   = [["0x6ecdde33e5d791e9c15595f33fdaafd6274fa0ce974831e362c6e5afca42e154", "0x80eeff0000000000"]];
