@@ -18,7 +18,6 @@ import {
     newVaultCurrencyPair,
     ForeignAsset,
     encodeUnsignedFixedPoint,
-    newCurrencyId,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -50,6 +49,7 @@ import {
     getExchangeRateValueToSetForTesting,
     sleep,
     SLEEP_TIME_MS,
+    sudo,
     waitForEvent,
 } from "../../../../utils/helpers";
 import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
@@ -357,32 +357,24 @@ describe("Initialize parachain state", () => {
             return [keyringPair, accountIdFromKeyring(keyringPair)];
         });
 
-        // collect extrinsic commands
-        const setBalanceExtrinsics = vaultAccountIdAndKeyrings.map(([_, vaultAccountId]) =>
-            sudoInterBtcAPI.api.tx.tokens.setBalance(
-                vaultAccountId,
-                newCurrencyId(api, aUsd),
-                freeBalanceToSet.toString(true),
-                0
-            )
-        );
-        // batch commands
-        const setBalancesBatch = sudoInterBtcAPI.api.tx.utility.batchAll(setBalanceExtrinsics);
-
-        const batchTimeoutMs = 5 * APPROX_BLOCK_TIME_MS;
-        // send and wait for event
-        const [foundBalanceEvent] = await Promise.all([
-            waitForEvent(sudoInterBtcAPI, api.events.tokens.BalanceSet, false, batchTimeoutMs),
-            sudoInterBtcAPI.api.tx.sudo.sudo(setBalancesBatch).signAndSend(sudoAccount),
-        ]);
-
-        assert.isTrue(
-            foundBalanceEvent,
-            `Cannot find BalanceSet event for setting balances in batch - timeout after ${batchTimeoutMs} ms`
-        );
-
         // register the vaults with aUSD collateral
         for (const [vaultKeyringPair, vaultAccountId] of vaultAccountIdAndKeyrings) {
+            const balanceTimeout = 5 * APPROX_BLOCK_TIME_MS;
+            // set balance and wait for event
+            const [balanceEventFound] = await Promise.all([
+                waitForEvent(sudoInterBtcAPI, api.events.tokens.BalanceSet, false, balanceTimeout),
+                sudo(sudoInterBtcAPI, async () => sudoInterBtcAPI.tokens.setBalance(vaultAccountId, freeBalanceToSet)),
+            ]);
+            await sudo(sudoInterBtcAPI, async () =>
+                sudoInterBtcAPI.tokens.setBalance(vaultAccountId, freeBalanceToSet)
+            );
+
+            assert.isTrue(
+                balanceEventFound,
+                `Cannot find BalanceSet event for ${vaultAccountId} - timeout after ${balanceTimeout} ms`
+            );
+
+            // register the aUSD vault
             const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultAccountId, ESPLORA_BASE_PATH);
             const amountAtomicUnit = api.createType("Balance", collateralAmount.toString(true));
             const waitForEventTimeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
