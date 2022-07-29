@@ -53,6 +53,9 @@ export type GovernanceCurrency = typeof GovernanceCurrency[number];
 export const VotingCurrency = [VoteInterlay, VoteKintsugi];
 export type VotingCurrency = typeof VotingCurrency[number];
 
+export const RewardCurrency = [...GovernanceCurrency, KBtc];
+export type RewardCurrency = typeof RewardCurrency[number];
+
 export type StakedBalance = {
     amount: MonetaryAmount<GovernanceCurrency>;
     endBlock: number;

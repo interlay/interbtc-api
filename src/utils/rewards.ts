@@ -1,22 +1,22 @@
-import { GovernanceCurrency, StakedBalance } from "../types";
+import { RewardCurrency, StakedBalance } from "../types";
 import Big from "big.js";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { ATOMIC_UNIT, newMonetaryAmount } from "./currency";
 
 // TODO: simplify this, perhaps use builder?
 export function estimateReward(
-    governanceCurrency: GovernanceCurrency,
+    currency: RewardCurrency,
     atomicUserStake: Big,
     atomicTotalStake: Big,
-    blockReward: MonetaryAmount<GovernanceCurrency>,
+    blockReward: MonetaryAmount<RewardCurrency>,
     stakedBalance: StakedBalance,
     currentBlockNumber: number,
     minimumBlockPeriod: number,
     maxPeriod: number,
-    amountToLock: MonetaryAmount<GovernanceCurrency> = newMonetaryAmount(0, governanceCurrency),
+    amountToLock: MonetaryAmount<RewardCurrency> = newMonetaryAmount(0, currency),
     blockLockTimeExtension: number = 0
 ): {
-    amount: MonetaryAmount<GovernanceCurrency>;
+    amount: MonetaryAmount<RewardCurrency>;
     apy: Big;
 } {
     // Note: the parachain uses the balance_at which combines the staked amount
@@ -36,7 +36,7 @@ export function estimateReward(
         endBlock: stakedBalance.endBlock,
     };
 
-    const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(ATOMIC_UNIT), governanceCurrency);
+    const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(ATOMIC_UNIT), currency);
 
     // User staking for the first time; only case 2 relevant otherwise rewards should be 0
     if (stakedBalance.amount.isZero()) {
@@ -60,7 +60,7 @@ export function estimateReward(
     // Catch 0 values
     if (newLockDuration == 0 || atomicNewTotalStake.eq(0) || newStakedBalance.amount.isZero()) {
         return {
-            amount: newMonetaryAmount(0, governanceCurrency),
+            amount: newMonetaryAmount(0, currency),
             apy: new Big(0),
         };
     }
@@ -70,7 +70,7 @@ export function estimateReward(
         .mul(blockReward.toBig(ATOMIC_UNIT))
         .mul(newLockDuration);
 
-    const monetaryRewardAmount = newMonetaryAmount(atomicRewardAmount, governanceCurrency);
+    const monetaryRewardAmount = newMonetaryAmount(atomicRewardAmount, currency);
 
     // TODO: move this to a util function so we can use it across the codebase
     // normalize APY to 1 year
