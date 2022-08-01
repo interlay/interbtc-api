@@ -372,11 +372,6 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultAccountId: AccountId,
         collateralCurrency: CollateralIdLiteral
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
-        const vault = await this.vaultsAPI.get(vaultAccountId, collateralCurrency);
-        const wrappedTokenCapacity = await this.vaultsAPI.calculateCapacity(vault.backingCollateral);
-        const issuedAmount = vault.issuedTokens.add(vault.toBeIssuedTokens);
-        const issuableAmountExcludingFees = wrappedTokenCapacity.sub(issuedAmount);
-        const fees = await this.getFeesToPay(issuableAmountExcludingFees);
-        return issuableAmountExcludingFees.sub(fees);
+        return this.vaultsAPI.getIssueableTokensFromVault(vaultAccountId, collateralCurrency);
     }
 }
