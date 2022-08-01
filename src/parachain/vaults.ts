@@ -237,6 +237,16 @@ export interface VaultsAPI {
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<CollateralCurrencyExt>>;
     /**
+     * Returns issuable amount for a given vault
+     * @param vaultAccountId The vault account ID
+     * @param collateralCurrency The currency specification, a `Monetary.js` object or `ForeignAsset`
+     * @returns The issuable amount of a vault
+     */
+     getIssueableTokensFromVault(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<MonetaryAmount<WrappedCurrency>>;
+    /**
      * @param collateralCurrency The collateral currency specification, a `Monetary.js` object or `ForeignAsset`
      * @returns The maximum collateral a vault can accept as nomination, as a ratio of its own collateral
      */
@@ -734,6 +744,17 @@ export class DefaultVaultsAPI implements VaultsAPI {
         } catch (error) {
             return newMonetaryAmount(0, this.wrappedCurrency);
         }
+    }
+
+    async getIssueableTokensFromVault(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<MonetaryAmount<WrappedCurrency>> {
+        const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.getWrappedCurrency());
+        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault(vaultId);
+        const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, balance.currencyId);
+        const amount = newMonetaryAmount(balance.amount.toString(), currency);
+        return amount;
     }
 
     async selectRandomVaultIssue(amount: MonetaryAmount<WrappedCurrency>): Promise<InterbtcPrimitivesVaultId> {
