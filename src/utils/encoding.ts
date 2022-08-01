@@ -16,14 +16,13 @@ import {
     InterbtcPrimitivesIssueIssueRequest,
     BitcoinAddress,
     VaultRegistrySystemVault,
-    VaultRegistryWallet,
     InterbtcPrimitivesVaultId,
     InterbtcPrimitivesVaultCurrencyPair,
     InterbtcPrimitivesCurrencyId,
 } from "@polkadot/types/lookup";
 
 import { currencyIdToMonetaryCurrency, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, isForeignAsset } from ".";
-import { WalletExt, SystemVaultExt } from "../types/vault";
+import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
 import { SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
@@ -137,19 +136,6 @@ export interface DecodedRequestExt extends Omit<DecodedRequest, "btc_address"> {
     btc_address: string;
 }
 
-export function parseWallet(wallet: VaultRegistryWallet, network: Network): WalletExt {
-    const { addresses } = wallet;
-
-    const btcAddresses: Array<string> = [];
-    for (const value of addresses.values()) {
-        btcAddresses.push(encodeBtcAddress(value, network));
-    }
-
-    return {
-        addresses: btcAddresses,
-    };
-}
-
 export async function parseSystemVault(
     assetRegistryApi: AssetRegistryAPI,
     vault: VaultRegistrySystemVault,
@@ -255,8 +241,8 @@ export async function parseIssueRequest(
     const status = req.status.isCompleted
         ? IssueStatus.Completed
         : req.status.isCancelled
-        ? IssueStatus.Cancelled
-        : IssueStatus.PendingWithBtcTxNotFound;
+            ? IssueStatus.Cancelled
+            : IssueStatus.PendingWithBtcTxNotFound;
     const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
     return {
         id: stripHexPrefix(id.toString()),
@@ -283,10 +269,10 @@ export async function parseRedeemRequest(
     const status = req.status.isCompleted
         ? RedeemStatus.Completed
         : req.status.isRetried
-        ? RedeemStatus.Retried
-        : req.status.isReimbursed
-        ? RedeemStatus.Reimbursed
-        : RedeemStatus.PendingWithBtcTxNotFound;
+            ? RedeemStatus.Retried
+            : req.status.isReimbursed
+                ? RedeemStatus.Reimbursed
+                : RedeemStatus.PendingWithBtcTxNotFound;
 
     const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
     return {
