@@ -281,7 +281,7 @@ describe("Initialize parachain state", () => {
     });
 
     it("should set collateral ceiling and thresholds for aUSD", async function () {
-        // todo remove when done testing this in isolation
+        // only get aUSD if it hasn't been set yet (e.g. when running this test in isolation)
         !aUSD ? (aUSD = await getAUSDForeignAsset(sudoInterBtcAPI.assetRegistry)) : undefined;
 
         if (aUSD === undefined) {
@@ -358,7 +358,7 @@ describe("Initialize parachain state", () => {
     });
 
     it("should fund and register aUSD foreign asset vaults", async function () {
-        // todo remove when done testing this in isolation
+        // only get aUSD if it hasn't been set yet (e.g. when running this test in isolation)
         !aUSD ? (aUSD = await getAUSDForeignAsset(sudoInterBtcAPI.assetRegistry)) : undefined;
 
         if (aUSD === undefined) {

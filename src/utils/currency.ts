@@ -93,7 +93,7 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
     }
 }
 
-// TODO: update to also return foreign assets?
+// get the collateral currencies (excluding foreign assets) associated with the governance currency
 export function getCorrespondingCollateralCurrencies(
     governanceCurrency: GovernanceCurrency
 ): Array<CollateralCurrencyExt> {
