@@ -40,7 +40,7 @@ import {
     issueSingle,
     newMonetaryAmount,
 } from "../../../../../src/utils";
-import { vaultStatusToLabel } from "../../../../utils/helpers";
+import { AUSD_TICKER, getAUSDForeignAsset, vaultStatusToLabel } from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
@@ -69,18 +69,29 @@ describe("vaultsAPI", () => {
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
+
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
+
         collateralCurrencies = getCorrespondingCollateralCurrencies(governanceCurrency);
+        const aUSD = await getAUSDForeignAsset(assetRegistry);
+        if (aUSD !== undefined) {
+            // also add aUSD collateral vaults if they exist (ie. the foreign asset exists)
+            collateralCurrencies.push(aUSD);
+        }
+
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_ids = collateralCurrencies.map((collateralCurrency) =>
             newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency)
         );
+
         vault_2 = keyring.addFromUri(VAULT_2_URI);
+
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
             newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency)
         );
+
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
 
@@ -292,6 +303,7 @@ describe("vaultsAPI", () => {
             [Polkadot.ticker, "1.1"],
             [Kusama.ticker, "1.1"],
             [Kintsugi.ticker, "2"],
+            [AUSD_TICKER, "1.1"],
         ]);
 
         for (const collateralCurrency of collateralCurrencies) {
@@ -317,6 +329,7 @@ describe("vaultsAPI", () => {
             [Polkadot.ticker, "1.35"],
             [Kusama.ticker, "1.35"],
             [Kintsugi.ticker, "3"],
+            [AUSD_TICKER, "1.35"],
         ]);
 
         for (const collateralCurrency of collateralCurrencies) {

@@ -25,6 +25,8 @@ export interface AssetRegistryAPI {
     getForeignAsset(id: number | u32): Promise<ForeignAsset>;
 }
 
+// shorthand type for asset key
+export type AssetKey = StorageKey<[u32]>;
 // shorthand type for the unwieldy tuple
 export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlTraitsAssetRegistryAssetMetadata>];
 export type UnwrappedAssetRegistryMetadataTuple = [StorageKey<[u32]>, OrmlTraitsAssetRegistryAssetMetadata];

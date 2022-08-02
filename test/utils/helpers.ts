@@ -9,13 +9,30 @@ import { Vec } from "@polkadot/types-codec";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import Big, { RoundingMode } from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
-import { BitcoinCoreClient, InterBtcApi, OracleAPI, VaultStatusExt, CurrencyExt } from "../../src";
+import {
+    BitcoinCoreClient,
+    InterBtcApi,
+    OracleAPI,
+    VaultStatusExt,
+    CurrencyExt,
+    AssetRegistryAPI,
+    ForeignAsset,
+} from "../../src";
 import { SUDO_URI } from "../config";
 
 export const SLEEP_TIME_MS = 1000;
 
 // On Bitcoin mainnet, block time is ~10 mins. Speed it up to 10s during the tests.
 export const BITCOIN_BLOCK_TIME_IN_MS = 10 * 1000;
+
+// used to create, and find foreign asset aUSD for tests
+export const AUSD_TICKER = "aUSD";
+
+// approximate time per block in ms
+export const APPROX_BLOCK_TIME_MS = 12 * 1000;
+
+// oracle max delay value (set during setup and checked in test later)
+export const ORACLE_MAX_DELAY = 16772736;
 
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -273,4 +290,9 @@ export const waitForEvent = async <T extends AnyTuple>(
     });
 
     return true;
+};
+
+export const getAUSDForeignAsset = async (assetRegistryApi: AssetRegistryAPI): Promise<ForeignAsset | undefined> => {
+    const foreignAssets = await assetRegistryApi.getForeignAssets();
+    return foreignAssets.find((asset) => asset.ticker === AUSD_TICKER);
 };
