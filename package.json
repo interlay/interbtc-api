@@ -45,7 +45,7 @@
     "local-meta": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json",
     "docker-parachain-start": "ts-node scripts/setup-parachain-docker.ts",
     "docker-parachain-stop": "docker-compose -f local-setup/docker-compose.yml down -v",
-    "set": "npx ts-node src/utils/set-state.ts"
+    "set": "npx ts-node src/utils/set-state/set-state.ts"
   },
   "engines": {
     "node": ">=11"
