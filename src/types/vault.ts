@@ -8,20 +8,13 @@ import { AssetRegistryAPI, OracleAPI, SystemAPI } from "../parachain";
 import { decodeFixedPointType, currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
 import { CollateralCurrencyExt, WrappedCurrency } from "./currency";
 
-export interface WalletExt {
-    // network encoded btc addresses
-    addresses: Array<string>;
-}
-
 export enum VaultStatusExt {
     Active,
     Inactive,
     Liquidated,
-    CommittedTheft,
 }
 
 export class VaultExt {
-    wallet: WalletExt;
     backingCollateral: MonetaryAmount<CollateralCurrencyExt>;
     id: InterbtcPrimitivesVaultId;
     status: VaultStatusExt;
@@ -38,7 +31,6 @@ export class VaultExt {
         private oracleAPI: OracleAPI,
         private systemAPI: SystemAPI,
         private assetRegistryAPI: AssetRegistryAPI,
-        wallet: WalletExt,
         backingCollateral: MonetaryAmount<CollateralCurrencyExt>,
         id: InterbtcPrimitivesVaultId,
         status: VaultStatusExt,
@@ -50,7 +42,6 @@ export class VaultExt {
         replaceCollateral: MonetaryAmount<CollateralCurrencyExt>,
         liquidatedCollateral: MonetaryAmount<CollateralCurrencyExt>
     ) {
-        this.wallet = wallet;
         this.backingCollateral = backingCollateral;
         this.id = id;
         this.status = status;

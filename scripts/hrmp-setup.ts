@@ -3,7 +3,6 @@ import { createSubstrateAPI } from "../src/factory";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { DefaultTransactionAPI } from "../src/parachain";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
-import { XcmVersionedXcm } from "@polkadot/types/lookup";
 import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
 
 import { SubmittableExtrinsic } from "@polkadot/api/types";
@@ -126,7 +125,7 @@ function construct_xcm(api: ApiPromise, transact: string) {
         refundSurplusInstruction,
         depositAssetsInstruction,
     ]);
-    const message = api.createType<XcmVersionedXcm>("XcmVersionedXcm", {
+    const message = api.createType("XcmVersionedXcm", {
         v2: xcmV2,
     });
 

@@ -9,6 +9,7 @@ import {
     CollateralCurrencyExt,
     DefaultInterBtcApi,
     getCorrespondingCollateralCurrencies,
+    getSS58Prefix,
     InterBtcApi,
 } from "../../../../../src";
 import { getExchangeRateValueToSetForTesting } from "../../../../utils/helpers";
@@ -18,11 +19,19 @@ describe("OracleAPI", () => {
     let interBtcAPI: InterBtcApi;
     let collateralCurrencies: Array<CollateralCurrencyExt>;
     let oracleAccount: KeyringPair;
+    let aliceAccount: KeyringPair;
+    let bobAccount: KeyringPair;
+    let charlieAccount: KeyringPair;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        const keyring = new Keyring({ type: "sr25519" });
+        const ss58Prefix = getSS58Prefix(api);
+        const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
+
+        aliceAccount = keyring.addFromUri("//Alice");
+        bobAccount = keyring.addFromUri("//Bob");
+        charlieAccount = keyring.addFromUri("//Charlie");
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
     });
@@ -64,9 +73,9 @@ describe("OracleAPI", () => {
 
     it("should get names by id", async () => {
         const expectedSources = new Map<string, string>();
-        expectedSources.set("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", "Alice");
-        expectedSources.set("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", "Bob");
-        expectedSources.set("5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y", "Charlie");
+        expectedSources.set(aliceAccount.address, "Alice");
+        expectedSources.set(bobAccount.address, "Bob");
+        expectedSources.set(charlieAccount.address, "Charlie");
         const sources = await interBtcAPI.oracle.getSourcesById();
         for (const entry of sources.entries()) {
             assert.equal(entry[1], expectedSources.get(entry[0]));

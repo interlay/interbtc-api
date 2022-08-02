@@ -14,7 +14,6 @@ import {
 import {
     decodeFixedPointType,
     newMonetaryAmount,
-    parseWallet,
     parseSystemVault,
     getTxProof,
     newCurrencyId,
@@ -343,7 +342,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private systemAPI: SystemAPI,
         private transactionAPI: TransactionAPI,
         private assetRegistryAPI: AssetRegistryAPI
-    ) {}
+    ) { }
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
@@ -878,8 +877,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
             return status.asActive.isTrue ? VaultStatusExt.Active : VaultStatusExt.Inactive;
         } else if (status.isLiquidated) {
             return VaultStatusExt.Liquidated;
-        } else if (status.isCommittedTheft) {
-            return VaultStatusExt.CommittedTheft;
         } else {
             throw new Error("Unknown vault status");
         }
@@ -898,7 +895,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.oracleAPI,
             this.systemAPI,
             this.assetRegistryAPI,
-            parseWallet(vault.wallet, network),
             backingCollateral,
             vault.id,
             this.parseVaultStatus(vault.status),
