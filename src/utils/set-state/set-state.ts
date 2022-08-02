@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-import { BitcoinUnit, Currency } from "@interlay/monetary-js";
+import { InterBtc, Interlay, KBtc, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { VaultRegistryVaultStatus } from "@polkadot/types/lookup";
@@ -7,11 +7,7 @@ import { cryptoWaitReady } from "@polkadot/util-crypto";
 import Big from "big.js";
 
 import {
-    CollateralCurrency,
-    CollateralUnit,
     CurrencyIdLiteral,
-    currencyIdLiteralToMonetaryCurrency,
-    CurrencyUnit,
     DefaultInterBtcApi,
     DefaultTransactionAPI,
     FIXEDI128_SCALING_FACTOR,
@@ -67,11 +63,25 @@ type MutableVaultData = Writable<VaultRegistryVault>;
 let vault_1: KeyringPair;
 let sudoAccount: KeyringPair;
 
-const getCurrencyFromSymbol = <U extends CurrencyUnit>(api: ApiPromise, symbol: string) => {
+const getCurrencyFromSymbol = (symbol: string) => {
     if (!Object.values(CurrencyIdLiteral).includes(symbol as CurrencyIdLiteral)) {
         throw new Error(`Unknown currency symbol: ${symbol}`);
     }
-    return currencyIdLiteralToMonetaryCurrency<U>(api, symbol as CurrencyIdLiteral);
+    switch (symbol) {
+        case "KSM":
+            return Kusama;
+        case "KBTC":
+            return KBtc;
+        case "KINT":
+            return Kintsugi;
+        case "DOT":
+            return Polkadot;
+        case "IBTC":
+            return InterBtc;
+        default:
+        case "INTR":
+            return Interlay;
+    }
 };
 
 const setStorageAtKey = async (api: ApiPromise, key: string, data: `0x${string}`) => {
@@ -92,8 +102,8 @@ const constructVaultId = (
     collateralCurrencySymbol: string,
     wrappedCurrencySymbol: string
 ): InterbtcPrimitivesVaultId => {
-    const collateralCurrency = getCurrencyFromSymbol(api, collateralCurrencySymbol) as CollateralCurrency;
-    const wrappedCurrency = getCurrencyFromSymbol(api, wrappedCurrencySymbol) as WrappedCurrency;
+    const collateralCurrency = getCurrencyFromSymbol(collateralCurrencySymbol);
+    const wrappedCurrency = getCurrencyFromSymbol(wrappedCurrencySymbol) as WrappedCurrency;
     const vaultId = newVaultId(api, accountId, collateralCurrency, wrappedCurrency);
     return vaultId;
 };
@@ -138,14 +148,14 @@ const setPremiumRedeem = (interBtcApi: DefaultInterBtcApi) =>
         interBtcApi.api,
         async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
             const { api } = interBtcApi;
-            const collateralCurrency = getCurrencyFromSymbol(api, collateralSymbol) as CollateralCurrency;
-            const wrappedCurrency = getCurrencyFromSymbol(api, wrappedSymbol) as WrappedCurrency;
+            const collateralCurrency = getCurrencyFromSymbol(collateralSymbol);
+            const wrappedCurrency = getCurrencyFromSymbol(wrappedSymbol) as WrappedCurrency;
             const vaultId = newVaultId(api, accountId, collateralCurrency, wrappedCurrency);
 
             const oneBTC = "100000000";
             const parsedIssuedTokens = api.createType("u128", oneBTC);
             // Sets issued tokens amount to 1 BTC
-            const newIssuedTokensAmount = newMonetaryAmount<BitcoinUnit>(oneBTC, wrappedCurrency);
+            const newIssuedTokensAmount = newMonetaryAmount(oneBTC, wrappedCurrency);
             const issuedTokensModifier = (vaultData: MutableVaultData): MutableVaultData =>
                 ({ ...vaultData, issuedTokens: parsedIssuedTokens });
 
@@ -158,7 +168,7 @@ const setPremiumRedeem = (interBtcApi: DefaultInterBtcApi) =>
             const newCollateralizationRatio = premiumRedeemThreshold.add(liquidationThreshold).div(2);
             const newIssuedTokensInCollateralAmount = await interBtcApi.oracle.convertWrappedToCurrency(
                 newIssuedTokensAmount,
-                collateralCurrency as Currency<CollateralUnit>
+                collateralCurrency
             );
             const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
             const newCollateralAmount = newIssuedTokensInCollateralAmount.toBig().mul(newCollateralizationRatio).mul(scalingFactor);
@@ -179,8 +189,8 @@ const setLiquidationVault = ({ api }: DefaultInterBtcApi) =>
     disconnectApiOnExit(
         api,
         async ({ collateralSymbol, wrappedSymbol, toBeIssued, toBeRedeemed, issued, collateral }: SetLiquidationVaultParams) => {
-            const collateralCurrency = getCurrencyFromSymbol(api, collateralSymbol) as CollateralCurrency;
-            const wrappedCurrency = getCurrencyFromSymbol(api, wrappedSymbol) as WrappedCurrency;
+            const collateralCurrency = getCurrencyFromSymbol(collateralSymbol);
+            const wrappedCurrency = getCurrencyFromSymbol(wrappedSymbol) as WrappedCurrency;
             const currencyPair = newVaultCurrencyPair(api, collateralCurrency, wrappedCurrency);
 
             const storageKey = getStorageMapItemKey("VaultRegistry", "LiquidationVault", currencyPair.toHex());
@@ -209,7 +219,7 @@ const setBalance = (interBtcApi: DefaultInterBtcApi) =>
             console.log(`Setting ${currencySymbol} balance of ${address} to ${value}...`);
             const account = newAccountId(api, address);
 
-            const currency = getCurrencyFromSymbol(api, currencySymbol);
+            const currency = getCurrencyFromSymbol(currencySymbol);
 
             const amount = newMonetaryAmount(value, currency);
 
@@ -304,7 +314,7 @@ const setVaultReward = (interBtcApi: DefaultInterBtcApi) =>
             const nonceHex = interBtcApi.api.createType("u32", 0).toHex();
             const vaultIdHex = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol).toHex();
             const accountHex = api.createType("AccountId32", accountId).toHex();
-            const rewardCurrencyHex = newCurrencyId(api, interBtcApi.getGovernanceCurrency().ticker as CurrencyIdLiteral).toHex();
+            const rewardCurrencyHex = newCurrencyId(api, interBtcApi.getGovernanceCurrency()).toHex();
             const nonceVaultIdTupleHex = nonceHex + stripHexPrefix(vaultIdHex) as `0x${string}`;
             const nonceVaultIdAccountTupleHex = nonceVaultIdTupleHex + stripHexPrefix(accountHex) as `0x${string}`;
             const vaultIdAccountTupleHex = vaultIdHex + stripHexPrefix(accountHex) as `0x${string}`;
@@ -373,7 +383,11 @@ async function main(): Promise<void> {
     const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
     const defaultVaultAccountId = vault_1.address;
-    const defaultCollateralSymbol = currencyIdToMonetaryCurrency(sudoAccountInterBtcApi.api.consts.currency.getRelayChainCurrencyId).ticker;
+    const defaultCollateralSymbol = (
+        await currencyIdToMonetaryCurrency(
+            sudoAccountInterBtcApi.assetRegistry,
+            sudoAccountInterBtcApi.api.consts.currency.getRelayChainCurrencyId)
+    ).ticker;
     const defaultWrappedSymbol = sudoAccountInterBtcApi.getWrappedCurrency().ticker;
     console.log(`Default vault to use: ${defaultVaultAccountId}-${defaultCollateralSymbol}-${defaultWrappedSymbol}.\n`);
 
