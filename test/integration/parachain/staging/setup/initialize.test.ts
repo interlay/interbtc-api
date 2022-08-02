@@ -386,9 +386,6 @@ describe("Initialize parachain state", () => {
                 waitForEvent(sudoInterBtcAPI, api.events.tokens.BalanceSet, false, balanceTimeout),
                 sudo(sudoInterBtcAPI, async () => sudoInterBtcAPI.tokens.setBalance(vaultAccountId, freeBalanceToSet)),
             ]);
-            await sudo(sudoInterBtcAPI, async () =>
-                sudoInterBtcAPI.tokens.setBalance(vaultAccountId, freeBalanceToSet)
-            );
 
             assert.isTrue(
                 balanceEventFound,
