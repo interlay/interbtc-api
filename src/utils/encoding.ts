@@ -241,8 +241,8 @@ export async function parseIssueRequest(
     const status = req.status.isCompleted
         ? IssueStatus.Completed
         : req.status.isCancelled
-            ? IssueStatus.Cancelled
-            : IssueStatus.PendingWithBtcTxNotFound;
+        ? IssueStatus.Cancelled
+        : IssueStatus.PendingWithBtcTxNotFound;
     const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
     return {
         id: stripHexPrefix(id.toString()),
@@ -269,10 +269,10 @@ export async function parseRedeemRequest(
     const status = req.status.isCompleted
         ? RedeemStatus.Completed
         : req.status.isRetried
-            ? RedeemStatus.Retried
-            : req.status.isReimbursed
-                ? RedeemStatus.Reimbursed
-                : RedeemStatus.PendingWithBtcTxNotFound;
+        ? RedeemStatus.Retried
+        : req.status.isReimbursed
+        ? RedeemStatus.Reimbursed
+        : RedeemStatus.PendingWithBtcTxNotFound;
 
     const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
     return {
@@ -319,4 +319,8 @@ export async function queryNominationsMap(
         }
     }
     return undefined;
+}
+
+export function getSS58Prefix(api: ApiPromise): number {
+    return Number(api.registry.chainSS58?.toString());
 }
