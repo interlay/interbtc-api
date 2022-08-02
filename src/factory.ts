@@ -22,7 +22,10 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
 
 export function createSubstrateAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
-    return ApiPromise.create({ provider });
+
+    const jsonRpcDefinitions = JSON.parse(JSON.stringify(definitions.default.providerRpc));
+    const jsonTypesDefinitions = JSON.parse(JSON.stringify(definitions.default.types));
+    return ApiPromise.create({ provider, types: jsonTypesDefinitions, rpc: jsonRpcDefinitions });
 }
 
 export async function createInterBtcApi(
