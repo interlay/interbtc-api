@@ -2,7 +2,6 @@
 import { InterBtc, Interlay, KBtc, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { VaultRegistryVaultStatus } from "@polkadot/types/lookup";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import Big from "big.js";
 
@@ -241,22 +240,6 @@ const setVaultIssuedTokens = ({ api }: DefaultInterBtcApi) =>
             console.log(`Setting vault issued tokens to ${value}...`);
             await modifyVaultData(api, vaultId, modifier);
             console.log("OK: Succesfully set vault issued tokens.");
-        }
-    );
-
-const setVaultTheft = ({ api }: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        api,
-        async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
-            const vaultId = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol);
-
-            const theftCommittedStatus = { "committedTheft": true } as unknown as VaultRegistryVaultStatus;
-
-            const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, status: theftCommittedStatus });
-
-            console.log("Setting vault to 'CommittedTheft' status...");
-            await modifyVaultData(api, vaultId, modifier);
-            console.log("OK: Succesfully set vault to 'CommittedTheft' status.");
         }
     );
 
@@ -506,12 +489,6 @@ async function main(): Promise<void> {
                 "Sets collateral ratio of vault to be within premium redeem range",
                 SET_VAULT_PARAMS_BASE,
                 setPremiumRedeem(sudoAccountInterBtcApi)
-            )
-            .command(
-                "vaultTheft",
-                "Sets vault status to theft",
-                SET_VAULT_PARAMS_BASE,
-                setVaultTheft(sudoAccountInterBtcApi)
             )
             .command(
                 "vaultBan",
