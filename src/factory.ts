@@ -23,9 +23,9 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
 export function createSubstrateAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
 
-    const jsonRpcDefinitions = JSON.parse(JSON.stringify(definitions.default.providerRpc));
-    const jsonTypesDefinitions = JSON.parse(JSON.stringify(definitions.default.types));
-    return ApiPromise.create({ provider, types: jsonTypesDefinitions, rpc: jsonRpcDefinitions });
+    const types = getAPITypes();
+    const rpc = getRPCTypes();
+    return ApiPromise.create({ provider, types, rpc });
 }
 
 export async function createInterBtcApi(
