@@ -4,6 +4,7 @@ on:
     pull_request:
         branches:
             - master
+            - without-currency-foreign-asset-refactor
 
 concurrency:
     group: ${{ github.ref }}_kint
