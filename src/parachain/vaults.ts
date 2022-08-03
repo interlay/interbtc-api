@@ -405,9 +405,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             ? this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
             : this.api.query.vaultRegistry.vaults.entries());
         return Promise.all(
-            vaultsMap
-                .filter((v) => v[1].isSome)
-                .map((v) => this.parseVault(v[1].value as VaultRegistryVault, this.btcNetwork))
+            vaultsMap.filter((v) => v[1].isSome).map((v) => this.parseVault(v[1].value as VaultRegistryVault))
         );
     }
 
@@ -425,7 +423,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             if (!vault.isSome) {
                 return null;
             }
-            return this.parseVault(vault.value as VaultRegistryVault, this.btcNetwork);
+            return this.parseVault(vault.value as VaultRegistryVault);
         } catch (error) {
             return Promise.reject(error);
         }
@@ -976,7 +974,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async parseVault(vault: VaultRegistryVault, network: Network): Promise<VaultExt<BitcoinUnit>> {
+    async parseVault(vault: VaultRegistryVault): Promise<VaultExt<BitcoinUnit>> {
         const collateralCurrency = currencyIdToMonetaryCurrency<CollateralUnit>(vault.id.currencies.collateral);
         const replaceCollateral = newMonetaryAmount(vault.replaceCollateral.toString(), collateralCurrency);
         const liquidatedCollateral = newMonetaryAmount(vault.liquidatedCollateral.toString(), collateralCurrency);
