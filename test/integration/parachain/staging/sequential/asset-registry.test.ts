@@ -9,9 +9,10 @@ import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 
 import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { waitForFinalizedEvent } from "../../../../utils/helpers";
+import { waitForEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
+    const approx10Blocks = 10 * 12 * 1000;
     let api: ApiPromise;
     let interBtcAPI: DefaultInterBtcApi;
 
@@ -46,10 +47,10 @@ describe("AssetRegistry", () => {
         if (newKeys.length > 0) {
             // clean up assets registered in test(s)
             const deleteKeysInstruction = interBtcAPI.api.tx.system.killStorage(newKeys);
-            await interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction).signAndSend(sudoAccount);
-
-            // wait for finalized event
-            await waitForFinalizedEvent(interBtcAPI, api.events.sudo.Sudid);
+            await Promise.all([
+                waitForEvent(interBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
+                interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction).signAndSend(sudoAccount),
+            ]);
         }
 
         return api.disconnect();
@@ -78,13 +79,16 @@ describe("AssetRegistry", () => {
                 },
                 api.createType("u32", nextAssetId)
             );
-
-            await Promise.all([
-                // wait for finalized event
-                waitForFinalizedEvent(interBtcAPI, api.events.assetRegistry.Sudid),
-                // need sudo to add new foreign asset
+            // need sudo to add new foreign asset
+            const [eventFound] = await Promise.all([
+                waitForEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset, false, approx10Blocks),
                 interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
             ]);
+
+            assert.isTrue(
+                eventFound,
+                `Sudo event to create new foreign asset not found - timed out after ${approx10Blocks} ms`
+            );
         }
 
         // get the metadata for the asset we just registered

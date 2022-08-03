@@ -16,14 +16,13 @@ import {
     InterbtcPrimitivesIssueIssueRequest,
     BitcoinAddress,
     VaultRegistrySystemVault,
-    VaultRegistryWallet,
     InterbtcPrimitivesVaultId,
     InterbtcPrimitivesVaultCurrencyPair,
     InterbtcPrimitivesCurrencyId,
 } from "@polkadot/types/lookup";
 
 import { encodeBtcAddress, FIXEDI128_SCALING_FACTOR } from ".";
-import { WalletExt, SystemVaultExt } from "../types/vault";
+import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
 import { SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
 import {
@@ -145,19 +144,6 @@ export interface DecodedRequest extends Struct {
 export interface DecodedRequestExt extends Omit<DecodedRequest, "btc_address"> {
     // network encoded btc address
     btc_address: string;
-}
-
-export function parseWallet(wallet: VaultRegistryWallet, network: Network): WalletExt {
-    const { addresses } = wallet;
-
-    const btcAddresses: Array<string> = [];
-    for (const value of addresses.values()) {
-        btcAddresses.push(encodeBtcAddress(value, network));
-    }
-
-    return {
-        addresses: btcAddresses,
-    };
 }
 
 export function parseSystemVault(
@@ -365,4 +351,8 @@ export function queryNominationsMap(
         }
     }
     return undefined;
+}
+
+export function getSS58Prefix(api: ApiPromise): number {
+    return Number(api.registry.chainSS58?.toString());
 }
