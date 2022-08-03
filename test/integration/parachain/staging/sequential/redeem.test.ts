@@ -95,7 +95,7 @@ describe("redeem", () => {
     }).timeout(3 * 60000);
 
     it("should issue and request redeem", async () => {
-        for (const [vault_1_id, vault_2_id] of collateralTickerToVaultIdsMap.values()) {
+        for (const [vault_1_id] of collateralTickerToVaultIdsMap.values()) {
             const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
             const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
 
