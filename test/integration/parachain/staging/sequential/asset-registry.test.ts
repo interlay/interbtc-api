@@ -81,7 +81,7 @@ describe("AssetRegistry", () => {
             );
             // need sudo to add new foreign asset
             const [eventFound] = await Promise.all([
-                waitForEvent(interBtcAPI, api.events.sudo.RegisteredAsset, false, approx10Blocks),
+                waitForEvent(interBtcAPI, api.events.assetRegistry.RegisteredAsset, false, approx10Blocks),
                 interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
             ]);
 
