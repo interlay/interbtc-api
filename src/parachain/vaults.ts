@@ -14,7 +14,6 @@ import {
 import {
     decodeFixedPointType,
     newMonetaryAmount,
-    parseWallet,
     parseSystemVault,
     getTxProof,
     newCurrencyId,
@@ -406,9 +405,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             ? this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
             : this.api.query.vaultRegistry.vaults.entries());
         return Promise.all(
-            vaultsMap
-                .filter((v) => v[1].isSome)
-                .map((v) => this.parseVault(v[1].value as VaultRegistryVault, this.btcNetwork))
+            vaultsMap.filter((v) => v[1].isSome).map((v) => this.parseVault(v[1].value as VaultRegistryVault))
         );
     }
 
@@ -426,7 +423,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             if (!vault.isSome) {
                 return null;
             }
-            return this.parseVault(vault.value as VaultRegistryVault, this.btcNetwork);
+            return this.parseVault(vault.value as VaultRegistryVault);
         } catch (error) {
             return Promise.reject(error);
         }
@@ -972,14 +969,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
             return status.asActive.isTrue ? VaultStatusExt.Active : VaultStatusExt.Inactive;
         } else if (status.isLiquidated) {
             return VaultStatusExt.Liquidated;
-        } else if (status.isCommittedTheft) {
-            return VaultStatusExt.CommittedTheft;
         } else {
             throw new Error("Unknown vault status");
         }
     }
 
-    async parseVault(vault: VaultRegistryVault, network: Network): Promise<VaultExt<BitcoinUnit>> {
+    async parseVault(vault: VaultRegistryVault): Promise<VaultExt<BitcoinUnit>> {
         const collateralCurrency = currencyIdToMonetaryCurrency<CollateralUnit>(vault.id.currencies.collateral);
         const replaceCollateral = newMonetaryAmount(vault.replaceCollateral.toString(), collateralCurrency);
         const liquidatedCollateral = newMonetaryAmount(vault.liquidatedCollateral.toString(), collateralCurrency);
@@ -988,7 +983,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.api,
             this.oracleAPI,
             this.systemAPI,
-            parseWallet(vault.wallet, network),
             backingCollateral,
             vault.id,
             this.parseVaultStatus(vault.status),

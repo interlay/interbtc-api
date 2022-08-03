@@ -4,7 +4,7 @@ on:
     push:
         branches:
             - master
-            - brendon/parachain-v1-17-0-pre-foreign-asset
+            - without-currency-foreign-asset-refactor
 
 concurrency:
     group: ${{ github.ref }}_intr

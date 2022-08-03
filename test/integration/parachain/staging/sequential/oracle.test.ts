@@ -5,7 +5,13 @@ import { Bitcoin, BitcoinAmount, BitcoinUnit, Currency, ExchangeRate } from "@in
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
-import { CollateralUnit, DefaultInterBtcApi, getCorrespondingCollateralCurrencies, InterBtcApi } from "../../../../../src";
+import {
+    CollateralUnit,
+    DefaultInterBtcApi,
+    getCorrespondingCollateralCurrencies,
+    getSS58Prefix,
+    InterBtcApi,
+} from "../../../../../src";
 import { getExchangeRateValueToSetForTesting } from "../../../../utils/helpers";
 
 describe("OracleAPI", () => {
@@ -13,13 +19,23 @@ describe("OracleAPI", () => {
     let interBtcAPI: InterBtcApi;
     let collateralCurrencies: Array<Currency<CollateralUnit>>;
     let oracleAccount: KeyringPair;
+    let aliceAccount: KeyringPair;
+    let bobAccount: KeyringPair;
+    let charlieAccount: KeyringPair;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        const keyring = new Keyring({ type: "sr25519" });
+        const ss58Prefix = getSS58Prefix(api);
+        const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
+
+        aliceAccount = keyring.addFromUri("//Alice");
+        bobAccount = keyring.addFromUri("//Bob");
+        charlieAccount = keyring.addFromUri("//Charlie");
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
-        collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency()) as Array<Currency<CollateralUnit>>;
+        collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency()) as Array<
+            Currency<CollateralUnit>
+        >;
     });
 
     after(() => {
@@ -41,14 +57,20 @@ describe("OracleAPI", () => {
     });
 
     it("should convert satoshi to collateral currency", async () => {
-        for(const collateralCurrency of collateralCurrencies) {
+        for (const collateralCurrency of collateralCurrencies) {
             const bitcoinAmount = BitcoinAmount.from.BTC(100);
             const exchangeRate = await interBtcAPI.oracle.getExchangeRate(collateralCurrency);
-            const expectedCollateral = exchangeRate.toBig(undefined).mul(bitcoinAmount.toBig(BitcoinUnit.BTC)).round(0, 0);
-    
-            const collateralAmount = await interBtcAPI.oracle.convertWrappedToCurrency(bitcoinAmount, collateralCurrency);
+            const expectedCollateral = exchangeRate
+                .toBig(undefined)
+                .mul(bitcoinAmount.toBig(BitcoinUnit.BTC))
+                .round(0, 0);
+
+            const collateralAmount = await interBtcAPI.oracle.convertWrappedToCurrency(
+                bitcoinAmount,
+                collateralCurrency
+            );
             assert.equal(
-                collateralAmount.toBig(collateralCurrency.base).round(0, 0).toString(), 
+                collateralAmount.toBig(collateralCurrency.base).round(0, 0).toString(),
                 expectedCollateral.toString(),
                 `Unexpected collateral (${collateralCurrency.ticker}) amount`
             );
@@ -57,9 +79,9 @@ describe("OracleAPI", () => {
 
     it("should get names by id", async () => {
         const expectedSources = new Map<string, string>();
-        expectedSources.set("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", "Alice");
-        expectedSources.set("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", "Bob");
-        expectedSources.set("5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y", "Charlie");
+        expectedSources.set(aliceAccount.address, "Alice");
+        expectedSources.set(bobAccount.address, "Bob");
+        expectedSources.set(charlieAccount.address, "Charlie");
         const sources = await interBtcAPI.oracle.getSourcesById();
         for (const entry of sources.entries()) {
             assert.equal(entry[1], expectedSources.get(entry[0]));
@@ -73,11 +95,14 @@ describe("OracleAPI", () => {
     });
 
     it("should getValidUntil", async () => {
-        for(const collateralCurrency of collateralCurrencies) {
+        for (const collateralCurrency of collateralCurrencies) {
             const validUntil = await interBtcAPI.oracle.getValidUntil(collateralCurrency);
             const dateAnHourFromNow = new Date();
             dateAnHourFromNow.setMinutes(dateAnHourFromNow.getMinutes() + 30);
-            assert.isTrue(validUntil > dateAnHourFromNow, `lastExchangeRateTime is older than one hour (${collateralCurrency.ticker})`);
+            assert.isTrue(
+                validUntil > dateAnHourFromNow,
+                `lastExchangeRateTime is older than one hour (${collateralCurrency.ticker})`
+            );
         }
     });
 
