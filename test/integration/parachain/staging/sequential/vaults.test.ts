@@ -54,6 +54,7 @@ import {
 import {
     encodeVaultId,
     getCorrespondingCollateralCurrencies,
+    getSS58Prefix,
     issueSingle,
     newMonetaryAmount,
 } from "../../../../../src/utils";
@@ -80,7 +81,8 @@ describe("vaultsAPI", () => {
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        const keyring = new Keyring({ type: "sr25519" });
+        const ss58Prefix = getSS58Prefix(api);
+        const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
         oracleAccount = keyring.addFromUri(ORACLE_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();

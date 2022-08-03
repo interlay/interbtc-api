@@ -352,3 +352,7 @@ export function queryNominationsMap(
     }
     return undefined;
 }
+
+export function getSS58Prefix(api: ApiPromise): number {
+    return Number(api.registry.chainSS58?.toString());
+}
