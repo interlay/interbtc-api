@@ -6,7 +6,6 @@ import {
 } from "../src/parachain";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
-import { XcmVersionedMultiAsset } from "@polkadot/types/lookup";
 import { XcmV1MultiLocation } from "@polkadot/types/lookup";
 
 
@@ -27,16 +26,16 @@ async function main(): Promise<void> {
 
     const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
 
-    const asset = api.createType<XcmVersionedMultiAsset>("XcmVersionedMultiAsset", {
+    const asset = api.createType("XcmVersionedMultiAsset", {
         v1: api.createType("XcmV1MultiAsset", {
             id: api.createType("XcmV1MultiassetAssetId", {
                 concrete: api.createType("XcmV1MultiLocation", {
                     parents: 1,
                     interior: api.createType("XcmV1MultilocationJunctions", {
                         x2: [
-                            api.createType("XcmV1Junction", { 
-                                parachain: 2000 
-                            }), api.createType("XcmV1Junction", { 
+                            api.createType("XcmV1Junction", {
+                                parachain: 2000
+                            }), api.createType("XcmV1Junction", {
                                 generalKey: [0, 12] // kint
                             })]
                     })
@@ -45,7 +44,8 @@ async function main(): Promise<void> {
             fun: api.createType("XcmV1MultiassetFungibility", {
                 fungible: 10000000000
             })
-        })}
+        })
+    }
     );
 
     const dest = api.createType<XcmVersionedMultiLocation>("XcmVersionedMultiLocation", {
@@ -53,9 +53,9 @@ async function main(): Promise<void> {
             parents: 1,
             interior: api.createType("XcmV1MultilocationJunctions", {
                 x2: [
-                    api.createType("XcmV1Junction", { 
-                        parachain: 2000 
-                    }), api.createType("XcmV1Junction", { 
+                    api.createType("XcmV1Junction", {
+                        parachain: 2000
+                    }), api.createType("XcmV1Junction", {
                         accountId32: {
                             network: api.createType("XcmV0JunctionNetworkId", { any: true }),
                             id: "0x8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48" // bob 
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
         })
     });
 
-    
+
     const sibling = api.createType<XcmV1MultiLocation>("XcmV1MultiLocation", {
         parents: 1,
         interior: api.createType("XcmV1MultilocationJunctions", {
