@@ -787,7 +787,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
         ) as CollateralCurrency;
 
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.getWrappedCurrency());
-        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault(vaultId);
+        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault({
+            account_id: vaultId.accountId,
+            currencies: vaultId.currencies,
+        });
         const amount = newMonetaryAmount(balance.amount.toString(), this.getWrappedCurrency());
         return amount;
     }
