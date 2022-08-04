@@ -342,7 +342,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private systemAPI: SystemAPI,
         private transactionAPI: TransactionAPI,
         private assetRegistryAPI: AssetRegistryAPI
-    ) { }
+    ) {}
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
@@ -756,25 +756,26 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getVaultsWithIssuableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>> {
-        const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
-        const [vaults, activeBlockNumber] = await Promise.all([
-            this.list(),
-            this.systemAPI.getCurrentActiveBlockNumber(),
-        ]);
-        const issuableTokens = await Promise.all(
-            vaults
-                .filter((vault) => {
-                    const bannedUntilBlockNumber = vault.bannedUntil || 0;
-                    return vault.status === VaultStatusExt.Active && bannedUntilBlockNumber < activeBlockNumber;
-                })
-                .map((vault) => {
-                    return new Promise<[MonetaryAmount<WrappedCurrency>, InterbtcPrimitivesVaultId]>((resolve, _) =>
-                        vault.getIssuableTokens().then((amount) => resolve([amount, vault.id]))
-                    );
-                })
-        );
-        issuableTokens.forEach(([amount, vaultId]) => map.set(vaultId, amount));
-        return map;
+        const issuableVaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
+        const vaultIdsToAmountsMap: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
+        for (const [vaultId, balanceWrapper] of issuableVaults) {
+            const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
+            const [collateralCcy, wrappedCcy] = await Promise.all([
+                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.collateral),
+                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.wrapped),
+            ]);
+
+            const ibtcPrimitivesVaultId = newVaultId(
+                this.api,
+                vaultId.account_id.toString(),
+                collateralCcy,
+                wrappedCcy
+            );
+
+            vaultIdsToAmountsMap.set(ibtcPrimitivesVaultId, amount);
+        }
+
+        return vaultIdsToAmountsMap;
     }
 
     private isVaultEligibleForRedeem(vault: VaultExt, activeBlockNumber: number): boolean {
