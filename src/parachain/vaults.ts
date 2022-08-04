@@ -1,7 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, BlockNumber, BlockHash } from "@polkadot/types/interfaces";
 import Big from "big.js";
-import { Network } from "bitcoinjs-lib";
 import { MonetaryAmount, Currency } from "@interlay/monetary-js";
 import { Option } from "@polkadot/types";
 import {
@@ -331,7 +330,6 @@ export interface VaultsAPI {
 export class DefaultVaultsAPI implements VaultsAPI {
     constructor(
         private api: ApiPromise,
-        private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private governanceCurrency: GovernanceCurrency,
@@ -342,7 +340,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private systemAPI: SystemAPI,
         private transactionAPI: TransactionAPI,
         private assetRegistryAPI: AssetRegistryAPI
-    ) { }
+    ) {}
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
@@ -383,11 +381,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const vaultsMap = await (atBlock
             ? this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
             : this.api.query.vaultRegistry.vaults.entries());
-        return Promise.all(
-            vaultsMap
-                .filter((v) => v[1].isSome)
-                .map((v) => this.parseVault(v[1].value as VaultRegistryVault, this.btcNetwork))
-        );
+        return Promise.all(vaultsMap.filter((v) => v[1].isSome).map((v) => this.parseVault(v[1].value)));
     }
 
     async getOrNull(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<VaultExt | null> {
@@ -397,7 +391,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             if (!vault.isSome) {
                 return null;
             }
-            return this.parseVault(vault.value as VaultRegistryVault, this.btcNetwork);
+            return this.parseVault(vault.value);
         } catch (error) {
             return Promise.reject(error);
         }
@@ -715,7 +709,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>> {
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.getWrappedCurrency());
-        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault(vaultId);
+        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault({
+            account_id: vaultId.accountId,
+            currencies: vaultId.currencies,
+        });
         const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, balance.currencyId);
         const amount = newMonetaryAmount(balance.amount.toString(), currency);
         return amount;
@@ -756,25 +753,26 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getVaultsWithIssuableTokens(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>> {
-        const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
-        const [vaults, activeBlockNumber] = await Promise.all([
-            this.list(),
-            this.systemAPI.getCurrentActiveBlockNumber(),
-        ]);
-        const issuableTokens = await Promise.all(
-            vaults
-                .filter((vault) => {
-                    const bannedUntilBlockNumber = vault.bannedUntil || 0;
-                    return vault.status === VaultStatusExt.Active && bannedUntilBlockNumber < activeBlockNumber;
-                })
-                .map((vault) => {
-                    return new Promise<[MonetaryAmount<WrappedCurrency>, InterbtcPrimitivesVaultId]>((resolve, _) =>
-                        vault.getIssuableTokens().then((amount) => resolve([amount, vault.id]))
-                    );
-                })
-        );
-        issuableTokens.forEach(([amount, vaultId]) => map.set(vaultId, amount));
-        return map;
+        const issuableVaults = await this.api.rpc.vaultRegistry.getVaultsWithIssuableTokens();
+        const vaultIdsToAmountsMap: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
+        for (const [vaultId, balanceWrapper] of issuableVaults) {
+            const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
+            const [collateralCcy, wrappedCcy] = await Promise.all([
+                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.collateral),
+                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.wrapped),
+            ]);
+
+            const ibtcPrimitivesVaultId = newVaultId(
+                this.api,
+                vaultId.account_id.toString(),
+                collateralCcy,
+                wrappedCcy
+            );
+
+            vaultIdsToAmountsMap.set(ibtcPrimitivesVaultId, amount);
+        }
+
+        return vaultIdsToAmountsMap;
     }
 
     private isVaultEligibleForRedeem(vault: VaultExt, activeBlockNumber: number): boolean {
@@ -882,7 +880,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async parseVault(vault: VaultRegistryVault, network: Network): Promise<VaultExt> {
+    async parseVault(vault: VaultRegistryVault): Promise<VaultExt> {
         const collateralCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
             vault.id.currencies.collateral
