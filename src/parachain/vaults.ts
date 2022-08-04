@@ -1,7 +1,6 @@
 import { ApiPromise } from "@polkadot/api";
 import { AccountId, BlockNumber, BlockHash } from "@polkadot/types/interfaces";
 import Big from "big.js";
-import { Network } from "bitcoinjs-lib";
 import { MonetaryAmount, Currency } from "@interlay/monetary-js";
 import { Option } from "@polkadot/types";
 import {
@@ -331,7 +330,6 @@ export interface VaultsAPI {
 export class DefaultVaultsAPI implements VaultsAPI {
     constructor(
         private api: ApiPromise,
-        private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private governanceCurrency: GovernanceCurrency,
@@ -383,11 +381,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const vaultsMap = await (atBlock
             ? this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
             : this.api.query.vaultRegistry.vaults.entries());
-        return Promise.all(
-            vaultsMap
-                .filter((v) => v[1].isSome)
-                .map((v) => this.parseVault(v[1].value as VaultRegistryVault, this.btcNetwork))
-        );
+        return Promise.all(vaultsMap.filter((v) => v[1].isSome).map((v) => this.parseVault(v[1].value)));
     }
 
     async getOrNull(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<VaultExt | null> {
@@ -397,7 +391,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             if (!vault.isSome) {
                 return null;
             }
-            return this.parseVault(vault.value as VaultRegistryVault, this.btcNetwork);
+            return this.parseVault(vault.value);
         } catch (error) {
             return Promise.reject(error);
         }
@@ -883,7 +877,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async parseVault(vault: VaultRegistryVault, network: Network): Promise<VaultExt> {
+    async parseVault(vault: VaultRegistryVault): Promise<VaultExt> {
         const collateralCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
             vault.id.currencies.collateral

@@ -108,7 +108,6 @@ export class DefaultInterBtcApi implements InterBtcApi {
 
         this.vaults = new DefaultVaultsAPI(
             api,
-            btcNetwork,
             this.electrsAPI,
             wrappedCurrency,
             governanceCurrency,
