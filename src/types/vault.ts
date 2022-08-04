@@ -58,18 +58,9 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     }
 
     async getIssuableTokens(): Promise<MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>> {
-        const isBanned = await this.isBanned();
-        if (isBanned) {
-            return newMonetaryAmount(0, currencyIdToMonetaryCurrency(this.id.currencies.wrapped));
-        }
-        const freeCollateral = await this.getFreeCollateral();
-        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
-        const backableWrappedTokens = await this.oracleAPI.convertCollateralToWrapped(freeCollateral);
-        // Force type-assert here as the oracle API only uses wrapped Bitcoin
-        return backableWrappedTokens.div(secureCollateralThreshold) as unknown as MonetaryAmount<
-            Currency<WrappedUnit>,
-            WrappedUnit
-        >;
+        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault(this.id);
+        const wrapped = currencyIdToMonetaryCurrency(this.id.currencies.wrapped) as Currency<WrappedUnit>;
+        return newMonetaryAmount(balance.amount.toString(), wrapped);
     }
 
     async isBanned(): Promise<boolean> {
