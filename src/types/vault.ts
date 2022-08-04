@@ -59,7 +59,10 @@ export class VaultExt {
     }
 
     async getIssuableTokens(): Promise<MonetaryAmount<WrappedCurrency>> {
-        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault(this.id);
+        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault({
+            account_id: this.id.accountId,
+            currencies: this.id.currencies,
+        });
         const wrapped = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.id.currencies.wrapped);
         return newMonetaryAmount(balance.amount.toString(), wrapped);
     }

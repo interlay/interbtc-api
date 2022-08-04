@@ -709,7 +709,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>> {
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.getWrappedCurrency());
-        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault(vaultId);
+        const balance = await this.api.rpc.vaultRegistry.getIssueableTokensFromVault({
+            account_id: vaultId.accountId,
+            currencies: vaultId.currencies,
+        });
         const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, balance.currencyId);
         const amount = newMonetaryAmount(balance.amount.toString(), currency);
         return amount;
