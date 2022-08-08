@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "1.16.2",
+  "version": "1.16.3",
   "description": "JavaScript library to interact with interBTC and kBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
