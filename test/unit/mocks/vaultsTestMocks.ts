@@ -4,6 +4,7 @@ import {
     CollateralCurrencyExt,
     CurrencyExt,
     DefaultRewardsAPI,
+    DefaultTransactionAPI,
     DefaultVaultsAPI,
     InterbtcPrimitivesVaultId,
     newMonetaryAmount,
@@ -11,10 +12,55 @@ import {
 } from "../../../src";
 import * as allThingsEncoding from "../../../src/utils/encoding";
 import { AccountId } from "@polkadot/types/interfaces";
+import { SubmittableExtrinsic, AugmentedEvent, ApiTypes } from "@polkadot/api/types";
+import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
 
 export type NominatorVaultAccountIds = {
     nominatorId: AccountId;
     vaultId: AccountId;
+};
+
+export const MOCKED_SEND_LOGGED_ERR_MSG = "mocked sendLogged rejection";
+
+/**
+ *
+ * @returns Two mock account IDs, one for the nominator and one for the vault
+ * @param sinon The sinon sandbox to use for mocking
+ * @param vaultsApi The vaults API used to call the method under test
+ * @param stubbedTransactionApi The stubbed transaction API (called internally)
+ * @param isAccountIdUndefined if true, mocks that transactionApi.getAccountId() returns an undefined account ID
+ * @param doesSendLoggedReject if true, mocks that transactionApi.sendLogged() rejects
+ * @returns the mocked extrinsic to return when transactionApi.sendLogged() is finally called
+ */
+export const prepareRegisterNewCollateralVaultMocks = (
+    sinon: sinon.SinonSandbox,
+    vaultsApi: DefaultVaultsAPI,
+    stubbedTransactionApi: sinon.SinonStubbedInstance<DefaultTransactionAPI>,
+    isAccountIdUndefined?: boolean,
+    doesSendLoggedReject?: boolean
+): SubmittableExtrinsic<"promise", ISubmittableResult> | null => {
+    if (isAccountIdUndefined) {
+        stubbedTransactionApi.getAccount.returns(undefined);
+        return null;
+    }
+
+    // mock getting a valid (ie. has been set) account id
+    const vaultAccountId = createMockAccountId("0x0123456789012345678901234567890123456789012345678901234567890123");
+    stubbedTransactionApi.getAccount.returns(vaultAccountId);
+
+    // mock api returns to be able to call sendLogged
+    const mockSubmittableExtrinsic = <SubmittableExtrinsic<"promise", ISubmittableResult>>{};
+    sinon.stub(vaultsApi, "buildRegisterVaultExtrinsic").returns(mockSubmittableExtrinsic);
+    const fakeEvent = <AugmentedEvent<ApiTypes, AnyTuple>>{};
+    sinon.stub(vaultsApi, "getRegisterVaultEvent").returns(fakeEvent);
+
+    if (doesSendLoggedReject) {
+        stubbedTransactionApi.sendLogged.rejects(new Error(MOCKED_SEND_LOGGED_ERR_MSG));
+        return null;
+    }
+
+    stubbedTransactionApi.sendLogged.resolves();
+    return mockSubmittableExtrinsic;
 };
 
 /**

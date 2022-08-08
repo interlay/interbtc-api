@@ -37,6 +37,8 @@ import {
 import { RewardsAPI } from "./rewards";
 import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
 import { AssetRegistryAPI, SystemAPI } from "./index";
+import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from "@polkadot/api/types";
+import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
 
 /**
  * @category BTC Bridge
@@ -325,6 +327,15 @@ export interface VaultsAPI {
      * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
      */
     toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void>;
+    /**
+     * Registers a new vault for the current account ID with a new collateral amount.
+     * Only applicable if the connected account ID already has a running vault with a different collateral currency.
+     *
+     * Rejects if with an Error if unable to register.
+     *
+     * @param collateralAmount The collateral amount to register the vault with - includes the new collateral currency
+     */
+    registerNewCollateralVault(collateralAmount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
 }
 
 export class DefaultVaultsAPI implements VaultsAPI {
@@ -344,6 +355,32 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
+    }
+
+    async registerNewCollateralVault(collateralAmount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+        // check the vault account is set
+        const vaultAccount = this.transactionAPI.getAccount();
+        if (vaultAccount === undefined) {
+            return Promise.reject("Vault account must be set in the vaults API");
+        }
+
+        const extrinsic = this.buildRegisterVaultExtrinsic(collateralAmount);
+        const registerVaultEvent = this.getRegisterVaultEvent();
+        await this.transactionAPI.sendLogged(extrinsic, registerVaultEvent, true);
+    }
+
+    // helper method; mainly for easier mocking in unit tests without an active ApiPromise instance
+    getRegisterVaultEvent(): AugmentedEvent<ApiTypes, AnyTuple> {
+        return this.api.events.vaultRegistry.RegisterVault;
+    }
+
+    // helper method; mainly for easier mocking in unit tests without an active ApiPromise instance
+    buildRegisterVaultExtrinsic(
+        collateralAmount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const currencyPair = newVaultCurrencyPair(this.api, collateralAmount.currency, this.getWrappedCurrency());
+        const amountAtomicUnit = this.api.createType("Balance", collateralAmount.toString(true));
+        return this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit);
     }
 
     async register(amount: MonetaryAmount<CollateralCurrencyExt>, publicKey: string): Promise<void> {
