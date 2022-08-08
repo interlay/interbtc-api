@@ -333,7 +333,7 @@ export interface VaultsAPI {
      *
      * Rejects if with an Error if unable to register.
      *
-     * @param collateralAmount The collateral amount to register the vault with - includes the new collateral currency
+     * @param collateralAmount The collateral amount to register the vault with - in the new collateral currency
      */
     registerNewCollateralVault(collateralAmount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
 }
