@@ -8,23 +8,20 @@ import {
     prepareRegisterNewCollateralVaultMocks,
     MOCKED_SEND_LOGGED_ERR_MSG,
 } from "../mocks/vaultsTestMocks";
-import { ApiPromise } from "@polkadot/api";
 
 describe("DefaultVaultsAPI", () => {
     let vaultsApi: DefaultVaultsAPI;
     const testCollateralCurrency = Kusama;
     const testWrappedCurrency = KBtc;
 
-    let stubbedApiPromise: sinon.SinonStubbedInstance<ApiPromise>;
     let stubbedRewardsApi: sinon.SinonStubbedInstance<DefaultRewardsAPI>;
     let stubbedTransactionApi: sinon.SinonStubbedInstance<DefaultTransactionAPI>;
 
     beforeEach(async () => {
-        stubbedApiPromise = sinon.createStubInstance(ApiPromise);
         stubbedRewardsApi = sinon.createStubInstance(DefaultRewardsAPI);
         stubbedTransactionApi = sinon.createStubInstance(DefaultTransactionAPI);
         vaultsApi = new DefaultVaultsAPI(
-            stubbedApiPromise as any,
+            null as any,
             null as any,
             testWrappedCurrency,
             null as any,
