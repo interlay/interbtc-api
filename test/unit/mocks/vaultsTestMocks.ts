@@ -143,9 +143,9 @@ export const mockComputeCollateralInStakingPoolMethod = (
  */
 export const createMockVaultWithBacking = (amount: BigSource, collateralCurrency: CollateralCurrencyExt): VaultExt => {
     // VaultExt-ish; only need .backingCollateral to be available for this test
-    return {
-        backingCollateral: newMonetaryAmount(amount, collateralCurrency as any),
-    } as any;
+    return <VaultExt>{
+        backingCollateral: newMonetaryAmount(amount, collateralCurrency),
+    };
 };
 
 /**
