@@ -331,7 +331,7 @@ export interface VaultsAPI {
      * Registers a new vault for the current account ID with a new collateral amount.
      * Only applicable if the connected account ID already has a running vault with a different collateral currency.
      *
-     * Rejects if with an Error if unable to register.
+     * Rejects with an Error if unable to register.
      *
      * @param collateralAmount The collateral amount to register the vault with - in the new collateral currency
      */
