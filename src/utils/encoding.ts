@@ -1,5 +1,5 @@
 import { AccountId, H256 } from "@polkadot/types/interfaces";
-import Big from "big.js";
+import Big, { BigSource } from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
@@ -24,7 +24,7 @@ import {
 import { currencyIdToMonetaryCurrency, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, isForeignAsset } from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
-import { SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
+import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, VaultsAPI } from "../parachain";
@@ -189,6 +189,12 @@ export function newCurrencyId(api: ApiPromise, currency: CurrencyExt): InterbtcP
 
 export function newForeignAssetId(api: ApiPromise, id: number): u32 {
     return api.createType("u32", id);
+}
+
+export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): BalanceWrapper {
+    return api.createType("BalanceWrapper", {
+        amount: api.createType("Text", Big(atomicAmount).toString()),
+    });
 }
 
 export function parseRefundRequest(

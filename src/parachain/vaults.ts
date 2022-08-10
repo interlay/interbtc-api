@@ -35,7 +35,7 @@ import {
     GovernanceCurrency,
 } from "../types";
 import { RewardsAPI } from "./rewards";
-import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
+import { UnsignedFixedPoint } from "../interfaces";
 import { AssetRegistryAPI, SystemAPI } from "./index";
 
 /**
@@ -713,7 +713,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
             account_id: vaultId.accountId,
             currencies: vaultId.currencies,
         });
-        const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, balance.currencyId);
+        const wrappedCurrencyPrimitive = newCurrencyId(this.api, this.getWrappedCurrency());
+        const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, wrappedCurrencyPrimitive);
         const amount = newMonetaryAmount(balance.amount.toString(), currency);
         return amount;
     }
@@ -861,13 +862,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
     async getPunishmentFee(): Promise<Big> {
         const fee = await this.api.query.fee.punishmentFee();
         return decodeFixedPointType(fee);
-    }
-
-    private wrapCurrency(amount: MonetaryAmount<CollateralCurrencyExt>): BalanceWrapper {
-        return this.api.createType("BalanceWrapper", {
-            amount: this.api.createType("u128", amount.toString(true)),
-            currencyId: newCurrencyId(this.api, amount.currency),
-        });
     }
 
     private parseVaultStatus(status: VaultRegistryVaultStatus): VaultStatusExt {
