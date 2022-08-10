@@ -29,7 +29,7 @@ import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { waitForEvent } from "../../../../utils/helpers";
+import { callWith, waitForEvent } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -93,17 +93,17 @@ describe("replace", () => {
                 const replaceAmount = dustValue;
                 await issueSingle(interBtcAPI, bitcoinCoreClient, userAccount, issueAmount, vault_3_id);
 
-                interBtcAPI.setAccount(vault_3);
                 const collateralCurrency = await currencyIdToMonetaryCurrency(
                     assetRegistry,
                     vault_3_id.currencies.collateral
                 );
-                const [foundEvent] = await Promise.all([
-                    waitForEvent(interBtcAPI, api.events.replace.AcceptReplace, true, APPROX_TEN_BLOCKS_MS),
-                    interBtcAPI.replace.request(replaceAmount, collateralCurrency),
-                ]);
-
-                interBtcAPI.setAccount(userAccount);
+                let foundEvent = false;
+                await callWith(interBtcAPI, vault_3, async () => {
+                    [foundEvent] = await Promise.all([
+                        waitForEvent(interBtcAPI, api.events.replace.AcceptReplace, true, APPROX_TEN_BLOCKS_MS),
+                        interBtcAPI.replace.request(replaceAmount, collateralCurrency),
+                    ]);
+                });
 
                 assert.isTrue(
                     foundEvent,
