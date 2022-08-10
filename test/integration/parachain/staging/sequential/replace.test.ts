@@ -147,7 +147,6 @@ describe("replace", () => {
                     vault_2_id.currencies.collateral
                 );
                 const currencyTicker = collateralCurrency.ticker;
-                interBtcAPI.setAccount(vault_2);
 
                 // fetch tokens held by vault
                 const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
@@ -158,16 +157,14 @@ describe("replace", () => {
                 // make sure vault does not hold enough issued tokens to request a replace
                 const replaceAmount = dustValue.add(tokensInVault);
 
-                try {
-                    await interBtcAPI.replace.request(replaceAmount, collateralCurrency);
-                    assert.fail(`Expected error to be thrown due to lack of issued tokens
-                        for vault (collateral: ${currencyTicker}), but call completed.`);
-                } catch (e) {
-                    assert.isTrue(
-                        e instanceof Error,
-                        `Expected replace request to fail with Error (${currencyTicker} vault)`
-                    );
-                }
+                const replacePromise = callWith(interBtcAPI, vault_2, () =>
+                    interBtcAPI.replace.request(replaceAmount, collateralCurrency)
+                );
+
+                expect(replacePromise).to.be.rejectedWith(
+                    Error,
+                    `Expected replace request to fail with Error (${currencyTicker} vault)`
+                );
             }
         }).timeout(600000);
     });
