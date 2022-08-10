@@ -94,6 +94,8 @@ describe("refund", () => {
             // refunding the overpaid amount. So we had false negative failed tests.
             this.skip();
         }
+        const refundRequestsBefore = await interBtcAPI.refund.list();
+
         for (const vault_3_id of vault_3_ids) {
             const currencyTicker = (await currencyIdToMonetaryCurrency(assetRegistry, vault_3_id.currencies.collateral))
                 .ticker;
@@ -112,12 +114,13 @@ describe("refund", () => {
                 "0",
                 `Expected non-zero amount for refund request with vault 3 (${currencyTicker})`
             );
-            const refundRequests = await interBtcAPI.refund.list();
-            assert.isAtLeast(
-                refundRequests.length,
-                1,
-                `Expected at leas 1 refund request with vault 3 (${currencyTicker})`
-            );
         }
+        const refundRequestsAfter = await interBtcAPI.refund.list();
+        const countOfNewRefundRequests = refundRequestsAfter.length - refundRequestsBefore.length;
+        assert.equal(
+            countOfNewRefundRequests,
+            vault_3_ids.length,
+            `Expected to find ${vault_3_ids.length} new refund requests, but found ${countOfNewRefundRequests}`
+        );
     }).timeout(2000000);
 });
