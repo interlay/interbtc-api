@@ -107,7 +107,7 @@ describe("replace", () => {
                     interBtcAPI.replace.request(replaceAmount, collateralCurrency)
                 );
 
-                expect(foundEventPromise).to.eventually.be.equal(
+                await expect(foundEventPromise).to.eventually.be.equal(
                     true,
                     `Unexpected timeout while waiting for AcceptReplace event (collateral currency: ${collateralCurrency.ticker})`
                 );
