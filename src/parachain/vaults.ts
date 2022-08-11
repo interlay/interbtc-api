@@ -361,7 +361,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         // check the vault account is set
         const vaultAccount = this.transactionAPI.getAccount();
         if (vaultAccount === undefined) {
-            return Promise.reject("Vault account must be set in the vaults API");
+            return Promise.reject("Failed to read account in vaults API; account must be set in interbtc API");
         }
 
         const extrinsic = this.buildRegisterVaultExtrinsic(collateralAmount);
