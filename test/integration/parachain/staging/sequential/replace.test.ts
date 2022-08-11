@@ -86,7 +86,7 @@ describe("replace", () => {
         });
 
         it("should request vault replacement", async () => {
-            const APPROX_TEN_BLOCKS_MS = 10 * 12 * 1000;
+            const APPROX_FIFTEEN_BLOCKS_MS = 15 * 12 * 1000;
             for (const vault_3_id of vault_3_ids) {
                 // try to set value above dust + estimated fees
                 const issueAmount = dustValue.add(feesEstimate).mul(1.2);
@@ -97,16 +97,18 @@ describe("replace", () => {
                     assetRegistry,
                     vault_3_id.currencies.collateral
                 );
-                let foundEvent = false;
-                await callWith(interBtcAPI, vault_3, async () => {
-                    [foundEvent] = await Promise.all([
-                        waitForEvent(interBtcAPI, api.events.replace.AcceptReplace, true, APPROX_TEN_BLOCKS_MS),
-                        interBtcAPI.replace.request(replaceAmount, collateralCurrency),
-                    ]);
-                });
+                const foundEventPromise = waitForEvent(
+                    interBtcAPI,
+                    api.events.replace.AcceptReplace,
+                    true,
+                    APPROX_FIFTEEN_BLOCKS_MS
+                );
+                await callWith(interBtcAPI, vault_3, async () =>
+                    interBtcAPI.replace.request(replaceAmount, collateralCurrency)
+                );
 
-                assert.isTrue(
-                    foundEvent,
+                expect(foundEventPromise).to.eventually.be.equal(
+                    true,
                     `Unexpected timeout while waiting for AcceptReplace event (collateral currency: ${collateralCurrency.ticker})`
                 );
             }
