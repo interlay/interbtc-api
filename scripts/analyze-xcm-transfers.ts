@@ -142,13 +142,30 @@ async function main() {
     });
 
     const redeemsFromXcmUsers: Array<any> = [];
+    const redeemsFromAcalaUsers: Array<any> = [];
+    const redeemsFromMoonbeamUsers: Array<any> = [];
     let totalWrappedRedeemedFromXcm = new BN(0);
+    let totalWrappedRedeemedAcala = new BN(0);
+    let maxAcalaRedeems = new BN(0);
     console.log(redeems);
     redeems.forEach((redeem: { userParachainAddress: string; request: { requestedAmountBacking: any; }; }) => {
-        if (accounts.has(redeem.userParachainAddress)) {
+        const account = redeem.userParachainAddress;
+        if (accounts.has(account)) {
             redeemsFromXcmUsers.push(redeem);
             const amount = new BN(redeem.request.requestedAmountBacking);
             totalWrappedRedeemedFromXcm = totalWrappedRedeemedFromXcm.add(amount);
+
+            if (accounts.get(account)?.amountFrom.has(ACALA_SOVEREIGN_ACCOUNT)) {
+                maxAcalaRedeems = maxAcalaRedeems.add(amount);
+            }
+
+            if (accounts.get(account)?.amountFrom.has(ACALA_SOVEREIGN_ACCOUNT)) {
+                redeemsFromAcalaUsers.push(redeem);
+                totalWrappedRedeemedAcala = totalWrappedRedeemedAcala.add(amount);
+            }
+            if (accounts.get(account)?.amountFrom.has(MOONBEAM_SOVEREIGN_ACCOUNT)) {
+                redeemsFromMoonbeamUsers.push(redeem);
+            }
         }
 
     });
@@ -160,7 +177,10 @@ async function main() {
     console.log(`Total IBTC Withdrawn Acala: ${totalWrappedWithdrawnAcala}`);
     console.log(`Total IBTC Withdrawn Moonbeam: ${totalWrappedWithdrawnMoonbeam}`);
     console.log(`Total redeemed from XCM users ${totalWrappedRedeemedFromXcm}`);
-    console.log(redeemsFromXcmUsers);
+    console.log(`Max possible redeemed from Acala users ${maxAcalaRedeems}`);
+    console.log(`Redeems from users bridging from Moonbeam ${redeemsFromMoonbeamUsers.length}`);
+    console.log(`Redeems from users bridging from Acala ${JSON.stringify(redeemsFromAcalaUsers)}`);
+    console.log(`Total IBTC redeemed from users bridging from Acala ${totalWrappedRedeemedAcala}`);
 }
 
 main().catch((err) => {
