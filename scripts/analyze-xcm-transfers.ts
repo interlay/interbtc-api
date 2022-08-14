@@ -1,4 +1,5 @@
 import { BN } from "bn.js";
+import { count } from "console";
 import fetch from "cross-fetch";
 
 const ENDPOINT = 'https://api.interlay.io/gateway-graphql/v1/graphql';
@@ -76,10 +77,17 @@ async function main() {
 
     // get a list of all accounts the deposited iBTC to Interlay
     // and log total amount as well as amount from Acala and Moonbeam
-    xcm.forEach((extrinsic: { substrate_events: any; }) => {
+    let latestBlock = 0;
+    // let countMoonbeam = 0;
+    xcm.forEach((extrinsic: {
+        blockNumber: number; substrate_events: any;
+}) => {
         const events = extrinsic.substrate_events;
         let withdrawnFrom = "";
         let depositedTo;
+        if (latestBlock < extrinsic.blockNumber) {
+            latestBlock = extrinsic.blockNumber;
+        };
         events.forEach((event: {
             section: any;
             method: any;
@@ -94,7 +102,7 @@ async function main() {
                 // param2 is the amount either as a number of hex encoded
                 let amount = new BN(event.params[2].value);
 
-                console.log(`${method} ${amount} ${token} from/to ${account}`);
+                // console.log(`${method} ${amount} ${token} from/to ${account}`);
 
                 if (method === "Withdrawn") {
                     withdrawnFrom = account;
@@ -105,6 +113,8 @@ async function main() {
                         if (withdrawnFrom === ACALA_SOVEREIGN_ACCOUNT) {
                             totalWrappedWithdrawnAcala = totalWrappedWithdrawnAcala.add(amount);
                         } else if (withdrawnFrom === MOONBEAM_SOVEREIGN_ACCOUNT) {
+                            console.log(`${amount} IBTC at ${extrinsic.blockNumber}`);
+                            // countMoonbeam += 1;
                             totalWrappedWithdrawnMoonbeam = totalWrappedWithdrawnMoonbeam.add(amount);
                         }
                     }
@@ -141,6 +151,8 @@ async function main() {
         })
     });
 
+    // console.log(countMoonbeam);
+
     const redeemsFromXcmUsers: Array<any> = [];
     const redeemsFromAcalaUsers: Array<any> = [];
     const redeemsFromMoonbeamUsers: Array<any> = [];
@@ -170,6 +182,7 @@ async function main() {
 
     });
 
+    console.log(`Latest XCM transfer ${latestBlock}`);
     console.log(`Total INTR Deposited: ${totalGovDeposited}`);
     console.log(`Total INTR Withdrawn: ${totalGovWithdrawn}`);
     console.log(`Total IBTC Deposited: ${totalWrappedDeposited}`);
