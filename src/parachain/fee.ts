@@ -1,10 +1,12 @@
 import { OracleAPI } from "./oracle";
 import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
-import { BitcoinUnit, Currency, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "../utils/encoding";
-import { CollateralUnit, currencyIdToMonetaryCurrency, CurrencyUnit } from "../types";
+import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { currencyIdToMonetaryCurrency } from "../utils";
 
 export enum GriefingCollateralType {
     Issue,
@@ -23,19 +25,19 @@ export interface FeeAPI {
      * @returns The griefing collateral
      */
     getGriefingCollateral(
-        amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
+        amount: MonetaryAmount<WrappedCurrency>,
         type: GriefingCollateralType
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>>;
+    ): Promise<MonetaryAmount<CurrencyExt>>;
     /**
      * @param feesWrapped Wrapped token fees accrued, in wrapped token (e.g. BTC)
      * @param lockedCollateral Collateral value representing the value locked to gain yield.
      * @param exchangeRate (Optional) Conversion rate, as a `Monetary.js` object
      * @returns The APY, given the parameters
      */
-    calculateAPY<C extends CollateralUnit>(
-        feesWrapped: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        lockedCollateral: MonetaryAmount<Currency<C>, C>,
-        exchangeRate?: ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>
+    calculateAPY(
+        feesWrapped: MonetaryAmount<WrappedCurrency>,
+        lockedCollateral: MonetaryAmount<CollateralCurrencyExt>,
+        exchangeRate?: ExchangeRate<Bitcoin, CollateralCurrencyExt>
     ): Promise<Big>;
     /**
      * @returns The griefing collateral rate for issuing InterBTC
@@ -52,12 +54,12 @@ export interface FeeAPI {
 }
 
 export class DefaultFeeAPI implements FeeAPI {
-    constructor(private api: ApiPromise, private oracleAPI: OracleAPI) {}
+    constructor(private api: ApiPromise, private oracleAPI: OracleAPI, private assetRegistryAPI: AssetRegistryAPI) {}
 
     async getGriefingCollateral(
-        amount: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
+        amount: MonetaryAmount<WrappedCurrency>,
         type: GriefingCollateralType
-    ): Promise<MonetaryAmount<Currency<CurrencyUnit>, CurrencyUnit>> {
+    ): Promise<MonetaryAmount<CurrencyExt>> {
         let ratePromise;
         switch (type) {
             case GriefingCollateralType.Issue: {
@@ -70,7 +72,8 @@ export class DefaultFeeAPI implements FeeAPI {
             }
         }
 
-        const nativeCurrency = currencyIdToMonetaryCurrency(
+        const nativeCurrency = await currencyIdToMonetaryCurrency(
+            this.assetRegistryAPI,
             this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId
         );
         const [griefingCollateralRate, griefingAmount] = await Promise.all([
@@ -95,10 +98,10 @@ export class DefaultFeeAPI implements FeeAPI {
         return decodeFixedPointType(issueFee);
     }
 
-    async calculateAPY<C extends CollateralUnit>(
-        feesWrapped: MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
-        lockedCollateral: MonetaryAmount<Currency<C>, C>,
-        exchangeRate?: ExchangeRate<Currency<BitcoinUnit>, BitcoinUnit, Currency<C>, C>
+    async calculateAPY(
+        feesWrapped: MonetaryAmount<WrappedCurrency>,
+        lockedCollateral: MonetaryAmount<CollateralCurrencyExt>,
+        exchangeRate?: ExchangeRate<Bitcoin, CollateralCurrencyExt>
     ): Promise<Big> {
         if (lockedCollateral.isZero()) {
             return new Big(0);

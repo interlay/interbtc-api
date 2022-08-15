@@ -1,25 +1,22 @@
-import { GovernanceCurrency, GovernanceUnit, StakedBalance } from "../types";
+import { GovernanceCurrency, StakedBalance } from "../types";
 import Big from "big.js";
-import { Currency, MonetaryAmount } from "@interlay/monetary-js";
-import { newMonetaryAmount } from "./currency";
+import { MonetaryAmount } from "@interlay/monetary-js";
+import { ATOMIC_UNIT, newMonetaryAmount } from "./currency";
 
 // TODO: simplify this, perhaps use builder?
-export function estimateReward<U extends GovernanceUnit>(
+export function estimateReward(
     governanceCurrency: GovernanceCurrency,
-    userStake: Big,
-    totalStake: Big,
-    blockReward: MonetaryAmount<Currency<GovernanceUnit>, GovernanceUnit>,
-    stakedBalance: StakedBalance<GovernanceUnit>,
+    atomicUserStake: Big,
+    atomicTotalStake: Big,
+    blockReward: MonetaryAmount<GovernanceCurrency>,
+    stakedBalance: StakedBalance,
     currentBlockNumber: number,
     minimumBlockPeriod: number,
     maxPeriod: number,
-    amountToLock: MonetaryAmount<Currency<U>, U> = newMonetaryAmount(
-        0,
-        governanceCurrency as unknown as Currency<U>
-    ),
+    amountToLock: MonetaryAmount<GovernanceCurrency> = newMonetaryAmount(0, governanceCurrency),
     blockLockTimeExtension: number = 0
 ): {
-    amount: MonetaryAmount<Currency<U>, U>;
+    amount: MonetaryAmount<GovernanceCurrency>;
     apy: Big;
 } {
     // Note: the parachain uses the balance_at which combines the staked amount
@@ -39,10 +36,7 @@ export function estimateReward<U extends GovernanceUnit>(
         endBlock: stakedBalance.endBlock,
     };
 
-    const monetaryAddedStake = newMonetaryAmount(
-        amountToLock.toBig(),
-        governanceCurrency as Currency<GovernanceUnit>
-    );
+    const monetaryAddedStake = newMonetaryAmount(amountToLock.toBig(ATOMIC_UNIT), governanceCurrency);
 
     // User staking for the first time; only case 2 relevant otherwise rewards should be 0
     if (stakedBalance.amount.isZero()) {
@@ -59,29 +53,32 @@ export function estimateReward<U extends GovernanceUnit>(
         newLockDuration = newStakedBalance.endBlock - currentBlockNumber;
     }
 
-    const newUserStake = newStakedBalance.amount.toBig().mul(newLockDuration).div(maxPeriod);
-    const userStakeDifference = newUserStake.sub(userStake);
-    const newTotalStake = totalStake.add(userStakeDifference);
+    const atomicNewUserStake = newStakedBalance.amount.toBig(ATOMIC_UNIT).mul(newLockDuration).div(maxPeriod);
+    const atomicUserStakeDifference = atomicNewUserStake.sub(atomicUserStake);
+    const atomicNewTotalStake = atomicTotalStake.add(atomicUserStakeDifference);
 
     // Catch 0 values
-    if (newLockDuration == 0 || newTotalStake.eq(0) || newStakedBalance.amount.isZero()) {
+    if (newLockDuration == 0 || atomicNewTotalStake.eq(0) || newStakedBalance.amount.isZero()) {
         return {
-            amount: newMonetaryAmount(0, governanceCurrency as unknown as Currency<U>),
+            amount: newMonetaryAmount(0, governanceCurrency),
             apy: new Big(0),
         };
     }
     // Reward amount for the entire time is the newUserStake / netTotalStake * blockReward * lock duration
-    const rewardAmount = newUserStake.div(newTotalStake).mul(blockReward.toBig()).mul(newLockDuration);
+    const atomicRewardAmount = atomicNewUserStake
+        .div(atomicNewTotalStake)
+        .mul(blockReward.toBig(ATOMIC_UNIT))
+        .mul(newLockDuration);
 
-    const monetaryRewardAmount = newMonetaryAmount(rewardAmount, governanceCurrency as unknown as Currency<U>);
+    const monetaryRewardAmount = newMonetaryAmount(atomicRewardAmount, governanceCurrency);
 
     // TODO: move this to a util function so we can use it across the codebase
     // normalize APY to 1 year
     const blockTime = minimumBlockPeriod * 2; // ms
     const blocksPerYear = (60 * 60 * 24 * 365 * 1000) / blockTime;
-    const annualisedReward = rewardAmount.div(newLockDuration).mul(blocksPerYear);
+    const atomicAnnualisedReward = atomicRewardAmount.div(newLockDuration).mul(blocksPerYear);
 
-    const apy = annualisedReward.div(newStakedBalance.amount.toBig()).mul(100);
+    const apy = atomicAnnualisedReward.div(newStakedBalance.amount.toBig(ATOMIC_UNIT)).mul(100);
 
     return {
         amount: monetaryRewardAmount,

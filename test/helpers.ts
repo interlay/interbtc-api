@@ -15,7 +15,7 @@ export function printEvents(api: ApiPromise, testType: string, events: EventReco
                 try {
                     const parsedEventData = eventData as DispatchError;
                     const decoded = api.registry.findMetaError(parsedEventData.asModule);
-                    const { documentation, name, section } = decoded;
+                    const { docs: documentation, name, section } = decoded;
                     if (documentation) {
                         console.log(`\t${section}.${name}: ${documentation.join(" ")}`);
                     } else {

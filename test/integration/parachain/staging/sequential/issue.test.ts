@@ -1,32 +1,31 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { BitcoinUnit } from "@interlay/monetary-js";
-import { 
-    CollateralCurrency, 
-    currencyIdToLiteral, 
-    currencyIdToMonetaryCurrency, 
-    DefaultInterBtcApi, 
-    getCorrespondingCollateralCurrencies, 
-    InterBtcApi, 
-    InterbtcPrimitivesVaultId, 
-    IssueStatus, 
-    newAccountId, 
-    newMonetaryAmount 
+import {
+    ATOMIC_UNIT,
+    CollateralCurrencyExt,
+    currencyIdToMonetaryCurrency,
+    DefaultInterBtcApi,
+    getCorrespondingCollateralCurrencies,
+    InterBtcApi,
+    InterbtcPrimitivesVaultId,
+    IssueStatus,
+    newAccountId,
+    newMonetaryAmount,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
-import { 
-    USER_1_URI, 
-    VAULT_1_URI, 
-    VAULT_2_URI, 
-    BITCOIN_CORE_HOST, 
-    BITCOIN_CORE_NETWORK, 
-    BITCOIN_CORE_PASSWORD, 
-    BITCOIN_CORE_PORT, 
-    BITCOIN_CORE_USERNAME, 
-    BITCOIN_CORE_WALLET, 
-    PARACHAIN_ENDPOINT, 
-    ESPLORA_BASE_PATH
+import {
+    USER_1_URI,
+    VAULT_1_URI,
+    VAULT_2_URI,
+    BITCOIN_CORE_HOST,
+    BITCOIN_CORE_NETWORK,
+    BITCOIN_CORE_PASSWORD,
+    BITCOIN_CORE_PORT,
+    BITCOIN_CORE_USERNAME,
+    BITCOIN_CORE_WALLET,
+    PARACHAIN_ENDPOINT,
+    ESPLORA_BASE_PATH,
 } from "../../../../config";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
@@ -46,7 +45,7 @@ describe("issue", () => {
     let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
 
     let wrappedCurrency: WrappedCurrency;
-    let collateralCurrencies: Array<CollateralCurrency>;
+    let collateralCurrencies: Array<CollateralCurrencyExt>;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
@@ -55,13 +54,15 @@ describe("issue", () => {
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         collateralCurrencies = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
-        
+
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-        vault_1_ids = collateralCurrencies
-            .map(collateralCurrency => newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency));
-        vault_2_ids = collateralCurrencies
-            .map(collateralCurrency => newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency));
+        vault_1_ids = collateralCurrencies.map((collateralCurrency) =>
+            newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency)
+        );
+        vault_2_ids = collateralCurrencies.map((collateralCurrency) =>
+            newVaultId(api, vault_2.address, collateralCurrency, wrappedCurrency)
+        );
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -89,16 +90,16 @@ describe("issue", () => {
         );
         const requestResult = requestResults[0];
         const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
-        assert.equal(issueRequest.wrappedAmount.str.BTC(), amount.sub(feesToPay).str.BTC(), "Amount different than expected");
+        assert.equal(
+            issueRequest.wrappedAmount.toString(),
+            amount.sub(feesToPay).toString(),
+            "Amount different than expected"
+        );
     });
 
     it("should list existing requests", async () => {
         const issueRequests = await userInterBtcAPI.issue.list();
-        assert.isAtLeast(
-            issueRequests.length,
-            1,
-            "Should have at least 1 issue request"
-        );
+        assert.isAtLeast(issueRequests.length, 1, "Should have at least 1 issue request");
     });
 
     // FIXME: not used at the moment. Fix in a more elegant way, i.e., check what is issuable
@@ -107,18 +108,14 @@ describe("issue", () => {
         const requestLimits = await userInterBtcAPI.issue.getRequestLimits();
         const amount = requestLimits.singleVaultMaxIssuable.mul(1.1);
         const issueRequests = await userInterBtcAPI.issue.request(amount);
-        assert.equal(
-            issueRequests.length,
-            2,
-            "Created wrong amount of requests, vaults have insufficient collateral"
-        );
+        assert.equal(issueRequests.length, 2, "Created wrong amount of requests, vaults have insufficient collateral");
         const issuedAmount1 = issueRequests[0].wrappedAmount;
         const issueFee1 = issueRequests[0].bridgeFee;
         const issuedAmount2 = issueRequests[1].wrappedAmount;
         const issueFee2 = issueRequests[1].bridgeFee;
         assert.equal(
-            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig(BitcoinUnit.BTC).round(5).toString(),
-            amount.toBig(BitcoinUnit.BTC).round(5).toString(),
+            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig().round(5).toString(),
+            amount.toBig().round(5).toString(),
             "Issued amount is not equal to requested amount"
         );
     });
@@ -128,7 +125,7 @@ describe("issue", () => {
             const amount = newMonetaryAmount(0.00000121, wrappedCurrency, true);
             await assert.isRejected(
                 issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, amount, vault_1_id, true, false)
-            );    
+            );
         }
     });
 
@@ -159,7 +156,9 @@ describe("issue", () => {
 
     it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
-            const currencyTicker = currencyIdToMonetaryCurrency(vault_2_id.currencies.collateral).ticker;
+            const currencyTicker = (
+                await currencyIdToMonetaryCurrency(userInterBtcAPI.assetRegistry, vault_2_id.currencies.collateral)
+            ).ticker;
 
             const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);
             const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
@@ -173,13 +172,19 @@ describe("issue", () => {
                 false,
                 false
             );
-    
+
             // calculate expected final balance and round the fees value as the parachain will do so when calculating fees.
-            const amtInSatoshi = amount.to.Satoshi();
-            const feesInSatoshiRounded = feesToPay.to.Satoshi().round(0);
-            const expectedFinalBalance = amtInSatoshi.sub(feesInSatoshiRounded).sub(oneSatoshi.to.Satoshi()).toString();
+            const amtInSatoshi = amount.toBig(ATOMIC_UNIT);
+            const feesInSatoshiRounded = feesToPay.toBig(ATOMIC_UNIT).round(0);
+            const expectedFinalBalance = amtInSatoshi
+                .sub(feesInSatoshiRounded)
+                .sub(oneSatoshi.toBig(ATOMIC_UNIT))
+                .toString();
             assert.equal(
-                issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).to.Satoshi().toString(),
+                issueResult.finalWrappedTokenBalance
+                    .sub(issueResult.initialWrappedTokenBalance)
+                    .toBig(ATOMIC_UNIT)
+                    .toString(),
                 expectedFinalBalance,
                 `Final balance was not increased by the exact amount specified (collateral: ${currencyTicker})`
             );
@@ -197,13 +202,14 @@ describe("issue", () => {
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
         const feeRate = await userInterBtcAPI.issue.getFeeRate();
 
-        const expectedFeesInBTC = amount.to.BTC().toNumber() * feeRate.toNumber();
+        const expectedFeesInBTC = amount.toBig().toNumber() * feeRate.toNumber();
         // compare floating point values in BTC, allowing for small delta difference
         assert.closeTo(
-            feesToPay.to.BTC().toNumber(), 
-            expectedFeesInBTC, 
+            feesToPay.toBig().toNumber(),
+            expectedFeesInBTC,
             0.00001,
-            "Calculated fees in BTC do not match expectations");
+            "Calculated fees in BTC do not match expectations"
+        );
     });
 
     it("should getFeeRate", async () => {
@@ -237,32 +243,34 @@ describe("issue", () => {
                 try {
                     // request issue
                     const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
-                    const vaultCollateralIdLiteral = currencyIdToLiteral(vault_2_id.currencies.collateral);
+                    const vaultCollateral = await currencyIdToMonetaryCurrency(
+                        userInterBtcAPI.assetRegistry,
+                        vault_2_id.currencies.collateral
+                    );
                     const requestResults = await userInterBtcAPI.issue.request(
-                        amount, 
-                        newAccountId(api, vault_2.address), 
-                        vaultCollateralIdLiteral
+                        amount,
+                        newAccountId(api, vault_2.address),
+                        vaultCollateral
                     );
                     assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                     const requestResult = requestResults[0];
-    
+
                     // Wait for issue expiry callback
-                    await new Promise<void>((resolve, _) => {
-                        // userInterBtcAPI.issue.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
-                        //     if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
-                        //         resolve();
-                        //     }
-                        // });
-                    });
-    
+                    // await new Promise<void>((resolve, _) => {
+                    //     userInterBtcAPI.issue.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
+                    //         if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
+                    //             resolve();
+                    //         }
+                    //     });
+                    // });
+
                     await userInterBtcAPI.issue.cancel(requestResult.id);
-    
+
                     const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
                     assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
-    
+
                     // Set issue period back to its initial value to minimize side effects.
                     await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
-    
                 } catch (e) {
                     // Set issue period back to its initial value to minimize side effects.
                     await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
@@ -271,5 +279,4 @@ describe("issue", () => {
             });
         }
     }).timeout(10 * 60000);
-
 });

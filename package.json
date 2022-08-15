@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "1.13.0",
+  "version": "1.16.3",
   "description": "JavaScript library to interact with interBTC and kBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
@@ -44,7 +44,8 @@
     "watch:test": "mocha --watch test/**/*.test.ts",
     "local-meta": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json",
     "docker-parachain-start": "ts-node scripts/setup-parachain-docker.ts",
-    "docker-parachain-stop": "docker-compose -f local-setup/docker-compose.yml down -v"
+    "docker-parachain-stop": "docker-compose -f local-setup/docker-compose.yml down -v",
+    "set": "npx ts-node src/utils/set-state/set-state.ts"
   },
   "engines": {
     "node": ">=11"
@@ -52,8 +53,8 @@
   "engineStrict": true,
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
-    "@interlay/interbtc-types": "1.7.0",
-    "@interlay/monetary-js": "0.6.0",
+    "@interlay/interbtc-types": "1.8.0",
+    "@interlay/monetary-js": "0.7.0",
     "@polkadot/api": "8.8.2",
     "@types/big.js": "6.1.2",
     "big.js": "6.1.1",
@@ -72,12 +73,14 @@
     "@types/node": "^14.6.4",
     "@types/shelljs": "0.8.8",
     "@types/sinon": "^9.0.5",
+    "@types/yargs": "^17.0.10",
     "@typescript-eslint/eslint-plugin": "^4.1.0",
     "@typescript-eslint/parser": "^4.1.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "eslint": "^7.8.0",
     "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-unused-imports": "^2.0.0",
     "husky": "^5.1.1",
     "mocha": "9.1.3",
     "nock": "^13.0.4",
@@ -90,7 +93,8 @@
     "ts-node": "10.4.0",
     "typedoc": "^0.22.9",
     "typedoc-plugin-markdown": "^3.11.6",
-    "typescript": "4.3.2"
+    "typescript": "4.3.2",
+    "yargs": "^17.5.1"
   },
   "resolutions": {
     "bn.js": "4.12.0"

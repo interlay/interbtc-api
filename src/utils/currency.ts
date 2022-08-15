@@ -2,10 +2,11 @@ import Big, { BigSource } from "big.js";
 import BN from "bn.js";
 import {
     Bitcoin,
-    BitcoinUnit,
     Currency,
     ExchangeRate,
+    InterBtc,
     Interlay,
+    KBtc,
     Kintsugi,
     Kusama,
     MonetaryAmount,
@@ -14,22 +15,19 @@ import {
     VoteKintsugi,
 } from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import {
-    CurrencyUnit,
-    tickerToCurrencyIdLiteral,
-    GovernanceCurrency,
-    GovernanceUnit,
-    CollateralCurrency,
-} from "../types/currency";
+import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId } from "./encoding";
+import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../interfaces";
+import { AssetRegistryAPI } from "../parachain/asset-registry";
 
 // set maximum exponents
 Big.PE = 21;
 Big.NE = -12;
 
 export const MBTC_IN_SAT = 100_000;
+export const ATOMIC_UNIT = 0;
 
 export function roundTwoDecimals(input: string): string {
     const number = new Big(input);
@@ -52,56 +50,53 @@ export function roundLastNDigits(n: number, x: BN | Big | string): string {
     return bigNumber.div(new BN(power)).mul(new BN(power)).toString();
 }
 
-export function newMonetaryAmount<U extends CurrencyUnit>(
-    amount: BigSource,
-    currency: Currency<U>,
-    base = false
-): MonetaryAmount<Currency<U>, U> {
-    const unit = base ? currency.base : currency.rawBase;
-    return new MonetaryAmount<Currency<U>, U>(currency, amount, unit);
+export function atomicToBaseAmount(atomicAmount: BigSource, currency: Currency): Big {
+    return new Big(atomicAmount).div(new Big(10).pow(currency.decimals));
 }
 
-export function newCollateralBTCExchangeRate<U extends CurrencyUnit>(
+export function newMonetaryAmount(amount: BigSource, currency: CurrencyExt, base = false): MonetaryAmount<CurrencyExt> {
+    const finalAmount = base ? new Big(amount) : atomicToBaseAmount(amount, currency);
+    return new MonetaryAmount<CurrencyExt>(currency, finalAmount);
+}
+
+export function newCollateralBTCExchangeRate(
     rate: Big,
-    counterCurrency: Currency<U>,
+    counterCurrency: Currency,
     useBaseUnits = false
-): ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U> {
+): ExchangeRate<Bitcoin, Currency> {
     const [baseCurrencyUnit, counterCurrencyUnit] = useBaseUnits
-        ? [Bitcoin.base, counterCurrency.base]
-        : [Bitcoin.rawBase, counterCurrency.rawBase];
-    return new ExchangeRate<Bitcoin, BitcoinUnit, Currency<U>, U>(
-        Bitcoin,
-        counterCurrency,
-        rate,
-        baseCurrencyUnit,
-        counterCurrencyUnit
-    );
+        ? [Bitcoin.decimals, counterCurrency.decimals]
+        : [ATOMIC_UNIT, ATOMIC_UNIT];
+    return new ExchangeRate<Bitcoin, Currency>(Bitcoin, counterCurrency, rate, baseCurrencyUnit, counterCurrencyUnit);
 }
 
 export function createInclusionOracleKey(api: ApiPromise, type: FeeEstimationType): InterbtcPrimitivesOracleKey {
     return api.createType("InterbtcPrimitivesOracleKey", { FeeEstimation: type });
 }
 
-export function createExchangeRateOracleKey<U extends CurrencyUnit>(
+export function createExchangeRateOracleKey(
     api: ApiPromise,
-    collateralCurrency: Currency<U>
+    collateralCurrency: CurrencyExt
 ): InterbtcPrimitivesOracleKey {
-    const currencyId = newCurrencyId(api, tickerToCurrencyIdLiteral(collateralCurrency.ticker));
+    const currencyId = newCurrencyId(api, collateralCurrency);
     return api.createType("InterbtcPrimitivesOracleKey", { ExchangeRate: currencyId });
 }
 
-export function toVoting(governanceCurrency: GovernanceCurrency): Currency<GovernanceUnit> {
+export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
     switch (governanceCurrency) {
         case Interlay:
-            return VoteInterlay as Currency<GovernanceUnit>;
+            return VoteInterlay;
         case Kintsugi:
-            return VoteKintsugi as Currency<GovernanceUnit>;
+            return VoteKintsugi;
         default:
             throw new Error("Provided currency is not a governance currency");
     }
 }
 
-export function getCorrespondingCollateralCurrencies(governanceCurrency: Currency<GovernanceUnit>): Array<CollateralCurrency> {
+// get the collateral currencies (excluding foreign assets) associated with the governance currency
+export function getCorrespondingCollateralCurrencies(
+    governanceCurrency: GovernanceCurrency
+): Array<CollateralCurrencyExt> {
     switch (governanceCurrency.ticker) {
         case "KINT":
             return [Kusama, Kintsugi];
@@ -110,4 +105,60 @@ export function getCorrespondingCollateralCurrencies(governanceCurrency: Currenc
         default:
             throw new Error("Provided currency is not a governance currency");
     }
+}
+
+export function isForeignAsset(currencyExt: CurrencyExt): currencyExt is ForeignAsset {
+    // disable rule, use of any is deliberate for run time check
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (currencyExt as any).id !== undefined;
+}
+
+export function isCurrency(currencyExt: CurrencyExt): currencyExt is Currency {
+    return !isForeignAsset(currencyExt);
+}
+
+export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyExt): boolean {
+    if (isForeignAsset(currency) && isForeignAsset(otherCurrency)) {
+        return currency.id === otherCurrency.id;
+    } else if (isCurrency(currency) && isCurrency(otherCurrency)) {
+        return currency.ticker === otherCurrency.ticker;
+    }
+
+    return false;
+}
+
+export async function currencyIdToMonetaryCurrency(
+    assetRegistryApi: AssetRegistryAPI,
+    currencyId: InterbtcPrimitivesCurrencyId
+): Promise<CurrencyExt> {
+    if (currencyId.isToken) {
+        return tokenSymbolToCurrency(currencyId.asToken);
+    } else if (currencyId.isForeignAsset) {
+        const foreignAssetId = currencyId.asForeignAsset;
+        return assetRegistryApi.getForeignAsset(foreignAssetId);
+    }
+
+    throw new Error(`No handling implemented for currencyId type of ${currencyId.type}`);
+}
+
+/**
+ * A method that will only try to find a hard-coded currencies.
+ * Only for use when we are certain the currency is not a foreign asset.
+ * @param tokenSymbol the InterbtcPrimitivesTokenSymbol to look up
+ */
+export function tokenSymbolToCurrency(tokenSymbol: InterbtcPrimitivesTokenSymbol): Currency {
+    if (tokenSymbol.isIbtc) {
+        return InterBtc;
+    } else if (tokenSymbol.isDot) {
+        return Polkadot;
+    } else if (tokenSymbol.isKsm) {
+        return Kusama;
+    } else if (tokenSymbol.isKbtc) {
+        return KBtc;
+    } else if (tokenSymbol.isKint) {
+        return Kintsugi;
+    } else if (tokenSymbol.isIntr) {
+        return Interlay;
+    }
+    throw new Error(`No entry provided for token symbol of type '${tokenSymbol?.type}'`);
 }

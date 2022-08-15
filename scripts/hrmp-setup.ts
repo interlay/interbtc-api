@@ -1,20 +1,14 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
 import { createSubstrateAPI } from "../src/factory";
 import { ApiPromise, Keyring } from "@polkadot/api";
-import {
-    DefaultTransactionAPI,
-} from "../src/parachain";
+import { DefaultTransactionAPI } from "../src/parachain";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
-import { XcmVersionedXcm } from "@polkadot/types/lookup";
 import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
-import { XcmV1MultiLocation } from "@polkadot/types/lookup";
-import type { 
-    BTreeMap, Bytes, Compact, Enum, Null, Option, Result, Struct, Text, U256, U8aFixed, Vec, bool, i128, i32, i64, u128, u16, u32, u64, u8
-} from "@polkadot/types";
+
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { assert } from "console";
 
-const readline = require('readline');
+const readline = require("readline");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const args = yargs(hideBin(process.argv))
@@ -38,12 +32,12 @@ const args = yargs(hideBin(process.argv))
     .option("destination-parachain-id", {
         description: "The parachain id of the destination",
         type: "number",
-        demandOption : true,
+        demandOption: true,
     })
     .option("refund-hex-address", {
         description: "The hex-encoded account id to return left-over fees to. DO NOT SS58 ENCODE.",
         type: "string",
-        demandOption : true,
+        demandOption: true,
     })
     .option("action", {
         description: "The action to do",
@@ -98,62 +92,67 @@ function construct_xcm(api: ApiPromise, transact: string) {
                     concrete: api.createType("XcmV1MultiLocation", {
                         parents: 0,
                         interior: api.createType("XcmV1MultilocationJunctions", {
-                            here: true
-                        })
-                    })
+                            here: true,
+                        }),
+                    }),
                 }),
                 fun: api.createType("XcmV1MultiassetFungibility", {
                     fungible: xcmFee
                 })
             }),
             weightLimit: api.createType("XcmV2WeightLimit", {
-                unlimited: true
-            })
-        }
+                unlimited: true,
+            }),
+        },
     });
     const transactInstruction = api.createType("XcmV2Instruction", {
         transact: {
             originType: api.createType("XcmV0OriginKind", { native: true }),
             requireWeightAtMost: transactWeight,
             call: api.createType("XcmDoubleEncoded", {
-                encoded: transact
-            })
-        }
+                encoded: transact,
+            }),
+        },
     });
     const refundSurplusInstruction = api.createType("XcmV2Instruction", {
-        refundSurplus: true
+        refundSurplus: true,
     });
     const depositAssetsInstruction = api.createType("XcmV2Instruction", {
         depositAsset: {
-            assets:  api.createType("XcmV1MultiassetMultiAssetFilter", { wild: true }),
+            assets: api.createType("XcmV1MultiassetMultiAssetFilter", { wild: true }),
             maxAssets: 1,
             beneficiary: api.createType("XcmV1MultiLocation", {
                 parents: 0,
                 interior: api.createType("XcmV1MultilocationJunctions", {
-                    x1: api.createType("XcmV1Junction", { accountId32: {
-                        network: api.createType("XcmV0JunctionNetworkId", { any: true }),
-                        id: args['refund-hex-address'] 
-                    }})
-                })
-            })
-        }
+                    x1: api.createType("XcmV1Junction", {
+                        accountId32: {
+                            network: api.createType("XcmV0JunctionNetworkId", { any: true }),
+                            id: args["refund-hex-address"],
+                        },
+                    }),
+                }),
+            }),
+        },
     });
 
-    const xcmV2 = api.createType(
-        "XcmV2Xcm", 
-        [withdrawAssetInstruction, buyExecutionInstruction, transactInstruction, refundSurplusInstruction, depositAssetsInstruction]
-    );
-    const message = api.createType<XcmVersionedXcm>("XcmVersionedXcm", {
-        v2: xcmV2
+    const xcmV2 = api.createType("XcmV2Xcm", [
+        withdrawAssetInstruction,
+        buyExecutionInstruction,
+        transactInstruction,
+        refundSurplusInstruction,
+        depositAssetsInstruction,
+    ]);
+    const message = api.createType("XcmVersionedXcm", {
+        v2: xcmV2,
     });
 
     const dest = api.createType<XcmVersionedMultiLocation>("XcmVersionedMultiLocation", {
         v1: api.createType("XcmV1MultiLocation", {
             parents: 1,
             interior: api.createType("XcmV1MultilocationJunctions", {
-                here: true
-            })
-        })
+                here: true,
+            }),
+        }),
     });
 
     return api.tx.polkadotXcm.send(dest, message);
@@ -162,15 +161,22 @@ function construct_xcm(api: ApiPromise, transact: string) {
 function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
     console.log(name, "Data:", extrinsic.method.toHex());
     console.log(name, "Hash:", extrinsic.method.hash.toHex());
-    const url = 'https://polkadot.js.org/apps/?rpc=' 
-        + encodeURIComponent(endpoint) 
-        + '#/extrinsics/decode/' 
-        + extrinsic.method.toHex();
+    const url =
+        "https://polkadot.js.org/apps/?rpc=" +
+        encodeURIComponent(endpoint) +
+        "#/extrinsics/decode/" +
+        extrinsic.method.toHex();
     console.log(name, "url:", url);
     console.log("");
 }
 
-async function maybeSubmitProposal(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string, api: ApiPromise, shouldSubmit: boolean) {
+async function maybeSubmitProposal(
+    name: string,
+    extrinsic: SubmittableExtrinsic<"promise">,
+    endpoint: string,
+    api: ApiPromise,
+    shouldSubmit: boolean
+) {
     printExtrinsic(name, extrinsic, endpoint);
 
     if (args['sudo']) {
@@ -191,9 +197,9 @@ async function maybeSubmitProposal(name: string, extrinsic: SubmittableExtrinsic
 
     console.log("Please check the printed extrinsic and enter the seed phrase to submit the proposal.");
 
-    let rl = readline.createInterface({
+    const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
     });
     const it = rl[Symbol.asyncIterator]();
     const seed = await it.next();
@@ -252,28 +258,32 @@ async function main(): Promise<void> {
     const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
     const relayApi = await createSubstrateAPI(args['relay-endpoint']);
 
-    const requestOpenTransact = relayApi.tx.hrmp.hrmpInitOpenChannel(args['destination-parachain-id'], PROPOSED_MAX_CAPACITY, PROPOSED_MAX_MESSAGE_SIZE);
-    const acceptOpenTransact = relayApi.tx.hrmp.hrmpAcceptOpenChannel(args['destination-parachain-id']);
+    const requestOpenTransact = relayApi.tx.hrmp.hrmpInitOpenChannel(
+        args["destination-parachain-id"],
+        PROPOSED_MAX_CAPACITY,
+        PROPOSED_MAX_MESSAGE_SIZE
+    );
+    const acceptOpenTransact = relayApi.tx.hrmp.hrmpAcceptOpenChannel(args["destination-parachain-id"]);
 
     const requestOpen = construct_xcm(paraApi, requestOpenTransact.method.toHex());
     const acceptOpen = construct_xcm(paraApi, acceptOpenTransact.method.toHex());
     const batched = paraApi.tx.utility.batchAll([requestOpen, acceptOpen]);
 
-    const shouldSubmit = args['submit-proposal'];
+    const shouldSubmit = args["submit-proposal"];
 
-    switch(args['action']) {
-        case 'request':
-            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args['relay-endpoint']);
-            await maybeSubmitProposal("RequestOpen", requestOpen, args['parachain-endpoint'], paraApi, shouldSubmit);
+    switch (args["action"]) {
+        case "request":
+            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
+            await maybeSubmitProposal("RequestOpen", requestOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
             break;
-        case 'accept':
-            printExtrinsic("Relaychain::acceptOpenTransact", requestOpen, args['relay-endpoint']);
-            await maybeSubmitProposal("AcceptOpen", acceptOpen, args['parachain-endpoint'], paraApi, shouldSubmit);
+        case "accept":
+            printExtrinsic("Relaychain::acceptOpenTransact", requestOpen, args["relay-endpoint"]);
+            await maybeSubmitProposal("AcceptOpen", acceptOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
             break;
-        case 'batched':
-            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args['relay-endpoint']);
-            printExtrinsic("Relaychain::AcceptOpenTransact", acceptOpenTransact, args['relay-endpoint']);
-            await maybeSubmitProposal("Batched", batched, args['parachain-endpoint'], paraApi, shouldSubmit);
+        case "batched":
+            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
+            printExtrinsic("Relaychain::AcceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
+            await maybeSubmitProposal("Batched", batched, args["parachain-endpoint"], paraApi, shouldSubmit);
             break;
     }
 

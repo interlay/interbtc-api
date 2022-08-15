@@ -1,17 +1,18 @@
-name: integration test
+name: reusable workflow for integration tests
 
 on:
-  pull_request:
-    branches:
-      - master
-  push:
-    branches:
-      - master
+    workflow_call:
+        inputs:
+            parachain:
+                description: The parachain to spin up for testing. INTR or KINT.
+                default: "KINT"
+                required: false
+                type: string
 
 jobs:
     build:
         runs-on: [self-hosted, linux]
-        timeout-minutes: 60
+        timeout-minutes: 90
         steps:
             - uses: actions/checkout@v2
             - name: setup node
@@ -21,12 +22,12 @@ jobs:
             - run: corepack enable
             - run: yarn install
             - name: Check versions
-              run: | 
-                yarn --version
-                npx node --version
-                npx ts-node --version
+              run: |
+                  yarn --version
+                  npx node --version
+                  npx ts-node --version
             - name: Run and set up the parachain, oracle, staked relayer and vault
-              run: yarn docker-parachain-start -- -d
+              run: yarn docker-parachain-start -- -d --chain=${{ inputs.parachain }}
             - run: yarn ci:test
 
             - name: Archive Docker logs
@@ -37,6 +38,5 @@ jobs:
               if: always()
               uses: actions/upload-artifact@v3
               with:
-                name: docker-compose-logs
-                path: logs.txt
-
+                  name: docker-compose-logs
+                  path: logs.txt

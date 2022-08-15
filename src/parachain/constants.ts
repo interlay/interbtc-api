@@ -1,7 +1,5 @@
 import { BlockNumber, Moment, RuntimeDbWeight } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
-import { Vec } from "@polkadot/types/codec";
-import { WeightToFeeCoefficient } from "@polkadot/types/interfaces/support";
 
 /**
  * @category BTC Bridge
@@ -24,10 +22,6 @@ export interface ConstantsAPI {
      * period on default settings.
      */
     getTimestampMinimumPeriod(): Moment;
-    /**
-     * @returns The polynomial that is applied in order to derive fee from weight.
-     */
-    getTransactionWeightToFee(): Vec<WeightToFeeCoefficient>;
 }
 
 export class DefaultConstantsAPI implements ConstantsAPI {
@@ -43,9 +37,5 @@ export class DefaultConstantsAPI implements ConstantsAPI {
 
     getTimestampMinimumPeriod(): Moment {
         return this.api.consts.timestamp.minimumPeriod;
-    }
-
-    getTransactionWeightToFee(): Vec<WeightToFeeCoefficient> {
-        return this.api.consts.transactionPayment.weightToFee;
     }
 }

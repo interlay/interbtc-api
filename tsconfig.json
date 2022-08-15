@@ -8,33 +8,19 @@
         "strict": true,
         "noImplicitAny": true,
         "esModuleInterop": true,
-        "baseUrl": ".",
+        "baseUrl": "./",
         "resolveJsonModule": true,
         // Generate files for debugging
         "sourceMap": true,
-        "lib": [
-            "ES2019"
-        ],
+        "moduleResolution": "node",
+        "lib": ["ES2019"],
         "paths": {
-            "@polkadot/api/augment": [
-                "src/interfaces/augment-api.ts"
-            ],
-            "@polkadot/types/augment": [
-                "src/interfaces/augment-types.ts"
-            ],
-            "@polkadot/types/lookup": [
-                "src/interfaces/types-lookup.ts"
-            ],
-            "@interlay/interbtc/*": [
-                "src/*"
-            ],
+            "@polkadot/api/augment": ["src/interfaces/augment-api.ts"],
+            "@polkadot/types/augment": ["src/interfaces/augment-types.ts"],
+            "@polkadot/types/lookup": ["src/interfaces/types-lookup.ts"],
+            "@interlay/interbtc/*": ["src/*"]
         }
     },
-    "include": [
-        "src"
-    ],
-    "exclude": [
-        "./node_modules/*",
-        "scripts/*"
-    ]
+    "include": ["src/**/*", "test/**/*.ts", "scripts/**/*.ts"],
+    "exclude": ["./node_modules/*"]
 }
