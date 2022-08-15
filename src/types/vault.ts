@@ -3,7 +3,6 @@ import { ApiPromise } from "@polkadot/api";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
 
-import { UnsignedFixedPoint } from "../interfaces";
 import { OracleAPI, SystemAPI } from "../parachain";
 import { decodeFixedPointType, newMonetaryAmount } from "../utils";
 import { CollateralUnit, currencyIdToMonetaryCurrency } from "./currency";
@@ -25,6 +24,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
     toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>;
     replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
     liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>;
+    secureCollateralThreshold: Big;
 
     constructor(
         private api: ApiPromise,
@@ -39,7 +39,8 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         toBeRedeemedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
         toBeReplacedTokens: MonetaryAmount<Currency<WrappedUnit>, WrappedUnit>,
         replaceCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
-        liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>
+        liquidatedCollateral: MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>,
+        secureCollateralThreshold: Big
     ) {
         this.backingCollateral = backingCollateral;
         this.id = id;
@@ -51,6 +52,7 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
         this.toBeReplacedTokens = toBeReplacedTokens;
         this.replaceCollateral = replaceCollateral;
         this.liquidatedCollateral = liquidatedCollateral;
+        this.secureCollateralThreshold = secureCollateralThreshold;
     }
 
     getRedeemableTokens(): MonetaryAmount<Currency<WrappedUnit>, WrappedUnit> {
@@ -91,20 +93,18 @@ export class VaultExt<WrappedUnit extends BitcoinUnit> {
             backedTokens as unknown as MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>,
             currencyIdToMonetaryCurrency(this.id.currencies.collateral) as Currency<CollateralUnit>
         );
-        const secureCollateralThreshold = await this.getSecureCollateralThreshold();
+        const secureCollateralThreshold = this.getSecureCollateralThreshold();
         const usedCollateral = backedTokensInCollateral.mul(secureCollateralThreshold);
         const totalCollateral = await this.computeBackingCollateral();
         return totalCollateral.min(usedCollateral);
     }
 
-    // TODO: The functions below are duplicated from other APIs. Remove them after APIs
-    // are refactored to the builder pattern
-
-    async getSecureCollateralThreshold(): Promise<Big> {
-        const threshold = await this.api.query.vaultRegistry.secureCollateralThreshold(this.id.currencies);
-        return decodeFixedPointType(threshold.value as UnsignedFixedPoint);
+    getSecureCollateralThreshold(): Big {
+        return this.secureCollateralThreshold;
     }
 
+    // TODO: The functions below are duplicated from other APIs. Remove them after APIs
+    // are refactored to the builder pattern
     async computeBackingCollateral(nonce?: number): Promise<MonetaryAmount<Currency<CollateralUnit>, CollateralUnit>> {
         if (nonce === undefined) {
             nonce = await this.getStakingPoolNonce();

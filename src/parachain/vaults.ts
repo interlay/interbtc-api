@@ -47,7 +47,7 @@ import {
     GovernanceCurrency,
 } from "../types";
 import { RewardsAPI } from "./rewards";
-import { BalanceWrapper, UnsignedFixedPoint } from "../interfaces";
+import { UnsignedFixedPoint } from "../interfaces";
 import { SystemAPI } from ".";
 
 /**
@@ -195,8 +195,9 @@ export interface VaultsAPI {
      */
     getPremiumRedeemThreshold(collateralCurrency: CollateralCurrency): Promise<Big>;
     /**
+     * Get the global secure collateral threshold.
      * @param collateralCurrency
-     * @returns The over-collateralization rate for collateral locked
+     * @returns The global over-collateralization rate for collateral locked
      * by Vaults, necessary for issuing wrapped tokens
      */
     getSecureCollateralThreshold(collateralCurrency: CollateralCurrency): Promise<Big>;
@@ -261,7 +262,7 @@ export interface VaultsAPI {
      * @param collateralCurrencyIdLiteral The currency id literal
      * @returns The issuable amount of a vault
      */
-    getIssueableTokensFromVault(
+    getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CurrencyIdLiteral
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
@@ -777,7 +778,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async getIssueableTokensFromVault(
+    async getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {
@@ -954,20 +955,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return decodeFixedPointType(fee);
     }
 
-    private wrapCurrency<C extends CollateralUnit>(amount: MonetaryAmount<Currency<C>, C>): BalanceWrapper {
-        return this.api.createType("BalanceWrapper", {
-            amount: this.api.createType("u128", amount.toString()),
-            currencyId: newCurrencyId(this.api, tickerToCurrencyIdLiteral(amount.currency.ticker)),
-        });
-    }
-
-    private unwrapCurrency<C extends CollateralUnit>(wrappedBalance: BalanceWrapper): MonetaryAmount<Currency<C>, C> {
-        return newMonetaryAmount(
-            wrappedBalance.amount.toString(),
-            currencyIdToMonetaryCurrency(wrappedBalance.currencyId)
-        );
-    }
-
     private parseVaultStatus(status: VaultRegistryVaultStatus): VaultStatusExt {
         if (status.isActive) {
             return status.asActive.isTrue ? VaultStatusExt.Active : VaultStatusExt.Inactive;
@@ -983,7 +970,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const replaceCollateral = newMonetaryAmount(vault.replaceCollateral.toString(), collateralCurrency);
         const liquidatedCollateral = newMonetaryAmount(vault.liquidatedCollateral.toString(), collateralCurrency);
         const backingCollateral = await this.computeBackingCollateral(vault.id);
-        return new VaultExt<BitcoinUnit>(
+
+        const secureThreshold = vault.secureCollateralThreshold.isSome
+            ? decodeFixedPointType(vault.secureCollateralThreshold.unwrap())
+            : await this.getSecureCollateralThreshold(collateralCurrency as CollateralCurrency);
+
+        return new VaultExt(
             this.api,
             this.oracleAPI,
             this.systemAPI,
@@ -996,7 +988,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
             newMonetaryAmount(vault.toBeRedeemedTokens.toString(), this.wrappedCurrency),
             newMonetaryAmount(vault.toBeReplacedTokens.toString(), this.wrappedCurrency),
             replaceCollateral,
-            liquidatedCollateral
+            liquidatedCollateral,
+            secureThreshold
         );
     }
 
