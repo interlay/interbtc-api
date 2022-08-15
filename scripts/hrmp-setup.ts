@@ -6,6 +6,7 @@ import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
 
 import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { assert } from "console";
 
 const readline = require("readline");
 const yargs = require("yargs/yargs");
@@ -14,17 +15,19 @@ const args = yargs(hideBin(process.argv))
     .option("submit-proposal", {
         type: "boolean",
         description: "Submit the on-chain proposal. The account seed will be queried.",
-        default: false,
+    })
+    .option("sudo", {
+        type: "boolean",
+        description: "Print the sudo-wrapped extrinsic",
+        conflicts: "submit-proposal",
     })
     .option("relay-endpoint", {
         description: "The wss url of the relay chain",
         type: "string",
-        default: "wss://kusama-rpc.polkadot.io",
     })
     .option("parachain-endpoint", {
         description: "The wss url of the parachain",
         type: "string",
-        default: "wss://api-kusama.interlay.io/parachain",
     })
     .option("destination-parachain-id", {
         description: "The parachain id of the destination",
@@ -38,9 +41,22 @@ const args = yargs(hideBin(process.argv))
     })
     .option("action", {
         description: "The action to do",
-        demandOption: true,
-        choices: ["request", "accept", "batched"],
-    }).argv;
+        demandOption : true,
+        choices: ['request', 'accept', 'batched'],
+    })
+    .option("xcm-fee", {
+        description: "The amount to use for the xcm fee",
+        type: "number",
+    })
+    .option("transact-weight", {
+        description: "Upperbound to specify for the transact weight",
+        type: "number",
+    })
+    .option("with-defaults-of", {
+        description: "Which default values to use",
+        choices: ['kintsugi', 'polkadot'],
+    })
+    .argv;
 
 const PROPOSED_MAX_CAPACITY = 1000;
 const PROPOSED_MAX_MESSAGE_SIZE = 102400;
@@ -51,22 +67,23 @@ main().catch((err) => {
 });
 
 function construct_xcm(api: ApiPromise, transact: string) {
+    const xcmFee = args['xcm-fee'];
+    const transactWeight = args['transact-weight'];
+
     const withdrawAssetInstruction = api.createType("XcmV2Instruction", {
-        withdrawAsset: api.createType("XcmV1MultiassetMultiAssets", [
-            {
-                id: api.createType("XcmV1MultiassetAssetId", {
-                    concrete: api.createType("XcmV1MultiLocation", {
-                        parents: 0,
-                        interior: api.createType("XcmV1MultilocationJunctions", {
-                            here: true,
-                        }),
-                    }),
-                }),
-                fun: api.createType("XcmV1MultiassetFungibility", {
-                    fungible: 410000000000,
-                }),
-            },
-        ]),
+        withdrawAsset: api.createType("XcmV1MultiassetMultiAssets", [{
+            id: api.createType("XcmV1MultiassetAssetId", {
+                concrete: api.createType("XcmV1MultiLocation", {
+                    parents: 0,
+                    interior: api.createType("XcmV1MultilocationJunctions", {
+                        here: true
+                    })
+                })
+            }),
+            fun: api.createType("XcmV1MultiassetFungibility", {
+                fungible: xcmFee
+            })
+        }])
     });
     const buyExecutionInstruction = api.createType("XcmV2Instruction", {
         buyExecution: {
@@ -80,8 +97,8 @@ function construct_xcm(api: ApiPromise, transact: string) {
                     }),
                 }),
                 fun: api.createType("XcmV1MultiassetFungibility", {
-                    fungible: 400000000000,
-                }),
+                    fungible: xcmFee
+                })
             }),
             weightLimit: api.createType("XcmV2WeightLimit", {
                 unlimited: true,
@@ -91,7 +108,7 @@ function construct_xcm(api: ApiPromise, transact: string) {
     const transactInstruction = api.createType("XcmV2Instruction", {
         transact: {
             originType: api.createType("XcmV0OriginKind", { native: true }),
-            requireWeightAtMost: 10000000000, // 42.9996 micro KSM on 20 jan. 42_999_600. About 20x margin, more than enough
+            requireWeightAtMost: transactWeight,
             call: api.createType("XcmDoubleEncoded", {
                 encoded: transact,
             }),
@@ -162,9 +179,21 @@ async function maybeSubmitProposal(
 ) {
     printExtrinsic(name, extrinsic, endpoint);
 
+    if (args['sudo']) {
+        printExtrinsic('sudo', api.tx.sudo.sudo(extrinsic), endpoint);
+    }
+
     if (!shouldSubmit) {
         return;
     }
+
+    // construct the proposal
+    const deposit = api.consts.democracy.minimumDeposit.toNumber();
+    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
+    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
+    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
+
+    printExtrinsic('proposal', batched, endpoint);
 
     console.log("Please check the printed extrinsic and enter the seed phrase to submit the proposal.");
 
@@ -174,12 +203,6 @@ async function maybeSubmitProposal(
     });
     const it = rl[Symbol.asyncIterator]();
     const seed = await it.next();
-
-    // construct the proposal
-    const deposit = api.consts.democracy.minimumDeposit.toNumber();
-    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
-    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
-    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
 
     console.log("Submitting proposal...");
     const keyring = new Keyring({ type: "sr25519" });
@@ -192,8 +215,48 @@ async function maybeSubmitProposal(
 
 async function main(): Promise<void> {
     await cryptoWaitReady();
-    const paraApi = await createSubstrateAPI(args["parachain-endpoint"]);
-    const relayApi = await createSubstrateAPI(args["relay-endpoint"]);
+
+    switch (args['with-defaults-of']) {
+        case 'polkadot':
+            if (args['parachain-endpoint'] === undefined) {
+                args['parachain-endpoint'] = "wss://api.interlay.io/parachain";
+            }
+            if (args['relay-endpoint'] === undefined) {
+                args['relay-endpoint'] = "wss://rpc.polkadot.io";
+            }
+            if (args['xcm-fee'] === undefined) {
+                args['xcm-fee'] = 5000000000; // 0.5 dot
+            }
+            if (args['transact-weight'] === undefined) {
+                args['transact-weight'] = 10000000000;
+            }
+            break;
+        case 'kintsugi':
+            if (args['parachain-endpoint'] === undefined) {
+                args['parachain-endpoint'] = "wss://api-kusama.interlay.io/parachain";
+            }
+            if (args['relay-endpoint'] === undefined) {
+                args['relay-endpoint'] = "wss://kusama-rpc.polkadot.io";
+            }
+            if (args['xcm-fee'] === undefined) {
+                args['xcm-fee'] = 410000000000;
+            }
+            if (args['transact-weight'] === undefined) {
+                args['transact-weight'] = 10000000000;
+            }
+            break;
+    }
+    if (args['parachain-endpoint'] === undefined
+            || args['relay-endpoint'] === undefined
+            || args['xcm-fee'] === undefined
+            || args['transact-weight'] === undefined) {
+        console.log("Not all required arguments supplied");
+        return;
+    }
+
+    
+    const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
+    const relayApi = await createSubstrateAPI(args['relay-endpoint']);
 
     const requestOpenTransact = relayApi.tx.hrmp.hrmpInitOpenChannel(
         args["destination-parachain-id"],
