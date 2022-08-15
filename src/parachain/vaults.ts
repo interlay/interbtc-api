@@ -262,7 +262,7 @@ export interface VaultsAPI {
      * @param collateralCurrencyIdLiteral The currency id literal
      * @returns The issuable amount of a vault
      */
-    getIssueableTokensFromVault(
+    getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CurrencyIdLiteral
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>>;
@@ -778,7 +778,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async getIssueableTokensFromVault(
+    async getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrencyIdLiteral: CollateralIdLiteral
     ): Promise<MonetaryAmount<WrappedCurrency, BitcoinUnit>> {

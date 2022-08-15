@@ -372,6 +372,6 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultAccountId: AccountId,
         collateralCurrency: CollateralIdLiteral
     ): Promise<MonetaryAmount<Currency<BitcoinUnit>, BitcoinUnit>> {
-        return this.vaultsAPI.getIssueableTokensFromVault(vaultAccountId, collateralCurrency);
+        return this.vaultsAPI.getIssuableTokensFromVault(vaultAccountId, collateralCurrency);
     }
 }
