@@ -176,8 +176,9 @@ export interface VaultsAPI {
      */
     getPremiumRedeemThreshold(collateralCurrency: CollateralCurrencyExt): Promise<Big>;
     /**
+     * Get the global secure collateral threshold.
      * @param collateralCurrency
-     * @returns The over-collateralization rate for collateral locked
+     * @returns The global over-collateralization rate for collateral locked
      * by Vaults, necessary for issuing wrapped tokens
      */
     getSecureCollateralThreshold(collateralCurrency: CollateralCurrencyExt): Promise<Big>;
@@ -919,6 +920,11 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const replaceCollateral = newMonetaryAmount(vault.replaceCollateral.toString(), collateralCurrency);
         const liquidatedCollateral = newMonetaryAmount(vault.liquidatedCollateral.toString(), collateralCurrency);
         const backingCollateral = await this.computeBackingCollateral(vault.id);
+
+        const secureThreshold = vault.secureCollateralThreshold.isSome
+            ? decodeFixedPointType(vault.secureCollateralThreshold.unwrap())
+            : await this.getSecureCollateralThreshold(collateralCurrency);
+
         return new VaultExt(
             this.api,
             this.oracleAPI,
@@ -933,7 +939,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
             newMonetaryAmount(vault.toBeRedeemedTokens.toString(), this.wrappedCurrency),
             newMonetaryAmount(vault.toBeReplacedTokens.toString(), this.wrappedCurrency),
             replaceCollateral,
-            liquidatedCollateral
+            liquidatedCollateral,
+            secureThreshold
         );
     }
 
