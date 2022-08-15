@@ -243,7 +243,7 @@ export interface VaultsAPI {
      * @param collateralCurrency The currency specification, a `Monetary.js` object or `ForeignAsset`
      * @returns The issuable amount of a vault
      */
-    getIssueableTokensFromVault(
+    getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>>;
@@ -742,7 +742,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async getIssueableTokensFromVault(
+    async getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>> {

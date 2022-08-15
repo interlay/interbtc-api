@@ -373,6 +373,6 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>> {
-        return this.vaultsAPI.getIssueableTokensFromVault(vaultAccountId, collateralCurrency);
+        return this.vaultsAPI.getIssuableTokensFromVault(vaultAccountId, collateralCurrency);
     }
 }
