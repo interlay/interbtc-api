@@ -277,7 +277,7 @@ async function main(): Promise<void> {
             await maybeSubmitProposal("RequestOpen", requestOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
             break;
         case "accept":
-            printExtrinsic("Relaychain::acceptOpenTransact", requestOpen, args["relay-endpoint"]);
+            printExtrinsic("Relaychain::acceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
             await maybeSubmitProposal("AcceptOpen", acceptOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
             break;
         case "batched":
