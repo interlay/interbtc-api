@@ -93,6 +93,11 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
+    it("should fail if no account is set", async () => {
+        const amount = newMonetaryAmount(10, wrappedCurrency);
+        await assert.isRejected(interBtcAPI.redeem.request(amount, randomBtcAddress));
+    }).timeout(3 * 60000);
+
     it("should issue and request redeem", async () => {
         // "usual" scope with hard coded collateral currency (or currencies)
         const vaultsInScope = Array.from(collateralTickerToVaultIdsMap.values());
@@ -105,11 +110,11 @@ describe("redeem", () => {
             vaultsInScope.push([vault_1_id_ausd, vault_2_id_ausd]);
         }
 
-        Promise.all(vaultsInScope.map(([vault_1_id]) => {
+        for (const [vault_1_id] of vaultsInScope) {
             const issueAmount = newMonetaryAmount(0.00005, wrappedCurrency, true);
             const redeemAmount = newMonetaryAmount(0.00003, wrappedCurrency, true);
 
-            issueAndRedeem(
+            await issueAndRedeem(
                 interBtcAPI,
                 bitcoinCoreClient,
                 userAccount,
@@ -119,7 +124,7 @@ describe("redeem", () => {
                 false,
                 ExecuteRedeem.False
             );
-        }));
+        }
     }).timeout(12 * 60000);
 
     it("should load existing redeem requests", async () => {
