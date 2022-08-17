@@ -24,7 +24,7 @@ import {
 import { currencyIdToMonetaryCurrency, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, isForeignAsset } from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
-import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
+import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, VaultsAPI } from "../parachain";
@@ -167,6 +167,24 @@ export function newVaultId(
     const parsedAccountId = newAccountId(api, accountId);
     const vaultCurrencyPair = newVaultCurrencyPair(api, collateralCurrency, wrappedCurrency);
     return api.createType("InterbtcPrimitivesVaultId", { account_id: parsedAccountId, currencies: vaultCurrencyPair });
+}
+
+export async function decodeRpcVaultId(
+    api: ApiPromise,
+    assetRegistry: AssetRegistryAPI,
+    vaultId: VaultId
+): Promise<InterbtcPrimitivesVaultId> {
+        const [collateralCcy, wrappedCcy] = await Promise.all([
+            currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.collateral),
+            currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.wrapped),
+        ]);
+
+        return newVaultId(
+            api,
+            vaultId.account_id.toString(),
+            collateralCcy,
+            wrappedCcy
+        );
 }
 
 export function newVaultCurrencyPair(
