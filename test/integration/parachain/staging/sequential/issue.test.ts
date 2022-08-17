@@ -120,15 +120,6 @@ describe("issue", () => {
         );
     });
 
-    it("should fail to request a value finer than 1 Satoshi", async () => {
-        for (const vault_1_id of vault_1_ids) {
-            const amount = newMonetaryAmount(0.00000121, wrappedCurrency, true);
-            await assert.isRejected(
-                issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, amount, vault_1_id, true, false)
-            );
-        }
-    });
-
     // auto-execution tests may stall indefinitely, due to vault client inaction.
     // This will cause the testing pipeline to time out.
     // TODO: Discuss if we want to test this in the lib. Should rather be tested in the clients
@@ -154,7 +145,9 @@ describe("issue", () => {
         }
     }).timeout(1000000);
 
-    it("should request and manually execute issue", async () => {
+    // skipping - this is tested at the parachain level, and only happy path
+    // tests should be tested in the lib
+    it.skip("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
             const currencyTicker = (
                 await currencyIdToMonetaryCurrency(userInterBtcAPI.assetRegistry, vault_2_id.currencies.collateral)
