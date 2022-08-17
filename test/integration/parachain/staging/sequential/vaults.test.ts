@@ -159,7 +159,7 @@ describe("vaultsAPI", () => {
     // PRECONDITION: vault_1 must have issued some tokens against all collateral currencies
     it("should deposit and withdraw collateral", async () => {
         const prevAccount = interBtcAPI.account;
-        for (const vault_1_id of vault_1_ids) {
+        await Promise.all(vault_1_ids.map(async (vault_1_id) => {
             const collateralCurrency = await currencyIdToMonetaryCurrency(
                 assetRegistry,
                 vault_1_id.currencies.collateral
@@ -212,7 +212,7 @@ describe("vaultsAPI", () => {
             //     collateralizationAfterWithdrawal.toString(),
             //     `Collateralization after identical deposit and withdrawal changed (${currencyTicker} vault)`
             // );
-        }
+        }));
         if (prevAccount) {
             interBtcAPI.setAccount(prevAccount);
         }
