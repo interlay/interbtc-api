@@ -408,19 +408,24 @@ describe("vaultsAPI", () => {
     });
 
     // TODO: revisit after next publish why intrReward is always zero
-    it.skip("should getFees", async () => {
-        for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = await currencyIdToMonetaryCurrency(
-                assetRegistry,
-                vault_1_id.currencies.collateral
-            );
-            const wrappedCurrency = await currencyIdToMonetaryCurrency(assetRegistry, vault_1_id.currencies.wrapped);
+    // PRECONDITION: vaults must have issued some tokens against all collateral currencies
+    it("should getFees", async () => {
+        const vaultIdsInScope = vault_1_ids;
+        let countSkippedVaults = 0;
+        for (const vaultId of vaultIdsInScope) {
+            const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.collateral);
+            const wrappedCurrency = await currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.wrapped);
             const currencyTicker = collateralCurrency.ticker;
 
-            const vault1Id = newAccountId(api, vault_1.address);
+            const vault = await interBtcAPI.vaults.get(vaultId.accountId, collateralCurrency);
+            if (vault.issuedTokens.toBig().eq(0)) {
+                // no issued tokens => no rewards => nothing to check
+                countSkippedVaults++;
+                continue;
+            }
 
             const feesWrapped = await interBtcAPI.vaults.getWrappedReward(
-                vault1Id,
+                vaultId.accountId,
                 collateralCurrency,
                 wrappedCurrency
             );
@@ -430,7 +435,7 @@ describe("vaultsAPI", () => {
             );
 
             const intrReward = await interBtcAPI.vaults.getGovernanceReward(
-                vault1Id,
+                vaultId.accountId,
                 collateralCurrency,
                 governanceCurrency
             );
@@ -439,6 +444,12 @@ describe("vaultsAPI", () => {
                 `Governance reward should be greater than 0 (${currencyTicker} vault)`
             );
         }
+        // make sure not every vault has been skipped (due to no issued tokens)
+        assert.notEqual(
+            countSkippedVaults,
+            vaultIdsInScope.length,
+            `Unexpected test behavior: skipped all ${vaultIdsInScope.length} vaults in the test; all vaults lacking issued tokens`
+        );
     });
 
     it("should getAPY", async () => {
