@@ -30,7 +30,7 @@ import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { Interlay } from "@interlay/monetary-js";
 
-describe("refund", () => {
+describe.skip("refund", () => {
     let api: ApiPromise;
     let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
