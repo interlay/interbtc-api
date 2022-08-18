@@ -145,9 +145,7 @@ describe("issue", () => {
         }
     }).timeout(1000000);
 
-    // skipping - this is tested at the parachain level, and only happy path
-    // tests should be tested in the lib
-    it.skip("should request and manually execute issue", async () => {
+    it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
             const currencyTicker = (
                 await currencyIdToMonetaryCurrency(userInterBtcAPI.assetRegistry, vault_2_id.currencies.collateral)
