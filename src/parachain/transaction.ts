@@ -18,7 +18,7 @@ export interface TransactionAPI {
     ): Promise<ISubmittableResult>;
 }
 
-export class DefaultTransactionAPI {
+export class DefaultTransactionAPI implements TransactionAPI {
     constructor(public api: ApiPromise, private account?: AddressOrPair) {}
 
     public setAccount(account: AddressOrPair): void {
@@ -59,16 +59,21 @@ export class DefaultTransactionAPI {
                 .then((u: () => void) => (unsubscribe = u))
                 .catch((error) => reject(error));
 
+            let foundStatus = false;
+            // only need to check this if we do want to wait for the success event
+            let foundEvent = successEventType !== undefined;
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
-                if (onlyInBlock) {
-                    if (status.isInBlock) {
-                        resolve(callbackObject);
-                    }
-                } else {
-                    if (status.isFinalized) {
-                        resolve(callbackObject);
-                    }
+                foundStatus = foundStatus || (onlyInBlock && status.isInBlock) || status.isFinalized;
+                foundEvent =
+                    // if we found it before there is no need to check again
+                    foundEvent ||
+                    // if the event we are looking for is undefined, assume it has been found
+                    successEventType === undefined ||
+                    DefaultTransactionAPI.doesArrayContainEvent(callbackObject.result.events, successEventType);
+
+                if (foundStatus && foundEvent) {
+                    resolve(callbackObject);
                 }
             }
         });
