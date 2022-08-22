@@ -40,15 +40,13 @@ describe("ElectrsAPI regtest", function () {
         await api.disconnect();
     });
 
-    it("should getTxIdByRecipientAddress", async () => {
+    it("should getLargestPaymentToRecipientAddressTxId", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
             const recipientAddress = makeRandomBitcoinAddress();
             const amount = new BitcoinAmount(0.00022244);
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
-            const txid = await waitSuccess(() =>
-                electrsAPI.getOldestPaymentToRecipientAddressTxId(recipientAddress, amount)
-            );
+            const txid = await waitSuccess(() => electrsAPI.getLargestPaymentToRecipientAddressTxId(recipientAddress));
             assert.strictEqual(txid, txData.txid);
         });
     });
