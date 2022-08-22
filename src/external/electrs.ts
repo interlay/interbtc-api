@@ -110,7 +110,7 @@ export interface ElectrsAPI {
      */
     getLargestPaymentToRecipientAddressTxId(recipientAddress: string): Promise<string>;
     /**
-     * Fetch the oldest bitcoin transaction ID based on the recipient address and amount.
+     * Fetch the earliest/oldest bitcoin transaction ID based on the recipient address and amount.
      * Throw an error if no such transaction is found.
      *
      * @remarks
@@ -120,8 +120,9 @@ export interface ElectrsAPI {
      * @param amount Match the amount (in BTC) of a transaction output that contains said recipientAddress.
      *
      * @returns A Bitcoin transaction ID
+     * @deprecated For most cases where this is used today, {@link getLargestPaymentToRecipientAddressTxId} is better suited.
      */
-    getOldestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string>;
+    getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string>;
     /**
      * Fetch the Bitcoin transaction that matches the given TxId
      *
@@ -269,7 +270,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return Promise.reject(new Error("No transaction found for recipient"));
     }
 
-    async getOldestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string> {
+    async getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string> {
         try {
             // TODO: this should be paged
             const txs = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
