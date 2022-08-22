@@ -47,7 +47,7 @@ describe("ElectrsAPI regtest", function () {
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
             const txid = await waitSuccess(() =>
-                electrsAPI.getEarliestPaymentToRecipientAddressTxId(recipientAddress, amount)
+                electrsAPI.getOldestPaymentToRecipientAddressTxId(recipientAddress, amount)
             );
             assert.strictEqual(txid, txData.txid);
         });
