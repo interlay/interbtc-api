@@ -19,6 +19,7 @@ import {
     ForeignAsset,
     encodeUnsignedFixedPoint,
     setNumericStorage,
+    getSS58Prefix,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -60,6 +61,8 @@ import { ISubmittableResult } from "@polkadot/types/types";
 import { BN } from "bn.js";
 
 describe("Initialize parachain state", () => {
+    // copied from interbtc testnet runtimes
+    const vaultAnnuityGenericAddress = "5EYCAe5jvsMTc6NLhunLTPVjJg5cZNweWKjNXKqz9RUqQJDY";
     let api: ApiPromise;
     let userInterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
@@ -97,7 +100,8 @@ describe("Initialize parachain state", () => {
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        keyring = new Keyring({ type: "sr25519" });
+        const ss58Prefix = getSS58Prefix(api);
+        keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
         vault_1 = keyring.addFromUri(VAULT_1_URI);
@@ -175,6 +179,19 @@ describe("Initialize parachain state", () => {
             stableParachainConfirmations,
             "Setting the Parachain confirmations failed"
         );
+    });
+
+    it("should fund vault annuity account", async () => {
+        // get address in with local prefix
+        const vaultAnnuityAddress = keyring.addFromAddress(vaultAnnuityGenericAddress).address;
+
+        // fund with 100 KINT/INTR
+        const fundAmount = new MonetaryAmount(sudoInterBtcAPI.getGovernanceCurrency(), 100);
+        const [foundEvent] = await Promise.all([
+            waitForEvent(sudoInterBtcAPI, api.events.tokens.Transfer, false, 6 * 12 * 1000),
+            userInterBtcAPI.tokens.transfer(vaultAnnuityAddress, fundAmount),
+        ]);
+        assert.isTrue(foundEvent, "Expected to find transfer event funding vault annuity account, but did not");
     });
 
     it("should have or register aUSD as foreign asset", async () => {
@@ -269,6 +286,14 @@ describe("Initialize parachain state", () => {
             getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees();
         }
         assert.isDefined(getFeeEstimate);
+    });
+
+    it("should update vault annuity rewards", async () => {
+        // update rewards (needs sudo), doing this a fair bit later than transfer
+        // so the test doesn't need to wait for transfer to settle
+        const updateRewardsExtrinsic = api.tx.vaultAnnuity.updateRewards();
+        const hash = await api.tx.sudo.sudo(updateRewardsExtrinsic).signAndSend(sudoAccount);
+        assert.isNotEmpty(hash);
     });
 
     it("should enable vault nomination", async () => {
