@@ -98,7 +98,19 @@ export interface ElectrsAPI {
      */
     getTxIdByOpReturn(opReturn: string, recipientAddress?: string, amount?: BitcoinAmount): Promise<string>;
     /**
-     * Fetch the earliest bitcoin transaction ID based on the recipient address and amount.
+     * Fetch the bitcoin transaction ID with the largest payment based on the recipient address.
+     * Throw an error if no transactions are found.
+     *
+     * @remarks
+     * Performs the lookup using an external service, Esplora
+     *
+     * @param recipientAddress Match the receiving address of a transaction output
+     *
+     * @returns A Bitcoin transaction ID
+     */
+    getLargestPaymentToRecipientAddressTxId(recipientAddress: string): Promise<string>;
+    /**
+     * Fetch the earliest/oldest bitcoin transaction ID based on the recipient address and amount.
      * Throw an error if no such transaction is found.
      *
      * @remarks
@@ -108,6 +120,7 @@ export interface ElectrsAPI {
      * @param amount Match the amount (in BTC) of a transaction output that contains said recipientAddress.
      *
      * @returns A Bitcoin transaction ID
+     * @deprecated For most cases where this is used today, {@link getLargestPaymentToRecipientAddressTxId} is better suited.
      */
     getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string>;
     /**
@@ -227,16 +240,47 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return amount;
     }
 
+    async getLargestPaymentToRecipientAddressTxId(recipientAddress: string): Promise<string> {
+        try {
+            // TODO: this should be paged
+            const txs = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
+            if (txs.length >= 25) {
+                throw new Error("Too many transactions");
+            }
+
+            let txid: string | undefined = undefined;
+            let amount = 0;
+            for (const tx of txs) {
+                if (tx.vout === undefined) {
+                    continue;
+                }
+                for (const vout of tx.vout) {
+                    if (vout.value && vout.scriptpubkey_address === recipientAddress) {
+                        if (vout.value > amount) {
+                            amount = vout.value;
+                            txid = tx.txid;
+                        }
+                    }
+                }
+            }
+            if (txid) return txid;
+        } catch (e) {
+            return Promise.reject(new Error(`Error during tx lookup by address: ${e}`));
+        }
+        return Promise.reject(new Error("No transaction found for recipient"));
+    }
+
     async getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string> {
         try {
-            const txes = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
-            if (txes.length >= 25) {
+            // TODO: this should be paged
+            const txs = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
+            if (txs.length >= 25) {
                 throw new Error(
                     "Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address"
                 );
             }
 
-            const oldestTx = txes.pop();
+            const oldestTx = txs.pop();
             if (!oldestTx || !oldestTx.vout) {
                 throw new Error("No transaction found for recipient and amount");
             }
@@ -281,6 +325,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
 
         let txs: Transaction[] = [];
         try {
+            // TODO: this should be paged
             txs = await this.getData(this.scripthashApi.getTxsByScripthash(hash));
         } catch (e) {
             return Promise.reject(new Error(`Error during tx lookup by OP_RETURN: ${e}`));

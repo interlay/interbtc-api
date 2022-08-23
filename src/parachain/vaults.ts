@@ -38,6 +38,8 @@ import {
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
 import { AssetRegistryAPI, SystemAPI } from "./index";
+import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from "@polkadot/api/types";
+import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
 
 /**
  * @category BTC Bridge
@@ -175,8 +177,9 @@ export interface VaultsAPI {
      */
     getPremiumRedeemThreshold(collateralCurrency: CollateralCurrencyExt): Promise<Big>;
     /**
+     * Get the global secure collateral threshold.
      * @param collateralCurrency
-     * @returns The over-collateralization rate for collateral locked
+     * @returns The global over-collateralization rate for collateral locked
      * by Vaults, necessary for issuing wrapped tokens
      */
     getSecureCollateralThreshold(collateralCurrency: CollateralCurrencyExt): Promise<Big>;
@@ -241,7 +244,7 @@ export interface VaultsAPI {
      * @param collateralCurrency The currency specification, a `Monetary.js` object or `ForeignAsset`
      * @returns The issuable amount of a vault
      */
-    getIssueableTokensFromVault(
+    getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>>;
@@ -326,6 +329,15 @@ export interface VaultsAPI {
      * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
      */
     toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void>;
+    /**
+     * Registers a new vault for the current account ID with a new collateral amount.
+     * Only applicable if the connected account ID already has a running vault with a different collateral currency.
+     *
+     * Rejects with an Error if unable to register.
+     *
+     * @param collateralAmount The collateral amount to register the vault with - in the new collateral currency
+     */
+    registerNewCollateralVault(collateralAmount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
 }
 
 export class DefaultVaultsAPI implements VaultsAPI {
@@ -345,6 +357,32 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
+    }
+
+    async registerNewCollateralVault(collateralAmount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+        // check the vault account is set
+        const vaultAccount = this.transactionAPI.getAccount();
+        if (vaultAccount === undefined) {
+            return Promise.reject("Failed to read account in vaults API; account must be set in interbtc API");
+        }
+
+        const extrinsic = this.buildRegisterVaultExtrinsic(collateralAmount);
+        const registerVaultEvent = this.getRegisterVaultEvent();
+        await this.transactionAPI.sendLogged(extrinsic, registerVaultEvent, true);
+    }
+
+    // helper method; mainly for easier mocking in unit tests without an active ApiPromise instance
+    getRegisterVaultEvent(): AugmentedEvent<ApiTypes, AnyTuple> {
+        return this.api.events.vaultRegistry.RegisterVault;
+    }
+
+    // helper method; mainly for easier mocking in unit tests without an active ApiPromise instance
+    buildRegisterVaultExtrinsic(
+        collateralAmount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const currencyPair = newVaultCurrencyPair(this.api, collateralAmount.currency, this.getWrappedCurrency());
+        const amountAtomicUnit = this.api.createType("Balance", collateralAmount.toString(true));
+        return this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit);
     }
 
     async register(amount: MonetaryAmount<CollateralCurrencyExt>, publicKey: string): Promise<void> {
@@ -705,7 +743,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
     }
 
-    async getIssueableTokensFromVault(
+    async getIssuableTokensFromVault(
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>> {
@@ -873,6 +911,11 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const replaceCollateral = newMonetaryAmount(vault.replaceCollateral.toString(), collateralCurrency);
         const liquidatedCollateral = newMonetaryAmount(vault.liquidatedCollateral.toString(), collateralCurrency);
         const backingCollateral = await this.computeBackingCollateral(vault.id);
+
+        const secureThreshold = vault.secureCollateralThreshold.isSome
+            ? decodeFixedPointType(vault.secureCollateralThreshold.unwrap())
+            : await this.getSecureCollateralThreshold(collateralCurrency);
+
         return new VaultExt(
             this.api,
             this.oracleAPI,
@@ -887,7 +930,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
             newMonetaryAmount(vault.toBeRedeemedTokens.toString(), this.wrappedCurrency),
             newMonetaryAmount(vault.toBeReplacedTokens.toString(), this.wrappedCurrency),
             replaceCollateral,
-            liquidatedCollateral
+            liquidatedCollateral,
+            secureThreshold
         );
     }
 
