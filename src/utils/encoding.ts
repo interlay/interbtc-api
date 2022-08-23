@@ -278,11 +278,11 @@ export async function parseIssueRequest(
     };
 }
 
-export async function parseRedeemRequestStatus(
+export function parseRedeemRequestStatus(
     req: InterbtcPrimitivesRedeemRedeemRequest,
     redeemPeriod: number,
     activeBlockCount: number
-): Promise<RedeemStatus> {
+): RedeemStatus {
     const primStatus = req.status;
 
     // check obvious final states first
@@ -317,10 +317,8 @@ export async function parseRedeemRequest(
     redeemPeriod: number,
     activeBlockCount: number
 ): Promise<Redeem> {
-    const [status, collateralCurrency] = await Promise.all([
-        parseRedeemRequestStatus(req, redeemPeriod, activeBlockCount),
-        currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral),
-    ]);
+    const status = parseRedeemRequestStatus(req, redeemPeriod, activeBlockCount);
+    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
 
     return {
         id: stripHexPrefix(id.toString()),
