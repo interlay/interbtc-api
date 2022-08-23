@@ -21,6 +21,7 @@ describe("DefaultRedeemAPI", () => {
             stubbedVaultsApi as VaultsAPI,
             null as any,
             null as any,
+            null as any,
             null as any
         );
     });

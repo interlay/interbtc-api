@@ -31,6 +31,7 @@ import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
 import { CollateralCurrencyExt, Redeem, WrappedCurrency } from "../types";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { SystemAPI } from "./system";
 
 /**
  * @category BTC Bridge
@@ -170,7 +171,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
         private vaultsAPI: VaultsAPI,
         private oracleAPI: OracleAPI,
         private transactionAPI: TransactionAPI,
-        private assetRgistryAPI: AssetRegistryAPI
+        private assetRgistryAPI: AssetRegistryAPI,
+        private systemAPI: SystemAPI
     ) {}
 
     private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
@@ -310,7 +312,12 @@ export class DefaultRedeemAPI implements RedeemAPI {
 
     async list(): Promise<Redeem[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const redeemRequests = await this.api.query.redeem.redeemRequests.entriesAt(head);
+
+        const [redeemRequests, redeemPeriod, activeBlockNumber] = await Promise.all([
+            this.api.query.redeem.redeemRequests.entriesAt(head),
+            this.getRedeemPeriod(),
+            this.systemAPI.getCurrentActiveBlockNumber(head),
+        ]);
         return await Promise.all(
             redeemRequests
                 .filter(([_, req]) => req.isSome.valueOf())
@@ -321,7 +328,9 @@ export class DefaultRedeemAPI implements RedeemAPI {
                         this.assetRgistryAPI,
                         req.unwrap(),
                         this.btcNetwork,
-                        storageKeyToNthInner(id)
+                        storageKeyToNthInner(id),
+                        redeemPeriod,
+                        activeBlockNumber
                     );
                 })
         );
@@ -364,6 +373,11 @@ export class DefaultRedeemAPI implements RedeemAPI {
                     })
             )
         );
+        const [redeemPeriod, activeBlockCount] = await Promise.all([
+            this.getRedeemPeriod(),
+            this.systemAPI.getCurrentActiveBlockNumber(),
+        ]);
+
         return Promise.all(
             redeemRequestData
                 .filter(([option, _]) => option.isSome)
@@ -373,7 +387,9 @@ export class DefaultRedeemAPI implements RedeemAPI {
                         this.assetRgistryAPI,
                         redeemRequest.unwrap(),
                         this.btcNetwork,
-                        redeemId
+                        redeemId,
+                        redeemPeriod,
+                        activeBlockCount
                     )
                 )
         );
