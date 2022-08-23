@@ -150,7 +150,8 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.vaults,
             this.oracle,
             this.transactionAPI,
-            this.assetRegistry
+            this.assetRegistry,
+            this.system
         );
         this.nomination = new DefaultNominationAPI(
             api,
