@@ -34,6 +34,7 @@ import {
     CollateralCurrencyExt,
     WrappedCurrency,
     GovernanceCurrency,
+    CurrencyExt,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
@@ -527,12 +528,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
                 this.getTotalIssuedAmount(),
                 this.getIssuedAmount(vaultAccountId, collateralCurrency),
                 this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
-                (
-                    await this.tokensAPI.balance(
-                        await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vault.id.currencies.collateral),
-                        vaultAccountId
-                    )
-                ).reserved,
+                this.getLockedCollateral(vault),
                 this.api.consts.timestamp.minimumPeriod,
             ]);
 
@@ -548,6 +544,15 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
         const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
         return this.feeAPI.calculateAPY(annualisedReward, lockedCollateral);
+    }
+
+    async getLockedCollateral(vaultExt: VaultExt): Promise<MonetaryAmount<CurrencyExt>> {
+        return (
+            await this.tokensAPI.balance(
+                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultExt.id.currencies.collateral),
+                vaultExt.id.accountId
+            )
+        ).reserved;
     }
 
     async computeReward(
@@ -876,13 +881,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
     async getAPY(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<Big> {
         const vault = await this.get(vaultAccountId, collateralCurrency);
         const [feesWrapped, lockedCollateral, blockRewardsAPY] = await Promise.all([
-            await this.getWrappedReward(vaultAccountId, collateralCurrency),
-            (
-                await this.tokensAPI.balance(
-                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vault.id.currencies.collateral),
-                    vaultAccountId
-                )
-            ).reserved,
+            this.getWrappedReward(vaultAccountId, collateralCurrency),
+            this.getLockedCollateral(vault),
             this.getBlockRewardAPY(vaultAccountId, vaultAccountId, collateralCurrency, this.governanceCurrency),
         ]);
         return (await this.feeAPI.calculateAPY(feesWrapped, lockedCollateral)).add(blockRewardsAPY);
