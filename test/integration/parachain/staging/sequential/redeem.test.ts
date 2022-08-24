@@ -93,11 +93,6 @@ describe("redeem", () => {
         return api.disconnect();
     });
 
-    it("should fail if no account is set", async () => {
-        const amount = newMonetaryAmount(10, wrappedCurrency);
-        await assert.isRejected(interBtcAPI.redeem.request(amount, randomBtcAddress));
-    }).timeout(3 * 60000);
-
     it("should issue and request redeem", async () => {
         // "usual" scope with hard coded collateral currency (or currencies)
         const vaultsInScope = Array.from(collateralTickerToVaultIdsMap.values());

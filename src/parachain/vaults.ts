@@ -20,6 +20,7 @@ import {
     newVaultCurrencyPair,
     addHexPrefix,
     currencyIdToMonetaryCurrency,
+    decodeRpcVaultId,
 } from "../utils";
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
@@ -780,14 +781,14 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getPremiumRedeemVaults(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>> {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
-        const vaults = await this.getVaultsEligibleForRedeeming();
+        const premiumRedeemVaults = await this.api.rpc.vaultRegistry.getPremiumRedeemVaults();
 
-        const premiumRedeemVaultPredicates = await Promise.all(
-            vaults.map((vault) => this.isBelowPremiumThreshold(vault.id))
-        );
-        vaults
-            .filter((_, index) => premiumRedeemVaultPredicates[index])
-            .forEach((vault) => map.set(vault.id, vault.getRedeemableTokens()));
+        for (const [vaultId, balanceWrapper] of premiumRedeemVaults) {
+            const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
+
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, vaultId);
+            map.set(ibtcPrimitivesVaultId, amount);
+        }
         return map;
     }
 
@@ -796,18 +797,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const vaultIdsToAmountsMap: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
         for (const [vaultId, balanceWrapper] of issuableVaults) {
             const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
-            const [collateralCcy, wrappedCcy] = await Promise.all([
-                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.collateral),
-                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.wrapped),
-            ]);
 
-            const ibtcPrimitivesVaultId = newVaultId(
-                this.api,
-                vaultId.account_id.toString(),
-                collateralCcy,
-                wrappedCcy
-            );
-
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, vaultId);
             vaultIdsToAmountsMap.set(ibtcPrimitivesVaultId, amount);
         }
 

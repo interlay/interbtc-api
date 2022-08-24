@@ -24,7 +24,7 @@ import {
 import { currencyIdToMonetaryCurrency, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, isForeignAsset } from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
-import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint } from "../interfaces";
+import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, VaultsAPI } from "../parachain";
@@ -169,6 +169,19 @@ export function newVaultId(
     return api.createType("InterbtcPrimitivesVaultId", { account_id: parsedAccountId, currencies: vaultCurrencyPair });
 }
 
+export async function decodeRpcVaultId(
+    api: ApiPromise,
+    assetRegistry: AssetRegistryAPI,
+    vaultId: VaultId
+): Promise<InterbtcPrimitivesVaultId> {
+    const [collateralCcy, wrappedCcy] = await Promise.all([
+        currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.collateral),
+        currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.wrapped),
+    ]);
+
+    return newVaultId(api, vaultId.account_id.toString(), collateralCcy, wrappedCcy);
+}
+
 export function newVaultCurrencyPair(
     api: ApiPromise,
     collateralCurrency: CollateralCurrencyExt,
@@ -265,22 +278,48 @@ export async function parseIssueRequest(
     };
 }
 
+export function parseRedeemRequestStatus(
+    req: InterbtcPrimitivesRedeemRedeemRequest,
+    redeemPeriod: number,
+    activeBlockCount: number
+): RedeemStatus {
+    const primStatus = req.status;
+
+    // check obvious final states first
+    if (primStatus.isCompleted) {
+        return RedeemStatus.Completed;
+    }
+
+    if (primStatus.isReimbursed) {
+        return RedeemStatus.Reimbursed;
+    }
+
+    if (primStatus.isRetried) {
+        return RedeemStatus.Retried;
+    }
+
+    // now check if pending is actually expired
+    const maxPeriod = Math.max(req.period.toNumber(), redeemPeriod);
+    const openTime = req.opentime.toNumber();
+    if (openTime + maxPeriod > activeBlockCount) {
+        return RedeemStatus.Expired;
+    }
+
+    return RedeemStatus.PendingWithBtcTxNotFound;
+}
+
 export async function parseRedeemRequest(
     vaultsAPI: VaultsAPI,
     assetRegistry: AssetRegistryAPI,
     req: InterbtcPrimitivesRedeemRedeemRequest,
     network: Network,
-    id: H256 | string
+    id: H256 | string,
+    redeemPeriod: number,
+    activeBlockCount: number
 ): Promise<Redeem> {
-    const status = req.status.isCompleted
-        ? RedeemStatus.Completed
-        : req.status.isRetried
-        ? RedeemStatus.Retried
-        : req.status.isReimbursed
-        ? RedeemStatus.Reimbursed
-        : RedeemStatus.PendingWithBtcTxNotFound;
-
+    const status = parseRedeemRequestStatus(req, redeemPeriod, activeBlockCount);
     const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
+
     return {
         id: stripHexPrefix(id.toString()),
         userParachainAddress: req.redeemer.toString(),

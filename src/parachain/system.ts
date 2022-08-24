@@ -47,7 +47,7 @@ export interface SystemAPI {
     getBlockHash(blockNumber: number): Promise<BlockHash>;
 }
 
-export class DefaultSystemAPI {
+export class DefaultSystemAPI implements SystemAPI {
     constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
     async getCurrentBlockNumber(): Promise<number> {
