@@ -7,6 +7,7 @@ import {
     prepareBackingCollateralProportionMocks,
     prepareRegisterNewCollateralVaultMocks,
     MOCKED_SEND_LOGGED_ERR_MSG,
+    prepareLiquidationRateMocks,
 } from "../mocks/vaultsTestMocks";
 
 describe("DefaultVaultsAPI", () => {
@@ -162,6 +163,84 @@ describe("DefaultVaultsAPI", () => {
                 submittedMockExtrinsic,
                 `Expected submitted mock extrinsic have been submitted, but found this instead: ${actualSubmittedExtrinsic.toString()}`
             );
+        });
+    });
+
+    describe("getExchangeRateForLiquidation", () => {
+        it("should calculate expected liquidation rate", async () => {
+            const mockIssuedTokens = 1;
+            const mockCollateralTokens = 3;
+            const mockLiquidationThreshold = 2;
+            // expect we need to pay 1.5 KSM per 1 BTC for the collateral (3 KSM) to issued (1 KBTC) ratio
+            // to reach the liquidation threshold rate of 2
+            const expectedLiquidationExchangeRate = 1.5;
+
+            prepareLiquidationRateMocks(
+                sinon,
+                vaultsApi,
+                mockIssuedTokens,
+                mockCollateralTokens,
+                mockLiquidationThreshold,
+                testWrappedCurrency,
+                testCollateralCurrency
+            );
+
+            // get the fictitious liquidation rate
+            const actualRate = await vaultsApi.getExchangeRateForLiquidation(
+                null as never, // this variable is ignored, mocked away
+                testCollateralCurrency
+            );
+
+            expect(actualRate).to.not.be.undefined;
+            expect(actualRate?.toNumber()).eq(expectedLiquidationExchangeRate);
+        });
+
+        it("should return undefined if vault has no issued tokens", async () => {
+            const mockIssuedTokens = 0;
+            const mockCollateralTokens = 3;
+            const mockLiquidationThreshold = 2;
+
+            prepareLiquidationRateMocks(
+                sinon,
+                vaultsApi,
+                mockIssuedTokens,
+                mockCollateralTokens,
+                mockLiquidationThreshold,
+                testWrappedCurrency,
+                testCollateralCurrency
+            );
+
+            // get the fictitious liquidation rate
+            const actualRate = await vaultsApi.getExchangeRateForLiquidation(
+                null as never, // this variable is ignored, mocked away
+                testCollateralCurrency
+            );
+
+            expect(actualRate).to.be.undefined;
+        });
+
+        it("should return undefined if liquidation rate is zero", async () => {
+            const mockIssuedTokens = 1;
+            const mockCollateralTokens = 3;
+            const mockLiquidationThreshold = 0;
+
+            prepareLiquidationRateMocks(
+                sinon,
+                vaultsApi,
+                mockIssuedTokens,
+                mockCollateralTokens,
+                mockLiquidationThreshold,
+                testWrappedCurrency,
+                testCollateralCurrency
+            );
+
+            // get the fictitious liquidation rate
+            const actualRate = await vaultsApi.getExchangeRateForLiquidation(
+                null as never, // this variable is ignored, mocked away
+                testCollateralCurrency
+            );
+
+            expect(actualRate).to.be.undefined;
         });
     });
 });
