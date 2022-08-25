@@ -28,6 +28,7 @@
     "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/interbtc/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "initialize": "run-s build && ts-node src/utils/setup --initialize",
     "hrmp-setup": "ts-node scripts/hrmp-setup",
+    "pool-setup": "ts-node scripts/pool-setup",
     "xcm-cross-chain-transfer": "ts-node scripts/xcm-cross-chain-transfer",
     "xcm-return-unknown-tokens": "ts-node scripts/xcm-return-unknown-tokens",
     "democracy": "ts-node scripts/democracy",

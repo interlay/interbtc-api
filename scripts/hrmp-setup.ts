@@ -3,10 +3,7 @@ import { createSubstrateAPI } from "../src/factory";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { DefaultTransactionAPI } from "../src/parachain";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
-import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
-
 import { SubmittableExtrinsic } from "@polkadot/api/types";
-import { assert } from "console";
 
 const readline = require("readline");
 const yargs = require("yargs/yargs");
@@ -41,7 +38,7 @@ const args = yargs(hideBin(process.argv))
     })
     .option("action", {
         description: "The action to do",
-        demandOption : true,
+        demandOption: true,
         choices: ['request', 'accept', 'batched'],
     })
     .option("xcm-fee", {
@@ -54,7 +51,7 @@ const args = yargs(hideBin(process.argv))
     })
     .option("with-defaults-of", {
         description: "Which default values to use",
-        choices: ['kintsugi', 'polkadot'],
+        choices: ['kintsugi', 'interlay'],
     })
     .argv;
 
@@ -146,7 +143,7 @@ function construct_xcm(api: ApiPromise, transact: string) {
         v2: xcmV2,
     });
 
-    const dest = api.createType<XcmVersionedMultiLocation>("XcmVersionedMultiLocation", {
+    const dest = api.createType("XcmVersionedMultiLocation", {
         v1: api.createType("XcmV1MultiLocation", {
             parents: 1,
             interior: api.createType("XcmV1MultilocationJunctions", {
@@ -217,7 +214,7 @@ async function main(): Promise<void> {
     await cryptoWaitReady();
 
     switch (args['with-defaults-of']) {
-        case 'polkadot':
+        case 'interlay':
             if (args['parachain-endpoint'] === undefined) {
                 args['parachain-endpoint'] = "wss://api.interlay.io/parachain";
             }
@@ -247,14 +244,13 @@ async function main(): Promise<void> {
             break;
     }
     if (args['parachain-endpoint'] === undefined
-            || args['relay-endpoint'] === undefined
-            || args['xcm-fee'] === undefined
-            || args['transact-weight'] === undefined) {
+        || args['relay-endpoint'] === undefined
+        || args['xcm-fee'] === undefined
+        || args['transact-weight'] === undefined) {
         console.log("Not all required arguments supplied");
         return;
     }
 
-    
     const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
     const relayApi = await createSubstrateAPI(args['relay-endpoint']);
 
