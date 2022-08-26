@@ -62,8 +62,7 @@ function palletIdToAccountId(api: ApiPromise, palletId: any): string {
     const accountId = Buffer.concat([
         Buffer.from("modl"), // 4 bytes
         Buffer.from(palletId), // 8 bytes
-        Buffer.alloc(32 - 12, 0)
-    ]);
+    ], 32);
     return newAccountId(api, addHexPrefix(accountId.toString("hex"))).toHuman();
 }
 
@@ -73,8 +72,7 @@ function parachainIdToAccountId(paraId: number): string {
     const accountId = Buffer.concat([
         Buffer.from("sibl"), // 4 bytes
         paraIdBytes, // 2 bytes
-        Buffer.alloc(32 - 6, 0)
-    ]);
+    ], 32);
     return addHexPrefix(accountId.toString("hex"));
 }
 
