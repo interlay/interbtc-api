@@ -344,8 +344,10 @@ export function unwrapRawExchangeRate(option: Option<UnsignedFixedPoint>): Unsig
 }
 
 export async function encodeVaultId(assetRegistry: AssetRegistryAPI, id: InterbtcPrimitivesVaultId): Promise<string> {
-    const wrappedCurrency = await currencyIdToMonetaryCurrency(assetRegistry, id.currencies.wrapped);
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, id.currencies.collateral);
+    const [wrappedCurrency, collateralCurrency] = await Promise.all([
+        currencyIdToMonetaryCurrency(assetRegistry, id.currencies.wrapped),
+        currencyIdToMonetaryCurrency(assetRegistry, id.currencies.collateral),
+    ]);
     const wrappedId = isForeignAsset(wrappedCurrency) ? wrappedCurrency.id.toString() : wrappedCurrency.ticker;
     const collateralId = isForeignAsset(collateralCurrency)
         ? collateralCurrency.id.toString()

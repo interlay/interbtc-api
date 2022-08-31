@@ -12,9 +12,7 @@ describe("DefaultAssetRegistryAPI", () => {
     let assetRegistryApi: DefaultAssetRegistryAPI;
     let mockMetadata: OrmlTraitsAssetRegistryAssetMetadata;
     let mockStorageKey: StorageKey<[u32]>;
-    // scraped from integration tests
-    const scrapedStorageKey =
-        "0x6e9a9b71050cd23f2d7d1b72e8c1a625b5f3822e35ca2f31ce3526eab1363fd25153cb1f00942ff401000000";
+
     const mockStorageKeyValue = 42;
     const mockMetadataValues = {
         name: "Mock Coin One",
@@ -48,8 +46,6 @@ describe("DefaultAssetRegistryAPI", () => {
 
     beforeEach(() => {
         assetRegistryApi = new DefaultAssetRegistryAPI(api);
-
-        mockStorageKey = api.createType("StorageKey<[u32]>", scrapedStorageKey);
 
         // reset to base values
         mockMetadata = {
