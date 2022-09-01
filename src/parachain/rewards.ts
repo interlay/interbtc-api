@@ -296,11 +296,11 @@ export class DefaultRewardsAPI implements RewardsAPI {
         vaultCollateral: CollateralCurrencyExt,
         vaultAccountId: AccountId
     ): Promise<MonetaryAmount<Currency>> {
-        const stake = await this.getRewardsPoolStake(vaultCollateral, vaultAccountId);
-        const rewardPerToken = await this.getRewardsPoolRewardPerToken(rewardCurrency);
-        const rewardTally = await this.getRewardsPoolRewardTally(rewardCurrency, vaultCollateral, vaultAccountId);
-        const rawLazyDistribution = computeLazyDistribution(stake, rewardPerToken, rewardTally);
-        return newMonetaryAmount(rawLazyDistribution, rewardCurrency);
+        const reward = await this.api.rpc.reward.computeVaultReward(
+            newVaultId(this.api, vaultAccountId.toString(), vaultCollateral, this.wrappedCurrency),
+            newCurrencyId(this.api, rewardCurrency)
+        );
+        return newMonetaryAmount(reward.amount.toString(), rewardCurrency);
     }
 
     async getRewardsPoolStake(vaultCollateral: CollateralCurrencyExt, vaultAccountId: AccountId): Promise<Big> {

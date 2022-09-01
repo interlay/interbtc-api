@@ -8,15 +8,12 @@ import {
     decodeFixedPointType,
     newCurrencyId,
     newMonetaryAmount,
-    storageKeyToNthInner,
     toVoting,
     estimateReward,
 } from "../utils";
 import {
     GovernanceCurrency,
     parseEscrowLockedBalance,
-    parseEscrowPoint,
-    RWEscrowPoint,
     StakedBalance,
     VotingCurrency,
 } from "../types";
@@ -141,16 +138,11 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async getRewards(accountId: AccountId): Promise<MonetaryAmount<GovernanceCurrency>> {
-        // Step 1. Get amount in reward pool for the account ID
-        const [rewardStake, rewardPerToken, rewardTally] = await Promise.all([
-            this.getEscrowStake(accountId),
-            this.getRewardPerToken(),
-            this.getRewardTally(accountId),
-        ]);
-        // Step 2. Calculate the rewards that can be withdrawn at the moment
-        // Stake[currencyId, accountId] * RewardPerToken[currencyId] - RewardTally[currencyId, accountId]
-        const rewards = rewardStake.mul(rewardPerToken).sub(rewardTally);
-        return newMonetaryAmount(rewards, this.governanceCurrency);
+        const reward = await this.api.rpc.reward.computeEscrowReward(
+            accountId,
+            newCurrencyId(this.api, this.governanceCurrency)
+        );
+        return newMonetaryAmount(reward.amount.toString(), this.governanceCurrency);
     }
 
     async getRewardEstimate(
@@ -230,111 +222,15 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async votingBalance(accountId: AccountId, blockNumber?: number): Promise<MonetaryAmount<GovernanceCurrency>> {
-        const height = blockNumber || (await this.systemAPI.getCurrentBlockNumber());
-        const userPointEpoch = await this.api.query.escrow.userPointEpoch(accountId);
-        const lastPoint = await this.api.query.escrow.userPointHistory(accountId, userPointEpoch);
-        const rawBalance = this.rawBalanceAt(parseEscrowPoint(lastPoint), height);
-
-        // `rawBalance.toString()` is used to convert the BN to a BigSource type
-        return newMonetaryAmount(rawBalance.toString(), toVoting(this.governanceCurrency));
-    }
-
-    /*
-        Rust reference implementation:
-        https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L524
-    */
-    private rawBalanceAt(escrowPoint: RWEscrowPoint, height: number): BN {
-        const heightDiff = this.saturatingSub(new BN(height), escrowPoint.ts);
-        return this.saturatingSub(escrowPoint.bias, escrowPoint.slope.mul(heightDiff));
+        const maybeBlockNumber = blockNumber === undefined? null : blockNumber.toString();
+        const balance = await this.api.rpc.escrow.balanceAt(accountId.toString(), maybeBlockNumber);
+        return newMonetaryAmount(balance.amount.toString(), toVoting(this.governanceCurrency));
     }
 
     async totalVotingSupply(blockNumber?: number): Promise<MonetaryAmount<VotingCurrency>> {
-        let block;
-        let epoch;
-
-        if (blockNumber) {
-            block = new BN(blockNumber);
-            const maxEpoch = await this.api.query.escrow.epoch();
-            epoch = await this.findBlockEpoch(block, maxEpoch.toBn());
-        } else {
-            const [currentBlock, currentEpoch] = await Promise.all([
-                this.systemAPI.getCurrentBlockNumber(),
-                this.api.query.escrow.epoch(),
-            ]);
-            block = new BN(currentBlock);
-            epoch = currentEpoch.toBn();
-        }
-        return this.totalVotingSupplyAt(block, epoch);
-    }
-
-    private async totalVotingSupplyAt(block: BN, epoch: BN): Promise<MonetaryAmount<VotingCurrency>> {
-        const [span, rawSlopeChanges] = await Promise.all([
-            this.getSpan(),
-            this.api.query.escrow.slopeChanges.entries(),
-        ]);
-        const slopeChanges = new Map<BN, BN>();
-        rawSlopeChanges.forEach(([id, value]) => slopeChanges.set(storageKeyToNthInner(id).toBn(), value.toBn()));
-
-        const lastPoint = await this.api.query.escrow.pointHistory(epoch);
-        const rawSupply = this.rawSupplyAt(parseEscrowPoint(lastPoint), block, span, slopeChanges);
-        // `rawSupply.toString()` is used to convert the BN to a BigSource type
-        return newMonetaryAmount(rawSupply.toString(), toVoting(this.governanceCurrency));
-    }
-
-    /*
-        Vyper reference implementation:
-        https://github.com/curvefi/curve-dao-contracts/blob/4e428823c8ae9c0f8a669d796006fade11edb141/contracts/VotingEscrow.vy#L502
-    */
-    private async findBlockEpoch(block: BN, maxEpoch: BN): Promise<BN> {
-        let min = new BN(0);
-        let max = maxEpoch;
-
-        for (let i = 0; i < 128; i++) {
-            if (min.gte(max)) {
-                break;
-            }
-            const mid = min.add(max).addn(1).divn(2);
-            const point = parseEscrowPoint(await this.api.query.escrow.pointHistory(mid));
-            if (point.ts.lte(block)) {
-                min = mid;
-            } else {
-                max = mid.subn(1);
-            }
-        }
-
-        return min;
-    }
-
-    /*
-        Rust reference implementation:
-        https://github.com/interlay/interbtc/blob/0302612ae5f8ddf1f556042ca347c6104704ad83/crates/escrow/src/lib.rs#L530
-    */
-    private rawSupplyAt(escrowPoint: RWEscrowPoint, height: BN, escrowSpan: BN, slopeChanges: Map<BN, BN>): BN {
-        const lastPoint = escrowPoint;
-        let t_i = this.roundHeight(lastPoint.ts, escrowSpan);
-        while (t_i.lt(height)) {
-            t_i = t_i.add(escrowSpan);
-            // The BN type is handled by polkadot-js in the api call
-            let d_slope;
-            if (t_i.gt(height)) {
-                t_i = height;
-                d_slope = new BN(0);
-            } else {
-                d_slope = this.getSlopeChange(slopeChanges, t_i);
-            }
-
-            const heightDiff = this.saturatingSub(t_i, lastPoint.ts);
-            lastPoint.bias = this.saturatingSub(lastPoint.bias, lastPoint.slope.mul(heightDiff));
-
-            if (t_i.eq(height)) {
-                break;
-            }
-
-            lastPoint.slope = lastPoint.slope.add(d_slope);
-            lastPoint.ts = t_i;
-        }
-
-        return lastPoint.bias;
+        const maybeBlockNumber = blockNumber === undefined? null : blockNumber.toString();
+        const supply = await this.api.rpc.escrow.totalSupply(maybeBlockNumber);
+        return newMonetaryAmount(supply.amount.toString(), toVoting(this.governanceCurrency));
     }
 
     async getSpan(): Promise<BN> {
@@ -343,21 +239,5 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
     async getMaxPeriod(): Promise<BN> {
         return this.api.consts.escrow.maxPeriod.toBn();
-    }
-
-    private roundHeight(height: BN, span: BN): BN {
-        return height.div(span).mul(span);
-    }
-
-    private getSlopeChange(slopeChanges: Map<BN, BN>, key: BN) {
-        let d_slope = slopeChanges.get(key);
-        if (d_slope === undefined) {
-            d_slope = new BN(0);
-        }
-        return d_slope;
-    }
-
-    private saturatingSub(x: BN, y: BN): BN {
-        return BN.max(x.sub(y), new BN(0));
     }
 }

@@ -12,9 +12,8 @@ import {
     VoteKintsugi,
     MonetaryAmount,
 } from "@interlay/monetary-js";
-import { EscrowLockedBalance, EscrowPoint, OrmlTokensAccountData } from "@polkadot/types/lookup";
+import { EscrowLockedBalance, OrmlTokensAccountData } from "@polkadot/types/lookup";
 import { BigSource } from "big.js";
-import BN from "bn.js";
 import { newMonetaryAmount } from "../utils";
 
 export enum CurrencyIdLiteral {
@@ -57,20 +56,6 @@ export type StakedBalance = {
     amount: MonetaryAmount<GovernanceCurrency>;
     endBlock: number;
 };
-
-export type RWEscrowPoint = {
-    bias: BN;
-    slope: BN;
-    ts: BN;
-};
-
-export function parseEscrowPoint(e: EscrowPoint): RWEscrowPoint {
-    return {
-        bias: e.bias.toBn(),
-        slope: e.slope.toBn(),
-        ts: e.ts.toBn(),
-    };
-}
 
 export class ChainBalance {
     free: MonetaryAmount<CurrencyExt>;
