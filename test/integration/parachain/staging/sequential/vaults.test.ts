@@ -17,37 +17,27 @@ import {
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import {
-    ORACLE_URI,
     VAULT_1_URI,
     VAULT_2_URI,
-    BITCOIN_CORE_HOST,
-    BITCOIN_CORE_NETWORK,
-    BITCOIN_CORE_PASSWORD,
-    BITCOIN_CORE_PORT,
-    BITCOIN_CORE_USERNAME,
-    BITCOIN_CORE_WALLET,
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
     VAULT_TO_LIQUIDATE_URI,
     VAULT_TO_BAN_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
+import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
 import { getCorrespondingCollateralCurrencies, getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
 import { AUSD_TICKER, getAUSDForeignAsset, vaultStatusToLabel } from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
-    let oracleAccount: KeyringPair;
     let vault_to_liquidate: KeyringPair;
     let vault_to_ban: KeyringPair;
     let vault_1: KeyringPair;
     let vault_1_ids: Array<InterbtcPrimitivesVaultId>;
     let vault_2: KeyringPair;
     let vault_3: KeyringPair;
-    let vault_3_ids: Array<InterbtcPrimitivesVaultId>;
     let api: ApiPromise;
-    let bitcoinCoreClient: BitcoinCoreClient;
 
     let wrappedCurrency: WrappedCurrency;
     let collateralCurrencies: Array<CollateralCurrencyExt>;
@@ -60,7 +50,6 @@ describe("vaultsAPI", () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const ss58Prefix = getSS58Prefix(api);
         const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
-        oracleAccount = keyring.addFromUri(ORACLE_URI);
         assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
 
@@ -82,21 +71,9 @@ describe("vaultsAPI", () => {
         vault_2 = keyring.addFromUri(VAULT_2_URI);
 
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
-            newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency)
-        );
 
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
-
-        bitcoinCoreClient = new BitcoinCoreClient(
-            BITCOIN_CORE_NETWORK,
-            BITCOIN_CORE_HOST,
-            BITCOIN_CORE_USERNAME,
-            BITCOIN_CORE_PASSWORD,
-            BITCOIN_CORE_PORT,
-            BITCOIN_CORE_WALLET
-        );
     });
 
     after(() => {
