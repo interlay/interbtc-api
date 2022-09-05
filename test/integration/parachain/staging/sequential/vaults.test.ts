@@ -1,6 +1,6 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, ExchangeRate, MonetaryAmount, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import Big from "big.js";
 import {
     DefaultInterBtcApi,
@@ -33,13 +33,7 @@ import {
     ESPLORA_BASE_PATH,
 } from "../../../../config";
 import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
-import {
-    encodeVaultId,
-    getCorrespondingCollateralCurrencies,
-    getSS58Prefix,
-    issueSingle,
-    newMonetaryAmount,
-} from "../../../../../src/utils";
+import { getCorrespondingCollateralCurrencies, getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
 import { AUSD_TICKER, getAUSDForeignAsset, vaultStatusToLabel } from "../../../../utils/helpers";
 import sinon from "sinon";
 
@@ -205,13 +199,11 @@ describe("vaultsAPI", () => {
                 `Withdrawing did not decrease collateralization (${currencyTicker} vault), expected
                 ${collateralizationAfterDeposit} greater than ${collateralizationAfterWithdrawal}`
             );
-            // removed this assertion because it is flaky
-            // TODO: figure out why / fix it (usual suspect: exchange rates change between assertions)
-            // assert.equal(
-            //     collateralizationBeforeDeposit.toString(),
-            //     collateralizationAfterWithdrawal.toString(),
-            //     `Collateralization after identical deposit and withdrawal changed (${currencyTicker} vault)`
-            // );
+            assert.equal(
+                collateralizationBeforeDeposit.toString(),
+                collateralizationAfterWithdrawal.toString(),
+                `Collateralization after identical deposit and withdrawal changed (${currencyTicker} vault)`
+            );
         }
         if (prevAccount) {
             interBtcAPI.setAccount(prevAccount);
