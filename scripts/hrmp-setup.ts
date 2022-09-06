@@ -42,7 +42,7 @@ const args = yargs(hideBin(process.argv))
     .option("action", {
         description: "The action to do",
         demandOption : true,
-        choices: ['request', 'accept', 'batched'],
+        choices: ['request', 'accept', 'batched', 'statemin*'],
     })
     .option("xcm-fee", {
         description: "The amount to use for the xcm fee",
@@ -155,7 +155,9 @@ function construct_xcm(api: ApiPromise, transact: string) {
         }),
     });
 
-    return api.tx.polkadotXcm.send(dest, message);
+    // the pallet is called xcmPallet on the relaychain
+    let xcmPallet = api.tx.polkadotXcm === undefined ? api.tx.xcmPallet : api.tx.polkadotXcm;
+    return xcmPallet.send(dest, message);
 }
 
 function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
@@ -284,6 +286,47 @@ async function main(): Promise<void> {
             printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
             printExtrinsic("Relaychain::AcceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
             await maybeSubmitProposal("Batched", batched, args["parachain-endpoint"], paraApi, shouldSubmit);
+            break;
+        case "statemin*":
+            // used args for statemine (kusama): yarn hrmp-setup --action 'statemin*' --submit-proposal --destination-parachain-id 2092 --refund-hex-address 0x6d6f646c70792f74727372790000000000000000000000000000000000000000 --with-defaults-of kintsugi --parachain-endpoint "wss://statemine.api.onfinality.io/public-ws" --xcm-fee 1000000000000 --transact-weight 2000000000
+            // construct batched transact call to be executed on relay chain, to accept and request
+            const batchedTransact = relayApi.tx.utility.batchAll([requestOpenTransact, acceptOpenTransact]);
+            const xcmStateminToRelay = construct_xcm(paraApi, batchedTransact.method.toHex());
+
+            const transferAmount = 11000000000000;
+            const balanceTransfer = relayApi.tx.balances.forceTransfer('F3opxRbN5ZbjJNU511Kj2TLuzFcDq9BGduA9TgiECafpg29', 'F7fq1jSNVTPfJmaHaXCMtatT1EZefCUsa7rRiQVNR5efcah', transferAmount);
+
+            const message = paraApi.createType("XcmVersionedXcm", {
+                v2: paraApi.createType("XcmV2Xcm", [
+                    paraApi.createType("XcmV2Instruction", {
+                        transact: {
+                            originType: paraApi.createType("XcmV0OriginKind", {  superUser: true }),
+                            requireWeightAtMost: 1000000000,
+                            call: paraApi.createType("XcmDoubleEncoded", {
+                                encoded: xcmStateminToRelay.method.toHex(),
+                            }),
+                        },
+                    }),
+                ]),
+            });
+        
+            const dest = paraApi.createType<XcmVersionedMultiLocation>("XcmVersionedMultiLocation", {
+                v1: paraApi.createType("XcmV1MultiLocation", {
+                    parents: 0,
+                    interior: paraApi.createType("XcmV1MultilocationJunctions", {
+                        x1: paraApi.createType("XcmV1Junction", {
+                            parachain: 1000,
+                        }),
+                    }),
+                }),
+            });
+        
+            const xcmRelayToStatemin = relayApi.tx.xcmPallet.send(dest, message);
+            const preimage = relayApi.tx.utility.batchAll([balanceTransfer, xcmRelayToStatemin]);
+            
+            printExtrinsic("Statemin* xcm call", xcmStateminToRelay, args["parachain-endpoint"]);
+            printExtrinsic("Relaychain::Transact", batchedTransact, args["relay-endpoint"]);
+            printExtrinsic("Relaychain preimage", preimage, args["relay-endpoint"]);
             break;
     }
 
