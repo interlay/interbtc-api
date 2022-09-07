@@ -2,8 +2,12 @@ import { expect } from "../../chai";
 import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
-import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { DefaultAssetRegistryAPI } from "../../../src/";
+import {
+    InterbtcPrimitivesCurrencyId,
+    InterbtcPrimitivesVaultCurrencyPair,
+    OrmlTraitsAssetRegistryAssetMetadata,
+} from "@polkadot/types/lookup";
+import { DefaultAssetRegistryAPI, ForeignAsset } from "../../../src/";
 import { AssetRegistryMetadataTuple } from "@interlay/interbtc/parachain/asset-registry";
 import * as allThingsEncoding from "../../../src/utils/encoding";
 
@@ -117,6 +121,82 @@ describe("DefaultAssetRegistryAPI", () => {
                 mockMetadataValues.decimals,
                 `Expected currency base to be ${mockMetadataValues.decimals}, but was ${actual.decimals}`
             );
+        });
+    });
+
+    describe("getCollateralForeignAssets", () => {
+        // only id matters for these tests
+        const mockForeignAssets = [<ForeignAsset>{ id: 1 }, <ForeignAsset>{ id: 2 }, <ForeignAsset>{ id: 3 }];
+
+        const prepareMocks = (
+            sinon: sinon.SinonSandbox,
+            assetRegistryApi: DefaultAssetRegistryAPI,
+            allForeignAssets: ForeignAsset[],
+            collateralCeilingCurrencyPairs?: InterbtcPrimitivesVaultCurrencyPair[]
+        ) => {
+            sinon.stub(assetRegistryApi, "getForeignAssets").returns(Promise.resolve(allForeignAssets));
+
+            // this return does not matter since individual tests mock extractCollateralCeilingEntryKeys
+            // which returns the actual values of interest
+            sinon.stub(assetRegistryApi, "getSystemCollateralCeilingEntries").returns(Promise.resolve([]));
+            if (collateralCeilingCurrencyPairs !== undefined) {
+                sinon
+                    .stub(assetRegistryApi, "extractCollateralCeilingEntryKeys")
+                    .returns(collateralCeilingCurrencyPairs);
+            }
+        };
+
+        it("should return empty array if there are no foreign assets", async () => {
+            prepareMocks(sinon, assetRegistryApi, []);
+
+            const actual = await assetRegistryApi.getCollateralForeignAssets();
+
+            expect(actual).to.be.empty;
+        });
+
+        it("should return empty array if there are no foreign assets with a collateral ceiling set", async () => {
+            prepareMocks(sinon, assetRegistryApi, mockForeignAssets, []);
+
+            const actual = await assetRegistryApi.getCollateralForeignAssets();
+            expect(actual).to.be.empty;
+        });
+
+        it("should return only foreign assets, not tokens with collateral ceilings set", async () => {
+            // pick an asset id that we expect to get returned
+            const expectedForeignAssetId = mockForeignAssets[0].id;
+
+            // only bother mocking collateral currencies, the wrapped side is ignored
+            const mockCurrencyPairs = [
+                <InterbtcPrimitivesVaultCurrencyPair>{
+                    // mocked foreign asset collateral
+                    collateral: <InterbtcPrimitivesCurrencyId>{
+                        isForeignAsset: true,
+                        isToken: false,
+                        asForeignAsset: api.createType("u32", expectedForeignAssetId),
+                        type: "ForeignAsset",
+                    },
+                },
+                <InterbtcPrimitivesVaultCurrencyPair>{
+                    // mocked token collateral (ie. not foreign asset)
+                    collateral: <InterbtcPrimitivesCurrencyId>{
+                        isForeignAsset: false,
+                        isToken: true,
+                        // logically inconsistent (but trying to trick into having a valid result if this is used when it shouldn't)
+                        asForeignAsset: api.createType("u32", mockForeignAssets[mockForeignAssets.length - 1].id),
+                        type: "Token",
+                    },
+                },
+            ];
+
+            prepareMocks(sinon, assetRegistryApi, mockForeignAssets, mockCurrencyPairs);
+
+            const actual = await assetRegistryApi.getCollateralForeignAssets();
+
+            // expect one returned value
+            expect(actual).to.have.lengthOf(1);
+
+            const actualAssetId = actual[0].id;
+            expect(actualAssetId).to.be.eq(expectedForeignAssetId);
         });
     });
 });

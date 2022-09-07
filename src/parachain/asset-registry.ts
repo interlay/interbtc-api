@@ -1,8 +1,8 @@
 import { Currency } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
-import { StorageKey, u32 } from "@polkadot/types";
+import { StorageKey, u32, u128 } from "@polkadot/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
-import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+import { InterbtcPrimitivesVaultCurrencyPair, OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { decodeBytesAsString, newForeignAssetId, storageKeyToNthInner } from "../utils";
 import { Option } from "@polkadot/types-codec";
 import { ForeignAsset } from "../types";
@@ -23,15 +23,23 @@ export interface AssetRegistryAPI {
      * @returns The foreign asset.
      */
     getForeignAsset(id: number | u32): Promise<ForeignAsset>;
+
+    /**
+     * Get all foreign assets which have a registered collateral ceiling, meaning they can be used as collateral currency.
+     *
+     * @returns All foreign assets that have been registered as collateral currency
+     */
+    getCollateralForeignAssets(): Promise<Array<ForeignAsset>>;
 }
 
 // shorthand type for asset key
 export type AssetKey = StorageKey<[u32]>;
-// shorthand type for the unwieldy tuple
+// shorthand types for the unwieldy tuples
 export type AssetRegistryMetadataTuple = [StorageKey<[u32]>, Option<OrmlTraitsAssetRegistryAssetMetadata>];
 export type UnwrappedAssetRegistryMetadataTuple = [StorageKey<[u32]>, OrmlTraitsAssetRegistryAssetMetadata];
+export type SystemCollateralCeilingTuple = [StorageKey<[InterbtcPrimitivesVaultCurrencyPair]>, Option<u128>];
 
-export class DefaultAssetRegistryAPI {
+export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
     constructor(private api: ApiPromise) {}
 
     static metadataToCurrency(metadata: OrmlTraitsAssetRegistryAssetMetadata): Currency {
@@ -94,5 +102,35 @@ export class DefaultAssetRegistryAPI {
             id: numberId,
             ...currencyPart,
         };
+    }
+
+    // wrapped call for easier mocking in tests
+    async getSystemCollateralCeilingEntries(): Promise<SystemCollateralCeilingTuple[]> {
+        return this.api.query.vaultRegistry.systemCollateralCeiling.entries();
+    }
+
+    // wrapped call for easier mocking in tests
+    extractCollateralCeilingEntryKeys(
+        entries: Array<SystemCollateralCeilingTuple>
+    ): Array<InterbtcPrimitivesVaultCurrencyPair> {
+        return entries.map(([key, _]) => storageKeyToNthInner(key));
+    }
+
+    async getCollateralForeignAssets(): Promise<Array<ForeignAsset>> {
+        const [collateralCeilingEntries, foreignAssets] = await Promise.all([
+            this.getSystemCollateralCeilingEntries(),
+            this.getForeignAssets(),
+        ]);
+
+        // get a set of all ids of foreign assets within the collateral ceiling entries
+        const collateralForeignAssetIdSet = new Set(
+            this.extractCollateralCeilingEntryKeys(collateralCeilingEntries)
+                .map((currencyPair) => currencyPair.collateral)
+                .filter((currencyId) => currencyId.isForeignAsset)
+                .map((currencyId) => currencyId.asForeignAsset.toNumber())
+        );
+
+        // filter all foreign assets to include only those with a collateral ceiling
+        return foreignAssets.filter((foreignAsset) => collateralForeignAssetIdSet.has(foreignAsset.id));
     }
 }

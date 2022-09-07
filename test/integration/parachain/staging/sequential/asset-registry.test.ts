@@ -129,4 +129,16 @@ describe("AssetRegistry", () => {
             }
         }
     }).timeout(3 * 60000);
+
+    // PRECONDITION: This test requires at least one foreign asset set up as collateral currency.
+    //   This should have happened as part of preparations in initialize.test.ts
+    it("should get at least one collateral foreign asset", async () => {
+        const collateralForeignAssets = await interBtcAPI.assetRegistry.getCollateralForeignAssets();
+
+        assert.isAtLeast(
+            collateralForeignAssets.length,
+            1,
+            "Expected at least one foreign asset that can be used as collateral currency, but found none"
+        );
+    });
 });
