@@ -293,8 +293,7 @@ export class DefaultIssueAPI implements IssueAPI {
         const txs = Array.from(amountsPerVault.entries()).map(([vaultId, amount]) =>
             this.buildRequestIssueExtrinsic(vaultId, amount)
         );
-        // batchAll fails atomically, batch allows partial successes
-        const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
+        const batch = this.transactionAPI.buildBatchExtrinsic(txs, atomic);
         try {
             // When requesting an issue, wait for the finalized event because we cannot revert BTC transactions.
             // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000

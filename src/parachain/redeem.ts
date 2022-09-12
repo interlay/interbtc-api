@@ -290,8 +290,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
         const txes = Array.from(amountsPerVault).map(([vaultId, amount]) =>
             this.buildRequestRedeemExtrinsic(vaultId, amount, btcAddressEnc)
         );
-        // batchAll fails atomically, batch allows partial successes
-        const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
+        const batch = this.transactionAPI.buildBatchExtrinsic(txes, atomic);
         try {
             // When requesting a redeem, wait for the finalized event because we cannot revert BTC transactions.
             // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000
