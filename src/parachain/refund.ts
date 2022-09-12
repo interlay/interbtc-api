@@ -6,11 +6,24 @@ import { ensureHashEncoded, getTxProof, parseRefundRequest } from "../utils";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { RefundRequestExt, WrappedCurrency } from "../types";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 /**
  * @category BTC Bridge
  */
 export interface RefundAPI {
+    /**
+     * Build an refund execution extrinsic (transaction) without sending it.
+     *
+     * @param refundId The ID returned by the refund request transaction
+     * @param btcTxId Bitcoin transaction ID
+     * @returns An execute refund submittable extrinsic.
+     */
+    buildExecuteRefundExtrinsic(
+        refundId: string,
+        btcTxId: string
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>>;
     /**
      * Execute a refund request
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
@@ -43,6 +56,19 @@ export class DefaultRefundAPI implements RefundAPI {
         private wrappedCurrency: WrappedCurrency,
         private transactionAPI: TransactionAPI
     ) {}
+
+    async buildExecuteRefundExtrinsic(
+        requestId: string,
+        btcTxId: string
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
+        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
+        return this.api.tx.refund.executeRefund(
+            parsedRequestId,
+            txInclusionDetails.merkleProof,
+            txInclusionDetails.rawTx
+        );
+    }
 
     async execute(requestId: string, btcTxId: string): Promise<void> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
