@@ -293,6 +293,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txes);
         try {
+            // When requesting a redeem, wait for the finalized event because we cannot revert BTC transactions.
+            // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000
             const result = await this.transactionAPI.sendLogged(batch, this.api.events.issue.RequestRedeem);
             const ids = this.getRedeemIdsFromEvents(result.events, this.api.events.redeem.RequestRedeem);
             const redeemRequests = await this.getRequestsByIds(ids);

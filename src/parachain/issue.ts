@@ -296,6 +296,8 @@ export class DefaultIssueAPI implements IssueAPI {
         // batchAll fails atomically, batch allows partial successes
         const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
         try {
+            // When requesting an issue, wait for the finalized event because we cannot revert BTC transactions.
+            // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000
             const result = await this.transactionAPI.sendLogged(batch, this.api.events.issue.RequestIssue);
             const ids = this.getIssueIdsFromEvents(result.events);
             const issueRequests = await this.getRequestsByIds(ids);
