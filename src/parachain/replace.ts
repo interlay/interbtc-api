@@ -171,7 +171,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     }
 
     async request(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<void> {
-        const requestTx = await this.buildRequestReplaceExtrinsic(amount, collateralCurrency);
+        const requestTx = this.buildRequestReplaceExtrinsic(amount, collateralCurrency);
         // When requesting a replace, wait for the finalized event because we cannot revert BTC transactions.
         // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000
         await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.RequestReplace);
