@@ -163,12 +163,7 @@ function construct_xcm(api: ApiPromise, transact: string) {
 function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
     console.log(name, "Data:", extrinsic.method.toHex());
     console.log(name, "Hash:", extrinsic.method.hash.toHex());
-    const url =
-        "https://polkadot.js.org/apps/?rpc=" +
-        encodeURIComponent(endpoint) +
-        "#/extrinsics/decode/" +
-        extrinsic.method.toHex();
-    console.log(name, "url:", url);
+    console.log(name, "url:", to_url(extrinsic, endpoint));
     console.log("");
 }
 
@@ -190,10 +185,7 @@ async function maybeSubmitProposal(
     }
 
     // construct the proposal
-    const deposit = api.consts.democracy.minimumDeposit.toNumber();
-    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
-    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
-    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
+    const batched = construct_proposal(api, extrinsic);
 
     printExtrinsic('proposal', batched, endpoint);
 
@@ -213,6 +205,43 @@ async function maybeSubmitProposal(
     await transactionAPI.sendLogged(batched, undefined);
 
     rl.close();
+}
+
+function to_url(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
+    return "https://polkadot.js.org/apps/?rpc=" +
+        encodeURIComponent(endpoint) +
+        "#/extrinsics/decode/" +
+        extrinsic.method.toHex();
+}
+
+function construct_proposal(api: ApiPromise, extrinsic: SubmittableExtrinsic<"promise">) {
+    const deposit = api.consts.democracy.minimumDeposit.toNumber();
+    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
+    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
+    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
+    return batched
+}
+
+async function printDiscordProposal(
+    description: string,
+    extrinsic: SubmittableExtrinsic<"promise">,
+    endpoint: string,
+    api: ApiPromise,
+) {
+    const proposal = construct_proposal(api, extrinsic);
+    const invocation = process.argv.map(function(x) { return x.substring(x.lastIndexOf('/')+1) }).join(" ");
+
+    console.log("");
+    console.log("");
+    console.log("**" + description + "**");
+    console.log("");
+    console.log("**Extrinsic:**", to_url(extrinsic, endpoint));
+    console.log("");
+    console.log("**Proposal:**", to_url(proposal, endpoint));
+    console.log("");
+    console.log("_Generated with_: `" + invocation + "`");
+    console.log("");
+    console.log("");
 }
 
 async function main(): Promise<void> {
@@ -273,19 +302,32 @@ async function main(): Promise<void> {
 
     const shouldSubmit = args["submit-proposal"];
 
+
     switch (args["action"]) {
         case "request":
-            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
-            await maybeSubmitProposal("RequestOpen", requestOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
+            if (args["submit-proposal"]) {
+                printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
+                await maybeSubmitProposal("RequestOpen", requestOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
+            } else {
+                await printDiscordProposal("Request HRMP to remote [step 1/2]", requestOpen, args["parachain-endpoint"], paraApi);
+            }
             break;
         case "accept":
-            printExtrinsic("Relaychain::acceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
-            await maybeSubmitProposal("AcceptOpen", acceptOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
+            if (args["submit-proposal"]) {
+                printExtrinsic("Relaychain::acceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
+                await maybeSubmitProposal("AcceptOpen", acceptOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
+            } else {
+                await printDiscordProposal("Accept HRMP from remote [step 2/2]", acceptOpen, args["parachain-endpoint"], paraApi);
+            }
             break;
         case "batched":
-            printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
-            printExtrinsic("Relaychain::AcceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
-            await maybeSubmitProposal("Batched", batched, args["parachain-endpoint"], paraApi, shouldSubmit);
+            if (args["submit-proposal"]) {
+                printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
+                printExtrinsic("Relaychain::AcceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
+                await maybeSubmitProposal("Batched", batched, args["parachain-endpoint"], paraApi, shouldSubmit);
+            } else {
+                await printDiscordProposal("Accept & request HRMP [step 1/1]", batched, args["parachain-endpoint"], paraApi);
+            }
             break;
         case "statemin*":
             // used args for statemine (kusama): yarn hrmp-setup --action 'statemin*' --submit-proposal --destination-parachain-id 2092 --refund-hex-address 0x6d6f646c70792f74727372790000000000000000000000000000000000000000 --with-defaults-of kintsugi --parachain-endpoint "wss://statemine.api.onfinality.io/public-ws" --xcm-fee 1000000000000 --transact-weight 2000000000
