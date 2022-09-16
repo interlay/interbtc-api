@@ -18,9 +18,11 @@ import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
-import { newCurrencyId } from "./encoding";
+import { newCurrencyId, storageKeyToNthInner } from "./encoding";
 import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../interfaces";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { Option } from "@polkadot/types/codec";
+import { u128 } from "@polkadot/types";
 
 // set maximum exponents
 Big.PE = 21;
@@ -93,18 +95,24 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
     }
 }
 
-// get the collateral currencies (excluding foreign assets) associated with the governance currency
-export function getCorrespondingCollateralCurrencies(
-    governanceCurrency: GovernanceCurrency
-): Array<CollateralCurrencyExt> {
-    switch (governanceCurrency.ticker) {
-        case "KINT":
-            return [Kusama, Kintsugi];
-        case "INTR":
-            return [Polkadot];
-        default:
-            throw new Error("Provided currency is not a governance currency");
-    }
+export async function getCollateralCurrencies(
+    api: ApiPromise,
+    assetRegistry: AssetRegistryAPI
+): Promise<Array<CollateralCurrencyExt>> {
+    const collatCeilEntries = await api.query.vaultRegistry.systemCollateralCeiling.entries();
+
+    const isOptionGreaterThanZero = (value: Option<u128>) =>
+        value.isNone ? false : value.unwrap().toBn().gt(new BN(0));
+
+    const collateralCurrencyPrimitives = collatCeilEntries
+        .filter(([_, ceiling]) => isOptionGreaterThanZero(ceiling))
+        .map(([storageKey, _]) => storageKeyToNthInner(storageKey));
+
+    return Promise.all(
+        collateralCurrencyPrimitives.map((currencyPair) =>
+            currencyIdToMonetaryCurrency(assetRegistry, currencyPair.collateral)
+        )
+    );
 }
 
 export function isForeignAsset(currencyExt: CurrencyExt): currencyExt is ForeignAsset {

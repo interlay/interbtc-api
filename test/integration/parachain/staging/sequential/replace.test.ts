@@ -4,7 +4,6 @@ import {
     AssetRegistryAPI,
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
-    getCorrespondingCollateralCurrencies,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
     newMonetaryAmount,
@@ -29,7 +28,7 @@ import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { callWith, waitForEvent } from "../../../../utils/helpers";
+import { callWith, getCorrespondingCollateralCurrenciesForTests, waitForEvent } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -61,7 +60,7 @@ describe("replace", () => {
         assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
-        const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
+        const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
             newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency)

@@ -12,7 +12,6 @@ import {
     newAccountId,
     InterBtcApi,
     DefaultInterBtcApi,
-    getCorrespondingCollateralCurrencies,
     CollateralCurrencyExt,
     CurrencyExt,
     newVaultCurrencyPair,
@@ -20,6 +19,7 @@ import {
     encodeUnsignedFixedPoint,
     setNumericStorage,
     getSS58Prefix,
+    getCollateralCurrencies,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -48,6 +48,7 @@ import {
     APPROX_BLOCK_TIME_MS,
     AUSD_TICKER,
     getAUSDForeignAsset,
+    getCorrespondingCollateralCurrenciesForTests,
     getExchangeRateValueToSetForTesting,
     ORACLE_MAX_DELAY,
     sleep,
@@ -122,7 +123,7 @@ describe("Initialize parachain state", () => {
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
-        collateralCurrency = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency())[0];
+        collateralCurrency = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency())[0];
         const vaultCollateralPairs: [KeyringPair, CollateralCurrencyExt][] = [
             [vault_1, collateralCurrency],
             [vault_2, collateralCurrency],
@@ -317,8 +318,12 @@ describe("Initialize parachain state", () => {
         const sudoThis = async (extrinsic: SubmittableExtrinsic<"promise", ISubmittableResult>) =>
             sudoInterBtcAPI.api.tx.sudo.sudo(extrinsic).signAndSend(sudoAccount);
 
+        const collateralCurrenciesBefore = await getCollateralCurrencies(
+            sudoInterBtcAPI.api,
+            sudoInterBtcAPI.assetRegistry
+        );
         // (unsafely) get first collateral currency's ceiling and thresholds
-        const existingCollCcy = getCorrespondingCollateralCurrencies(sudoInterBtcAPI.getGovernanceCurrency())[0];
+        const existingCollCcy = collateralCurrenciesBefore[0];
         const existingCcyPair = newVaultCurrencyPair(api, existingCollCcy, sudoInterBtcAPI.getWrappedCurrency());
         // borrow values from existing currency pair
         const [optionCeilValue, existingSecureThreshold, existingPremiumThreshold, existingLiquidationThreshold] =
@@ -336,7 +341,8 @@ describe("Initialize parachain state", () => {
         const encodedPremThresh = encodeUnsignedFixedPoint(sudoInterBtcAPI.api, new Big(existingPremiumThreshold));
         const encodedLiqThresh = encodeUnsignedFixedPoint(sudoInterBtcAPI.api, new Big(existingLiquidationThreshold));
 
-        const aUsdCcyPair = newVaultCurrencyPair(api, aUSD, sudoInterBtcAPI.getWrappedCurrency());
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const aUsdCcyPair = newVaultCurrencyPair(api, aUSD!, sudoInterBtcAPI.getWrappedCurrency());
 
         // set the collateral ceiling
         const setCeilingExtrinsic = sudoInterBtcAPI.api.tx.vaultRegistry.setSystemCollateralCeiling(
@@ -379,6 +385,17 @@ describe("Initialize parachain state", () => {
         assert.isTrue(
             foundEvent,
             `Cannot find Sudid event for setting thresholds in batch - timeout after ${timeoutMs} ms`
+        );
+
+        const collateralCurrenciesAfter = await getCollateralCurrencies(
+            userInterBtcAPI.api,
+            userInterBtcAPI.assetRegistry
+        );
+
+        assert.isDefined(
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            collateralCurrenciesAfter.find((currency) => currency.ticker === aUSD!.ticker),
+            "Expected to find aUSD within the array of collateral currencies, but did not"
         );
     });
 
