@@ -43,7 +43,6 @@ describe("redeem", () => {
     let api: ApiPromise;
     let keyring: Keyring;
     let userAccount: KeyringPair;
-    const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let bitcoinCoreClient: BitcoinCoreClient;
     let vault_1: KeyringPair;
     let vault_2: KeyringPair;
