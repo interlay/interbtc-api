@@ -318,12 +318,9 @@ describe("Initialize parachain state", () => {
         const sudoThis = async (extrinsic: SubmittableExtrinsic<"promise", ISubmittableResult>) =>
             sudoInterBtcAPI.api.tx.sudo.sudo(extrinsic).signAndSend(sudoAccount);
 
-        const collateralCurrenciesBefore = await getCollateralCurrencies(
-            sudoInterBtcAPI.api,
-            sudoInterBtcAPI.assetRegistry
-        );
+        const collateralCurrencies = await getCollateralCurrencies(sudoInterBtcAPI.api, sudoInterBtcAPI.assetRegistry);
         // (unsafely) get first collateral currency's ceiling and thresholds
-        const existingCollCcy = collateralCurrenciesBefore[0];
+        const existingCollCcy = collateralCurrencies[0];
         const existingCcyPair = newVaultCurrencyPair(api, existingCollCcy, sudoInterBtcAPI.getWrappedCurrency());
         // borrow values from existing currency pair
         const [optionCeilValue, existingSecureThreshold, existingPremiumThreshold, existingLiquidationThreshold] =
@@ -386,17 +383,6 @@ describe("Initialize parachain state", () => {
             foundEvent,
             `Cannot find Sudid event for setting thresholds in batch - timeout after ${timeoutMs} ms`
         );
-
-        const collateralCurrenciesAfter = await getCollateralCurrencies(
-            userInterBtcAPI.api,
-            userInterBtcAPI.assetRegistry
-        );
-
-        assert.isDefined(
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            collateralCurrenciesAfter.find((currency) => currency.ticker === aUSD!.ticker),
-            "Expected to find aUSD within the array of collateral currencies, but did not"
-        );
     });
 
     it("should fund and register aUSD foreign asset vaults", async function () {
@@ -409,7 +395,8 @@ describe("Initialize parachain state", () => {
         }
 
         // assign locally to make TS understand it isn't undefined
-        const aUsd: ForeignAsset = aUSD;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const aUsd: ForeignAsset = aUSD!;
 
         // free money to set with the help of sudo
         const freeBalanceToSet = new MonetaryAmount(aUsd, 1000000000);
@@ -451,5 +438,17 @@ describe("Initialize parachain state", () => {
                 `Vault registration event not found for account id ${vaultAccountId} - timeout of ${waitForEventTimeoutMs} ms exceeded`
             );
         }
+    });
+
+    it("should return aUSD among the collateral currencies", async function () {
+        // run this check a few tests after it has been registered to avoid needing to wait for
+        // block finalizations
+        const collateralCurrencies = await getCollateralCurrencies(userInterBtcAPI.api, userInterBtcAPI.assetRegistry);
+
+        assert.isDefined(
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            collateralCurrencies.find((currency) => currency.ticker === aUSD!.ticker),
+            "Expected to find aUSD within the array of collateral currencies, but did not"
+        );
     });
 });
