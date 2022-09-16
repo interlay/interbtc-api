@@ -95,6 +95,15 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
     }
 }
 
+/**
+ * Get all collateral currencies (tokens as well as foreign assets).
+ *
+ * Will return all collateral currencies for which the parachain has a system collateral ceiling value
+ * greater than zero.
+ * @param api ApiPromise instance to query the parachain
+ * @param assetRegistry AssetRegistryAPI instance to fetch foreign asset data (if needed)
+ * @returns An array of collateral currencies.
+ */
 export async function getCollateralCurrencies(
     api: ApiPromise,
     assetRegistry: AssetRegistryAPI
