@@ -318,9 +318,10 @@ describe("Initialize parachain state", () => {
         const sudoThis = async (extrinsic: SubmittableExtrinsic<"promise", ISubmittableResult>) =>
             sudoInterBtcAPI.api.tx.sudo.sudo(extrinsic).signAndSend(sudoAccount);
 
-        const collateralCurrencies = await getCollateralCurrencies(sudoInterBtcAPI.api, sudoInterBtcAPI.assetRegistry);
         // (unsafely) get first collateral currency's ceiling and thresholds
-        const existingCollCcy = collateralCurrencies[0];
+        const existingCollCcy = getCorrespondingCollateralCurrenciesForTests(
+            userInterBtcAPI.getGovernanceCurrency()
+        )[0];
         const existingCcyPair = newVaultCurrencyPair(api, existingCollCcy, sudoInterBtcAPI.getWrappedCurrency());
         // borrow values from existing currency pair
         const [optionCeilValue, existingSecureThreshold, existingPremiumThreshold, existingLiquidationThreshold] =
