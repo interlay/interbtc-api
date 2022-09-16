@@ -14,7 +14,7 @@ import {
     newAccountId,
     newMonetaryAmount,
 } from "../../../../src";
-import { getCorrespondingCollateralCurrenciesForTests } from "test/utils/helpers";
+import { getCorrespondingCollateralCurrenciesForTests } from "../../../utils/helpers";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
