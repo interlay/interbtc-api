@@ -39,7 +39,7 @@ export async function setNumericStorage(
     bits = 32,
     isLittleEndian = true
 ): Promise<void> {
-    const data = bnToHex(value, bits, isLittleEndian);
+    const data = bnToHex(value, { bitLength: bits, isLe: isLittleEndian });
     await setStorage(api, moduleName, storageItemName, data, account);
 }
 
