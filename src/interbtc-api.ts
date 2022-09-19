@@ -8,7 +8,6 @@ import { DefaultNominationAPI, NominationAPI } from "./parachain/nomination";
 import { DefaultIssueAPI, IssueAPI } from "./parachain/issue";
 import { DefaultOracleAPI, OracleAPI } from "./parachain/oracle";
 import { DefaultRedeemAPI, RedeemAPI } from "./parachain/redeem";
-import { DefaultRefundAPI, RefundAPI } from "./parachain/refund";
 import { DefaultFeeAPI, FeeAPI } from "./parachain/fee";
 import { DefaultVaultsAPI, VaultsAPI } from "./parachain/vaults";
 import { DefaultSystemAPI, SystemAPI } from "./parachain/system";
@@ -43,7 +42,6 @@ export interface InterBtcApi {
     readonly vaults: VaultsAPI;
     readonly issue: IssueAPI;
     readonly redeem: RedeemAPI;
-    readonly refund: RefundAPI;
     readonly faucet: FaucetClient;
     readonly oracle: OracleAPI;
     readonly electrsAPI: ElectrsAPI;
@@ -70,7 +68,6 @@ export class DefaultInterBtcApi implements InterBtcApi {
     public readonly vaults: VaultsAPI;
     public readonly issue: IssueAPI;
     public readonly redeem: RedeemAPI;
-    public readonly refund: RefundAPI;
     public readonly faucet: FaucetClient;
     public readonly oracle: OracleAPI;
     public readonly electrsAPI: ElectrsAPI;
@@ -120,7 +117,6 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.assetRegistry
         );
         this.faucet = new FaucetClient(api, "");
-        this.refund = new DefaultRefundAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.transactionAPI);
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
 
         this.replace = new DefaultReplaceAPI(
