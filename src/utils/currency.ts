@@ -96,6 +96,25 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
 }
 
 /**
+ * Get the collateral currencies (excluding foreign assets) associated with the governance currency.
+ * @param governanceCurrency the governance/native currency for which to return the collateral currencies.
+ * @returns An array of collateral currencies.
+ * @deprecated to be removed at version 1.17.0. Use {@link getCollateralCurrencies} instead.
+ */
+export function getCorrespondingCollateralCurrencies(
+    governanceCurrency: GovernanceCurrency
+): Array<CollateralCurrencyExt> {
+    switch (governanceCurrency.ticker) {
+        case "KINT":
+            return [Kusama, Kintsugi];
+        case "INTR":
+            return [Polkadot];
+        default:
+            throw new Error("Provided currency is not a governance currency");
+    }
+}
+
+/**
  * Get all collateral currencies (tokens as well as foreign assets).
  *
  * Will return all collateral currencies for which the parachain has a system collateral ceiling value
