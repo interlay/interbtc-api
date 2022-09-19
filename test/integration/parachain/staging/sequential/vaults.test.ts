@@ -26,8 +26,13 @@ import {
     ESPLORA_BASE_PATH,
 } from "../../../../config";
 import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
-import { getCorrespondingCollateralCurrencies, getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
-import { AUSD_TICKER, getAUSDForeignAsset, vaultStatusToLabel } from "../../../../utils/helpers";
+import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
+import {
+    AUSD_TICKER,
+    getAUSDForeignAsset,
+    getCorrespondingCollateralCurrenciesForTests,
+    vaultStatusToLabel,
+} from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
@@ -56,7 +61,7 @@ describe("vaultsAPI", () => {
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
 
-        collateralCurrencies = getCorrespondingCollateralCurrencies(governanceCurrency);
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(governanceCurrency);
         const aUSD = await getAUSDForeignAsset(assetRegistry);
         if (aUSD !== undefined) {
             // also add aUSD collateral vaults if they exist (ie. the foreign asset exists)

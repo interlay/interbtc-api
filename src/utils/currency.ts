@@ -18,9 +18,11 @@ import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
-import { newCurrencyId } from "./encoding";
+import { newCurrencyId, storageKeyToNthInner } from "./encoding";
 import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../interfaces";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { Option } from "@polkadot/types/codec";
+import { u128 } from "@polkadot/types";
 
 // set maximum exponents
 Big.PE = 21;
@@ -93,7 +95,12 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
     }
 }
 
-// get the collateral currencies (excluding foreign assets) associated with the governance currency
+/**
+ * Get the collateral currencies (excluding foreign assets) associated with the governance currency.
+ * @param governanceCurrency the governance/native currency for which to return the collateral currencies.
+ * @returns An array of collateral currencies.
+ * @deprecated to be removed at version 1.17.0. Use {@link getCollateralCurrencies} instead.
+ */
 export function getCorrespondingCollateralCurrencies(
     governanceCurrency: GovernanceCurrency
 ): Array<CollateralCurrencyExt> {
@@ -105,6 +112,35 @@ export function getCorrespondingCollateralCurrencies(
         default:
             throw new Error("Provided currency is not a governance currency");
     }
+}
+
+/**
+ * Get all collateral currencies (tokens as well as foreign assets).
+ *
+ * Will return all collateral currencies for which the parachain has a system collateral ceiling value
+ * greater than zero.
+ * @param api ApiPromise instance to query the parachain
+ * @param assetRegistry AssetRegistryAPI instance to fetch foreign asset data (if needed)
+ * @returns An array of collateral currencies.
+ */
+export async function getCollateralCurrencies(
+    api: ApiPromise,
+    assetRegistry: AssetRegistryAPI
+): Promise<Array<CollateralCurrencyExt>> {
+    const collatCeilEntries = await api.query.vaultRegistry.systemCollateralCeiling.entries();
+
+    const isOptionGreaterThanZero = (value: Option<u128>) =>
+        value.isNone ? false : value.unwrap().toBn().gt(new BN(0));
+
+    const collateralCurrencyPrimitives = collatCeilEntries
+        .filter(([_, ceiling]) => isOptionGreaterThanZero(ceiling))
+        .map(([storageKey, _]) => storageKeyToNthInner(storageKey));
+
+    return Promise.all(
+        collateralCurrencyPrimitives.map((currencyPair) =>
+            currencyIdToMonetaryCurrency(assetRegistry, currencyPair.collateral)
+        )
+    );
 }
 
 export function isForeignAsset(currencyExt: CurrencyExt): currencyExt is ForeignAsset {

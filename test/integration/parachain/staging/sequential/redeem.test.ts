@@ -25,17 +25,17 @@ import {
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import {
-    getCorrespondingCollateralCurrencies,
-    issueAndRedeem,
-    newMonetaryAmount,
-    stripHexPrefix,
-} from "../../../../../src/utils";
+import { issueAndRedeem, newMonetaryAmount, stripHexPrefix } from "../../../../../src/utils";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
 import Big from "big.js";
-import { bumpFeesForBtcTx, calculateBtcTxVsize, getAUSDForeignAsset } from "../../../../utils/helpers";
+import {
+    bumpFeesForBtcTx,
+    calculateBtcTxVsize,
+    getAUSDForeignAsset,
+    getCorrespondingCollateralCurrenciesForTests,
+} from "../../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -43,7 +43,6 @@ describe("redeem", () => {
     let api: ApiPromise;
     let keyring: Keyring;
     let userAccount: KeyringPair;
-    const randomBtcAddress = "bcrt1qujs29q4gkyn2uj6y570xl460p4y43ruayxu8ry";
     let bitcoinCoreClient: BitcoinCoreClient;
     let vault_1: KeyringPair;
     let vault_2: KeyringPair;
@@ -68,7 +67,7 @@ describe("redeem", () => {
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
 
-        const collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
+        const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_2 = keyring.addFromUri(VAULT_2_URI);

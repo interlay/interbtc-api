@@ -10,11 +10,11 @@ import {
     CollateralCurrencyExt,
     CurrencyExt,
     DefaultInterBtcApi,
-    getCorrespondingCollateralCurrencies,
     InterBtcApi,
     newAccountId,
     newMonetaryAmount,
 } from "../../../../src";
+import { getCorrespondingCollateralCurrenciesForTests } from "../../../utils/helpers";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
@@ -29,7 +29,7 @@ describe("TokensAPI", () => {
         user1Account = keyring.addFromUri(USER_1_URI);
         user2Account = keyring.addFromUri(USER_2_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", user1Account, ESPLORA_BASE_PATH);
-        collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
     });
 
     after(() => {
