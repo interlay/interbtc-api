@@ -412,14 +412,13 @@ describe("Initialize parachain state", () => {
         // free money to set with the help of sudo
         const freeBalanceToSet = new MonetaryAmount(aUsd, 1000000000);
         const collateralAmount = new MonetaryAmount(aUsd, 10000);
-        const currencyPair = newVaultCurrencyPair(api, aUsd, sudoInterBtcAPI.getWrappedCurrency());
 
         const vaultAccountIdAndKeyrings: [KeyringPair, AccountId][] = [vault_1, vault_2, vault_3].map((keyringPair) => {
             return [keyringPair, accountIdFromKeyring(keyringPair)];
         });
 
         // register the vaults with aUSD collateral
-        for (const [vaultKeyringPair, vaultAccountId] of vaultAccountIdAndKeyrings) {
+        for (const [_, vaultAccountId] of vaultAccountIdAndKeyrings) {
             const balanceTimeout = 5 * APPROX_BLOCK_TIME_MS;
             // set balance and wait for event
             const [balanceEventFound] = await Promise.all([
