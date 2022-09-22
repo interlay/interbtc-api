@@ -98,7 +98,7 @@ describe("replace", () => {
                 );
                 const foundEventPromise = waitForEvent(
                     interBtcAPI,
-                    api.events.replace.AcceptReplace,
+                    api.events.replace.RequestReplace,
                     true,
                     APPROX_FIFTEEN_BLOCKS_MS
                 );
