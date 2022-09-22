@@ -1,6 +1,5 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import Big from "big.js";
 import {
     DefaultInterBtcApi,
@@ -28,7 +27,6 @@ import {
 import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
 import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
 import {
-    AUSD_TICKER,
     getAUSDForeignAsset,
     getCorrespondingCollateralCurrenciesForTests,
     vaultStatusToLabel,
@@ -193,53 +191,25 @@ describe("vaultsAPI", () => {
     });
 
     it("should getLiquidationCollateralThreshold", async () => {
-        const expectedThresholdByTicker: Map<string, string> = new Map([
-            [Polkadot.ticker, "1.1"],
-            [Kusama.ticker, "1.5"],
-            [Kintsugi.ticker, "2"],
-            [AUSD_TICKER, "1.1"],
-        ]);
-
         for (const collateralCurrency of collateralCurrencies) {
             const currencyTicker = collateralCurrency.ticker;
 
-            const expectedThreshold = expectedThresholdByTicker.get(currencyTicker);
-            if (expectedThreshold === undefined) {
-                assert.fail(`Precondition: No expected threshold set for ${currencyTicker}`);
-                return;
-            }
-
             const threshold = await interBtcAPI.vaults.getLiquidationCollateralThreshold(collateralCurrency);
-            assert.equal(
-                threshold.toString(),
-                expectedThreshold,
-                `Liquidation collateral threshold is not ${expectedThreshold} (${currencyTicker})`
+            assert.isTrue(
+                threshold.gt(0),
+                `Expected liquidation threshold for ${currencyTicker} to be greater than 0, but was ${threshold.toString()}`
             );
         }
     });
 
     it("should getPremiumRedeemThreshold", async () => {
-        const expectedThresholdByTicker: Map<string, string> = new Map([
-            [Polkadot.ticker, "1.35"],
-            [Kusama.ticker, "2"],
-            [Kintsugi.ticker, "3"],
-            [AUSD_TICKER, "1.35"],
-        ]);
-
         for (const collateralCurrency of collateralCurrencies) {
             const currencyTicker = collateralCurrency.ticker;
 
-            const expectedThreshold = expectedThresholdByTicker.get(currencyTicker);
-            if (expectedThreshold === undefined) {
-                assert.fail(`Precondition: No expected threshold set for ${currencyTicker}`);
-                return;
-            }
-
             const threshold = await interBtcAPI.vaults.getPremiumRedeemThreshold(collateralCurrency);
-            assert.equal(
-                threshold.toString(),
-                expectedThreshold,
-                `Premium redeem threshold is not ${expectedThreshold} (${currencyTicker})`
+            assert.isTrue(
+                threshold.gt(0),
+                `Expected premium redeem threshold for ${currencyTicker} to be greater than 0, but was ${threshold.toString()}`
             );
         }
     });
