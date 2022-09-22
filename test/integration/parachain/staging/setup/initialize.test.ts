@@ -434,11 +434,14 @@ describe("Initialize parachain state", () => {
 
             // register the aUSD vault
             const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultAccountId, ESPLORA_BASE_PATH);
+            const amountAtomicUnit = api.createType("Balance", collateralAmount.toString(true));
             const waitForEventTimeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
 
             const [foundRegisterEvent] = await Promise.all([
                 waitForEvent(vaultInterBtcApi, api.events.vaultRegistry.RegisterVault, false, waitForEventTimeoutMs),
-                vaultInterBtcApi.vaults.registerNewCollateralVault(collateralAmount),
+                vaultInterBtcApi.api.tx.vaultRegistry
+                    .registerVault(currencyPair, amountAtomicUnit)
+                    .signAndSend(vaultKeyringPair),
             ]);
 
             assert.isTrue(
