@@ -195,7 +195,7 @@ describe("vaultsAPI", () => {
     it("should getLiquidationCollateralThreshold", async () => {
         const expectedThresholdByTicker: Map<string, string> = new Map([
             [Polkadot.ticker, "1.1"],
-            [Kusama.ticker, "1.1"],
+            [Kusama.ticker, "1.5"],
             [Kintsugi.ticker, "2"],
             [AUSD_TICKER, "1.1"],
         ]);
@@ -221,7 +221,7 @@ describe("vaultsAPI", () => {
     it("should getPremiumRedeemThreshold", async () => {
         const expectedThresholdByTicker: Map<string, string> = new Map([
             [Polkadot.ticker, "1.35"],
-            [Kusama.ticker, "1.35"],
+            [Kusama.ticker, "2"],
             [Kintsugi.ticker, "3"],
             [AUSD_TICKER, "1.35"],
         ]);
