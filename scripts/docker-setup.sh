@@ -10,6 +10,13 @@ case $CHAIN in
     ;;
 esac
 
+DETACH_OPT=false
+for arg; do
+        if [[ $arg == "-d" ]]; then
+            DETACH_OPT=true
+        fi
+done
+
 echo "Preparing docker-compose files for $CHAIN parachain"
 
 if ! [ -d "local-setup" ]
@@ -34,4 +41,8 @@ case $CHAIN in
         ;;
 esac
 
-cd local-setup && docker-compose up --build --detach
+if $DETACH_OPT; then
+  cd local-setup && docker-compose up --build --detach
+else
+  cd local-setup && docker-compose up --build
+fi
