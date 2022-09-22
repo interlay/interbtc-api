@@ -85,7 +85,7 @@ describe("replace", () => {
         });
 
         it("should request vault replacement", async () => {
-            const APPROX_FIFTEEN_BLOCKS_MS = 15 * 12 * 1000;
+            const APPROX_TWENTY_BLOCKS_MS = 20 * 12 * 1000;
             for (const vault_3_id of vault_3_ids) {
                 // try to set value above dust + estimated fees
                 const issueAmount = dustValue.add(feesEstimate).mul(1.2);
@@ -98,9 +98,9 @@ describe("replace", () => {
                 );
                 const foundEventPromise = waitForEvent(
                     interBtcAPI,
-                    api.events.replace.RequestReplace,
+                    api.events.replace.AcceptReplace,
                     true,
-                    APPROX_FIFTEEN_BLOCKS_MS
+                    APPROX_TWENTY_BLOCKS_MS
                 );
                 await callWith(interBtcAPI, vault_3, async () =>
                     interBtcAPI.replace.request(replaceAmount, collateralCurrency)
