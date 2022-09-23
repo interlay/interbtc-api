@@ -366,12 +366,22 @@ describe("Initialize parachain state", () => {
             encodedLiqThresh
         );
 
+        // set minimum collateral required
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const minimumCollateral = new MonetaryAmount(aUSD!, 100);
+        const minimumCollateralToSet = api.createType("u128", minimumCollateral.toString(true));
+        const setMinimumCollateralExtrinsic = sudoInterBtcAPI.api.tx.vaultRegistry.setMinimumCollateral(
+            aUsdCcyPair.collateral,
+            minimumCollateralToSet
+        );
+
         // batch all
         const batch = sudoInterBtcAPI.api.tx.utility.batchAll([
             setCeilingExtrinsic,
             setThresholdExtrinsic,
             setPremiumThresholdExtrinsic,
             setLiquidationThresholdExtrinsic,
+            setMinimumCollateralExtrinsic,
         ]);
 
         const timeoutMs = 5 * APPROX_BLOCK_TIME_MS;
@@ -402,7 +412,6 @@ describe("Initialize parachain state", () => {
         // free money to set with the help of sudo
         const freeBalanceToSet = new MonetaryAmount(aUsd, 1000000000);
         const collateralAmount = new MonetaryAmount(aUsd, 10000);
-        const currencyPair = newVaultCurrencyPair(api, aUsd, sudoInterBtcAPI.getWrappedCurrency());
 
         const vaultAccountIdAndKeyrings: [KeyringPair, AccountId][] = [vault_1, vault_2, vault_3].map((keyringPair) => {
             return [keyringPair, accountIdFromKeyring(keyringPair)];
@@ -423,15 +432,12 @@ describe("Initialize parachain state", () => {
             );
 
             // register the aUSD vault
-            const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultAccountId, ESPLORA_BASE_PATH);
-            const amountAtomicUnit = api.createType("Balance", collateralAmount.toString(true));
+            const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultKeyringPair, ESPLORA_BASE_PATH);
             const waitForEventTimeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
 
             const [foundRegisterEvent] = await Promise.all([
                 waitForEvent(vaultInterBtcApi, api.events.vaultRegistry.RegisterVault, false, waitForEventTimeoutMs),
-                vaultInterBtcApi.api.tx.vaultRegistry
-                    .registerVault(currencyPair, amountAtomicUnit)
-                    .signAndSend(vaultKeyringPair),
+                vaultInterBtcApi.vaults.registerNewCollateralVault(collateralAmount),
             ]);
 
             assert.isTrue(
