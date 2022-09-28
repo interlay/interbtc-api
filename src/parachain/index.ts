@@ -12,6 +12,7 @@ export { RewardsAPI, DefaultRewardsAPI } from "./rewards";
 export { NominationAPI, DefaultNominationAPI } from "./nomination";
 export { EscrowAPI, DefaultEscrowAPI } from "./escrow";
 export { AssetRegistryAPI, DefaultAssetRegistryAPI } from "./asset-registry";
+export { LoansAPI, DefaultLoansAPI } from "./loans";
 export * from "./transaction";
 
 // Hacky way of forcing the resolution of these types in test files

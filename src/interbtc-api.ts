@@ -20,7 +20,14 @@ import { BitcoinNetwork } from "./types/bitcoinTypes";
 import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
 import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
 import { GovernanceCurrency, WrappedCurrency } from "./types";
-import { DefaultAssetRegistryAPI, DefaultEscrowAPI, EscrowAPI, tokenSymbolToCurrency } from ".";
+import {
+    DefaultAssetRegistryAPI,
+    DefaultEscrowAPI,
+    DefaultLoansAPI,
+    EscrowAPI,
+    LoansAPI,
+    tokenSymbolToCurrency,
+} from ".";
 import { AssetRegistryAPI } from "./parachain/asset-registry";
 
 export * from "./factory";
@@ -80,6 +87,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
     public readonly rewards: RewardsAPI;
     public readonly escrow: EscrowAPI;
     public readonly assetRegistry: AssetRegistryAPI;
+    public readonly loans: LoansAPI;
     private transactionAPI: TransactionAPI;
 
     constructor(
@@ -157,6 +165,8 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.transactionAPI,
             this.assetRegistry
         );
+
+        this.loans = new DefaultLoansAPI(api, this.assetRegistry);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {
