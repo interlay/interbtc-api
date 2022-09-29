@@ -61,6 +61,7 @@ export interface InterBtcApi {
     readonly rewards: RewardsAPI;
     readonly escrow: EscrowAPI;
     readonly assetRegistry: AssetRegistryAPI;
+    readonly loans: LoansAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     removeAccount(): void;
     readonly account: AddressOrPair | undefined;
