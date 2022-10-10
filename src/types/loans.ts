@@ -10,19 +10,19 @@ interface LoanReward{
 interface LoanPosition {
     currency: CurrencyExt;
     amount: MonetaryAmount<CurrencyExt>;
+    earnedReward: MonetaryAmount<CurrencyExt>;
 }
 
-interface SupplyPosition extends LoanPosition {
+interface LendPosition extends LoanPosition {
     isCollateral: boolean;
     earnedInterest: MonetaryAmount<CurrencyExt>;
-    earnedReward: MonetaryAmount<CurrencyExt>;
 }
 
 type BorrowPosition = LoanPosition;
 
 interface LoanAsset {
     currency: CurrencyExt;
-    supplyApy: Big;
+    lendApy: Big;
     borrowApy: Big;
     reward: LoanReward | null;
     totalLiquidity: MonetaryAmount<CurrencyExt>;
@@ -35,4 +35,4 @@ type TickerToData<T> = {
     [ticker: string]: T
 }
 
-export type { SupplyPosition, BorrowPosition, LoanAsset, TickerToData };
+export type { LendPosition, BorrowPosition, LoanAsset, TickerToData };
