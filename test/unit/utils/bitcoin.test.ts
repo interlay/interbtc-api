@@ -70,7 +70,7 @@ describe("Bitcoin", () => {
         });
     });
 
-    describe("encodeBycAddress", () => {
+    describe("encodeBtcAddress", () => {
         it("should encode correct p2pkh address from hash", () => {
             const mockAddress = <BitcoinAddress>{
                 isP2pkh: true,
