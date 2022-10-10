@@ -10,7 +10,7 @@ interface LoanReward{
 interface LoanPosition {
     currency: CurrencyExt;
     amount: MonetaryAmount<CurrencyExt>;
-    earnedReward: MonetaryAmount<CurrencyExt>;
+    earnedReward: MonetaryAmount<CurrencyExt> | null; // null if rewards are not enabled.
 }
 
 interface LendPosition extends LoanPosition {
@@ -24,7 +24,7 @@ interface LoanAsset {
     currency: CurrencyExt;
     lendApy: Big;
     borrowApy: Big;
-    reward: LoanReward | null;
+    reward: LoanReward | null; // null if rewards are not enabled.
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
     liquidationThreshold: Big;
