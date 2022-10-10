@@ -53,4 +53,16 @@ describe("DefaultLoansAPI", () => {
             ).to.be.true;
         });
     });
+    
+    describe("getLendPositionsOfAccount", () => {
+        // TODO: add tests
+    });
+
+    describe("getBorrowPositionsOfAccount", () => {
+        // TODO: add tests
+    });
+
+    describe("getLoanAssets", () => {
+        // TODO: add tests
+    });
 });
