@@ -4,7 +4,7 @@ import { CurrencyExt } from "./currency";
 
 interface LoanReward{
     currency: CurrencyExt;
-    apy: Big;
+    apy: Big; // percentage
 }
 
 interface LoanPosition {
@@ -22,8 +22,8 @@ type BorrowPosition = LoanPosition;
 
 interface LoanAsset {
     currency: CurrencyExt;
-    lendApy: Big;
-    borrowApy: Big;
+    lendApy: Big; // percentage
+    borrowApy: Big; // percentage
     reward: LoanReward | null; // null if rewards are not enabled.
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
