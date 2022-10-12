@@ -6,32 +6,34 @@ import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
 
 // TODO: remove mock data after real implementation is added 
-const MOCKDATA_LOAN_ASSET_IBTC: LoanAsset = {
+const MOCKDATA_LOAN_ASSET_KBTC: LoanAsset = {
     currency: KBtc,
     lendApy: Big(10.2),
     borrowApy: Big(13.223),
     totalLiquidity: new MonetaryAmount(KBtc, Big(165.231651)),
-    reward: {
+    lendReward: {
         currency: Kintsugi,
         apy: Big(23.21)
     },
+    borrowReward: null,
     availableCapacity: new MonetaryAmount(KBtc, Big(6.7935275343163)),
     liquidationThreshold: Big(80)
 };
 
-const MOCKDATA_LOAN_ASSET_INTR = {
+const MOCKDATA_LOAN_ASSET_KINT = {
     currency: Kintsugi,
     lendApy: Big(40.13),
     borrowApy: Big(53.91),
     totalLiquidity: new MonetaryAmount(Kintsugi, Big(479574.6808557974)),
-    reward: null,
+    lendReward: null,
+    borrowReward: null,
     availableCapacity: new MonetaryAmount(Kintsugi, Big(65593.3527534316)),
     liquidationThreshold: Big(80)
 };
 
 const MOCKDATA_LOAN_ASSETS: TickerToData<LoanAsset> = {
-    "KBTC": MOCKDATA_LOAN_ASSET_IBTC,
-    "KINT": MOCKDATA_LOAN_ASSET_INTR
+    "KBTC": MOCKDATA_LOAN_ASSET_KBTC,
+    "KINT": MOCKDATA_LOAN_ASSET_KINT
 };
 
 const MOCKDATA_SUPPLY_POSITION_KBTC: LendPosition = {

@@ -24,7 +24,8 @@ interface LoanAsset {
     currency: CurrencyExt;
     lendApy: Big; // percentage
     borrowApy: Big; // percentage
-    reward: LoanReward | null; // null if rewards are not enabled.
+    lendReward: LoanReward | null; // null if rewards are not enabled.
+    borrowReward: LoanReward | null; // null if rewards are not enabled.
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
     liquidationThreshold: Big;
