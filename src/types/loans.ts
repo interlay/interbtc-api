@@ -35,4 +35,4 @@ type TickerToData<T> = {
     [ticker: string]: T
 }
 
-export type { LendPosition, BorrowPosition, LoanAsset, TickerToData };
+export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData };

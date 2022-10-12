@@ -1,5 +1,5 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { InterBtc, Interlay, MonetaryAmount } from "@interlay/monetary-js";
+import { KBtc, Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
 import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
@@ -7,54 +7,54 @@ import Big from "big.js";
 
 // TODO: remove mock data after real implementation is added 
 const MOCKDATA_LOAN_ASSET_IBTC: LoanAsset = {
-    currency: InterBtc,
+    currency: KBtc,
     lendApy: Big(10.2),
     borrowApy: Big(13.223),
-    totalLiquidity: new MonetaryAmount(InterBtc, Big(100000000000000)),
+    totalLiquidity: new MonetaryAmount(KBtc, Big(165.231651)),
     reward: {
-        currency: Interlay,
+        currency: Kintsugi,
         apy: Big(23.21)
     },
-    availableCapacity: new MonetaryAmount(InterBtc, Big(67935275343163)),
+    availableCapacity: new MonetaryAmount(KBtc, Big(6.7935275343163)),
     liquidationThreshold: Big(80)
 };
 
 const MOCKDATA_LOAN_ASSET_INTR = {
-    currency: Interlay,
+    currency: Kintsugi,
     lendApy: Big(40.13),
     borrowApy: Big(53.91),
-    totalLiquidity: new MonetaryAmount(Interlay, Big(479746808557974)),
+    totalLiquidity: new MonetaryAmount(Kintsugi, Big(479574.6808557974)),
     reward: null,
-    availableCapacity: new MonetaryAmount(Interlay, Big("652489679335275343163")),
+    availableCapacity: new MonetaryAmount(Kintsugi, Big(65593.3527534316)),
     liquidationThreshold: Big(80)
 };
 
 const MOCKDATA_LOAN_ASSETS: TickerToData<LoanAsset> = {
-    "IBTC": MOCKDATA_LOAN_ASSET_IBTC,
-    "INTR": MOCKDATA_LOAN_ASSET_INTR
+    "KBTC": MOCKDATA_LOAN_ASSET_IBTC,
+    "KINT": MOCKDATA_LOAN_ASSET_INTR
 };
 
-const MOCKDATA_SUPPLY_POSITION_IBTC: LendPosition = {
-    currency: InterBtc,
-    amount: new MonetaryAmount(InterBtc, Big(279764257)),
+const MOCKDATA_SUPPLY_POSITION_KBTC: LendPosition = {
+    currency: KBtc,
+    amount: new MonetaryAmount(KBtc, Big(2.79764257)),
     isCollateral: true,
-    earnedInterest: new MonetaryAmount(InterBtc, Big(764257)),
-    earnedReward: new MonetaryAmount(Interlay, Big(593279764257))
+    earnedInterest: new MonetaryAmount(KBtc, Big(0.0764257)),
+    earnedReward: new MonetaryAmount(Kintsugi, Big(593.279764257))
 };
 
-const MOCKDATA_SUPPLY_POSITIONS = {
-    "IBTC": MOCKDATA_SUPPLY_POSITION_IBTC
-};
+const MOCKDATA_SUPPLY_POSITIONS = [
+    MOCKDATA_SUPPLY_POSITION_KBTC
+];
 
 const MOCKDATA_BORROW_POSITION_INTR: BorrowPosition = {
-    currency: Interlay,
-    amount: new MonetaryAmount(Interlay, Big(130573946294014)),
-    earnedReward: new MonetaryAmount(Interlay, Big(0))    
+    currency: Kintsugi,
+    amount: new MonetaryAmount(Kintsugi, Big(1305.73946294014)),
+    earnedReward: new MonetaryAmount(Kintsugi, Big(0))    
 };
 
-const MOCKDATA_BORROW_POSITIONS = {
-    "INTR": MOCKDATA_BORROW_POSITION_INTR
-};
+const MOCKDATA_BORROW_POSITIONS = [
+    MOCKDATA_BORROW_POSITION_INTR
+];
 
 /**
  * @category BTC Bridge
@@ -83,17 +83,17 @@ export interface LoansAPI {
      * Get the supply positions for given account.
      * 
      * @param accountId the account Id for which to get supply positions
-     * @returns Asset ticker to SupplyPosition mapping of all supply positions of account.
+     * @returns Array of supply positions of account.
      */
-    getLendPositionsOfAccount(accountId: AccountId): Promise<TickerToData<LendPosition>>;
+    getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>>;
 
     /**
      * Get the borrow positions for given account.
      * 
-     * @param accountId the account Id for which to get supply positions
-     * @returns Asset ticker to SupplyPosition mapping of all supply positions of account.
+     * @param accountId the account Id for which to get borrow positions
+     * @returns Array of borrow positions of account.
      */
-    getBorrowPositionsOfAccount(accountId: AccountId): Promise<TickerToData<BorrowPosition>>;
+    getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>>;
 
     /**
      * Get all loan assets.
@@ -116,11 +116,11 @@ export class DefaultLoansAPI implements LoansAPI {
         return Promise.resolve(new MonetaryAmount(currency, 12.34567));
     }
 
-    getLendPositionsOfAccount(accountId: AccountId): Promise<TickerToData<LendPosition>> {
+    getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
         return Promise.resolve(MOCKDATA_SUPPLY_POSITIONS);
     }
 
-    getBorrowPositionsOfAccount(accountId: AccountId): Promise<TickerToData<BorrowPosition>> {
+    getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
         return Promise.resolve(MOCKDATA_BORROW_POSITIONS);
     }
 
