@@ -53,9 +53,12 @@ describe("redeem", () => {
     let interBtcAPI: InterBtcApi;
     let assetRegistry: AssetRegistryAPI;
 
-    const fetchBtcTxIdFromOpReturn = async (redeemRequestId: string): Promise<string> => {
+    const fetchBtcTxIdFromOpReturn = async (
+        redeemRequestId: string,
+        timeoutMs: number = 5 * 60 * 1000
+    ): Promise<string> => {
         const opreturnData = stripHexPrefix(redeemRequestId);
-        return interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, 5 * 60 * 1000, 5000).catch((_) => {
+        return interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, timeoutMs, 5000).catch((_) => {
             throw new Error(`Could not fetch BTC transaction id for redeem request id ${redeemRequestId}`);
         });
     };
@@ -138,7 +141,7 @@ describe("redeem", () => {
         for (const redeemRequest of redeemRequests) {
             let txId: string;
             try {
-                txId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
+                txId = await fetchBtcTxIdFromOpReturn(redeemRequest.id, 1 * 60 * 1000);
                 btcTxFound++;
             } catch (e: any) {
                 console.warn(e?.message || "Unknown error");
