@@ -24,6 +24,7 @@ describe("DefaultAssetRegistryAPI", () => {
         decimals: 8,
         existentialDeposit: 42,
         feesPerMinute: 15,
+        coingeckoId: "mock-coin-one",
     };
 
     before(() => {
@@ -44,6 +45,7 @@ describe("DefaultAssetRegistryAPI", () => {
             },
             InterbtcPrimitivesCustomMetadata: {
                 feePerSecond: "u128",
+                coingeckoId: "Bytes",
             },
         });
     });
@@ -59,6 +61,7 @@ describe("DefaultAssetRegistryAPI", () => {
             existentialDeposit: api.createType("u128", mockMetadataValues.existentialDeposit),
             additional: api.createType("InterbtcPrimitivesCustomMetadata", {
                 feePerSecond: api.createType("u128", mockMetadataValues.feesPerMinute),
+                coingeckoId: api.createType("Bytes", mockMetadataValues.coingeckoId),
             }),
         } as OrmlTraitsAssetRegistryAssetMetadata;
 
@@ -120,6 +123,11 @@ describe("DefaultAssetRegistryAPI", () => {
             expect(actual.decimals).to.equal(
                 mockMetadataValues.decimals,
                 `Expected currency base to be ${mockMetadataValues.decimals}, but was ${actual.decimals}`
+            );
+
+            expect(actual.coingeckoId).to.equal(
+                mockMetadataValues.coingeckoId,
+                `Expected coingecko id to be ${mockMetadataValues.coingeckoId}, but was ${actual.coingeckoId}`
             );
         });
     });
