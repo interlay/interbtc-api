@@ -56,9 +56,11 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
     static metadataTupleToForeignAsset([key, metadata]: UnwrappedAssetRegistryMetadataTuple): ForeignAsset {
         const keyInner = storageKeyToNthInner<AssetId>(key);
         const currencyPart = DefaultAssetRegistryAPI.metadataToCurrency(metadata);
+        const coingeckoId = decodeBytesAsString(metadata.additional.coingeckoId);
 
         return {
             id: keyInner.toNumber(),
+            coingeckoId,
             ...currencyPart,
         };
     }
@@ -95,11 +97,13 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
             return Promise.reject(new Error("Foreign asset not found"));
         }
         const currencyPart = DefaultAssetRegistryAPI.metadataToCurrency(optionMetadata.unwrap());
+        const coingeckoId = decodeBytesAsString(optionMetadata.unwrap().additional.coingeckoId);
 
         const numberId = id instanceof u32 ? id.toNumber() : id;
 
         return {
             id: numberId,
+            coingeckoId,
             ...currencyPart,
         };
     }
