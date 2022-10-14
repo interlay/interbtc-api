@@ -1,5 +1,5 @@
 import { Transaction } from "@interlay/esplora-btc-api";
-import { Bitcoin, ExchangeRate } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
@@ -17,6 +17,8 @@ import {
     CurrencyExt,
     AssetRegistryAPI,
     ForeignAsset,
+    GovernanceCurrency,
+    CollateralCurrencyExt,
 } from "../../src";
 import { SUDO_URI } from "../config";
 
@@ -39,7 +41,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export async function wait_success<R>(call: () => Promise<R>): Promise<R> {
-    for (; ;) {
+    for (;;) {
         try {
             const res = await call();
             return res;
@@ -277,8 +279,8 @@ export const waitForEvent = async <T extends AnyTuple>(
     const timeoutPromise =
         timeoutMs !== undefined
             ? new Promise<void>((_, reject) => {
-                timeoutHandle = setTimeout(() => reject(), timeoutMs);
-            })
+                  timeoutHandle = setTimeout(() => reject(), timeoutMs);
+              })
             : Promise.resolve();
 
     const waitForEventPromise = finalized
@@ -296,3 +298,17 @@ export const getAUSDForeignAsset = async (assetRegistryApi: AssetRegistryAPI): P
     const foreignAssets = await assetRegistryApi.getForeignAssets();
     return foreignAssets.find((asset) => asset.ticker === AUSD_TICKER);
 };
+
+// for tests: get the collateral currencies (excluding foreign assets) associated with the governance currency
+export function getCorrespondingCollateralCurrenciesForTests(
+    governanceCurrency: GovernanceCurrency
+): Array<CollateralCurrencyExt> {
+    switch (governanceCurrency.ticker) {
+        case "KINT":
+            return [Kusama, Kintsugi];
+        case "INTR":
+            return [Polkadot];
+        default:
+            throw new Error("Provided currency is not a governance currency");
+    }
+}

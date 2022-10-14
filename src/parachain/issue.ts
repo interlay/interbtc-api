@@ -1,6 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Option } from "@polkadot/types";
+import { ISubmittableResult } from "@polkadot/types/types";
 import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
@@ -47,6 +48,18 @@ export interface IssueAPI {
     getRequestLimits(vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>): Promise<IssueLimits>;
 
     /**
+     * Build an issue request extrinsic (transaction) without sending it.
+     *
+     * @param vaultId The vault ID of the vault to issue with.
+     * @param amount wrapped token amount to issue.
+     * @returns An execute issue submittable extrinsic.
+     */
+    buildRequestIssueExtrinsic(
+        vaultId: InterbtcPrimitivesVaultId,
+        amount: MonetaryAmount<WrappedCurrency>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
+    /**
      * Request issuing wrapped tokens (e.g. interBTC, kBTC).
      * @param amount wrapped token amount to issue.
      * @param vaultId (optional) Account ID of the vault to issue with.
@@ -80,6 +93,18 @@ export interface IssueAPI {
     ): Promise<Issue[]>;
 
     /**
+     * Build an issue execution extrinsic (transaction) without sending it.
+     *
+     * @param issueId The ID returned by the issue request transaction
+     * @param btcTxId Bitcoin transaction ID
+     * @returns An execute issue submittable extrinsic.
+     */
+    buildExecuteIssueExtrinsic(
+        issueId: string,
+        btcTxId: string
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>>;
+
+    /**
      * Send an issue execution transaction
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
@@ -87,6 +112,15 @@ export interface IssueAPI {
      * @param btcTxId Bitcoin transaction ID
      */
     execute(requestId: string, btcTxId: string): Promise<void>;
+
+    /**
+     * Build a cancel issue extrinsic (transaction) without sending it.
+     *
+     * @param issueId The ID returned by the issue request transaction
+     * @returns A cancel issue submittable extrinsic.
+     */
+    buildCancelIssueExtrinsic(issueId: string): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * Send an issue cancellation transaction. After the issue period has elapsed,
      * the issuance request can be cancelled. As a result, the griefing collateral
@@ -245,10 +279,10 @@ export class DefaultIssueAPI implements IssueAPI {
         }
     }
 
-    async craftRequestTx(
+    buildRequestIssueExtrinsic(
         vaultId: InterbtcPrimitivesVaultId,
         amount: MonetaryAmount<WrappedCurrency>
-    ): Promise<SubmittableExtrinsic<"promise">> {
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
         return this.api.tx.issue.requestIssue(amount.toString(true), vaultId);
     }
 
@@ -256,17 +290,13 @@ export class DefaultIssueAPI implements IssueAPI {
         amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
         atomic: boolean
     ): Promise<Issue[]> {
-        const txs = await Promise.all(
-            Array.from(amountsPerVault.entries()).map(
-                ([vaultId, amount]) =>
-                    new Promise<SubmittableExtrinsic<"promise">>((resolve) => {
-                        this.craftRequestTx(vaultId, amount).then(resolve);
-                    })
-            )
+        const txs = Array.from(amountsPerVault.entries()).map(([vaultId, amount]) =>
+            this.buildRequestIssueExtrinsic(vaultId, amount)
         );
-        // batchAll fails atomically, batch allows partial successes
-        const batch = (atomic ? this.api.tx.utility.batchAll : this.api.tx.utility.batch)(txs);
+        const batch = this.transactionAPI.buildBatchExtrinsic(txs, atomic);
         try {
+            // When requesting an issue, wait for the finalized event because we cannot revert BTC transactions.
+            // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000
             const result = await this.transactionAPI.sendLogged(batch, this.api.events.issue.RequestIssue);
             const ids = this.getIssueIdsFromEvents(result.events);
             const issueRequests = await this.getRequestsByIds(ids);
@@ -276,20 +306,31 @@ export class DefaultIssueAPI implements IssueAPI {
         }
     }
 
-    async execute(requestId: string, btcTxId: string): Promise<void> {
+    async buildExecuteIssueExtrinsic(
+        requestId: string,
+        btcTxId: string
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        const tx = this.api.tx.issue.executeIssue(
+        return this.api.tx.issue.executeIssue(
             parsedRequestId,
             txInclusionDetails.merkleProof,
             txInclusionDetails.rawTx
         );
+    }
+
+    async execute(requestId: string, btcTxId: string): Promise<void> {
+        const tx = await this.buildExecuteIssueExtrinsic(requestId, btcTxId);
         await this.transactionAPI.sendLogged(tx, this.api.events.issue.ExecuteIssue, true);
     }
 
-    async cancel(requestId: string): Promise<void> {
+    buildCancelIssueExtrinsic(requestId: string): SubmittableExtrinsic<"promise", ISubmittableResult> {
         const parsedRequestId = this.api.createType("H256", addHexPrefix(requestId));
-        const cancelIssueTx = this.api.tx.issue.cancelIssue(parsedRequestId);
+        return this.api.tx.issue.cancelIssue(parsedRequestId);
+    }
+
+    async cancel(requestId: string): Promise<void> {
+        const cancelIssueTx = this.buildCancelIssueExtrinsic(requestId);
         await this.transactionAPI.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue, true);
     }
 

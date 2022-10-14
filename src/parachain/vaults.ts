@@ -20,6 +20,7 @@ import {
     newVaultCurrencyPair,
     addHexPrefix,
     currencyIdToMonetaryCurrency,
+    decodeRpcVaultId,
 } from "../utils";
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
@@ -33,6 +34,7 @@ import {
     CollateralCurrencyExt,
     WrappedCurrency,
     GovernanceCurrency,
+    CurrencyExt,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
@@ -215,10 +217,32 @@ export interface VaultsAPI {
      * amount at the current exchange rate.
      */
     getPunishmentFee(): Promise<Big>;
+
+    /**
+     * Build withdraw collateral extrinsic (transaction) without sending it.
+     *
+     * @param amount The amount of collateral to withdraw
+     * @returns A withdraw collateral submittable extrinsic.
+     */
+    buildWithdrawCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * @param amount The amount of collateral to withdraw
      */
     withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
+
+    /**
+     * Build deposit collateral extrinsic (transaction) without sending it.
+     *
+     * @param amount The amount of extra collateral to lock
+     * @returns A deposit collateral submittable extrinsic.
+     */
+    buildDepositCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * @param amount The amount of extra collateral to lock
      */
@@ -322,12 +346,50 @@ export interface VaultsAPI {
         vaultCollateral: CollateralCurrencyExt,
         governanceCurrency: GovernanceCurrency
     ): Promise<MonetaryAmount<GovernanceCurrency>>;
+
+    /**
+     * Build accept new issues extrinsic without sending it.
+     *
+     * @param collateralCurrency the collateral currency for which to change the accepting status,
+     * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
+     * @returns An accept new issues submittable extrinsic.
+     */
+    buildAcceptNewIssuesExtrinsic(
+        collateralCurrency: CollateralCurrencyExt,
+        acceptNewIssues: boolean
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * Enables or disables issue requests for given vault
      * @param vaultId The vault ID whose issuing will be toggled
      * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
      */
     toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void>;
+
+    /**
+     * Build extrinsic to register a public key.
+     *
+     * This extrinsic can be used together with a register vault extrinsic (see: {@link buildRegisterVaultExtrinsic})
+     * to register the first vault for the logged in account id.
+     *
+     * Registering the public key should only be done once per account id when it is not associated with a running vault, yet.
+     *
+     * @param publicKey The BTC public key of the vault to derive deposit keys with
+     * the {@link https://spec.interlay.io/security_performance/xclaim-security.html#okd | On-Chain Key Derivation Scheme}.
+     * @returns A register vault submittable extrinsic.
+     */
+    buildRegisterPublicKeyExtrinsic(publicKey: string): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
+    /**
+     * Build extrinsic to register a new vault.
+     *
+     * @param collateralAmount The collateral amount to register the vault with - in the new collateral currency.
+     * @returns A register vault submittable extrinsic.
+     */
+    buildRegisterVaultExtrinsic(
+        collateralAmount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * Registers a new vault for the current account ID with a new collateral amount.
      * Only applicable if the connected account ID already has a running vault with a different collateral currency.
@@ -337,6 +399,19 @@ export interface VaultsAPI {
      * @param collateralAmount The collateral amount to register the vault with - in the new collateral currency
      */
     registerNewCollateralVault(collateralAmount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
+    /**
+     * Get the target exchange rate at which a vault will be forced to liquidate, given its
+     * current locked collateral and issued as well as to be issued tokens.
+     *
+     * @param vaultAccountId The vault's account ID
+     * @param collateralCurrency The collateral currency for the vault with the account id above
+     * @returns The theoretical collateral per wrapped currency rate below which the vault would be liquidated.
+     *  Returns undefined if a value cannot be calculated, eg. if the vault has no issued tokens.
+     */
+    getExchangeRateForLiquidation(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<Big | undefined>;
 }
 
 export class DefaultVaultsAPI implements VaultsAPI {
@@ -375,7 +450,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return this.api.events.vaultRegistry.RegisterVault;
     }
 
-    // helper method; mainly for easier mocking in unit tests without an active ApiPromise instance
     buildRegisterVaultExtrinsic(
         collateralAmount: MonetaryAmount<CollateralCurrencyExt>
     ): SubmittableExtrinsic<"promise", ISubmittableResult> {
@@ -384,34 +458,48 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit);
     }
 
+    buildRegisterPublicKeyExtrinsic(publicKey: string): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return this.api.tx.vaultRegistry.registerPublicKey(publicKey);
+    }
+
     async register(amount: MonetaryAmount<CollateralCurrencyExt>, publicKey: string): Promise<void> {
-        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
-        const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
         await Promise.all([
             this.transactionAPI.sendLogged(
-                this.api.tx.vaultRegistry.registerPublicKey(publicKey),
+                this.buildRegisterPublicKeyExtrinsic(publicKey),
                 this.api.events.vaultRegistry.UpdatePublicKey,
                 true
             ),
             this.transactionAPI.sendLogged(
-                this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit),
+                this.buildRegisterVaultExtrinsic(amount),
                 this.api.events.vaultRegistry.RegisterVault,
                 true
             ),
         ]);
     }
 
-    async withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+    buildWithdrawCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
         const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
-        const tx = this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
+        return this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
+    }
+
+    async withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+        const tx = this.buildWithdrawCollateralExtrinsic(amount);
         await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral, true);
     }
 
-    async depositCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
-        const amountAsPlanck = this.api.createType("Balance", amount.toString(true));
+    buildDepositCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
-        const tx = this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAsPlanck);
+        return this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAtomicUnit);
+    }
+
+    async depositCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+        const tx = this.buildDepositCollateralExtrinsic(amount);
         await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral, true);
     }
 
@@ -519,19 +607,13 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrency: CollateralCurrencyExt,
         governanceCurrency: GovernanceCurrency
     ): Promise<Big> {
-        const vault = await this.get(vaultAccountId, collateralCurrency);
         const [globalRewardPerBlock, globalStake, vaultStake, vaultRewardShare, lockedCollateral, minimumBlockPeriod] =
             await Promise.all([
                 this.rewardsAPI.getRewardPerBlock(governanceCurrency),
                 this.getTotalIssuedAmount(),
                 this.getIssuedAmount(vaultAccountId, collateralCurrency),
                 this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
-                (
-                    await this.tokensAPI.balance(
-                        await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vault.id.currencies.collateral),
-                        vaultAccountId
-                    )
-                ).reserved,
+                this.getLockedCollateral(vaultAccountId, collateralCurrency),
                 this.api.consts.timestamp.minimumPeriod,
             ]);
 
@@ -547,6 +629,13 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const blocksPerYear = (86400 * 365 * 1000) / blockTime;
         const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
         return this.feeAPI.calculateAPY(annualisedReward, lockedCollateral);
+    }
+
+    async getLockedCollateral(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<MonetaryAmount<CurrencyExt>> {
+        return (await this.tokensAPI.balance(collateralCurrency, vaultAccountId)).reserved;
     }
 
     async computeReward(
@@ -780,14 +869,14 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async getPremiumRedeemVaults(): Promise<Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>> {
         const map: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
-        const vaults = await this.getVaultsEligibleForRedeeming();
+        const premiumRedeemVaults = await this.api.rpc.vaultRegistry.getPremiumRedeemVaults();
 
-        const premiumRedeemVaultPredicates = await Promise.all(
-            vaults.map((vault) => this.isBelowPremiumThreshold(vault.id))
-        );
-        vaults
-            .filter((_, index) => premiumRedeemVaultPredicates[index])
-            .forEach((vault) => map.set(vault.id, vault.getRedeemableTokens()));
+        for (const [vaultId, balanceWrapper] of premiumRedeemVaults) {
+            const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
+
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, vaultId);
+            map.set(ibtcPrimitivesVaultId, amount);
+        }
         return map;
     }
 
@@ -796,18 +885,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const vaultIdsToAmountsMap: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>> = new Map();
         for (const [vaultId, balanceWrapper] of issuableVaults) {
             const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
-            const [collateralCcy, wrappedCcy] = await Promise.all([
-                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.collateral),
-                currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.wrapped),
-            ]);
 
-            const ibtcPrimitivesVaultId = newVaultId(
-                this.api,
-                vaultId.account_id.toString(),
-                collateralCcy,
-                wrappedCcy
-            );
-
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, vaultId);
             vaultIdsToAmountsMap.set(ibtcPrimitivesVaultId, amount);
         }
 
@@ -883,15 +962,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getAPY(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<Big> {
-        const vault = await this.get(vaultAccountId, collateralCurrency);
         const [feesWrapped, lockedCollateral, blockRewardsAPY] = await Promise.all([
-            await this.getWrappedReward(vaultAccountId, collateralCurrency),
-            (
-                await this.tokensAPI.balance(
-                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vault.id.currencies.collateral),
-                    vaultAccountId
-                )
-            ).reserved,
+            this.getWrappedReward(vaultAccountId, collateralCurrency),
+            this.getLockedCollateral(vaultAccountId, collateralCurrency),
             this.getBlockRewardAPY(vaultAccountId, vaultAccountId, collateralCurrency, this.governanceCurrency),
         ]);
         return (await this.feeAPI.calculateAPY(feesWrapped, lockedCollateral)).add(blockRewardsAPY);
@@ -954,9 +1027,47 @@ export class DefaultVaultsAPI implements VaultsAPI {
         await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft, true);
     }
 
+    buildAcceptNewIssuesExtrinsic(
+        collateralCurrency: CollateralCurrencyExt,
+        acceptNewIssues: boolean
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
+        return this.api.tx.vaultRegistry.acceptNewIssues(vaultCurrencyPair, acceptNewIssues);
+    }
+
     async toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void> {
-        const currencyPair = vaultId.currencies;
-        const tx = this.api.tx.vaultRegistry.acceptNewIssues(currencyPair, acceptNewIssues);
+        const collateralCurrency = await currencyIdToMonetaryCurrency(
+            this.assetRegistryAPI,
+            vaultId.currencies.collateral
+        );
+        const tx = this.buildAcceptNewIssuesExtrinsic(collateralCurrency, acceptNewIssues);
         await this.transactionAPI.sendLogged(tx, this.api.events.system.ExtrinsicSuccess, true);
+    }
+
+    async getExchangeRateForLiquidation(
+        vaultAccountId: AccountId,
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<Big | undefined> {
+        const [vaultExt, liquidationRateThreshold, lockedCollateral] = await Promise.all([
+            this.get(vaultAccountId, collateralCurrency),
+            this.getLiquidationCollateralThreshold(collateralCurrency),
+            this.getLockedCollateral(vaultAccountId, collateralCurrency),
+        ]);
+
+        if (liquidationRateThreshold.eq(0)) {
+            return undefined;
+        }
+
+        const issuedTokens = vaultExt.getBackedTokens();
+
+        if (issuedTokens.toBig().eq(0)) {
+            return undefined;
+        }
+
+        // calculate the theoretical exchange rate at which the vault would be (close to) liquidated
+        const liquidationRateCollaterallPerWrapped = lockedCollateral
+            .toBig()
+            .div(issuedTokens.toBig().mul(liquidationRateThreshold));
+        return liquidationRateCollaterallPerWrapped;
     }
 }

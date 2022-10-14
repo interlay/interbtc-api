@@ -1,6 +1,5 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { Bitcoin, ExchangeRate, MonetaryAmount, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
 import Big from "big.js";
 import {
     DefaultInterBtcApi,
@@ -17,43 +16,31 @@ import {
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import {
-    ORACLE_URI,
     VAULT_1_URI,
     VAULT_2_URI,
-    BITCOIN_CORE_HOST,
-    BITCOIN_CORE_NETWORK,
-    BITCOIN_CORE_PASSWORD,
-    BITCOIN_CORE_PORT,
-    BITCOIN_CORE_USERNAME,
-    BITCOIN_CORE_WALLET,
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
     VAULT_TO_LIQUIDATE_URI,
     VAULT_TO_BAN_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { BitcoinCoreClient, newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
+import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
+import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
 import {
-    encodeVaultId,
-    getCorrespondingCollateralCurrencies,
-    getSS58Prefix,
-    issueSingle,
-    newMonetaryAmount,
-} from "../../../../../src/utils";
-import { AUSD_TICKER, getAUSDForeignAsset, vaultStatusToLabel } from "../../../../utils/helpers";
+    getAUSDForeignAsset,
+    getCorrespondingCollateralCurrenciesForTests,
+    vaultStatusToLabel,
+} from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
-    let oracleAccount: KeyringPair;
     let vault_to_liquidate: KeyringPair;
     let vault_to_ban: KeyringPair;
     let vault_1: KeyringPair;
     let vault_1_ids: Array<InterbtcPrimitivesVaultId>;
     let vault_2: KeyringPair;
     let vault_3: KeyringPair;
-    let vault_3_ids: Array<InterbtcPrimitivesVaultId>;
     let api: ApiPromise;
-    let bitcoinCoreClient: BitcoinCoreClient;
 
     let wrappedCurrency: WrappedCurrency;
     let collateralCurrencies: Array<CollateralCurrencyExt>;
@@ -66,14 +53,13 @@ describe("vaultsAPI", () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const ss58Prefix = getSS58Prefix(api);
         const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
-        oracleAccount = keyring.addFromUri(ORACLE_URI);
         assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
 
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
 
-        collateralCurrencies = getCorrespondingCollateralCurrencies(governanceCurrency);
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(governanceCurrency);
         const aUSD = await getAUSDForeignAsset(assetRegistry);
         if (aUSD !== undefined) {
             // also add aUSD collateral vaults if they exist (ie. the foreign asset exists)
@@ -88,21 +74,9 @@ describe("vaultsAPI", () => {
         vault_2 = keyring.addFromUri(VAULT_2_URI);
 
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
-            newVaultId(api, vault_3.address, collateralCurrency, wrappedCurrency)
-        );
 
         vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
         vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
-
-        bitcoinCoreClient = new BitcoinCoreClient(
-            BITCOIN_CORE_NETWORK,
-            BITCOIN_CORE_HOST,
-            BITCOIN_CORE_USERNAME,
-            BITCOIN_CORE_PASSWORD,
-            BITCOIN_CORE_PORT,
-            BITCOIN_CORE_WALLET
-        );
     });
 
     after(() => {
@@ -149,7 +123,7 @@ describe("vaultsAPI", () => {
             // edge case: we require 0 KSM for 0 kBTC, so check greater than or equal to
             assert.isTrue(
                 requiredCollateralForVault.toBig().gte(vault.getBackedTokens().toBig()),
-                `Expect required collateral (${requiredCollateralForVault.toHuman()}) 
+                `Expect required collateral (${requiredCollateralForVault.toHuman()})
                 to be greater than or equal to backed tokens (${vault.getBackedTokens().toHuman()})`
             );
         }
@@ -205,147 +179,37 @@ describe("vaultsAPI", () => {
                 `Withdrawing did not decrease collateralization (${currencyTicker} vault), expected
                 ${collateralizationAfterDeposit} greater than ${collateralizationAfterWithdrawal}`
             );
-            // removed this assertion because it is flaky
-            // TODO: figure out why / fix it (usual suspect: exchange rates change between assertions)
-            // assert.equal(
-            //     collateralizationBeforeDeposit.toString(),
-            //     collateralizationAfterWithdrawal.toString(),
-            //     `Collateralization after identical deposit and withdrawal changed (${currencyTicker} vault)`
-            // );
+            assert.equal(
+                collateralizationBeforeDeposit.toString(),
+                collateralizationAfterWithdrawal.toString(),
+                `Collateralization after identical deposit and withdrawal changed (${currencyTicker} vault)`
+            );
         }
         if (prevAccount) {
             interBtcAPI.setAccount(prevAccount);
         }
     });
 
-    it("should getPremiumRedeemVaults after a price crash", async () => {
-        assert.isAbove(vault_3_ids.length, 0, "Precondition: Expect vault_3_ids to have length > 0");
-
-        // TODO: Look into why requesting the full issuable amount fails, and remove the line below
-        // note: divide 90% by number of loops (issue requests) expected.
-        const issuableAmountModifier = 0.9 / vault_3_ids.length;
-
-        for (const vault_3_id of vault_3_ids) {
-            const collateralCurrency = await currencyIdToMonetaryCurrency(
-                assetRegistry,
-                vault_3_id.currencies.collateral
-            );
-            const currencyTicker = collateralCurrency.ticker;
-
-            const vault = await interBtcAPI.vaults.get(vault_3_id.accountId, collateralCurrency);
-            let issuableAmount = await vault.getIssuableTokens();
-            issuableAmount = issuableAmount.mul(issuableAmountModifier);
-            await issueSingle(interBtcAPI, bitcoinCoreClient, oracleAccount, issuableAmount, vault_3_id);
-
-            const currentVaultCollateralization = await interBtcAPI.vaults.getVaultCollateralization(
-                newAccountId(api, vault_3.address),
-                collateralCurrency
-            );
-            if (currentVaultCollateralization === undefined) {
-                throw new Error("Collateralization is undefined");
-            }
-
-            // The factor to adjust the exchange rate by. Calculated such that the resulting collateralization
-            // will be 90% of the premium redeem threshold. (e.g. 1.35 * 90% = 1.215)
-            const premiumRedeemThreshold = await interBtcAPI.vaults.getPremiumRedeemThreshold(collateralCurrency);
-            const modifyExchangeRateBy = premiumRedeemThreshold.mul(0.9).div(currentVaultCollateralization);
-
-            const initialExchangeRate = await interBtcAPI.oracle.getExchangeRate(collateralCurrency);
-            // crash the exchange rate so that the vault falls below the premium redeem threshold
-            const exchangeRateValue = initialExchangeRate.toBig().div(modifyExchangeRateBy);
-            const mockExchangeRate = new ExchangeRate<Bitcoin, typeof collateralCurrency>(
-                Bitcoin,
-                collateralCurrency,
-                exchangeRateValue
-            );
-
-            // stub the oracle API to always return the new exchange rate
-            const stub = sinon
-                .stub(interBtcAPI.oracle, "getExchangeRate")
-                .withArgs(sinon.match.any)
-                .returns(Promise.resolve(mockExchangeRate)); // "as any" to help eslint play nicely
-
-            const premiumRedeemVaults = await interBtcAPI.vaults.getPremiumRedeemVaults();
-
-            // Check that the stub has indeed been called at least once
-            // If not, code has changed and our assumptions when mocking the oracle API are no longer valid
-            sinon.assert.called(stub);
-            sinon.restore();
-
-            // real assertions here
-            assert.isAtLeast(premiumRedeemVaults.size, 1);
-
-            // locate the amount for the current vault
-            let premiumRedeemAmount: MonetaryAmount<WrappedCurrency> | undefined = undefined;
-            for (const [vaultId, amount] of premiumRedeemVaults) {
-                if (
-                    (await encodeVaultId(assetRegistry, vaultId)) === (await encodeVaultId(assetRegistry, vault_3_id))
-                ) {
-                    premiumRedeemAmount = amount;
-                    break;
-                }
-            }
-
-            if (premiumRedeemAmount === undefined) {
-                assert.fail(`Could not locate expected premium redeem amount for vault (${currencyTicker} collateral)`);
-                return;
-            }
-
-            assert.isTrue(
-                premiumRedeemAmount.gte(issuableAmount),
-                `Amount available for premium redeem should be higher (${currencyTicker} vault)`
-            );
-        }
-    }).timeout(10 * 60000);
-
     it("should getLiquidationCollateralThreshold", async () => {
-        const expectedThresholdByTicker: Map<string, string> = new Map([
-            [Polkadot.ticker, "1.1"],
-            [Kusama.ticker, "1.1"],
-            [Kintsugi.ticker, "2"],
-            [AUSD_TICKER, "1.1"],
-        ]);
-
         for (const collateralCurrency of collateralCurrencies) {
             const currencyTicker = collateralCurrency.ticker;
 
-            const expectedThreshold = expectedThresholdByTicker.get(currencyTicker);
-            if (expectedThreshold === undefined) {
-                assert.fail(`Precondition: No expected threshold set for ${currencyTicker}`);
-                return;
-            }
-
             const threshold = await interBtcAPI.vaults.getLiquidationCollateralThreshold(collateralCurrency);
-            assert.equal(
-                threshold.toString(),
-                expectedThreshold,
-                `Liquidation collateral threshold is not ${expectedThreshold} (${currencyTicker})`
+            assert.isTrue(
+                threshold.gt(0),
+                `Expected liquidation threshold for ${currencyTicker} to be greater than 0, but was ${threshold.toString()}`
             );
         }
     });
 
     it("should getPremiumRedeemThreshold", async () => {
-        const expectedThresholdByTicker: Map<string, string> = new Map([
-            [Polkadot.ticker, "1.35"],
-            [Kusama.ticker, "1.35"],
-            [Kintsugi.ticker, "3"],
-            [AUSD_TICKER, "1.35"],
-        ]);
-
         for (const collateralCurrency of collateralCurrencies) {
             const currencyTicker = collateralCurrency.ticker;
 
-            const expectedThreshold = expectedThresholdByTicker.get(currencyTicker);
-            if (expectedThreshold === undefined) {
-                assert.fail(`Precondition: No expected threshold set for ${currencyTicker}`);
-                return;
-            }
-
             const threshold = await interBtcAPI.vaults.getPremiumRedeemThreshold(collateralCurrency);
-            assert.equal(
-                threshold.toString(),
-                expectedThreshold,
-                `Premium redeem threshold is not ${expectedThreshold} (${currencyTicker})`
+            assert.isTrue(
+                threshold.gt(0),
+                `Expected premium redeem threshold for ${currencyTicker} to be greater than 0, but was ${threshold.toString()}`
             );
         }
     });
@@ -486,7 +350,7 @@ describe("vaultsAPI", () => {
             const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, id.currencies.collateral);
             const currencyTicker = collateralCurrency.ticker;
             const { status } = await interBtcAPI.vaults.get(id.accountId, collateralCurrency);
-            const assertionMessage = `Vault with id ${id.toString()} (collateral: ${currencyTicker}) was expected to have 
+            const assertionMessage = `Vault with id ${id.toString()} (collateral: ${currencyTicker}) was expected to have
                     status: ${vaultStatusToLabel(expectedStatus)}, but got status: ${vaultStatusToLabel(status)}`;
 
             assert.isTrue(status === expectedStatus, assertionMessage);

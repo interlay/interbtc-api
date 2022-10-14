@@ -24,6 +24,12 @@ export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Net
                 network,
             });
             btcAddress = result.address;
+        } else if (address.isP2wsHv0) {
+            const result = bitcoinjs.payments.p2wsh({
+                hash: Buffer.from(address.asP2wsHv0.buffer),
+                network,
+            });
+            btcAddress = result.address;
         } else if (address.isP2wpkHv0) {
             const result = bitcoinjs.payments.p2wpkh({
                 hash: Buffer.from(address.asP2wpkHv0.buffer),
@@ -68,7 +74,7 @@ export function btcAddressFromParams(
 export function decodeBtcAddress(
     address: string,
     network: bitcoinjs.Network
-): { p2pkh: string } | { p2sh: string } | { p2wpkhv0: string } {
+): { p2pkh: string } | { p2sh: string } | { p2wpkhv0: string } | { p2wshv0: string } {
     const p2pkh = decode({ address, network }, bitcoinjs.payments.p2pkh);
     if (p2pkh) return { p2pkh };
 
@@ -77,6 +83,9 @@ export function decodeBtcAddress(
 
     const p2wpkhv0 = decode({ address, network }, bitcoinjs.payments.p2wpkh);
     if (p2wpkhv0) return { p2wpkhv0 };
+
+    const p2wshv0 = decode({ address, network }, bitcoinjs.payments.p2wsh);
+    if (p2wshv0) return { p2wshv0 };
 
     throw new Error("Unable to decode address");
 }

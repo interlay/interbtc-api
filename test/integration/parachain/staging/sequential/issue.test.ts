@@ -5,7 +5,6 @@ import {
     CollateralCurrencyExt,
     currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
-    getCorrespondingCollateralCurrencies,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
     IssueStatus,
@@ -30,7 +29,7 @@ import {
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
-import { runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
+import { getCorrespondingCollateralCurrenciesForTests, runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -52,7 +51,7 @@ describe("issue", () => {
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        collateralCurrencies = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency());
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
 
         vault_1 = keyring.addFromUri(VAULT_1_URI);
@@ -118,15 +117,6 @@ describe("issue", () => {
             amount.toBig().round(5).toString(),
             "Issued amount is not equal to requested amount"
         );
-    });
-
-    it("should fail to request a value finer than 1 Satoshi", async () => {
-        for (const vault_1_id of vault_1_ids) {
-            const amount = newMonetaryAmount(0.00000121, wrappedCurrency, true);
-            await assert.isRejected(
-                issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, amount, vault_1_id, true, false)
-            );
-        }
     });
 
     // auto-execution tests may stall indefinitely, due to vault client inaction.

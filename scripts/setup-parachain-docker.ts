@@ -21,9 +21,13 @@ const argv = yargs(process.argv.slice(2))
         description: "The type of parachain to setup. Defaults to KINT.",
         default: "KINT",
     })
+    .alias("d", "detach")
+    .boolean("detach")
+    .describe("detach", "Whether to detach docker outputs or not.")
     .parseSync();
 
 const chain = argv.chain;
+const detachOpt = argv.detach ? "-d" : "";
 
 exec("chmod +x ./scripts/docker-setup.sh");
-exec(`./scripts/docker-setup.sh ${chain}`);
+exec(`./scripts/docker-setup.sh ${chain} ${detachOpt}`);

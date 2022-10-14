@@ -9,11 +9,13 @@ import {
     InterbtcPrimitivesVaultId,
     newMonetaryAmount,
     VaultExt,
+    WrappedCurrency,
 } from "../../../src";
 import * as allThingsEncoding from "../../../src/utils/encoding";
 import { AccountId } from "@polkadot/types/interfaces";
 import { SubmittableExtrinsic, AugmentedEvent, ApiTypes } from "@polkadot/api/types";
 import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
+import { MonetaryAmount } from "@interlay/monetary-js";
 
 export type NominatorVaultAccountIds = {
     nominatorId: AccountId;
@@ -161,4 +163,30 @@ export const mockVaultsApiGetMethod = (
 ): void => {
     // make VaultAPI.get() return a mocked vault
     sinon.stub(vaultsApi, "get").returns(Promise.resolve(vault));
+};
+
+export const prepareLiquidationRateMocks = (
+    sinon: sinon.SinonSandbox,
+    vaultsApi: DefaultVaultsAPI,
+    mockIssuedTokensNumber: BigSource,
+    mockCollateralTokensNumber: BigSource,
+    mockLiquidationThreshold: BigSource,
+    wrappedCurrency: WrappedCurrency,
+    collateralCurrency: CollateralCurrencyExt
+): void => {
+    // mock vaultExt.getBackedTokens() return value
+    const mockVault = <VaultExt>{
+        getBackedTokens: () => new MonetaryAmount(wrappedCurrency, mockIssuedTokensNumber),
+    };
+
+    // mock this.get return mock vault
+    mockVaultsApiGetMethod(sinon, vaultsApi, mockVault);
+
+    // mock this.getLiquidationCollateralThreshold return value
+    // if we have less than 2x collateral (in BTC) compared to BTC, we need to liquidate
+    sinon.stub(vaultsApi, "getLiquidationCollateralThreshold").returns(Promise.resolve(Big(mockLiquidationThreshold)));
+
+    // mock this.getLockedCollateral return value
+    const mockLockedCollateral = new MonetaryAmount(collateralCurrency, mockCollateralTokensNumber);
+    sinon.stub(vaultsApi, "getLockedCollateral").returns(Promise.resolve(mockLockedCollateral));
 };

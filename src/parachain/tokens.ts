@@ -6,6 +6,8 @@ import { newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
 import { TransactionAPI } from "./transaction";
 import { ChainBalance, CurrencyExt, parseOrmlTokensAccountData } from "../types";
 import { OrmlTokensAccountData } from "@polkadot/types/lookup";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 /**
  * @category BTC Bridge
@@ -22,6 +24,17 @@ export interface TokensAPI {
      * @returns The user's balance
      */
     balance(currency: CurrencyExt, id: AccountId): Promise<ChainBalance>;
+    /**
+     * Build a transfer extrinsic without sending it.
+     *
+     * @param destination The address of a user
+     * @param amount The amount to transfer, as `Monetary.js` object or `ForeignAsset`
+     * @returns A transfer submittable extrinsic.
+     */
+    buildTransferExtrinsic(
+        destination: string,
+        amount: MonetaryAmount<CurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
     /**
      * @param destination The address of a user
      * @param amount The amount to transfer, as `Monetary.js` object or `ForeignAsset`
@@ -92,6 +105,14 @@ export class DefaultTokensAPI implements TokensAPI {
         return () => {
             return;
         };
+    }
+
+    buildTransferExtrinsic(
+        destination: string,
+        amount: MonetaryAmount<CurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
+        return this.api.tx.tokens.transfer(destination, newCurrencyId(this.api, amount.currency), amountAtomicUnit);
     }
 
     async transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
