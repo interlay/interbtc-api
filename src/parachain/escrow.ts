@@ -180,7 +180,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     buildWithdrawRewardsExtrinsic(): SubmittableExtrinsic<"promise", ISubmittableResult> {
-        return this.api.tx.escrow.withdrawRewards();
+        return this.api.tx.escrowAnnuity.withdrawRewards();
     }
 
     async withdrawRewards(): Promise<void> {
