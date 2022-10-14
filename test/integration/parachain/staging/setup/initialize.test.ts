@@ -208,6 +208,10 @@ describe("Initialize parachain state", () => {
                     symbol: api.createType("Bytes", AUSD_TICKER), // we will try to find it again in tests through this ticker
                     decimals: api.createType("u32", 6),
                     existentialDeposit: api.createType("u128", 1000),
+                    additional: api.createType("InterbtcPrimitivesCustomMetadata", {
+                        feePerSecond: api.createType("u128", 10),
+                        coingeckoId: api.createType("Bytes", "acala-dollar"),
+                    }),
                 },
                 api.createType("u32", nextAssetId)
             );
