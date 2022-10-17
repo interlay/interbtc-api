@@ -9,6 +9,7 @@ import {
     decodeFixedPointType,
     newCurrencyId,
     newMonetaryAmount,
+    newVaultCurrencyPair,
     newVaultId,
 } from "../utils";
 import { AssetRegistryAPI, InterbtcPrimitivesVaultId } from "../parachain";
@@ -296,10 +297,12 @@ export class DefaultRewardsAPI implements RewardsAPI {
         vaultCollateral: CollateralCurrencyExt,
         vaultAccountId: AccountId
     ): Promise<MonetaryAmount<Currency>> {
-        const reward = await this.api.rpc.reward.computeVaultReward(
-            newVaultId(this.api, vaultAccountId.toString(), vaultCollateral, this.wrappedCurrency),
-            newCurrencyId(this.api, rewardCurrency)
-        );
+        const vaultCurrencyPair = newVaultCurrencyPair(this.api, vaultCollateral, this.wrappedCurrency);
+        const params = {
+            account_id: vaultAccountId,
+            currencies: vaultCurrencyPair,
+        };
+        const reward = await this.api.rpc.reward.computeVaultReward(params, newCurrencyId(this.api, rewardCurrency));
         return newMonetaryAmount(reward.amount.toString(), rewardCurrency);
     }
 
