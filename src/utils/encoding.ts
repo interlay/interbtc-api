@@ -12,7 +12,6 @@ import { u32 } from "@polkadot/types";
 import {
     InterbtcPrimitivesRedeemRedeemRequest,
     InterbtcPrimitivesReplaceReplaceRequest,
-    InterbtcPrimitivesRefundRefundRequest,
     InterbtcPrimitivesIssueIssueRequest,
     BitcoinAddress,
     VaultRegistrySystemVault,
@@ -23,7 +22,7 @@ import {
 
 import { currencyIdToMonetaryCurrency, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, isForeignAsset } from ".";
 import { SystemVaultExt } from "../types/vault";
-import { Issue, IssueStatus, Redeem, RedeemStatus, RefundRequestExt, ReplaceRequestExt } from "../types/requestTypes";
+import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
 import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
@@ -210,23 +209,6 @@ export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): Bal
     });
 }
 
-export function parseRefundRequest(
-    req: InterbtcPrimitivesRefundRefundRequest,
-    network: Network,
-    wrappedCurrency: WrappedCurrency
-): RefundRequestExt {
-    return {
-        vaultId: req.vault,
-        amountIssuing: newMonetaryAmount(req.amountBtc.toString(), wrappedCurrency),
-        fee: newMonetaryAmount(req.fee.toString(), wrappedCurrency),
-        amountBtc: newMonetaryAmount(req.amountBtc.toString(), wrappedCurrency),
-        issuer: req.issuer,
-        btcAddress: encodeBtcAddress(req.btcAddress, network),
-        issueId: stripHexPrefix(req.issueId.toString()),
-        completed: req.completed.isTrue,
-    };
-}
-
 export async function parseReplaceRequest(
     assetRegistry: AssetRegistryAPI,
     req: InterbtcPrimitivesReplaceReplaceRequest,
@@ -344,8 +326,10 @@ export function unwrapRawExchangeRate(option: Option<UnsignedFixedPoint>): Unsig
 }
 
 export async function encodeVaultId(assetRegistry: AssetRegistryAPI, id: InterbtcPrimitivesVaultId): Promise<string> {
-    const wrappedCurrency = await currencyIdToMonetaryCurrency(assetRegistry, id.currencies.wrapped);
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, id.currencies.collateral);
+    const [wrappedCurrency, collateralCurrency] = await Promise.all([
+        currencyIdToMonetaryCurrency(assetRegistry, id.currencies.wrapped),
+        currencyIdToMonetaryCurrency(assetRegistry, id.currencies.collateral),
+    ]);
     const wrappedId = isForeignAsset(wrappedCurrency) ? wrappedCurrency.id.toString() : wrappedCurrency.ticker;
     const collateralId = isForeignAsset(collateralCurrency)
         ? collateralCurrency.id.toString()

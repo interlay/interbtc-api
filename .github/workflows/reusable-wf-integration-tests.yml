@@ -27,7 +27,7 @@ jobs:
                   npx node --version
                   npx ts-node --version
             - name: Run and set up the parachain, oracle, staked relayer and vault
-              run: yarn docker-parachain-start -- -d --chain=${{ inputs.parachain }}
+              run: yarn docker-parachain-start -d --chain=${{ inputs.parachain }}
             - run: yarn ci:test
 
             - name: Archive Docker logs

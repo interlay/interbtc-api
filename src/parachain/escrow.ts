@@ -19,6 +19,8 @@ import {
 } from "../types";
 import { SystemAPI } from "./system";
 import { TransactionAPI } from ".";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 /**
  * @category BTC Bridge
@@ -41,6 +43,17 @@ export interface EscrowAPI {
      */
     totalVotingSupply(blockNumber?: number): Promise<MonetaryAmount<GovernanceCurrency>>;
     /**
+     * Build a create lock extrinsic without sending it.
+     *
+     * @param amount Governance token amount to lock (e.g. KINT or INTR)
+     * @param unlockHeight Block number to lock until
+     * @returns A create lock submittable extrinsic.
+     */
+    buildCreateLockExtrinsic(
+        amount: MonetaryAmount<GovernanceCurrency>,
+        unlockHeight: number
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+    /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
      * @param unlockHeight Block number to lock until
      * @remarks The amount can't be less than the max period (`getMaxPeriod` getter) to prevent rounding errors
@@ -59,6 +72,13 @@ export interface EscrowAPI {
      */
     getTotalStakedBalance(): Promise<MonetaryAmount<GovernanceCurrency>>;
     /**
+     * Build a withdraw extrinsic without sending it.
+     *
+     * @remarks Withdraws all locked governance currency
+     * @returns A withdraw submittable extrinsic.
+     */
+    buildWithdrawExtrinsic(): SubmittableExtrinsic<"promise", ISubmittableResult>;
+    /**
      * @remarks Withdraws all locked governance currency
      */
     withdraw(): Promise<void>;
@@ -71,15 +91,38 @@ export interface EscrowAPI {
      */
     getMaxPeriod(): Promise<BN>;
     /**
+     * Build a withdraw rewards extrinsic without sending it.
+     *
+     * @remarks Withdraws stake-to-vote rewards
+     * @returns A withdraw rewards submittable extrinsic.
+     */
+    buildWithdrawRewardsExtrinsic(): SubmittableExtrinsic<"promise", ISubmittableResult>;
+    /**
      * @remarks Withdraws stake-to-vote rewards
      */
     withdrawRewards(): Promise<void>;
+    /**
+     * Build an increase amount extrinsic without sending it.
+     *
+     * @param amount Governance token amount to lock (e.g. KINT or INTR)
+     * @returns An increase amount submittable extrinsic.
+     */
+    buildIncreaseAmountExtrinsic(
+        amount: MonetaryAmount<GovernanceCurrency>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
     /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
      */
     increaseAmount(amount: MonetaryAmount<GovernanceCurrency>): Promise<void>;
     /**
-     * @param amount Governance token amount to lock (e.g. KINT or INTR)
+     * Build an increase unlock height extrinsic without sending it.
+     *
+     * @param unlockHeight The unlock height to increase by.
+     * @returns An increase unlock height submittable extrinsic.
+     */
+    buildIncreaseUnlockHeightExtrinsic(unlockHeight: number): SubmittableExtrinsic<"promise", ISubmittableResult>;
+    /**
+     * @param unlockHeight The unlock height to increase by.
      */
     increaseUnlockHeight(unlockHeight: number): Promise<void>;
     /**
@@ -112,28 +155,53 @@ export class DefaultEscrowAPI implements EscrowAPI {
         private transactionAPI: TransactionAPI
     ) {}
 
+    buildCreateLockExtrinsic(
+        amount: MonetaryAmount<GovernanceCurrency>,
+        unlockHeight: number
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return this.api.tx.escrow.createLock(amount.toString(true), unlockHeight);
+    }
+
     async createLock(amount: MonetaryAmount<GovernanceCurrency>, unlockHeight: number): Promise<void> {
-        const tx = this.api.tx.escrow.createLock(amount.toString(true), unlockHeight);
+        const tx = this.buildCreateLockExtrinsic(amount, unlockHeight);
         await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
+    }
+
+    buildWithdrawExtrinsic(): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return this.api.tx.escrow.withdraw();
     }
 
     async withdraw(): Promise<void> {
-        const tx = this.api.tx.escrow.withdraw();
+        const tx = this.buildWithdrawExtrinsic();
         await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Withdraw, true);
     }
 
+    buildWithdrawRewardsExtrinsic(): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return this.api.tx.escrowAnnuity.withdrawRewards();
+    }
+
     async withdrawRewards(): Promise<void> {
-        const tx = this.api.tx.escrowAnnuity.withdrawRewards();
+        const tx = this.buildWithdrawRewardsExtrinsic();
         await this.transactionAPI.sendLogged(tx, this.api.events.escrowRewards.WithdrawReward, true);
     }
 
+    buildIncreaseAmountExtrinsic(
+        amount: MonetaryAmount<GovernanceCurrency>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return this.api.tx.escrow.increaseAmount(amount.toString(true));
+    }
+
     async increaseAmount(amount: MonetaryAmount<GovernanceCurrency>): Promise<void> {
-        const tx = this.api.tx.escrow.increaseAmount(amount.toString(true));
+        const tx = this.buildIncreaseAmountExtrinsic(amount);
         await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
     }
 
+    buildIncreaseUnlockHeightExtrinsic(unlockHeight: number): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return this.api.tx.escrow.increaseUnlockHeight(unlockHeight);
+    }
+
     async increaseUnlockHeight(unlockHeight: number): Promise<void> {
-        const tx = this.api.tx.escrow.increaseUnlockHeight(unlockHeight);
+        const tx = this.buildIncreaseUnlockHeightExtrinsic(unlockHeight);
         await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
     }
 

@@ -217,10 +217,32 @@ export interface VaultsAPI {
      * amount at the current exchange rate.
      */
     getPunishmentFee(): Promise<Big>;
+
+    /**
+     * Build withdraw collateral extrinsic (transaction) without sending it.
+     *
+     * @param amount The amount of collateral to withdraw
+     * @returns A withdraw collateral submittable extrinsic.
+     */
+    buildWithdrawCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * @param amount The amount of collateral to withdraw
      */
     withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
+
+    /**
+     * Build deposit collateral extrinsic (transaction) without sending it.
+     *
+     * @param amount The amount of extra collateral to lock
+     * @returns A deposit collateral submittable extrinsic.
+     */
+    buildDepositCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * @param amount The amount of extra collateral to lock
      */
@@ -324,12 +346,50 @@ export interface VaultsAPI {
         vaultCollateral: CollateralCurrencyExt,
         governanceCurrency: GovernanceCurrency
     ): Promise<MonetaryAmount<GovernanceCurrency>>;
+
+    /**
+     * Build accept new issues extrinsic without sending it.
+     *
+     * @param collateralCurrency the collateral currency for which to change the accepting status,
+     * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
+     * @returns An accept new issues submittable extrinsic.
+     */
+    buildAcceptNewIssuesExtrinsic(
+        collateralCurrency: CollateralCurrencyExt,
+        acceptNewIssues: boolean
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * Enables or disables issue requests for given vault
      * @param vaultId The vault ID whose issuing will be toggled
      * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
      */
     toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void>;
+
+    /**
+     * Build extrinsic to register a public key.
+     *
+     * This extrinsic can be used together with a register vault extrinsic (see: {@link buildRegisterVaultExtrinsic})
+     * to register the first vault for the logged in account id.
+     *
+     * Registering the public key should only be done once per account id when it is not associated with a running vault, yet.
+     *
+     * @param publicKey The BTC public key of the vault to derive deposit keys with
+     * the {@link https://spec.interlay.io/security_performance/xclaim-security.html#okd | On-Chain Key Derivation Scheme}.
+     * @returns A register vault submittable extrinsic.
+     */
+    buildRegisterPublicKeyExtrinsic(publicKey: string): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
+    /**
+     * Build extrinsic to register a new vault.
+     *
+     * @param collateralAmount The collateral amount to register the vault with - in the new collateral currency.
+     * @returns A register vault submittable extrinsic.
+     */
+    buildRegisterVaultExtrinsic(
+        collateralAmount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
     /**
      * Registers a new vault for the current account ID with a new collateral amount.
      * Only applicable if the connected account ID already has a running vault with a different collateral currency.
@@ -390,7 +450,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return this.api.events.vaultRegistry.RegisterVault;
     }
 
-    // helper method; mainly for easier mocking in unit tests without an active ApiPromise instance
     buildRegisterVaultExtrinsic(
         collateralAmount: MonetaryAmount<CollateralCurrencyExt>
     ): SubmittableExtrinsic<"promise", ISubmittableResult> {
@@ -399,34 +458,48 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit);
     }
 
+    buildRegisterPublicKeyExtrinsic(publicKey: string): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return this.api.tx.vaultRegistry.registerPublicKey(publicKey);
+    }
+
     async register(amount: MonetaryAmount<CollateralCurrencyExt>, publicKey: string): Promise<void> {
-        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
-        const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
         await Promise.all([
             this.transactionAPI.sendLogged(
-                this.api.tx.vaultRegistry.registerPublicKey(publicKey),
+                this.buildRegisterPublicKeyExtrinsic(publicKey),
                 this.api.events.vaultRegistry.UpdatePublicKey,
                 true
             ),
             this.transactionAPI.sendLogged(
-                this.api.tx.vaultRegistry.registerVault(currencyPair, amountAtomicUnit),
+                this.buildRegisterVaultExtrinsic(amount),
                 this.api.events.vaultRegistry.RegisterVault,
                 true
             ),
         ]);
     }
 
-    async withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+    buildWithdrawCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
         const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
-        const tx = this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
+        return this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
+    }
+
+    async withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+        const tx = this.buildWithdrawCollateralExtrinsic(amount);
         await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral, true);
     }
 
-    async depositCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
-        const amountAsPlanck = this.api.createType("Balance", amount.toString(true));
+    buildDepositCollateralExtrinsic(
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
-        const tx = this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAsPlanck);
+        return this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAtomicUnit);
+    }
+
+    async depositCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+        const tx = this.buildDepositCollateralExtrinsic(amount);
         await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.DepositCollateral, true);
     }
 
@@ -954,9 +1027,20 @@ export class DefaultVaultsAPI implements VaultsAPI {
         await this.transactionAPI.sendLogged(tx, this.api.events.relay.VaultTheft, true);
     }
 
+    buildAcceptNewIssuesExtrinsic(
+        collateralCurrency: CollateralCurrencyExt,
+        acceptNewIssues: boolean
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
+        return this.api.tx.vaultRegistry.acceptNewIssues(vaultCurrencyPair, acceptNewIssues);
+    }
+
     async toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void> {
-        const currencyPair = vaultId.currencies;
-        const tx = this.api.tx.vaultRegistry.acceptNewIssues(currencyPair, acceptNewIssues);
+        const collateralCurrency = await currencyIdToMonetaryCurrency(
+            this.assetRegistryAPI,
+            vaultId.currencies.collateral
+        );
+        const tx = this.buildAcceptNewIssuesExtrinsic(collateralCurrency, acceptNewIssues);
         await this.transactionAPI.sendLogged(tx, this.api.events.system.ExtrinsicSuccess, true);
     }
 

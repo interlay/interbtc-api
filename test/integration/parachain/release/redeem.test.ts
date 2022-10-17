@@ -28,7 +28,7 @@ import {
     VAULT_1_URI,
 } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
-import { getCorrespondingCollateralCurrencies, issueSingle, newMonetaryAmount } from "../../../../src/utils";
+import { issueSingle, newMonetaryAmount } from "../../../../src/utils";
 import {
     CollateralCurrencyExt,
     DefaultTransactionAPI,
@@ -40,7 +40,7 @@ import {
     WrappedCurrency,
 } from "../../../../src";
 import { assert, expect } from "../../../chai";
-import { runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
+import { getCorrespondingCollateralCurrenciesForTests, runWhileMiningBTCBlocks, sudo } from "../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -72,7 +72,7 @@ describe("redeem", () => {
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         reporterInterBtcAPI = new DefaultInterBtcApi(api, "regtest", reportingVaultAccount, ESPLORA_BASE_PATH);
-        collateralCurrencies = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency());
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         vaultToLiquidateIds = collateralCurrencies.map((collateralCurrency) =>

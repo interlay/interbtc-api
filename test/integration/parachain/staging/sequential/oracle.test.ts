@@ -5,14 +5,12 @@ import { Bitcoin, BitcoinAmount, ExchangeRate } from "@interlay/monetary-js";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
+import { CollateralCurrencyExt, DefaultInterBtcApi, getSS58Prefix, InterBtcApi } from "../../../../../src";
 import {
-    CollateralCurrencyExt,
-    DefaultInterBtcApi,
-    getCorrespondingCollateralCurrencies,
-    getSS58Prefix,
-    InterBtcApi,
-} from "../../../../../src";
-import { getExchangeRateValueToSetForTesting, ORACLE_MAX_DELAY } from "../../../../utils/helpers";
+    getCorrespondingCollateralCurrenciesForTests,
+    getExchangeRateValueToSetForTesting,
+    ORACLE_MAX_DELAY,
+} from "../../../../utils/helpers";
 
 describe("OracleAPI", () => {
     let api: ApiPromise;
@@ -33,7 +31,7 @@ describe("OracleAPI", () => {
         bobAccount = keyring.addFromUri("//Bob");
         charlieAccount = keyring.addFromUri("//Charlie");
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
-        collateralCurrencies = getCorrespondingCollateralCurrencies(interBtcAPI.getGovernanceCurrency());
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
     });
 
     after(() => {

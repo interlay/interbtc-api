@@ -18,12 +18,7 @@ import {
     newVaultId,
     WrappedCurrency,
 } from "../../../../../src";
-import {
-    setNumericStorage,
-    issueSingle,
-    newMonetaryAmount,
-    getCorrespondingCollateralCurrencies,
-} from "../../../../../src/utils";
+import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import {
@@ -39,7 +34,7 @@ import {
     PARACHAIN_ENDPOINT,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { callWith, sudo } from "../../../../utils/helpers";
+import { callWith, getCorrespondingCollateralCurrenciesForTests, sudo } from "../../../../utils/helpers";
 import { Nomination } from "../../../../../src/parachain/nomination";
 
 // TODO: readd this once we want to activate nomination
@@ -67,7 +62,7 @@ describe.skip("NominationAPI", () => {
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        collateralCurrencies = getCorrespondingCollateralCurrencies(userInterBtcAPI.getGovernanceCurrency());
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_ids = collateralCurrencies.map((collateralCurrency) =>

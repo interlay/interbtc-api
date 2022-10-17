@@ -16,6 +16,19 @@ export interface TransactionAPI {
         successEventType?: AugmentedEvent<ApiTypes, T>,
         onlyInBlock?: boolean
     ): Promise<ISubmittableResult>;
+
+    /**
+     * Builds a submittable extrinsic to send other extrinsic in batch.
+     *
+     * @param extrinsics An array of extrinsics to be submitted as batch.
+     * @param atomic Whether the given extrinsics should be handled atomically or not.
+     *   When true (default) all extrinsics will rollback if one fails (batchAll), otherwise allows partial successes (batch).
+     * @returns A batch/batchAll submittable extrinsic.
+     */
+    buildBatchExtrinsic(
+        extrinsics: SubmittableExtrinsic<"promise", ISubmittableResult>[],
+        atomic?: boolean
+    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
 }
 
 export class DefaultTransactionAPI implements TransactionAPI {
@@ -42,6 +55,31 @@ export class DefaultTransactionAPI implements TransactionAPI {
             return Promise.reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
         }
         return DefaultTransactionAPI.sendLogged(this.api, this.account, transaction, successEventType, onlyInBlock);
+    }
+
+    buildBatchExtrinsic(
+        extrinsics: SubmittableExtrinsic<"promise", ISubmittableResult>[],
+        atomic: boolean = true
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        return DefaultTransactionAPI.buildBatchExtrinsic(this.api, extrinsics, atomic);
+    }
+
+    /**
+     * Builds a submittable extrinsic to send other extrinsic in batch.
+     *
+     * @param api The ApiPromis instance to construct the batch extrinsic with.
+     * @param extrinsics An array of extrinsics to be submitted as batch.
+     * @param atomic Whether the given extrinsics should be handled atomically or not.
+     *   When true (default) all extrinsics will rollback if one fails (batchAll), otherwise allows partial successes (batch).
+     * @returns A batch/batchAll submittable extrinsic.
+     */
+    static buildBatchExtrinsic(
+        api: ApiPromise,
+        extrinsics: SubmittableExtrinsic<"promise", ISubmittableResult>[],
+        atomic: boolean = true
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const batchExtrinsic = (atomic ? api.tx.utility.batchAll : api.tx.utility.batch)(extrinsics);
+        return batchExtrinsic;
     }
 
     static async sendLogged<T extends AnyTuple>(
