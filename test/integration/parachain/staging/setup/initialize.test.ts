@@ -282,7 +282,7 @@ describe("Initialize parachain state", () => {
         await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kintsugi), Kintsugi);
     });
 
-    it.only("should set BTC tx fees", async () => {
+    it("should set BTC tx fees", async () => {
         const setFeeEstimate = new Big(1);
         let getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees().catch((_) => undefined);
         if (!getFeeEstimate) {
