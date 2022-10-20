@@ -113,39 +113,30 @@ describe("Encoding", () => {
             const opentimeBlock = 1;
             // pending status internally, but expect expired due to blocks elapsed
             const mockInternalPendingStatus = buildMockStatus("Pending");
-            it("when global redeem period is larger than request period", () => {
-                const globalRedeemPeriod = 30;
-                const requestPeriod = 25;
+            const expectedStatus = RedeemStatus.Expired;
+
+            it("when global redeem period is greater than request period and less than opentime + period", () => {
+                const globalRedeemPeriod = currentBlock - 5;
+                const requestPeriod = globalRedeemPeriod - 3;
+                // preconditions
+                assert.isAbove(globalRedeemPeriod, requestPeriod, "Precondition failed: fix test setup");
+                assert.isBelow(globalRedeemPeriod, currentBlock, "Precondition failed: fix test setup");
 
                 const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
-                const expectedStatus = RedeemStatus.Expired;
 
                 const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
                 assertEqualPretty(actualStatus, expectedStatus);
             });
 
-            it("when global redeem period is smaller than request period", () => {
-                const globalRedeemPeriod = 25;
-                const requestPeriod = 30;
+            it("when request period is greater than global redeem period and less than opentime + period", () => {
+                const requestPeriod = currentBlock - 3;
+                const globalRedeemPeriod = requestPeriod - 5;
+                // preconditions
+                assert.isAbove(requestPeriod, globalRedeemPeriod, "Precondition failed: fix test setup");
+                assert.isBelow(requestPeriod, currentBlock, "Precondition failed: fix test setup");
 
-                // pending status internally, but expect expired due to blocks elapsed
                 const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
-                const expectedStatus = RedeemStatus.Expired;
-
-                const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
-
-                assertEqualPretty(actualStatus, expectedStatus);
-            });
-
-            it("when opentime + period is equal to current block", () => {
-                const globalRedeemPeriod = currentBlock - opentimeBlock;
-                // anything less than above
-                const requestPeriod = globalRedeemPeriod - 1;
-
-                // pending status internally, but expect expired due to blocks elapsed
-                const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
-                const expectedStatus = RedeemStatus.Expired;
 
                 const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
@@ -153,19 +144,44 @@ describe("Encoding", () => {
             });
         });
 
-        it("should correctly parse pending status", () => {
+        describe("should correctly parse pending status", () => {
             const currentBlock = 42;
             const opentimeBlock = 1;
-            const globalRedeemPeriod = 50;
-            const requestPeriod = 25;
-
-            // pending status internally, and expect still pending due to blocks elapsed
-            const mockRequest = buildMockRedeemRequest(buildMockStatus("Pending"), opentimeBlock, requestPeriod);
+            const mockInternalPendingStatus = buildMockStatus("Pending");
             const expectedStatus = RedeemStatus.PendingWithBtcTxNotFound;
 
-            const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
+            it("when opentime + period is greater than current block cont", () => {
+                const globalRedeemPeriod = 50;
+                const requestPeriod = 25;
+                // preconditions
+                assert.isTrue(
+                    opentimeBlock + Math.max(requestPeriod, globalRedeemPeriod) > currentBlock,
+                    "Precondition failed: fix test setup"
+                );
 
-            assertEqualPretty(actualStatus, expectedStatus);
+                const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
+
+                const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
+
+                assertEqualPretty(actualStatus, expectedStatus);
+            });
+
+            it("when opentime + period is equal to current block count", () => {
+                const globalRedeemPeriod = currentBlock - opentimeBlock;
+                // anything less than above
+                const requestPeriod = globalRedeemPeriod - 1;
+                // preconditions
+                assert.isTrue(
+                    opentimeBlock + Math.max(requestPeriod, globalRedeemPeriod) == currentBlock,
+                    "Precondition failed: fix test setup"
+                );
+
+                const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
+
+                const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
+
+                assertEqualPretty(actualStatus, expectedStatus);
+            });
         });
     });
 });
