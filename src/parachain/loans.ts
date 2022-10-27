@@ -1,9 +1,11 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { KBtc, Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
-import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData } from "../types";
+import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, parseOrmlTokensAccountData } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
+import { newCurrencyId } from "../utils";
+import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 
 // TODO: remove mock data after real implementation is added 
 const MOCKDATA_LOAN_ASSET_KBTC: LoanAsset = {
@@ -51,7 +53,7 @@ const MOCKDATA_SUPPLY_POSITIONS = [
 const MOCKDATA_BORROW_POSITION_INTR: BorrowPosition = {
     currency: Kintsugi,
     amount: new MonetaryAmount(Kintsugi, Big(1305.73946294014)),
-    earnedReward: new MonetaryAmount(Kintsugi, Big(0))    
+    earnedReward: new MonetaryAmount(Kintsugi, Big(0))
 };
 
 const MOCKDATA_BORROW_POSITIONS = [
@@ -116,6 +118,30 @@ export class DefaultLoansAPI implements LoansAPI {
     getCurrentCollateralBalance(accountId: AccountId, currency: CurrencyExt): Promise<MonetaryAmount<CurrencyExt>> {
         // return some mocked amount for the given currency as promise
         return Promise.resolve(new MonetaryAmount(currency, 12.34567));
+    }
+
+    getLendCurrencyFromUnderlying()
+
+    async getLendCurrencyIdFromUnderlying(currency: CurrencyExt): Promise<InterbtcPrimitivesCurrencyId> {
+        const currencyId = newCurrencyId(this.api, currency)
+        const { value } = await this.api.query.loans.markets(currencyId);
+        return value.ptokenId;
+    }
+
+    async getLendBalance(accountId: AccountId, currency: CurrencyExt) {
+        const lendTokenId = await this.getLendCurrencyIdFromUnderlying(currency);
+        const lendTokenBalance = await this.api.query.tokens.accounts(accountId, lendTokenId);
+        const lendTokenExchangeRate = await this.api.query.loans.exchangeRate(lendTokenId);
+
+        const p =  parseOrmlTokensAccountData(lendTokenBalance)
+        return 
+        // get qCurrency balance
+        // convert qCurrency amount to currency amount using exchange rate
+    }
+
+    getLendPosition(accountId: AccountId, currency: CurrencyExt) {
+        const balance = getLendBalance(accountId, currency);
+        const depositedBalance = balance - 
     }
 
     getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
