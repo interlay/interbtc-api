@@ -19,6 +19,7 @@ import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { currencyIdToMonetaryCurrency } from "../utils/currency";
+import { LoansAPI } from "./loans";
 
 export enum NominationAmountType {
     Raw = "raw",
@@ -140,7 +141,8 @@ export class DefaultNominationAPI implements NominationAPI {
         private vaultsAPI: VaultsAPI,
         private rewardsAPI: RewardsAPI,
         private transactionAPI: TransactionAPI,
-        private assetRegistryAPI: AssetRegistryAPI
+        private assetRegistryAPI: AssetRegistryAPI,
+        private loansAPI: LoansAPI
     ) {}
 
     async depositCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
@@ -190,7 +192,7 @@ export class DefaultNominationAPI implements NominationAPI {
         const nonceMap = new Map<InterbtcPrimitivesVaultId, number>();
         for (const vaultId of vaultIds) {
             const nonce = await this.rewardsAPI.getStakingPoolNonce(
-                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.collateral),
+                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, vaultId.currencies.collateral),
                 vaultId.accountId
             );
             nonceMap.set(vaultId, nonce);
@@ -209,6 +211,7 @@ export class DefaultNominationAPI implements NominationAPI {
             const nomination = decodeFixedPointType(v[1] as UnsignedFixedPoint);
             const collateralCurrency = await currencyIdToMonetaryCurrency(
                 this.assetRegistryAPI,
+                this.loansAPI,
                 vaultId.currencies.collateral
             );
             const monetaryNomination = newMonetaryAmount(nomination, collateralCurrency, true);
@@ -223,7 +226,7 @@ export class DefaultNominationAPI implements NominationAPI {
 
             // Cannot just do `nonces.get(rawNomination.vaultId)` because vaultId objects differ
             // ever so slightly even if they have identical properties
-            const vaultIdHighestNonce = await queryNominationsMap(this.assetRegistryAPI, nonces, rawNomination.vaultId);
+            const vaultIdHighestNonce = await queryNominationsMap(this.assetRegistryAPI, this.loansAPI, nonces, rawNomination.vaultId);
             // Only consider active nominations, i.e. with the latest nonce
             if (rawNomination.nonce === vaultIdHighestNonce && rawNomination.amount.toBig().gt(0)) {
                 nominations.push(rawNomination);
@@ -242,9 +245,10 @@ export class DefaultNominationAPI implements NominationAPI {
                     rawNomination.nominatorId,
                     await currencyIdToMonetaryCurrency(
                         this.assetRegistryAPI,
+                        this.loansAPI,
                         rawNomination.vaultId.currencies.collateral
                     ),
-                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, rawNomination.vaultId.currencies.wrapped)
+                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, rawNomination.vaultId.currencies.wrapped)
                 );
                 return {
                     nonce: rawNomination.nonce,
@@ -287,10 +291,12 @@ export class DefaultNominationAPI implements NominationAPI {
         for (const rawNomination of rawList) {
             const nominationCurrency = await currencyIdToMonetaryCurrency(
                 this.assetRegistryAPI,
+                this.loansAPI,
                 rawNomination.vaultId.currencies.collateral
             );
             const nominationWrappedCurrency = await currencyIdToMonetaryCurrency(
                 this.assetRegistryAPI,
+                this.loansAPI,
                 rawNomination.vaultId.currencies.wrapped
             );
             const wrappedCurrency = this.wrappedCurrency;
@@ -353,10 +359,12 @@ export class DefaultNominationAPI implements NominationAPI {
         for (const nomination of filteredNominations) {
             const wrappedVaultCurrency = await currencyIdToMonetaryCurrency(
                 this.assetRegistryAPI,
+                this.loansAPI,
                 nomination.vaultId.currencies.wrapped
             );
             const collateralVaultCurrency = await currencyIdToMonetaryCurrency(
                 this.assetRegistryAPI,
+                this.loansAPI,
                 nomination.vaultId.currencies.collateral
             );
 

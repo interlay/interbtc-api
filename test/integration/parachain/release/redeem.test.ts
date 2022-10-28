@@ -6,8 +6,10 @@ import {
     currencyIdToMonetaryCurrency,
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
+    DefaultLoansAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
+    LoansAPI,
     VaultRegistryVault,
 } from "../../../../src/index";
 
@@ -58,6 +60,7 @@ describe("redeem", () => {
     let oracleInterBtcAPI: InterBtcApi;
     let reporterInterBtcAPI: InterBtcApi;
     let assetRegistry: AssetRegistryAPI;
+    let loansAPI: LoansAPI;
 
     let collateralCurrencies: Array<CollateralCurrencyExt>;
     let wrappedCurrency: WrappedCurrency;
@@ -69,6 +72,7 @@ describe("redeem", () => {
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         const reportingVaultAccount = keyring.addFromUri(VAULT_1_URI);
         assetRegistry = new DefaultAssetRegistryAPI(api);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         reporterInterBtcAPI = new DefaultInterBtcApi(api, "regtest", reportingVaultAccount, ESPLORA_BASE_PATH);
@@ -111,6 +115,7 @@ describe("redeem", () => {
         for (const vaultToLiquidateId of vaultToLiquidateIds) {
             const collateralCurrency = await currencyIdToMonetaryCurrency(
                 assetRegistry,
+                loansAPI,
                 vaultToLiquidateId.currencies.collateral
             );
             const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency);

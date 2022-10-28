@@ -7,6 +7,7 @@ import { decodeFixedPointType } from "../utils/encoding";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { currencyIdToMonetaryCurrency } from "../utils";
+import { LoansAPI } from "./loans";
 
 export enum GriefingCollateralType {
     Issue,
@@ -54,7 +55,7 @@ export interface FeeAPI {
 }
 
 export class DefaultFeeAPI implements FeeAPI {
-    constructor(private api: ApiPromise, private oracleAPI: OracleAPI, private assetRegistryAPI: AssetRegistryAPI) {}
+    constructor(private api: ApiPromise, private oracleAPI: OracleAPI, private assetRegistryAPI: AssetRegistryAPI, private loansAPI: LoansAPI) {}
 
     async getGriefingCollateral(
         amount: MonetaryAmount<WrappedCurrency>,
@@ -74,6 +75,7 @@ export class DefaultFeeAPI implements FeeAPI {
 
         const nativeCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
+            this.loansAPI,
             this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId
         );
         const [griefingCollateralRate, griefingAmount] = await Promise.all([

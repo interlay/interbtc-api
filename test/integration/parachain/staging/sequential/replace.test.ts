@@ -4,8 +4,10 @@ import {
     AssetRegistryAPI,
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
+    DefaultLoansAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
+    LoansAPI,
     newMonetaryAmount,
 } from "../../../../../src/index";
 
@@ -41,6 +43,7 @@ describe("replace", () => {
     let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
     let interBtcAPI: InterBtcApi;
     let assetRegistry: AssetRegistryAPI;
+    let loansAPI: LoansAPI;
 
     let wrappedCurrency: WrappedCurrency;
 
@@ -58,6 +61,7 @@ describe("replace", () => {
 
         userAccount = keyring.addFromUri(USER_1_URI);
         assetRegistry = new DefaultAssetRegistryAPI(api);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
@@ -94,6 +98,7 @@ describe("replace", () => {
 
                 const collateralCurrency = await currencyIdToMonetaryCurrency(
                     assetRegistry,
+                    loansAPI,
                     vault_3_id.currencies.collateral
                 );
                 const foundEventPromise = waitForEvent(
@@ -145,6 +150,7 @@ describe("replace", () => {
             for (const vault_2_id of vault_2_ids) {
                 const collateralCurrency = await currencyIdToMonetaryCurrency(
                     assetRegistry,
+                    loansAPI,
                     vault_2_id.currencies.collateral
                 );
                 const currencyTicker = collateralCurrency.ticker;

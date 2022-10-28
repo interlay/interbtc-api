@@ -2,7 +2,7 @@ import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { CurrencyExt } from "./currency";
 
-interface LoanReward{
+interface LoanReward {
     currency: CurrencyExt;
     apy: Big; // percentage
 }
@@ -36,4 +36,8 @@ type TickerToData<T> = {
     [ticker: string]: T
 }
 
-export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData };
+interface LoanMarket {
+    lendTokenId: number
+}
+
+export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket };

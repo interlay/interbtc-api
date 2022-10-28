@@ -15,7 +15,7 @@ import {
     VoteKintsugi,
 } from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt } from "../types/currency";
+import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt, LendToken } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId, storageKeyToNthInner } from "./encoding";
@@ -23,6 +23,7 @@ import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../
 import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { Option } from "@polkadot/types/codec";
 import { u128 } from "@polkadot/types";
+import { DefaultLoansAPI, LoansAPI } from "../parachain";
 
 // set maximum exponents
 Big.PE = 21;
@@ -102,11 +103,13 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
  * greater than zero.
  * @param api ApiPromise instance to query the parachain
  * @param assetRegistry AssetRegistryAPI instance to fetch foreign asset data (if needed)
+ * @param loansAPI LoansAPI to fetch Lend Tokens if needed.
  * @returns An array of collateral currencies.
  */
 export async function getCollateralCurrencies(
     api: ApiPromise,
-    assetRegistry: AssetRegistryAPI
+    assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI
 ): Promise<Array<CollateralCurrencyExt>> {
     const collatCeilEntries = await api.query.vaultRegistry.systemCollateralCeiling.entries();
 
@@ -119,7 +122,7 @@ export async function getCollateralCurrencies(
 
     return Promise.all(
         collateralCurrencyPrimitives.map((currencyPair) =>
-            currencyIdToMonetaryCurrency(assetRegistry, currencyPair.collateral)
+            currencyIdToMonetaryCurrency(assetRegistry, loansAPI, currencyPair.collateral)
         )
     );
 }
@@ -127,25 +130,47 @@ export async function getCollateralCurrencies(
 export function isForeignAsset(currencyExt: CurrencyExt): currencyExt is ForeignAsset {
     // disable rule, use of any is deliberate for run time check
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (currencyExt as any).id !== undefined;
+    return (currencyExt as any).foreignAsset !== undefined;
+}
+
+export function isLendToken(currencyExt: CurrencyExt): currencyExt is LendToken {
+    // disable rule, use of any is deliberate for run time check
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (currencyExt as any).lendToken !== undefined;
 }
 
 export function isCurrency(currencyExt: CurrencyExt): currencyExt is Currency {
-    return !isForeignAsset(currencyExt);
+    return !isForeignAsset(currencyExt) && !isLendToken(currencyExt);
 }
 
 export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyExt): boolean {
-    if (isForeignAsset(currency) && isForeignAsset(otherCurrency)) {
-        return currency.id === otherCurrency.id;
-    } else if (isCurrency(currency) && isCurrency(otherCurrency)) {
+    if (isCurrency(currency) && isCurrency(otherCurrency)) {
         return currency.ticker === otherCurrency.ticker;
+    } else if (isForeignAsset(currency) && isForeignAsset(otherCurrency)) {
+        return currency.foreignAsset.id === otherCurrency.foreignAsset.id;
+    } else if (isLendToken(currency) && isLendToken(otherCurrency)) {
+        return currency.lendToken.id === otherCurrency.lendToken.id;
     }
 
     return false;
 }
 
+
+export function getCurrencyIdentifier(currency: CurrencyExt): unknown {
+    if (isForeignAsset(currency)) {
+        return { foreignAsset: currency.foreignAsset.id };
+    }
+    if (isLendToken(currency)) {
+        // TODO: Check this is correct identifier to be returned,
+        return { lendToken: currency.lendToken.id };
+    }
+    return { token: currency.ticker };
+
+}
+
 export async function currencyIdToMonetaryCurrency(
     assetRegistryApi: AssetRegistryAPI,
+    loansApi: LoansAPI,
     currencyId: InterbtcPrimitivesCurrencyId
 ): Promise<CurrencyExt> {
     if (currencyId.isToken) {
@@ -153,6 +178,9 @@ export async function currencyIdToMonetaryCurrency(
     } else if (currencyId.isForeignAsset) {
         const foreignAssetId = currencyId.asForeignAsset;
         return assetRegistryApi.getForeignAsset(foreignAssetId);
+    } else if (currencyId.isPToken) {
+        const lendTokenId = currencyId.asPToken
+        return loansApi.getUnderlyingCurrencyFromLendCurrencyId(lendTokenId);
     }
 
     throw new Error(`No handling implemented for currencyId type of ${currencyId.type}`);

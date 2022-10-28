@@ -37,9 +37,10 @@ export type CollateralIdLiteral =
 const CollateralCurrency = [Polkadot, Kusama, Interlay, Kintsugi] as const;
 type CollateralCurrency = typeof CollateralCurrency[number];
 
-export type ForeignAsset = Currency & { id: number; coingeckoId: string };
-export type CollateralCurrencyExt = CollateralCurrency | ForeignAsset;
-export type CurrencyExt = Currency | ForeignAsset;
+export type ForeignAsset = Currency & {foreignAsset: { id: number; coingeckoId: string }};
+export type LendToken = Currency & {lendToken: { id: number }}; 
+export type CollateralCurrencyExt = CollateralCurrency | ForeignAsset | LendToken;
+export type CurrencyExt = Currency | ForeignAsset | LendToken;
 
 export const WrappedCurrency = [InterBtc, KBtc];
 export type WrappedCurrency = typeof WrappedCurrency[number];

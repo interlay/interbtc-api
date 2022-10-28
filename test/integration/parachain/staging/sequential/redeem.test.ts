@@ -6,8 +6,10 @@ import {
     currencyIdToMonetaryCurrency,
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
+    DefaultLoansAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
+    LoansAPI,
     VaultRegistryVault,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
@@ -52,6 +54,7 @@ describe("redeem", () => {
 
     let interBtcAPI: InterBtcApi;
     let assetRegistry: AssetRegistryAPI;
+    let loansAPI: LoansAPI;
 
     const fetchBtcTxIdFromOpReturn = async (redeemRequestId: string): Promise<string> => {
         const opreturnData = stripHexPrefix(redeemRequestId);
@@ -66,6 +69,7 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry);
 
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
@@ -194,7 +198,7 @@ describe("redeem", () => {
         // get BTC tx id
         const btcTxId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
 
-        const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, vault_1_id.currencies.collateral);
+        const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vault_1_id.currencies.collateral);
         const vaultBitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
