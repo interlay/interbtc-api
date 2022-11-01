@@ -155,7 +155,6 @@ export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyEx
     return false;
 }
 
-
 export function getCurrencyIdentifier(currency: CurrencyExt): unknown {
     if (isForeignAsset(currency)) {
         return { foreignAsset: currency.foreignAsset.id };
@@ -165,7 +164,6 @@ export function getCurrencyIdentifier(currency: CurrencyExt): unknown {
         return { lendToken: currency.lendToken.id };
     }
     return { token: currency.ticker };
-
 }
 
 export async function currencyIdToMonetaryCurrency(
@@ -179,8 +177,8 @@ export async function currencyIdToMonetaryCurrency(
         const foreignAssetId = currencyId.asForeignAsset;
         return assetRegistryApi.getForeignAsset(foreignAssetId);
     } else if (currencyId.isPToken) {
-        const lendTokenId = currencyId.asPToken
-        return loansApi.getUnderlyingCurrencyFromLendCurrencyId(lendTokenId);
+        const underlyingCurrency = await loansApi.getUnderlyingCurrencyFromLendTokenId(currencyId);
+        return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, currencyId);
     }
 
     throw new Error(`No handling implemented for currencyId type of ${currencyId.type}`);
