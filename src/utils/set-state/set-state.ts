@@ -369,6 +369,7 @@ async function main(): Promise<void> {
     const defaultCollateralSymbol = (
         await currencyIdToMonetaryCurrency(
             sudoAccountInterBtcApi.assetRegistry,
+            sudoAccountInterBtcApi.loans,
             sudoAccountInterBtcApi.api.consts.currency.getRelayChainCurrencyId)
     ).ticker;
     const defaultWrappedSymbol = sudoAccountInterBtcApi.getWrappedCurrency().ticker;

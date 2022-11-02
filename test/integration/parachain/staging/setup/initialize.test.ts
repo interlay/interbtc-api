@@ -454,7 +454,11 @@ describe("Initialize parachain state", () => {
     it("should return aUSD among the collateral currencies", async function () {
         // run this check a few tests after it has been registered to avoid needing to wait for
         // block finalizations
-        const collateralCurrencies = await getCollateralCurrencies(userInterBtcAPI.api, userInterBtcAPI.assetRegistry);
+        const collateralCurrencies = await getCollateralCurrencies(
+            userInterBtcAPI.api,
+            userInterBtcAPI.assetRegistry,
+            userInterBtcAPI.loans
+        );
 
         assert.isDefined(
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
