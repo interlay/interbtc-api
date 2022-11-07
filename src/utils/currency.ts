@@ -161,7 +161,8 @@ export function getCurrencyIdentifier(currency: CurrencyExt): unknown {
     }
     if (isLendToken(currency)) {
         // TODO: Check this is correct identifier to be returned,
-        return { lendToken: currency.lendToken.id };
+        // Change `pToken` to `lendToken`
+        return { pToken: currency.lendToken.id };
     }
     return { token: currency.ticker };
 }

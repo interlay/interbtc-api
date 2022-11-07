@@ -6,6 +6,7 @@ import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
 import { currencyIdToMonetaryCurrency, decodeFixedPointType, newCurrencyId, newMonetaryAmount } from "../utils";
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
+import { StorageKey, Option } from "@polkadot/types";
 
 // TODO: remove mock data after real implementation is added
 const MOCKDATA_LOAN_ASSET_KBTC: LoanAsset = {
@@ -146,8 +147,13 @@ export class DefaultLoansAPI implements LoansAPI {
         };
     }
 
+    // Wrapped call to make mocks in tests simple.
+    getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<PalletLoansMarket>][]> {
+        return this.api.query.loans.markets.entries();
+    }
+
     async getMarkets(): Promise<Map<InterbtcPrimitivesCurrencyId, LoanMarket>> {
-        const markets = await this.api.query.loans.markets.entries();
+        const markets = await this.getLoansMarketsEntries();
 
         const result = new Map<InterbtcPrimitivesCurrencyId, LoanMarket>();
         for (const [key, market] of markets) {
@@ -202,7 +208,7 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     async getLendTokens(): Promise<LendToken[]> {
-        const marketEntries = await this.api.query.loans.markets.entries();
+        const marketEntries = await this.getLoansMarketsEntries();
 
         return Promise.all(
             marketEntries.map(async ([key, market]) => {
@@ -248,7 +254,7 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
-        const marketsEntries = await this.api.query.loans.markets.entries();
+        const marketsEntries = await this.getLoansMarketsEntries();
         const marketsCurrencies = marketsEntries.map(([key, value]) => [key.args[0], value.unwrap().ptokenId]);
 
         return Promise.all(
