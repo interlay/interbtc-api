@@ -31,6 +31,7 @@ import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types
 import { expect } from "chai";
 import sinon from "sinon";
 import { SingleAccountSigner } from "test/utils/SingleAccountSigner";
+import { CLIENT_RENEG_LIMIT } from "tls";
 
 describe("Loans", () => {
     let api: ApiPromise;
@@ -112,6 +113,7 @@ describe("Loans", () => {
                 api.query.loans.markets.entries(),
                 userInterBtcAPI.loans.getLendTokens(),
             ]);
+            console.log(markets);
             const marketsUnderlyingCurrencyId = markets[0][0].args[0];
 
             expect(markets.length).to.be.equal(lendTokens.length);
@@ -147,7 +149,15 @@ describe("Loans", () => {
         });
     });
 
-    it("should get underlying currency from lend token id");
+    describe("getLendPositionsOfAccount", () => {
+        it("should get all lend positions of account in correct format");
+        it("should get correct data after position is enabled as collateral");
+        it("should get correct interest and subsidy reward amount");
+        it("should get empty array when no lend position exists for account");
+    });
 
-    it("should get lend positions of account", async () => {});
+    describe("getUnderlyingCurrencyFromLendTokenId", () => {
+        it("should return correct underlying currency for lend token");
+        it("should throw when lend token id is of non-existing currency");
+    });
 });

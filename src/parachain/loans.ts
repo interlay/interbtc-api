@@ -88,10 +88,10 @@ export interface LoansAPI {
     getMarkets(): Promise<Map<InterbtcPrimitivesCurrencyId, LoanMarket>>;
 
     /**
-     * Get the supply positions for given account.
+     * Get the lend positions for given account.
      *
      * @param accountId the account Id for which to get supply positions
-     * @returns Array of supply positions of account.
+     * @returns Array of lend positions of account.
      */
     getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>>;
 
