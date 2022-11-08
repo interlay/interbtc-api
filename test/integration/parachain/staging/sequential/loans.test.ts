@@ -10,6 +10,7 @@ import {
     InterBtcApi,
     LendToken,
     newCurrencyId,
+    newMonetaryAmount,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import {
@@ -91,7 +92,7 @@ describe("Loans", () => {
             state: "Pending",
             supplyCap: "5000000000000000000000",
             borrowCap: "5000000000000000000000",
-            ptokenId: lendTokenId,
+            lendTokenId,
         };
 
         const addMarketExtrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(underlyingCurrencyId, marketData);
@@ -113,7 +114,7 @@ describe("Loans", () => {
                 api.query.loans.markets.entries(),
                 userInterBtcAPI.loans.getLendTokens(),
             ]);
-            console.log(markets);
+
             const marketsUnderlyingCurrencyId = markets[0][0].args[0];
 
             expect(markets.length).to.be.equal(lendTokens.length);
@@ -133,12 +134,12 @@ describe("Loans", () => {
             expect(lendToken.name).to.be.eq(`q${underlyingCurrency.name}`);
             expect(lendToken.ticker).to.be.eq(`q${underlyingCurrency.ticker}`);
 
-            expect(lendToken.lendToken.id).to.be.eq(lendTokenId.asPToken.toNumber());
+            expect(lendToken.lendToken.id).to.be.eq(lendTokenId.asLendToken.toNumber());
         });
 
         it("should return empty array if no market exists", async () => {
             const LoansAPI = new DefaultLoansAPI(api, sudoInterBtcAPI.assetRegistry);
-            // mock empty list returned from chain
+            // Mock empty list returned from chain.
             sinon.stub(LoansAPI, "getLoansMarketsEntries").returns(Promise.resolve([]));
 
             const lendTokens = await LoansAPI.getLendTokens();
@@ -150,7 +151,16 @@ describe("Loans", () => {
     });
 
     describe("getLendPositionsOfAccount", () => {
-        it("should get all lend positions of account in correct format");
+        before(async () => {
+            // Lend 1 governance token.
+            const lentAmount = newMonetaryAmount(1, underlyingCurrency, true).toString(true);
+            const lendExtrinsic = userInterBtcAPI.api.tx.loans.mint(underlyingCurrencyId, lentAmount);
+
+            await lendExtrinsic.signAndSend(userAccount);
+        });
+        it("should get all lend positions of account in correct format", () => {
+            // TODO
+        });
         it("should get correct data after position is enabled as collateral");
         it("should get correct interest and subsidy reward amount");
         it("should get empty array when no lend position exists for account");

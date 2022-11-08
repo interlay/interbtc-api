@@ -160,9 +160,7 @@ export function getCurrencyIdentifier(currency: CurrencyExt): unknown {
         return { foreignAsset: currency.foreignAsset.id };
     }
     if (isLendToken(currency)) {
-        // TODO: Check this is correct identifier to be returned,
-        // Change `pToken` to `lendToken`
-        return { pToken: currency.lendToken.id };
+        return { lendToken: currency.lendToken.id };
     }
     return { token: currency.ticker };
 }
@@ -177,7 +175,7 @@ export async function currencyIdToMonetaryCurrency(
     } else if (currencyId.isForeignAsset) {
         const foreignAssetId = currencyId.asForeignAsset;
         return assetRegistryApi.getForeignAsset(foreignAssetId);
-    } else if (currencyId.isPToken) {
+    } else if (currencyId.isLendToken) {
         const underlyingCurrency = await loansApi.getUnderlyingCurrencyFromLendTokenId(currencyId);
         return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, currencyId);
     }
