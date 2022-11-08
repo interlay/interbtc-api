@@ -41,7 +41,7 @@ const args = yargs(hideBin(process.argv))
     })
     .option("action", {
         description: "The action to do",
-        demandOption : true,
+        demandOption: true,
         choices: ['request', 'accept', 'batched', 'statemin*'],
     })
     .option("xcm-fee", {
@@ -54,7 +54,7 @@ const args = yargs(hideBin(process.argv))
     })
     .option("with-defaults-of", {
         description: "Which default values to use",
-        choices: ['kintsugi', 'polkadot'],
+        choices: ['kintsugi', 'interlay'],
     })
     .argv;
 
@@ -66,7 +66,7 @@ main().catch((err) => {
     console.log(err);
 });
 
-function construct_xcm(api: ApiPromise, transact: string) {
+function constructXcm(api: ApiPromise, transact: string) {
     const xcmFee = args['xcm-fee'];
     const transactWeight = args['transact-weight'];
 
@@ -163,7 +163,7 @@ function construct_xcm(api: ApiPromise, transact: string) {
 function printExtrinsic(name: string, extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
     console.log(name, "Data:", extrinsic.method.toHex());
     console.log(name, "Hash:", extrinsic.method.hash.toHex());
-    console.log(name, "url:", to_url(extrinsic, endpoint));
+    console.log(name, "Url:", toUrl(extrinsic, endpoint));
     console.log("");
 }
 
@@ -185,7 +185,7 @@ async function maybeSubmitProposal(
     }
 
     // construct the proposal
-    const batched = construct_proposal(api, extrinsic);
+    const batched = constructProposal(api, extrinsic);
 
     printExtrinsic('proposal', batched, endpoint);
 
@@ -207,14 +207,14 @@ async function maybeSubmitProposal(
     rl.close();
 }
 
-function to_url(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
+function toUrl(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
     return "https://polkadot.js.org/apps/?rpc=" +
         encodeURIComponent(endpoint) +
         "#/extrinsics/decode/" +
         extrinsic.method.toHex();
 }
 
-function construct_proposal(api: ApiPromise, extrinsic: SubmittableExtrinsic<"promise">) {
+function constructProposal(api: ApiPromise, extrinsic: SubmittableExtrinsic<"promise">) {
     const deposit = api.consts.democracy.minimumDeposit.toNumber();
     const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
     const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
@@ -222,22 +222,22 @@ function construct_proposal(api: ApiPromise, extrinsic: SubmittableExtrinsic<"pr
     return batched
 }
 
-async function printDiscordProposal(
+function printDiscordProposal(
     description: string,
     extrinsic: SubmittableExtrinsic<"promise">,
     endpoint: string,
     api: ApiPromise,
 ) {
-    const proposal = construct_proposal(api, extrinsic);
-    const invocation = process.argv.map(function(x) { return x.substring(x.lastIndexOf('/')+1) }).join(" ");
+    const proposal = constructProposal(api, extrinsic);
+    const invocation = process.argv.map(function (x) { return x.substring(x.lastIndexOf('/') + 1) }).join(" ");
 
     console.log("");
     console.log("");
     console.log("**" + description + "**");
     console.log("");
-    console.log("**Extrinsic:**", to_url(extrinsic, endpoint));
+    console.log("**Extrinsic:**", toUrl(extrinsic, endpoint));
     console.log("");
-    console.log("**Proposal:**", to_url(proposal, endpoint));
+    console.log("**Proposal:**", toUrl(proposal, endpoint));
     console.log("");
     console.log("_Generated with_: `" + invocation + "`");
     console.log("");
@@ -248,7 +248,7 @@ async function main(): Promise<void> {
     await cryptoWaitReady();
 
     switch (args['with-defaults-of']) {
-        case 'polkadot':
+        case 'interlay':
             if (args['parachain-endpoint'] === undefined) {
                 args['parachain-endpoint'] = "wss://api.interlay.io/parachain";
             }
@@ -278,14 +278,13 @@ async function main(): Promise<void> {
             break;
     }
     if (args['parachain-endpoint'] === undefined
-            || args['relay-endpoint'] === undefined
-            || args['xcm-fee'] === undefined
-            || args['transact-weight'] === undefined) {
+        || args['relay-endpoint'] === undefined
+        || args['xcm-fee'] === undefined
+        || args['transact-weight'] === undefined) {
         console.log("Not all required arguments supplied");
         return;
     }
 
-    
     const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
     const relayApi = await createSubstrateAPI(args['relay-endpoint']);
 
@@ -296,8 +295,8 @@ async function main(): Promise<void> {
     );
     const acceptOpenTransact = relayApi.tx.hrmp.hrmpAcceptOpenChannel(args["destination-parachain-id"]);
 
-    const requestOpen = construct_xcm(paraApi, requestOpenTransact.method.toHex());
-    const acceptOpen = construct_xcm(paraApi, acceptOpenTransact.method.toHex());
+    const requestOpen = constructXcm(paraApi, requestOpenTransact.method.toHex());
+    const acceptOpen = constructXcm(paraApi, acceptOpenTransact.method.toHex());
     const batched = paraApi.tx.utility.batchAll([requestOpen, acceptOpen]);
 
     const shouldSubmit = args["submit-proposal"];
@@ -309,7 +308,7 @@ async function main(): Promise<void> {
                 printExtrinsic("Relaychain::RequestOpenTransact", requestOpenTransact, args["relay-endpoint"]);
                 await maybeSubmitProposal("RequestOpen", requestOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
             } else {
-                await printDiscordProposal("Request HRMP to remote [step 1/2]", requestOpen, args["parachain-endpoint"], paraApi);
+                printDiscordProposal("Request HRMP to remote [step 1/2]", requestOpen, args["parachain-endpoint"], paraApi);
             }
             break;
         case "accept":
@@ -317,7 +316,7 @@ async function main(): Promise<void> {
                 printExtrinsic("Relaychain::acceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
                 await maybeSubmitProposal("AcceptOpen", acceptOpen, args["parachain-endpoint"], paraApi, shouldSubmit);
             } else {
-                await printDiscordProposal("Accept HRMP from remote [step 2/2]", acceptOpen, args["parachain-endpoint"], paraApi);
+                printDiscordProposal("Accept HRMP from remote [step 2/2]", acceptOpen, args["parachain-endpoint"], paraApi);
             }
             break;
         case "batched":
@@ -326,14 +325,14 @@ async function main(): Promise<void> {
                 printExtrinsic("Relaychain::AcceptOpenTransact", acceptOpenTransact, args["relay-endpoint"]);
                 await maybeSubmitProposal("Batched", batched, args["parachain-endpoint"], paraApi, shouldSubmit);
             } else {
-                await printDiscordProposal("Accept & request HRMP [step 1/1]", batched, args["parachain-endpoint"], paraApi);
+                printDiscordProposal("Accept & request HRMP [step 1/1]", batched, args["parachain-endpoint"], paraApi);
             }
             break;
         case "statemin*":
             // used args for statemine (kusama): yarn hrmp-setup --action 'statemin*' --submit-proposal --destination-parachain-id 2092 --refund-hex-address 0x6d6f646c70792f74727372790000000000000000000000000000000000000000 --with-defaults-of kintsugi --parachain-endpoint "wss://statemine.api.onfinality.io/public-ws" --xcm-fee 1000000000000 --transact-weight 2000000000
             // construct batched transact call to be executed on relay chain, to accept and request
             const batchedTransact = relayApi.tx.utility.batchAll([requestOpenTransact, acceptOpenTransact]);
-            const xcmStateminToRelay = construct_xcm(paraApi, batchedTransact.method.toHex());
+            const xcmStateminToRelay = constructXcm(paraApi, batchedTransact.method.toHex());
 
             const transferAmount = 11000000000000;
             const balanceTransfer = relayApi.tx.balances.forceTransfer('F3opxRbN5ZbjJNU511Kj2TLuzFcDq9BGduA9TgiECafpg29', 'F7fq1jSNVTPfJmaHaXCMtatT1EZefCUsa7rRiQVNR5efcah', transferAmount);
@@ -342,7 +341,7 @@ async function main(): Promise<void> {
                 v2: paraApi.createType("XcmV2Xcm", [
                     paraApi.createType("XcmV2Instruction", {
                         transact: {
-                            originType: paraApi.createType("XcmV0OriginKind", {  superUser: true }),
+                            originType: paraApi.createType("XcmV0OriginKind", { superUser: true }),
                             requireWeightAtMost: 1000000000,
                             call: paraApi.createType("XcmDoubleEncoded", {
                                 encoded: xcmStateminToRelay.method.toHex(),
@@ -351,7 +350,7 @@ async function main(): Promise<void> {
                     }),
                 ]),
             });
-        
+
             const dest = paraApi.createType<XcmVersionedMultiLocation>("XcmVersionedMultiLocation", {
                 v1: paraApi.createType("XcmV1MultiLocation", {
                     parents: 0,
@@ -362,10 +361,10 @@ async function main(): Promise<void> {
                     }),
                 }),
             });
-        
+
             const xcmRelayToStatemin = relayApi.tx.xcmPallet.send(dest, message);
             const preimage = relayApi.tx.utility.batchAll([balanceTransfer, xcmRelayToStatemin]);
-            
+
             printExtrinsic("Statemin* xcm call", xcmStateminToRelay, args["parachain-endpoint"]);
             printExtrinsic("Relaychain::Transact", batchedTransact, args["relay-endpoint"]);
             printExtrinsic("Relaychain preimage", preimage, args["relay-endpoint"]);
