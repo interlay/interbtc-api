@@ -28,7 +28,8 @@ interface LoanAsset {
     borrowReward: LoanReward | null; // null if rewards are not enabled.
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
-    liquidationThreshold: Big;
+    liquidationThreshold: Big; // percentage
+    isActive: boolean;
 }
 
 // Enables easier access to data by asset ticker key.

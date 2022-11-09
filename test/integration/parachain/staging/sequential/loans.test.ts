@@ -1,54 +1,47 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import {
-    CollateralCurrencyExt,
     CurrencyExt,
-    currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     DefaultLoansAPI,
-    GovernanceCurrency,
+    DefaultTransactionAPI,
     InterBtcApi,
     LendToken,
+    newAccountId,
     newCurrencyId,
     newMonetaryAmount,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import {
-    USER_1_URI,
-    BITCOIN_CORE_HOST,
-    BITCOIN_CORE_NETWORK,
-    BITCOIN_CORE_PASSWORD,
-    BITCOIN_CORE_PORT,
-    BITCOIN_CORE_USERNAME,
-    BITCOIN_CORE_WALLET,
-    PARACHAIN_ENDPOINT,
-    ESPLORA_BASE_PATH,
-    SUDO_URI,
-} from "../../../../config";
-import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
-import { WrappedCurrency } from "../../../../../src";
-import { getCorrespondingCollateralCurrenciesForTests, sudo } from "../../../../utils/helpers";
-import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
+import { USER_1_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
+import { APPROX_BLOCK_TIME_MS, waitForEvent } from "../../../../utils/helpers";
+import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "chai";
 import sinon from "sinon";
-import { SingleAccountSigner } from "test/utils/SingleAccountSigner";
-import { CLIENT_RENEG_LIMIT } from "tls";
+
+import { MonetaryAmount } from "@interlay/monetary-js";
+import { AccountId } from "@polkadot/types/interfaces";
 
 describe("Loans", () => {
+    const approx10Blocks = 10 * APPROX_BLOCK_TIME_MS;
+
     let api: ApiPromise;
-    let bitcoinCoreClient: BitcoinCoreClient;
     let keyring: Keyring;
     let userInterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
+    let TransactionAPI: DefaultTransactionAPI;
+    let LoansAPI: DefaultLoansAPI;
 
     let userAccount: KeyringPair;
     let sudoAccount: KeyringPair;
+    let userAccountId: AccountId;
 
     let lendTokenId: InterbtcPrimitivesCurrencyId;
     let underlyingCurrencyId: InterbtcPrimitivesCurrencyId;
     let underlyingCurrency: CurrencyExt;
 
     before(async function () {
+        this.timeout(approx10Blocks);
+
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
@@ -56,15 +49,9 @@ describe("Loans", () => {
 
         sudoAccount = keyring.addFromUri(SUDO_URI);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
-
-        bitcoinCoreClient = new BitcoinCoreClient(
-            BITCOIN_CORE_NETWORK,
-            BITCOIN_CORE_HOST,
-            BITCOIN_CORE_USERNAME,
-            BITCOIN_CORE_PASSWORD,
-            BITCOIN_CORE_PORT,
-            BITCOIN_CORE_WALLET
-        );
+        userAccountId = newAccountId(api, userAccount.address);
+        TransactionAPI = new DefaultTransactionAPI(api, userAccount);
+        LoansAPI = new DefaultLoansAPI(api, userInterBtcAPI.assetRegistry, TransactionAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
@@ -96,7 +83,20 @@ describe("Loans", () => {
         };
 
         const addMarketExtrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(underlyingCurrencyId, marketData);
-        await api.tx.sudo.sudo(addMarketExtrinsic).signAndSend(sudoAccount);
+        const activateMarketExtrinsic = sudoInterBtcAPI.api.tx.loans.activateMarket(underlyingCurrencyId);
+        const addMarketAndActivateExtrinsic = sudoInterBtcAPI.api.tx.utility.batchAll([
+            addMarketExtrinsic,
+            activateMarketExtrinsic,
+        ]);
+
+        const [eventFound] = await Promise.all([
+            waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
+            api.tx.sudo.sudo(addMarketAndActivateExtrinsic).signAndSend(sudoAccount),
+        ]);
+        expect(
+            eventFound,
+            `Sudo event to create new market not found - timed out after ${approx10Blocks} ms`
+        ).to.be.true;
     });
 
     after(async () => {
@@ -105,7 +105,7 @@ describe("Loans", () => {
 
     afterEach(() => {
         // discard any stubbed methods after each test
-        // sinon.restore();
+        sinon.restore();
     });
 
     describe("getLendTokens", () => {
@@ -138,7 +138,6 @@ describe("Loans", () => {
         });
 
         it("should return empty array if no market exists", async () => {
-            const LoansAPI = new DefaultLoansAPI(api, sudoInterBtcAPI.assetRegistry);
             // Mock empty list returned from chain.
             sinon.stub(LoansAPI, "getLoansMarketsEntries").returns(Promise.resolve([]));
 
@@ -151,18 +150,54 @@ describe("Loans", () => {
     });
 
     describe("getLendPositionsOfAccount", () => {
-        before(async () => {
-            // Lend 1 governance token.
-            const lentAmount = newMonetaryAmount(1, underlyingCurrency, true).toString(true);
-            const lendExtrinsic = userInterBtcAPI.api.tx.loans.mint(underlyingCurrencyId, lentAmount);
+        let lentAmount: MonetaryAmount<CurrencyExt>;
+        before(async function () {
+            this.timeout(approx10Blocks);
 
-            await lendExtrinsic.signAndSend(userAccount);
+            lentAmount = newMonetaryAmount(1, underlyingCurrency, true);
+            const lendExtrinsic = api.tx.loans.mint(underlyingCurrencyId, lentAmount.toString(true));
+
+            const [eventFound] = await Promise.all([
+                waitForEvent(userInterBtcAPI, api.events.loans.Deposited, false, approx10Blocks),
+                lendExtrinsic.signAndSend(userAccount),
+            ]);
+
+            expect(
+                eventFound,
+                `Event for lending 1 governance currency with account ${userAccount.address} not found!`
+            ).to.be.true;
         });
-        it("should get all lend positions of account in correct format", () => {
-            // TODO
+        it("should get all lend positions of account in correct format", async () => {
+            const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+
+            expect(lendPosition.amount.toString()).to.be.equal(lentAmount.toString());
+            expect(lendPosition.currency).to.be.equal(underlyingCurrency);
+            expect(lendPosition.isCollateral).to.be.false;
+
+            // No interest because no one borrowed and no reward subsidies enabled.
+            expect(lendPosition.earnedInterest.toBig().eq(0)).to.be.true;
+            expect(lendPosition.earnedReward).to.be.null;
+
+            // TODO: add tests for more markets
         });
-        it("should get correct data after position is enabled as collateral");
-        it("should get correct interest and subsidy reward amount");
+        it("should get correct data after position is enabled as collateral", async function() {
+            this.timeout(approx10Blocks);
+
+            const enableCollateralExtrinsic = api.tx.loans.depositAllCollateral(underlyingCurrencyId);
+
+            const [eventFound] = await Promise.all([
+                waitForEvent(userInterBtcAPI, api.events.loans.DepositCollateral, false, approx10Blocks),
+                enableCollateralExtrinsic.signAndSend(userAccount),
+            ]);
+
+            expect(eventFound, "No event found for depositing collateral");
+
+            const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+            expect(lendPosition.isCollateral).to.be.true;
+        });
+        it("should get correct interest and subsidy reward amount", async () => {
+          //TODO
+        });
         it("should get empty array when no lend position exists for account");
     });
 
