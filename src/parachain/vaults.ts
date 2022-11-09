@@ -635,6 +635,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<CurrencyExt>> {
+        // TODO: This might be inaccurate if the "reserved" value is incremented by other protocols
+        // See comment: https://github.com/interlay/interbtc-api/pull/464#discussion_r954909315
         return (await this.tokensAPI.balance(collateralCurrency, vaultAccountId)).reserved;
     }
 
