@@ -4,7 +4,13 @@ import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, Len
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
-import { currencyIdToMonetaryCurrency, decodeFixedPointType, newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
+import {
+    currencyIdToMonetaryCurrency,
+    decodeFixedPointType,
+    newAccountId,
+    newCurrencyId,
+    newMonetaryAmount,
+} from "../utils";
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
@@ -22,6 +28,7 @@ const MOCKDATA_LOAN_ASSET_KBTC: LoanAsset = {
     borrowReward: null,
     availableCapacity: new MonetaryAmount(KBtc, Big(6.7935275343163)),
     liquidationThreshold: Big(80),
+    collateralThreshold: Big(70),
     isActive: true,
 };
 
@@ -34,6 +41,7 @@ const MOCKDATA_LOAN_ASSET_KINT = {
     borrowReward: null,
     availableCapacity: new MonetaryAmount(Kintsugi, Big(65593.3527534316)),
     liquidationThreshold: Big(80),
+    collateralThreshold: Big(60),
     isActive: false,
 };
 
@@ -56,6 +64,7 @@ const MOCKDATA_BORROW_POSITION_INTR: BorrowPosition = {
     currency: Kintsugi,
     amount: new MonetaryAmount(Kintsugi, Big(1305.73946294014)),
     earnedReward: new MonetaryAmount(Kintsugi, Big(0)),
+    earnedDebt: new MonetaryAmount(Kintsugi, Big(35.231)),
 };
 
 const MOCKDATA_BORROW_POSITIONS = [MOCKDATA_BORROW_POSITION_INTR];
@@ -416,24 +425,21 @@ export class DefaultLoansAPI implements LoansAPI {
         if (account === undefined) {
             throw new Error("Account not set.");
         }
-        const accountId = newAccountId(this.api, account.toString())
+        const accountId = newAccountId(this.api, account.toString());
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const lendTokenId = await this.getLendTokenIdFromUnderlyingCurrency(underlyingCurrency);
         const lendExtrinsic = this.api.tx.loans.mint(underlyingCurrencyId, amount.toString(true));
-        
-        // Workaround for case when there is existing lend position 
+
+        // Workaround for case when there is existing lend position
         // used as collateral, need to batch mint -> depositCollateral
         let extrinsicToSend = lendExtrinsic;
 
         const underlyingCurrencyCollateralAmount = await this.api.query.loans.accountDeposits(lendTokenId, accountId);
         if (!underlyingCurrencyCollateralAmount.isZero()) {
             const depositAllCollateralExtrinsic = this.api.tx.loans.depositAllCollateral(underlyingCurrencyId);
-            extrinsicToSend = this.api.tx.utility.batchAll([
-                lendExtrinsic,
-                depositAllCollateralExtrinsic
-            ]);
-        } 
+            extrinsicToSend = this.api.tx.utility.batchAll([lendExtrinsic, depositAllCollateralExtrinsic]);
+        }
 
         await this.transactionAPI.sendLogged(extrinsicToSend, this.api.events.loans.Deposited, true);
     }

@@ -18,7 +18,9 @@ interface LendPosition extends LoanPosition {
     earnedInterest: MonetaryAmount<CurrencyExt>;
 }
 
-type BorrowPosition = LoanPosition;
+interface BorrowPosition extends LoanPosition {
+    earnedDebt: MonetaryAmount<CurrencyExt>;
+}
 
 interface LoanAsset {
     currency: CurrencyExt;
@@ -29,6 +31,7 @@ interface LoanAsset {
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
     liquidationThreshold: Big; // percentage
+    collateralThreshold: Big; // percentage
     isActive: boolean;
 }
 
