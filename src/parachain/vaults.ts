@@ -1065,9 +1065,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
 
         // calculate the theoretical exchange rate at which the vault would be (close to) liquidated
-        const liquidationRateCollaterallPerWrapped = lockedCollateral
+        const liquidationRateCollateralPerWrapped = lockedCollateral
             .toBig()
             .div(issuedTokens.toBig().mul(liquidationRateThreshold));
-        return liquidationRateCollaterallPerWrapped;
+        return liquidationRateCollateralPerWrapped;
     }
 }
