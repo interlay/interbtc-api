@@ -15,7 +15,7 @@ import {
     VoteKintsugi,
 } from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt, LendToken } from "../types/currency";
+import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt, LendToken, CurrencyIdentifier } from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId, storageKeyToNthInner } from "./encoding";
@@ -155,7 +155,7 @@ export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyEx
     return false;
 }
 
-export function getCurrencyIdentifier(currency: CurrencyExt): unknown {
+export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier {
     if (isForeignAsset(currency)) {
         return { foreignAsset: currency.foreignAsset.id };
     }

@@ -65,6 +65,20 @@ export type RWEscrowPoint = {
     ts: BN;
 };
 
+type NativeCurrencyIdentifier = {
+    token: string
+}
+
+type ForeignAssetIdentifier = {
+    foreignAsset: number
+}
+
+type LendTokenIdentifier = {
+    lendToken: number
+}
+
+export type CurrencyIdentifier = NativeCurrencyIdentifier | ForeignAssetIdentifier | LendTokenIdentifier;
+
 export function parseEscrowPoint(e: EscrowPoint): RWEscrowPoint {
     return {
         bias: e.bias.toBn(),

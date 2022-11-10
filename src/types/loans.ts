@@ -4,7 +4,7 @@ import { CurrencyExt } from "./currency";
 
 interface LoanReward {
     currency: CurrencyExt;
-    apy: Big; // percentage
+    apy: Big;
 }
 
 interface LoanPosition {

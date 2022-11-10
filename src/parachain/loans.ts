@@ -10,6 +10,7 @@ import {
     newAccountId,
     newCurrencyId,
     newMonetaryAmount,
+    storageKeyToNthInner,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
@@ -123,13 +124,12 @@ export interface LoansAPI {
     /**
      * Lend currency to protocol for borrowing.
      *
-     * @param {AccountId} accountId Account that want to lend.
      * @param {CurrencyExt} underlyingCurrency  Currency to lend.
      * @param {MonetaryAmount<CurrencyExt>} amount Amount of currency to lend.
      * @throws If there is not active market for `underlyingCurrency`.
      * @throws If `amount` is exceeding available balance of account.
      */
-    lend(accountId: AccountId, underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    lend(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
 
     /**
      * Withdraw previously lent currency from protocol.
@@ -154,21 +154,21 @@ export interface LoansAPI {
 
     /**
      * Enable lend position of account as collateral for borrowing.
-     *
-     * @param currency Currency to enable as collateral.
+     *        await this._checkMarketState(underlyingCurrency, "withdraw");
+     * @param underlyingCurrency Currency to enable as collateral.
      * @throws If there is no existing lend position for `currency`.
      */
-    enableAsCollateral(currency: CurrencyExt): Promise<void>;
+    enableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void>;
 
     /**
      * Enable lend position of account as collateral for borrowing.
      *
-     * @param currency Currency to enable as collateral.
+     * @param underlyingCurrency Currency to enable as collateral.
      * @throws If there is no existing lend position for `currency`.
      * @throws If disabling lend position of `currency` would bring
      * account under collateral threshold.
      */
-    disableAsCollateral(currency: CurrencyExt): Promise<void>;
+    disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void>;
 
     /**
      * Claim subsidy reward for specified currency.
@@ -231,8 +231,9 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     // Wrapped call to make mocks in tests simple.
-    getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<PalletLoansMarket>][]> {
-        return this.api.query.loans.markets.entries();
+    async getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<PalletLoansMarket>][]> {
+        const entries = await this.api.query.loans.markets.entries();
+        return entries.filter(entry => entry[1].isSome);
     }
 
     async getMarkets(): Promise<Map<InterbtcPrimitivesCurrencyId, LoanMarket>> {
@@ -241,7 +242,8 @@ export class DefaultLoansAPI implements LoansAPI {
         const result = new Map<InterbtcPrimitivesCurrencyId, LoanMarket>();
         for (const [key, market] of markets) {
             const marketData = DefaultLoansAPI.parseMarket(market.unwrap());
-            result.set(key.args[0], marketData);
+            const underlyingCurrencyId = storageKeyToNthInner(key);
+            result.set(underlyingCurrencyId, marketData);
         }
         return result;
     }
@@ -288,9 +290,9 @@ export class DefaultLoansAPI implements LoansAPI {
             this.api.query.loans.exchangeRate(underlyingCurrencyId),
         ]);
         const decodedExchangeRate = decodeFixedPointType(exchangeRate);
-        const lendTokenBalanceInUnderlying = lendTokenBalance.free.add(lendTokenBalance.reserved);
+        const lendTokenBalanceTotal = lendTokenBalance.free.add(lendTokenBalance.reserved);
 
-        return Big(lendTokenBalanceInUnderlying.toString()).mul(decodedExchangeRate);
+        return Big(lendTokenBalanceTotal.toString()).mul(decodedExchangeRate);
     }
 
     async getLendTokens(): Promise<LendToken[]> {
@@ -299,7 +301,7 @@ export class DefaultLoansAPI implements LoansAPI {
         return Promise.all(
             marketEntries.map(async ([key, market]) => {
                 const lendTokenId = market.unwrap().lendTokenId;
-                const underlyingCurrencyId = key.args[0];
+                const underlyingCurrencyId = storageKeyToNthInner(key);
                 const underlyingCurrency = await currencyIdToMonetaryCurrency(
                     this.assetRegistryAPI,
                     this,
@@ -315,18 +317,22 @@ export class DefaultLoansAPI implements LoansAPI {
         underlyingCurrency: CurrencyExt,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         lendTokenId: InterbtcPrimitivesCurrencyId
-    ): Promise<LendPosition> {
+    ): Promise<LendPosition | null> {
         const rewardCurrencyId = this.api.consts.loans.rewardAssetId;
 
+        const underlyingCurrencyAmount = await this.getLendAmountInUnderlyingCurrency(accountId, lendTokenId, underlyingCurrencyId);
+        // Returns null if position does not exist
+        if (underlyingCurrencyAmount.eq(0)) {
+            return null;
+        }
+
         const [
-            underlyingCurrencyAmount,
             accountEarned,
             accountDeposits,
             rewardAccrued,
             rewardCurrency,
             currentMarketStatus,
         ] = await Promise.all([
-            this.getLendAmountInUnderlyingCurrency(accountId, lendTokenId, underlyingCurrencyId),
             this.api.query.loans.accountEarned(underlyingCurrencyId, accountId),
             this.api.query.loans.accountDeposits(lendTokenId, accountId),
             this.api.query.loans.rewardAccrued(accountId),
@@ -356,9 +362,9 @@ export class DefaultLoansAPI implements LoansAPI {
 
     async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
         const marketsEntries = await this.getLoansMarketsEntries();
-        const marketsCurrencies = marketsEntries.map(([key, value]) => [key.args[0], value.unwrap().lendTokenId]);
+        const marketsCurrencies = marketsEntries.map(([key, value]) => [storageKeyToNthInner(key), value.unwrap().lendTokenId]);
 
-        return Promise.all(
+        const allMarketsPositions = await Promise.all(
             marketsCurrencies.map(async ([underlyingCurrencyId, lendTokenId]) => {
                 const underlyingCurrency = await currencyIdToMonetaryCurrency(
                     this.assetRegistryAPI,
@@ -368,13 +374,15 @@ export class DefaultLoansAPI implements LoansAPI {
                 return this.getLendPosition(accountId, underlyingCurrency, underlyingCurrencyId, lendTokenId);
             })
         );
+
+        return <LendPosition[]>allMarketsPositions.filter(position => position !== null);
     }
 
     getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
         return Promise.resolve(MOCKDATA_BORROW_POSITIONS);
     }
 
-    getLoanAssets(): Promise<TickerToData<LoanAsset>> {
+    async getLoanAssets(): Promise<TickerToData<LoanAsset>> {
         // TODO: handle active/inactive markets
         return Promise.resolve(MOCKDATA_LOAN_ASSETS);
     }
@@ -392,54 +400,49 @@ export class DefaultLoansAPI implements LoansAPI {
         }
     }
 
-    async lend(accountId: AccountId, underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+    async lend(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
         await this._checkMarketState(underlyingCurrency, "lend");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
-        const lendTokenId = await this.getLendTokenIdFromUnderlyingCurrency(underlyingCurrency);
         const lendExtrinsic = this.api.tx.loans.mint(underlyingCurrencyId, amount.toString(true));
 
-        // TODO: can remove after update to latest version
-        // Workaround for case when there is existing lend position
-        // used as collateral, need to batch mint -> depositCollateral
-        let extrinsicToSend = lendExtrinsic;
-
-        const underlyingCurrencyCollateralAmount = await this.api.query.loans.accountDeposits(lendTokenId, accountId);
-        if (!underlyingCurrencyCollateralAmount.isZero()) {
-            const depositAllCollateralExtrinsic = this.api.tx.loans.depositAllCollateral(underlyingCurrencyId);
-            extrinsicToSend = this.api.tx.utility.batchAll([lendExtrinsic, depositAllCollateralExtrinsic]);
-        }
-
-        await this.transactionAPI.sendLogged(extrinsicToSend, this.api.events.loans.Deposited, true);
+        await this.transactionAPI.sendLogged(lendExtrinsic, this.api.events.loans.Deposited, true);
     }
 
     async withdraw(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
         await this._checkMarketState(underlyingCurrency, "withdraw");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
-
         const withdrawExtrinsic = this.api.tx.loans.redeem(underlyingCurrencyId, amount.toString(true));
 
-        await this.transactionAPI.sendLogged(withdrawExtrinsic);
-
+        await this.transactionAPI.sendLogged(withdrawExtrinsic, this.api.events.loans.Redeemed, true);
     }
 
     async withdrawAll(underlyingCurrency: CurrencyExt): Promise<void> {
         await this._checkMarketState(underlyingCurrency, "withdraw");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
-
         const withdrawExtrinsic = this.api.tx.loans.redeemAll(underlyingCurrencyId);
 
-        await this.transactionAPI.sendLogged(withdrawExtrinsic);
+        await this.transactionAPI.sendLogged(withdrawExtrinsic, this.api.events.loans.Redeemed, true);
     }
 
-    async enableAsCollateral(currency: CurrencyExt): Promise<void> {
-        //TODO
+    async enableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "enable collateral");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const enableCollateralExtrinsic = this.api.tx.loans.depositAllCollateral(underlyingCurrencyId);
+
+        await this.transactionAPI.sendLogged(enableCollateralExtrinsic, this.api.events.loans.DepositCollateral, true);
     }
 
-    async disableAsCollateral(currency: CurrencyExt): Promise<void> {
-        //TODO
+    async disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "disable collateral");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const enableCollateralExtrinsic = this.api.tx.loans.withdrawAllCollateral(underlyingCurrencyId);
+
+        await this.transactionAPI.sendLogged(enableCollateralExtrinsic, this.api.events.loans.WithdrawCollateral, true);
     }
 
     async claimSubsidyReward(currency: CurrencyExt): Promise<void> {
