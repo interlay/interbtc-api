@@ -7,6 +7,7 @@ import {
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     DefaultLoansAPI,
+    DefaultTransactionAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
     LoansAPI,
@@ -65,11 +66,12 @@ describe("redeem", () => {
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+        const transactionAPI = new DefaultTransactionAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
 
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();

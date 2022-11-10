@@ -13,6 +13,7 @@ import {
     DefaultAssetRegistryAPI,
     LoansAPI,
     DefaultLoansAPI,
+    DefaultTransactionAPI,
 } from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
@@ -57,7 +58,8 @@ describe("vaultsAPI", () => {
         const ss58Prefix = getSS58Prefix(api);
         const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry);
+        const transactionAPI = new DefaultTransactionAPI(api);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
 
         wrappedCurrency = interBtcAPI.getWrappedCurrency();

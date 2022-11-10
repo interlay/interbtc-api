@@ -6,6 +6,7 @@ import {
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     DefaultLoansAPI,
+    DefaultTransactionAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
     LoansAPI,
@@ -59,13 +60,14 @@ describe.skip("NominationAPI", () => {
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
+        const transactionAPI = new DefaultTransactionAPI(api);
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
         // TODO: remove all uses of config currencies and query the chain instead
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);

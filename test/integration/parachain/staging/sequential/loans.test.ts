@@ -12,13 +12,13 @@ import {
     newMonetaryAmount,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { USER_1_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
+import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
 import { APPROX_BLOCK_TIME_MS, waitForEvent } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
-import { expect } from "chai";
+import { expect } from "../../../../chai";
 import sinon from "sinon";
 
-import { MonetaryAmount } from "@interlay/monetary-js";
+import { Kusama, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 
 describe("Loans", () => {
@@ -27,13 +27,16 @@ describe("Loans", () => {
     let api: ApiPromise;
     let keyring: Keyring;
     let userInterBtcAPI: InterBtcApi;
+    let user2InterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
     let TransactionAPI: DefaultTransactionAPI;
     let LoansAPI: DefaultLoansAPI;
 
     let userAccount: KeyringPair;
+    let user2Account: KeyringPair;
     let sudoAccount: KeyringPair;
     let userAccountId: AccountId;
+    let user2AccountId: AccountId;
 
     let lendTokenId: InterbtcPrimitivesCurrencyId;
     let underlyingCurrencyId: InterbtcPrimitivesCurrencyId;
@@ -45,11 +48,14 @@ describe("Loans", () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
+        user2Account = keyring.addFromUri(USER_2_URI);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
+        user2InterBtcAPI = new DefaultInterBtcApi(api, "regtest", user2Account, ESPLORA_BASE_PATH);
 
         sudoAccount = keyring.addFromUri(SUDO_URI);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         userAccountId = newAccountId(api, userAccount.address);
+        user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
         LoansAPI = new DefaultLoansAPI(api, userInterBtcAPI.assetRegistry, TransactionAPI);
 
@@ -150,12 +156,12 @@ describe("Loans", () => {
     });
 
     describe("getLendPositionsOfAccount", () => {
-        let lentAmount: MonetaryAmount<CurrencyExt>;
+        let lendAmount: MonetaryAmount<CurrencyExt>;
         before(async function () {
             this.timeout(approx10Blocks);
 
-            lentAmount = newMonetaryAmount(1, underlyingCurrency, true);
-            const lendExtrinsic = api.tx.loans.mint(underlyingCurrencyId, lentAmount.toString(true));
+            lendAmount = newMonetaryAmount(1, underlyingCurrency, true);
+            const lendExtrinsic = api.tx.loans.mint(underlyingCurrencyId, lendAmount.toString(true));
 
             const [eventFound] = await Promise.all([
                 waitForEvent(userInterBtcAPI, api.events.loans.Deposited, false, approx10Blocks),
@@ -170,17 +176,17 @@ describe("Loans", () => {
         it("should get all lend positions of account in correct format", async () => {
             const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
-            expect(lendPosition.amount.toString()).to.be.equal(lentAmount.toString());
+            expect(lendPosition.amount.toString()).to.be.equal(lendAmount.toString());
             expect(lendPosition.currency).to.be.equal(underlyingCurrency);
             expect(lendPosition.isCollateral).to.be.false;
 
-            // No interest because no one borrowed and no reward subsidies enabled.
+            // No interest & reward because no one borrowed yet and no reward subsidies enabled.
             expect(lendPosition.earnedInterest.toBig().eq(0)).to.be.true;
-            expect(lendPosition.earnedReward).to.be.null;
+            expect(lendPosition.earnedReward?.toBig().eq(0)).to.be.true;
 
             // TODO: add tests for more markets
         });
-        it("should get correct data after position is enabled as collateral", async function() {
+        it("should get correct data after position is enabled as collateral", async function () {
             this.timeout(approx10Blocks);
 
             const enableCollateralExtrinsic = api.tx.loans.depositAllCollateral(underlyingCurrencyId);
@@ -195,14 +201,111 @@ describe("Loans", () => {
             const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
             expect(lendPosition.isCollateral).to.be.true;
         });
-        it("should get correct interest and subsidy reward amount", async () => {
-          //TODO
+        it("should get empty array when no lend position exists for account", async () => {
+            const lendPositions = await user2InterBtcAPI.loans.getLendPositionsOfAccount(user2AccountId);
+
+            console.log("empty positions", lendPositions);
+            expect(lendPositions).to.be.empty;
         });
-        it("should get empty array when no lend position exists for account");
+
+        it.skip("should get correct interest amount", async function () {
+            this.timeout(approx10Blocks);
+
+            // Borrows underlying currency with 2nd user account
+            const user2LendAmount = newMonetaryAmount(100, underlyingCurrency, true);
+            const user2BorrowAmount = newMonetaryAmount(20, underlyingCurrency, true);
+            const user2LendExtrinsic = user2InterBtcAPI.api.tx.loans.mint(
+                underlyingCurrencyId,
+                user2LendAmount.toString(true)
+            );
+            const user2CollateralExtrinsic = user2InterBtcAPI.api.tx.loans.depositAllCollateral(underlyingCurrencyId);
+            const user2BorrowExtrinsic = user2InterBtcAPI.api.tx.loans.borrow(
+                underlyingCurrencyId,
+                user2BorrowAmount.toString(true)
+            );
+
+            const [eventFound] = await Promise.all([
+                waitForEvent(user2InterBtcAPI, user2InterBtcAPI.api.events.loans.Borrowed),
+                user2InterBtcAPI.api.tx.utility.batchAll([
+                    user2LendExtrinsic,
+                    user2CollateralExtrinsic,
+                    user2BorrowExtrinsic,
+                ]),
+            ]);
+            expect(eventFound, "No event found for depositing collateral");
+
+            // TODO: cannot submit timestamp.set - gettin error
+            //   'RpcError: 1010: Invalid Transaction: Transaction dispatch is mandatory; transactions may not have mandatory dispatches.'
+
+            // Manipulates time to accredit interest.
+            const timestamp1MonthInFuture = Date.now() + 1000 * 60 * 60 * 24 * 30;
+            const setTimeToFutureExtrinsic = sudoInterBtcAPI.api.tx.timestamp.set(timestamp1MonthInFuture);
+
+            const [sudoEventFound] = await Promise.all([
+                waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
+                api.tx.sudo.sudo(setTimeToFutureExtrinsic).signAndSend(sudoAccount),
+            ]);
+            expect(sudoEventFound, `Sudo event to manipulate time not found - timed out after ${approx10Blocks} ms`).to
+                .be.true;
+
+            const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+
+            // test printing out to see earned Interest value
+            console.log(lendPosition.earnedInterest.toHuman());
+        });
+
     });
 
     describe("getUnderlyingCurrencyFromLendTokenId", () => {
-        it("should return correct underlying currency for lend token");
-        it("should throw when lend token id is of non-existing currency");
+        it("should return correct underlying currency for lend token", async () => {
+            const returnedUnderlyingCurrency = await userInterBtcAPI.loans.getUnderlyingCurrencyFromLendTokenId(
+                lendTokenId
+            );
+
+            expect(returnedUnderlyingCurrency).to.deep.equal(underlyingCurrency);
+        });
+        it("should throw when lend token id is of non-existing currency", async () => {
+            const invalidLendTokenId = (lendTokenId = newCurrencyId(sudoInterBtcAPI.api, {
+                lendToken: { id: 999 },
+            } as LendToken));
+
+            await expect(userInterBtcAPI.loans.getUnderlyingCurrencyFromLendTokenId(invalidLendTokenId)).to.be.rejected;
+        });
+    });
+
+    describe("lend", () => {
+
+        it.only("should lend expected amount of currency to protocol", async function () {
+            this.timeout(approx10Blocks);
+            const [{amount: lendAmountBefore}] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+            
+            const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
+            await userInterBtcAPI.loans.lend(userAccountId, underlyingCurrency, lendAmount)
+
+            const [{amount: lendAmountAfter}] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+            const actuallyLentAmount = lendAmountAfter.sub(lendAmountBefore);
+
+            // Check that lent amount is same as sent amount
+            expect(actuallyLentAmount.eq(lendAmount)).to.be.true;
+        });
+        it("should throw if trying to lend from inactive market", async () => {
+            const inactiveUnderlyingCurrency = Kusama;
+            const amount = newMonetaryAmount(1, inactiveUnderlyingCurrency);
+
+            await expect(userInterBtcAPI.loans.lend(userAccountId, inactiveUnderlyingCurrency, amount)).to.be.rejected;
+        });
+        it("should throw if trying to lend more than free balance", async () => {
+            const tooBigAmount = newMonetaryAmount("1000000000000000000000000000000000000", underlyingCurrency);
+
+            await expect(userInterBtcAPI.loans.lend(userAccountId, underlyingCurrency, tooBigAmount)).to.be.rejected;
+        });
+    });
+
+    describe("withdraw", () => {
+        //TODO
+    });
+
+    describe("withdrawAll", () => {
+        //TODO
     });
 });

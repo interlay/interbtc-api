@@ -5,6 +5,7 @@ import {
     DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
     DefaultLoansAPI,
+    DefaultTransactionAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
     LoansAPI,
@@ -49,6 +50,7 @@ describe("replace", () => {
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+        const transactionAPI = new DefaultTransactionAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -61,7 +63,7 @@ describe("replace", () => {
 
         userAccount = keyring.addFromUri(USER_1_URI);
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());

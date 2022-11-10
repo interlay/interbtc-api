@@ -1,6 +1,6 @@
 import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
-import { DefaultAssetRegistryAPI, DefaultLoansAPI } from "../../../src/";
+import { DefaultAssetRegistryAPI, DefaultLoansAPI, DefaultTransactionAPI } from "../../../src/";
 import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { expect } from "chai";
@@ -21,7 +21,8 @@ describe("DefaultLoansAPI", () => {
 
     beforeEach(() => {
         stubbedAssetRegistry = sinon.createStubInstance(DefaultAssetRegistryAPI);
-        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry);
+        const transactionAPI = new DefaultTransactionAPI(api);
+        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry, transactionAPI);
     });
 
     describe("getCurrentBorrowBalance", () => {
@@ -53,7 +54,7 @@ describe("DefaultLoansAPI", () => {
             ).to.be.true;
         });
     });
-    
+
     describe("getLendPositionsOfAccount", () => {
         // TODO: add tests
     });
