@@ -159,20 +159,10 @@ describe("Loans", () => {
         let lendAmount: MonetaryAmount<CurrencyExt>;
         before(async function () {
             this.timeout(approx10Blocks);
-
             lendAmount = newMonetaryAmount(1, underlyingCurrency, true);
-            const lendExtrinsic = api.tx.loans.mint(underlyingCurrencyId, lendAmount.toString(true));
-
-            const [eventFound] = await Promise.all([
-                waitForEvent(userInterBtcAPI, api.events.loans.Deposited, false, approx10Blocks),
-                lendExtrinsic.signAndSend(userAccount),
-            ]);
-
-            expect(
-                eventFound,
-                `Event for lending 1 governance currency with account ${userAccount.address} not found!`
-            ).to.be.true;
+            await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
         });
+
         it("should get all lend positions of account in correct format", async () => {
             const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
@@ -189,14 +179,7 @@ describe("Loans", () => {
         it("should get correct data after position is enabled as collateral", async function () {
             this.timeout(approx10Blocks);
 
-            const enableCollateralExtrinsic = api.tx.loans.depositAllCollateral(underlyingCurrencyId);
-
-            const [eventFound] = await Promise.all([
-                waitForEvent(userInterBtcAPI, api.events.loans.DepositCollateral, false, approx10Blocks),
-                enableCollateralExtrinsic.signAndSend(userAccount),
-            ]);
-
-            expect(eventFound, "No event found for depositing collateral");
+            await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
 
             const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
             expect(lendPosition.isCollateral).to.be.true;
@@ -204,7 +187,6 @@ describe("Loans", () => {
         it("should get empty array when no lend position exists for account", async () => {
             const lendPositions = await user2InterBtcAPI.loans.getLendPositionsOfAccount(user2AccountId);
 
-            console.log("empty positions", lendPositions);
             expect(lendPositions).to.be.empty;
         });
 
@@ -253,7 +235,6 @@ describe("Loans", () => {
             // test printing out to see earned Interest value
             console.log(lendPosition.earnedInterest.toHuman());
         });
-
     });
 
     describe("getUnderlyingCurrencyFromLendTokenId", () => {
@@ -274,15 +255,14 @@ describe("Loans", () => {
     });
 
     describe("lend", () => {
-
-        it.only("should lend expected amount of currency to protocol", async function () {
+        it("should lend expected amount of currency to protocol", async function () {
             this.timeout(approx10Blocks);
-            const [{amount: lendAmountBefore}] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
-            
-            const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
-            await userInterBtcAPI.loans.lend(userAccountId, underlyingCurrency, lendAmount)
+            const [{ amount: lendAmountBefore }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
-            const [{amount: lendAmountAfter}] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+            const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
+            await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
+
+            const [{ amount: lendAmountAfter }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
             const actuallyLentAmount = lendAmountAfter.sub(lendAmountBefore);
 
             // Check that lent amount is same as sent amount
@@ -292,20 +272,81 @@ describe("Loans", () => {
             const inactiveUnderlyingCurrency = Kusama;
             const amount = newMonetaryAmount(1, inactiveUnderlyingCurrency);
 
-            await expect(userInterBtcAPI.loans.lend(userAccountId, inactiveUnderlyingCurrency, amount)).to.be.rejected;
+            await expect(userInterBtcAPI.loans.lend(inactiveUnderlyingCurrency, amount)).to.be.rejected;
         });
         it("should throw if trying to lend more than free balance", async () => {
             const tooBigAmount = newMonetaryAmount("1000000000000000000000000000000000000", underlyingCurrency);
 
-            await expect(userInterBtcAPI.loans.lend(userAccountId, underlyingCurrency, tooBigAmount)).to.be.rejected;
+            await expect(userInterBtcAPI.loans.lend(underlyingCurrency, tooBigAmount)).to.be.rejected;
         });
     });
 
     describe("withdraw", () => {
-        //TODO
+        before(async function () {
+            this.timeout(approx10Blocks);
+
+            const [eventFound] = await Promise.all([
+                waitForEvent(userInterBtcAPI, api.events.loans.WithdrawCollateral, false, approx10Blocks),
+                userInterBtcAPI.api.tx.loans.withdrawAllCollateral(underlyingCurrencyId).signAndSend(userAccount),
+            ]);
+
+            expect(eventFound, "No event found for withdrawing all collateral").to.be.true;
+        });
+
+        it.only("should withdraw part of lent amount", async function () {
+            this.timeout(approx10Blocks);
+            const [{ amount: lendAmountBefore }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+
+            const amountToWithdraw = newMonetaryAmount(1, underlyingCurrency, true);
+            await userInterBtcAPI.loans.withdraw(underlyingCurrency, amountToWithdraw);
+
+            const [{ amount: lendAmountAfter }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+            const actuallyWithdrawnAmount = lendAmountBefore.sub(lendAmountAfter);
+
+            expect(
+                actuallyWithdrawnAmount.eq(amountToWithdraw),
+                // eslint-disable-next-line max-len
+                `Expected withdrawn amount: ${amountToWithdraw.toHuman()} is different from the actual amount: ${actuallyWithdrawnAmount.toHuman()}!`
+            ).to.be.true;
+        });
     });
 
     describe("withdrawAll", () => {
-        //TODO
+        it("should withdraw whole amount from lending protocol", async function () {
+            this.timeout(approx10Blocks);
+
+            await userInterBtcAPI.loans.withdrawAll(underlyingCurrency);
+
+            const [{ amount: lendAmount }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+
+            expect(
+                lendAmount.isZero(),
+                `Expected to withdraw full amount, but amount left in loan is ${lendAmount.toHuman()}!`
+            ).to.be.true;
+        });
+    });
+
+    describe("enableAsCollateral", () => {
+        it("should enable lend position as collateral", async function () {
+            this.timeout(approx10Blocks);
+
+            const lendAmount = newMonetaryAmount(1, underlyingCurrency, true);
+            await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
+            await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
+            const [{ isCollateral }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+
+            expect(isCollateral).to.be.true;
+        });
+    });
+
+    describe("disableAsCollateral", () => {
+        it("should disable enabled collateral position if there are no borrows", async function () {
+            this.timeout(approx10Blocks);
+
+            await userInterBtcAPI.loans.disableAsCollateral(underlyingCurrency);
+            const [{ isCollateral }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+
+            expect(isCollateral).to.be.false;
+        });
     });
 });
