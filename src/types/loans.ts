@@ -2,9 +2,9 @@ import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { CurrencyExt } from "./currency";
 
-interface LoanReward{
+interface LoanReward {
     currency: CurrencyExt;
-    apy: Big; // percentage
+    apy: Big;
 }
 
 interface LoanPosition {
@@ -18,7 +18,9 @@ interface LendPosition extends LoanPosition {
     earnedInterest: MonetaryAmount<CurrencyExt>;
 }
 
-type BorrowPosition = LoanPosition;
+interface BorrowPosition extends LoanPosition {
+    earnedDebt: MonetaryAmount<CurrencyExt>;
+}
 
 interface LoanAsset {
     currency: CurrencyExt;
@@ -28,7 +30,9 @@ interface LoanAsset {
     borrowReward: LoanReward | null; // null if rewards are not enabled.
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
-    liquidationThreshold: Big;
+    liquidationThreshold: Big; // percentage
+    collateralThreshold: Big; // percentage
+    isActive: boolean;
 }
 
 // Enables easier access to data by asset ticker key.
@@ -36,4 +40,8 @@ type TickerToData<T> = {
     [ticker: string]: T
 }
 
-export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData };
+interface LoanMarket {
+    lendTokenId: number
+}
+
+export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket };

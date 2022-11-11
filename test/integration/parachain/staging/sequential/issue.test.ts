@@ -147,7 +147,7 @@ describe("issue", () => {
     it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
             const currencyTicker = (
-                await currencyIdToMonetaryCurrency(userInterBtcAPI.assetRegistry, vault_2_id.currencies.collateral)
+                await currencyIdToMonetaryCurrency(userInterBtcAPI.assetRegistry, userInterBtcAPI.loans, vault_2_id.currencies.collateral)
             ).ticker;
 
             const amount = newMonetaryAmount(0.00001, wrappedCurrency, true);
@@ -235,6 +235,7 @@ describe("issue", () => {
                     const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
                     const vaultCollateral = await currencyIdToMonetaryCurrency(
                         userInterBtcAPI.assetRegistry,
+                        userInterBtcAPI.loans,
                         vault_2_id.currencies.collateral
                     );
                     const requestResults = await userInterBtcAPI.issue.request(

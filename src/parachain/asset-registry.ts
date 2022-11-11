@@ -40,7 +40,7 @@ export type UnwrappedAssetRegistryMetadataTuple = [StorageKey<[u32]>, OrmlTraits
 export type SystemCollateralCeilingTuple = [StorageKey<[InterbtcPrimitivesVaultCurrencyPair]>, Option<u128>];
 
 export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
-    constructor(private api: ApiPromise) {}
+    constructor(private api: ApiPromise) { }
 
     static metadataToCurrency(metadata: OrmlTraitsAssetRegistryAssetMetadata): Currency {
         const symbol = decodeBytesAsString(metadata.symbol);
@@ -59,10 +59,12 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         const coingeckoId = decodeBytesAsString(metadata.additional.coingeckoId);
 
         return {
-            id: keyInner.toNumber(),
-            coingeckoId,
-            ...currencyPart,
-        };
+            foreignAsset: {
+                id: keyInner.toNumber(),
+                coingeckoId
+            },
+            ...currencyPart
+        }
     }
 
     // wrapped call for easier mocking in tests
@@ -102,10 +104,12 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         const numberId = id instanceof u32 ? id.toNumber() : id;
 
         return {
-            id: numberId,
-            coingeckoId,
-            ...currencyPart,
-        };
+            foreignAsset: {
+                id: numberId,
+                coingeckoId
+            },
+            ...currencyPart
+        }
     }
 
     // wrapped call for easier mocking in tests
@@ -135,6 +139,6 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         );
 
         // filter all foreign assets to include only those with a collateral ceiling
-        return foreignAssets.filter((foreignAsset) => collateralForeignAssetIdSet.has(foreignAsset.id));
+        return foreignAssets.filter((foreignAsset) => collateralForeignAssetIdSet.has(foreignAsset.foreignAsset.id));
     }
 }

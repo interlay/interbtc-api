@@ -1,10 +1,7 @@
 import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
-import { DefaultAssetRegistryAPI, DefaultLoansAPI } from "../../../src/";
+import { DefaultAssetRegistryAPI, DefaultLoansAPI, DefaultTransactionAPI } from "../../../src/";
 import { getAPITypes } from "../../../src/factory";
-import Big from "big.js";
-import { expect } from "chai";
-import { Kusama, Polkadot } from "@interlay/monetary-js";
 
 describe("DefaultLoansAPI", () => {
     let api: ApiPromise;
@@ -21,39 +18,10 @@ describe("DefaultLoansAPI", () => {
 
     beforeEach(() => {
         stubbedAssetRegistry = sinon.createStubInstance(DefaultAssetRegistryAPI);
-        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry);
+        const transactionAPI = new DefaultTransactionAPI(api);
+        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry, transactionAPI);
     });
 
-    describe("getCurrentBorrowBalance", () => {
-        it("should return a mocked currency amount", async () => {
-            const expectedCurrency = Kusama;
-            const expectedMockAmount = Big(4.2);
-
-            // pass in "null as never" as account as we know the mocked api doesn't use it.
-            const actualAmount = await loansApi.getCurrentBorrowBalance(null as never, Kusama);
-            expect(actualAmount.currency).to.eq(expectedCurrency);
-            expect(
-                actualAmount.toBig().eq(expectedMockAmount),
-                `Expected amount to be equal to ${expectedMockAmount.toString()}, but was ${actualAmount.toString()}`
-            ).to.be.true;
-        });
-    });
-
-    describe("getCurrentCollateralBalance", () => {
-        it("should return a mocked currency amount", async () => {
-            const expectedCurrency = Polkadot;
-            const expectedMockAmount = Big(12.34567);
-
-            // pass in "null as never" as account as we know the mocked api doesn't use it.
-            const actualAmount = await loansApi.getCurrentCollateralBalance(null as never, Polkadot);
-            expect(actualAmount.currency).to.eq(expectedCurrency);
-            expect(
-                actualAmount.toBig().eq(expectedMockAmount),
-                `Expected amount to be equal to ${expectedMockAmount.toString()}, but was ${actualAmount.toString()}`
-            ).to.be.true;
-        });
-    });
-    
     describe("getLendPositionsOfAccount", () => {
         // TODO: add tests
     });

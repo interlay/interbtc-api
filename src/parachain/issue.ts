@@ -28,6 +28,7 @@ import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, Issue, WrappedCurrency } from "../types";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { currencyIdToMonetaryCurrency } from "../utils";
+import { LoansAPI } from "./loans";
 
 export type IssueLimits = {
     singleVaultMaxIssuable: MonetaryAmount<WrappedCurrency>;
@@ -190,7 +191,8 @@ export class DefaultIssueAPI implements IssueAPI {
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
         private transactionAPI: TransactionAPI,
-        private assetRegistryAPI: AssetRegistryAPI
+        private assetRegistryAPI: AssetRegistryAPI,
+        private loansAPI: LoansAPI
     ) {}
 
     async getRequestLimits(
@@ -245,7 +247,7 @@ export class DefaultIssueAPI implements IssueAPI {
                 const vaultId = newVaultId(
                     this.api,
                     vaultAccountId.toString(),
-                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, collateralCurrencyId),
+                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, collateralCurrencyId),
                     this.wrappedCurrency
                 );
                 const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>([
@@ -355,6 +357,7 @@ export class DefaultIssueAPI implements IssueAPI {
                     parseIssueRequest(
                         this.vaultsAPI,
                         this.assetRegistryAPI,
+                        this.loansAPI,
                         req.unwrap(),
                         this.btcNetwork,
                         storageKeyToNthInner(id)
@@ -402,6 +405,7 @@ export class DefaultIssueAPI implements IssueAPI {
                     parseIssueRequest(
                         this.vaultsAPI,
                         this.assetRegistryAPI,
+                        this.loansAPI,
                         issueRequest.unwrap(),
                         this.btcNetwork,
                         issueId

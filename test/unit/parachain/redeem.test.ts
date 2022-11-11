@@ -22,6 +22,7 @@ describe("DefaultRedeemAPI", () => {
             null as any,
             null as any,
             null as any,
+            null as any,
             null as any
         );
     });
