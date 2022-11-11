@@ -57,9 +57,12 @@ describe("redeem", () => {
     let assetRegistry: AssetRegistryAPI;
     let loansAPI: LoansAPI;
 
-    const fetchBtcTxIdFromOpReturn = async (redeemRequestId: string): Promise<string> => {
+    const fetchBtcTxIdFromOpReturn = async (
+        redeemRequestId: string,
+        timeoutMs: number = 5 * 60 * 1000
+    ): Promise<string> => {
         const opreturnData = stripHexPrefix(redeemRequestId);
-        return interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, 5 * 60 * 1000, 5000).catch((_) => {
+        return interBtcAPI.electrsAPI.waitForOpreturn(opreturnData, timeoutMs, 5000).catch((_) => {
             throw new Error(`Could not fetch BTC transaction id for redeem request id ${redeemRequestId}`);
         });
     };
@@ -137,11 +140,22 @@ describe("redeem", () => {
     });
 
     it("should have applied oracle fee rate to redeem transaction", async () => {
+        let btcTxFound = 0;
         const oracleBtcFeePerByte = await interBtcAPI.oracle.getBitcoinFees();
 
         const redeemRequests = await interBtcAPI.redeem.list();
         for (const redeemRequest of redeemRequests) {
-            const txId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
+            let txId: string;
+            try {
+                txId = await fetchBtcTxIdFromOpReturn(redeemRequest.id, 1 * 60 * 1000);
+                btcTxFound++;
+            } catch (e: any) {
+                console.warn(e?.message || "Unknown error");
+                console.log(
+                    `Unable to find btc tx for redeem request with id ${redeemRequest.id}, skipping this request.`
+                );
+                continue;
+            }
 
             // get the actual values on the BTC transaction
             const btcTx = await interBtcAPI.electrsAPI.getTx(txId);
@@ -173,6 +187,8 @@ describe("redeem", () => {
                     BTC tx rate is ${actualFeeRateSatoshiPerByte.toString()}, but oracle rate is ${oracleBtcFeePerByte.toString()}`
             );
         }
+
+        expect(btcTxFound).greaterThan(0, "Failed to find any redeem request transactions to inspect.");
     }).timeout(10 * 60000);
 
     // The goal of this test is to check that a vault sends the redeem BTC transaction with RBF (replace by fee) enabled.
