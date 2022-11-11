@@ -405,13 +405,27 @@ export class DefaultLoansAPI implements LoansAPI {
         return [totalLiquidityMonetary, availableCapacityMonetary];
     }
 
-    async _getLendAndBorrowRewardAPY(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<[Big, Big]> {
-        const [lendRewardSpeed, borrowRewardSpeed] = await Promise.all([
-            this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
-            this.api.query.loans.rewardBorrowSpeed(underlyingCurrencyId)
-        ]);
+    async _getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<[Big, Big]> {
+        const [lendRewardSpeed, borrowRewardSpeed] = (
+            await Promise.all([
+                this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
+                this.api.query.loans.rewardBorrowSpeed(underlyingCurrencyId),
+            ])
+        ).map((rewardSpeed) => decodeFixedPointType(rewardSpeed));
 
-        // TODO: compute based on blocktime
+        const blockTime = this.api.consts.timestamp.minimumPeriod.toNumber() * 2;
+        const blocksPerYear = (86400 * 365 * 1000) / blockTime;
+        // @note could be refactored to compute APR in lib if we can get underlyingCurrency/rewardCurrency exchange rate,
+        // but is it safe to assume that exchange rate for btc/underlyingCurrency will be
+        // always fed to the oracle and available?
+
+        // Return rate per 1 UNIT of underlying currency and compute APR
+        // on UI where all exchange rates are available.
+
+        const lendRewardAmount = lendRewardSpeed.mul(blocksPerYear);
+        const borrowRewardAmount = borrowRewardSpeed.mul(blocksPerYear);
+
+        return [lendRewardAmount, borrowRewardAmount];
     }
 
     async _getLoanAssetFromMarket(
@@ -426,14 +440,21 @@ export class DefaultLoansAPI implements LoansAPI {
             underlyingCurrencyId
         );
 
-        const [lendApy, borrowApy, [totalLiquidity, availableCapacity]] = await Promise.all([
+        const [
+            lendApy,
+            borrowApy,
+            [totalLiquidity, availableCapacity],
+            [lendRewardAmountYearly, borrowRewardAmountYearly],
+        ] = await Promise.all([
             this._getLendApy(underlyingCurrencyId),
             this._getBorrowApy(underlyingCurrencyId),
-            this._getTotalLiquidityAndCapacity(underlyingCurrency, underlyingCurrencyId)
+            this._getTotalLiquidityAndCapacity(underlyingCurrency, underlyingCurrencyId),
+            this._getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId),
         ]);
 
         const liquidationThreshold = decodeFixedPointType(marketData.liquidationThreshold);
         const collateralThreshold = decodeFixedPointType(marketData.collateralFactor);
+        
 
         return [
             underlyingCurrency,
@@ -445,7 +466,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 totalLiquidity,
                 availableCapacity,
                 liquidationThreshold,
-                collateralThreshold
+                collateralThreshold,
             },
         ];
     }
