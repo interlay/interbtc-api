@@ -293,7 +293,7 @@ describe("Loans", () => {
             expect(eventFound, "No event found for withdrawing all collateral").to.be.true;
         });
 
-        it.only("should withdraw part of lent amount", async function () {
+        it("should withdraw part of lent amount", async function () {
             this.timeout(approx10Blocks);
             const [{ amount: lendAmountBefore }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
@@ -312,17 +312,14 @@ describe("Loans", () => {
     });
 
     describe("withdrawAll", () => {
-        it("should withdraw whole amount from lending protocol", async function () {
+        it("should withdraw full amount from lending protocol", async function () {
             this.timeout(approx10Blocks);
 
             await userInterBtcAPI.loans.withdrawAll(underlyingCurrency);
 
-            const [{ amount: lendAmount }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
+            const lendPositions = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
-            expect(
-                lendAmount.isZero(),
-                `Expected to withdraw full amount, but amount left in loan is ${lendAmount.toHuman()}!`
-            ).to.be.true;
+            expect(lendPositions, "Expected to withdraw full amount and close position!").to.be.empty;
         });
     });
 

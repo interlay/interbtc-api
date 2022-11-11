@@ -284,7 +284,7 @@ describe("Initialize parachain state", () => {
 
     it("should set BTC tx fees", async () => {
         const setFeeEstimate = new Big(1);
-        let getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees();
+        let getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees().catch((_) => undefined);
         if (!getFeeEstimate) {
             await initializeBtcTxFees(setFeeEstimate, sudoInterBtcAPI.oracle);
             // just check that this is set since we medianize results

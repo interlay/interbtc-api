@@ -287,7 +287,7 @@ export function parseRedeemRequestStatus(
     // now check if pending is actually expired
     const maxPeriod = Math.max(req.period.toNumber(), redeemPeriod);
     const openTime = req.opentime.toNumber();
-    if (openTime + maxPeriod > activeBlockCount) {
+    if (openTime + maxPeriod < activeBlockCount) {
         return RedeemStatus.Expired;
     }
 
