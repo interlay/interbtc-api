@@ -2,7 +2,7 @@ import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { CurrencyExt } from "./currency";
 
-interface LoanReward {
+interface SubsidyReward {
     currency: CurrencyExt;
     amountPerUnitYearly: MonetaryAmount<CurrencyExt>;
 }
@@ -26,8 +26,8 @@ interface LoanAsset {
     currency: CurrencyExt;
     lendApy: Big; // percentage
     borrowApy: Big; // percentage
-    lendReward: LoanReward | null; // null if rewards are not enabled.
-    borrowReward: LoanReward | null; // null if rewards are not enabled.
+    lendReward: SubsidyReward | null; // null if rewards are not enabled.
+    borrowReward: SubsidyReward | null; // null if rewards are not enabled.
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
     liquidationThreshold: Big; // percentage
@@ -44,4 +44,4 @@ interface LoanMarket {
     lendTokenId: number;
 }
 
-export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket, LoanReward };
+export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket, SubsidyReward };
