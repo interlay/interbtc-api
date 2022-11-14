@@ -4,7 +4,7 @@ import { CurrencyExt } from "./currency";
 
 interface LoanReward {
     currency: CurrencyExt;
-    amountPerUnitYearly: MonetaryAmount<CurrencyExt>
+    amountPerUnitYearly: MonetaryAmount<CurrencyExt>;
 }
 
 interface LoanPosition {
@@ -37,11 +37,11 @@ interface LoanAsset {
 
 // Enables easier access to data by asset ticker key.
 type TickerToData<T> = {
-    [ticker: string]: T
-}
+    [ticker: string]: T;
+};
 
 interface LoanMarket {
-    lendTokenId: number
+    lendTokenId: number;
 }
 
-export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket };
+export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket, LoanReward };

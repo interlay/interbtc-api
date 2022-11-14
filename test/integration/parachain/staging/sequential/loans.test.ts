@@ -346,4 +346,27 @@ describe("Loans", () => {
             expect(isCollateral).to.be.false;
         });
     });
+
+    describe("getLoanAssets", () => {
+        it("should get loan assets in correct format", async () => {
+            const loanAssets = await userInterBtcAPI.loans.getLoanAssets();
+            const underlyingCurrencyLoanAsset = loanAssets[underlyingCurrency.ticker];
+
+            expect(underlyingCurrencyLoanAsset).is.not.undefined;
+            expect(underlyingCurrencyLoanAsset.currency).to.be.deep.equal(underlyingCurrency);
+            expect(underlyingCurrencyLoanAsset.isActive).to.be.true;
+            // TODO: add more tests to check data validity
+        });
+
+        it("should return empty object if there are no added markets", async () => {
+            // Mock empty list returned from chain.
+            sinon.stub(LoansAPI, "getLoansMarketsEntries").returns(Promise.resolve([]));
+
+            const loanAssets = await LoansAPI.getLoanAssets();
+            expect(loanAssets).to.be.empty;
+
+            sinon.restore();
+            sinon.reset();
+        });
+    });
 });

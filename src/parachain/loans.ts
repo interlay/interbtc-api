@@ -1,13 +1,21 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { KBtc, Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
-import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, LendToken, LoanMarket } from "../types";
+import {
+    BorrowPosition,
+    CurrencyExt,
+    LoanAsset,
+    LendPosition,
+    TickerToData,
+    LendToken,
+    LoanMarket,
+    LoanReward,
+} from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
 import {
     currencyIdToMonetaryCurrency,
     decodeFixedPointType,
-    newAccountId,
     newCurrencyId,
     newMonetaryAmount,
     storageKeyToNthInner,
@@ -15,51 +23,6 @@ import {
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
-
-// TODO: remove mock data after real implementation is added
-const MOCKDATA_LOAN_ASSET_KBTC: LoanAsset = {
-    currency: KBtc,
-    lendApy: Big(10.2),
-    borrowApy: Big(13.223),
-    totalLiquidity: new MonetaryAmount(KBtc, Big(165.231651)),
-    lendReward: {
-        currency: Kintsugi,
-        apy: Big(23.21),
-    },
-    borrowReward: null,
-    availableCapacity: new MonetaryAmount(KBtc, Big(6.7935275343163)),
-    liquidationThreshold: Big(80),
-    collateralThreshold: Big(70),
-    isActive: true,
-};
-
-const MOCKDATA_LOAN_ASSET_KINT = {
-    currency: Kintsugi,
-    lendApy: Big(40.13),
-    borrowApy: Big(53.91),
-    totalLiquidity: new MonetaryAmount(Kintsugi, Big(479574.6808557974)),
-    lendReward: null,
-    borrowReward: null,
-    availableCapacity: new MonetaryAmount(Kintsugi, Big(65593.3527534316)),
-    liquidationThreshold: Big(80),
-    collateralThreshold: Big(60),
-    isActive: false,
-};
-
-const MOCKDATA_LOAN_ASSETS: TickerToData<LoanAsset> = {
-    KBTC: MOCKDATA_LOAN_ASSET_KBTC,
-    KINT: MOCKDATA_LOAN_ASSET_KINT,
-};
-
-const MOCKDATA_SUPPLY_POSITION_KBTC: LendPosition = {
-    currency: KBtc,
-    amount: new MonetaryAmount(KBtc, Big(2.79764257)),
-    isCollateral: true,
-    earnedInterest: new MonetaryAmount(KBtc, Big(0.0764257)),
-    earnedReward: new MonetaryAmount(Kintsugi, Big(593.279764257)),
-};
-
-const MOCKDATA_SUPPLY_POSITIONS = [MOCKDATA_SUPPLY_POSITION_KBTC];
 
 const MOCKDATA_BORROW_POSITION_INTR: BorrowPosition = {
     currency: Kintsugi,
@@ -75,14 +38,6 @@ const MOCKDATA_BORROW_POSITIONS = [MOCKDATA_BORROW_POSITION_INTR];
  */
 
 export interface LoansAPI {
-    // TODO: is this needed if we use getLoanAssets??
-    /**
-     * Get all markets.
-     *
-     * @returns Map of underlying currency CurrencyId to LoanMarket for all markets.
-     */
-    getMarkets(): Promise<Map<InterbtcPrimitivesCurrencyId, LoanMarket>>;
-
     /**
      * Get the lend positions for given account.
      *
@@ -233,19 +188,7 @@ export class DefaultLoansAPI implements LoansAPI {
     // Wrapped call to make mocks in tests simple.
     async getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<PalletLoansMarket>][]> {
         const entries = await this.api.query.loans.markets.entries();
-        return entries.filter(entry => entry[1].isSome);
-    }
-
-    async getMarkets(): Promise<Map<InterbtcPrimitivesCurrencyId, LoanMarket>> {
-        const markets = await this.getLoansMarketsEntries();
-
-        const result = new Map<InterbtcPrimitivesCurrencyId, LoanMarket>();
-        for (const [key, market] of markets) {
-            const marketData = DefaultLoansAPI.parseMarket(market.unwrap());
-            const underlyingCurrencyId = storageKeyToNthInner(key);
-            result.set(underlyingCurrencyId, marketData);
-        }
-        return result;
+        return entries.filter((entry) => entry[1].isSome);
     }
 
     static getLendTokenFromUnderlyingCurrency(
@@ -320,19 +263,17 @@ export class DefaultLoansAPI implements LoansAPI {
     ): Promise<LendPosition | null> {
         const rewardCurrencyId = this.api.consts.loans.rewardAssetId;
 
-        const underlyingCurrencyAmount = await this.getLendAmountInUnderlyingCurrency(accountId, lendTokenId, underlyingCurrencyId);
+        const underlyingCurrencyAmount = await this.getLendAmountInUnderlyingCurrency(
+            accountId,
+            lendTokenId,
+            underlyingCurrencyId
+        );
         // Returns null if position does not exist
         if (underlyingCurrencyAmount.eq(0)) {
             return null;
         }
 
-        const [
-            accountEarned,
-            accountDeposits,
-            rewardAccrued,
-            rewardCurrency,
-            currentMarketStatus,
-        ] = await Promise.all([
+        const [accountEarned, accountDeposits, rewardAccrued, rewardCurrency, currentMarketStatus] = await Promise.all([
             this.api.query.loans.accountEarned(underlyingCurrencyId, accountId),
             this.api.query.loans.accountDeposits(lendTokenId, accountId),
             this.api.query.loans.rewardAccrued(accountId),
@@ -362,7 +303,10 @@ export class DefaultLoansAPI implements LoansAPI {
 
     async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
         const marketsEntries = await this.getLoansMarketsEntries();
-        const marketsCurrencies = marketsEntries.map(([key, value]) => [storageKeyToNthInner(key), value.unwrap().lendTokenId]);
+        const marketsCurrencies = marketsEntries.map(([key, value]) => [
+            storageKeyToNthInner(key),
+            value.unwrap().lendTokenId,
+        ]);
 
         const allMarketsPositions = await Promise.all(
             marketsCurrencies.map(async ([underlyingCurrencyId, lendTokenId]) => {
@@ -375,27 +319,27 @@ export class DefaultLoansAPI implements LoansAPI {
             })
         );
 
-        return <LendPosition[]>allMarketsPositions.filter(position => position !== null);
+        return <LendPosition[]>allMarketsPositions.filter((position) => position !== null);
     }
 
     getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
         return Promise.resolve(MOCKDATA_BORROW_POSITIONS);
     }
 
-    async _getLendApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
+    async _getLoanAssetLendApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
         const rawLendApy = await this.api.query.loans.supplyRate(underlyingCurrencyId);
 
         // Return percentage
         return decodeFixedPointType(rawLendApy).mul(100);
     }
-    async _getBorrowApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
+    async _getLoanAssetBorrowApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
         const rawBorrowApy = await this.api.query.loans.borrowRate(underlyingCurrencyId);
 
         // Return percentage
         return decodeFixedPointType(rawBorrowApy).mul(100);
     }
 
-    async _getTotalLiquidityAndCapacity(
+    async _getLoanAssetTotalLiquidityAndCapacity(
         underlyingCurrency: CurrencyExt,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId
     ): Promise<[MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>]> {
@@ -414,7 +358,9 @@ export class DefaultLoansAPI implements LoansAPI {
         return [totalLiquidityMonetary, availableCapacityMonetary];
     }
 
-    async _getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<[Big, Big]> {
+    async _getLoanAssetLendAndBorrowYearlyRewardAmount(
+        underlyingCurrencyId: InterbtcPrimitivesCurrencyId
+    ): Promise<[Big, Big]> {
         const [lendRewardSpeed, borrowRewardSpeed] = (
             await Promise.all([
                 this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
@@ -437,12 +383,20 @@ export class DefaultLoansAPI implements LoansAPI {
         return [lendRewardAmount, borrowRewardAmount];
     }
 
-    async _getLoanAssetFromMarket(
+    _getLoanAssetLoanReward(amount: Big, currency: CurrencyExt): LoanReward | null {
+        if (amount.eq(0)) {
+            return null;
+        }
+        return {
+            currency,
+            amountPerUnitYearly: newMonetaryAmount(amount, currency),
+        };
+    }
+
+    async _getLoanAsset(
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         marketData: PalletLoansMarket
     ): Promise<[CurrencyExt, LoanAsset]> {
-        //TODO
-
         const underlyingCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
             this,
@@ -455,15 +409,17 @@ export class DefaultLoansAPI implements LoansAPI {
             [totalLiquidity, availableCapacity],
             [lendRewardAmountYearly, borrowRewardAmountYearly],
         ] = await Promise.all([
-            this._getLendApy(underlyingCurrencyId),
-            this._getBorrowApy(underlyingCurrencyId),
-            this._getTotalLiquidityAndCapacity(underlyingCurrency, underlyingCurrencyId),
-            this._getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId),
+            this._getLoanAssetLendApy(underlyingCurrencyId),
+            this._getLoanAssetBorrowApy(underlyingCurrencyId),
+            this._getLoanAssetTotalLiquidityAndCapacity(underlyingCurrency, underlyingCurrencyId),
+            this._getLoanAssetLendAndBorrowYearlyRewardAmount(underlyingCurrencyId),
         ]);
 
         const liquidationThreshold = decodeFixedPointType(marketData.liquidationThreshold);
         const collateralThreshold = decodeFixedPointType(marketData.collateralFactor);
-        
+
+        const lendReward = this._getLoanAssetLoanReward(lendRewardAmountYearly, underlyingCurrency);
+        const borrowReward = this._getLoanAssetLoanReward(borrowRewardAmountYearly, underlyingCurrency);
 
         return [
             underlyingCurrency,
@@ -476,20 +432,26 @@ export class DefaultLoansAPI implements LoansAPI {
                 availableCapacity,
                 liquidationThreshold,
                 collateralThreshold,
+                lendReward,
+                borrowReward,
             },
         ];
     }
 
     async getLoanAssets(): Promise<TickerToData<LoanAsset>> {
-        // TODO: handle active/inactive markets
         const marketsEntries = await this.getLoansMarketsEntries();
-        const loanAssets = await Promise.all(
-            marketsEntries.map(([underlyingCurrency, marketData]) =>
-                this._getLoanAssetFromMarket(underlyingCurrency.args[0], marketData.unwrap())
+        const loanAssetsArray = await Promise.all(
+            marketsEntries.map(([key, marketData]) =>
+                this._getLoanAsset(storageKeyToNthInner(key), marketData.unwrap())
             )
         );
 
-        return Promise.resolve(MOCKDATA_LOAN_ASSETS);
+        const loanAssets = loanAssetsArray.reduce(
+            (result, [currency, loanAsset]) => ({ ...result, [currency.ticker]: loanAsset }),
+            {}
+        );
+
+        return loanAssets;
     }
 
     // Check that market for given currency is added and in active state.
