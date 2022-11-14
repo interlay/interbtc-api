@@ -9,6 +9,7 @@ import {
     LendToken,
     LoanMarket,
     SubsidyReward,
+    LoanPosition,
 } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
@@ -226,19 +227,26 @@ export class DefaultLoansAPI implements LoansAPI {
         return value.lendTokenId;
     }
 
+    async convertLendTokenToUnderlyingCurrency(
+        amount: Big,
+        underlyingCurrencyId: InterbtcPrimitivesCurrencyId
+    ): Promise<Big> {
+        const exchangeRate = await this.api.query.loans.exchangeRate(underlyingCurrencyId);
+        const decodedExchangeRate = decodeFixedPointType(exchangeRate);
+
+        return amount.mul(decodedExchangeRate);
+    }
+
     async getLendAmountInUnderlyingCurrency(
         accountId: AccountId,
         lendTokenId: InterbtcPrimitivesCurrencyId,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId
     ): Promise<Big> {
-        const [lendTokenBalance, exchangeRate] = await Promise.all([
-            this.api.query.tokens.accounts(accountId, lendTokenId),
-            this.api.query.loans.exchangeRate(underlyingCurrencyId),
-        ]);
-        const decodedExchangeRate = decodeFixedPointType(exchangeRate);
+        const lendTokenBalance = await this.api.query.tokens.accounts(accountId, lendTokenId);
         const lendTokenBalanceTotal = lendTokenBalance.free.add(lendTokenBalance.reserved);
+        const lendTokenBalanceInBig = Big(lendTokenBalanceTotal.toString());
 
-        return Big(lendTokenBalanceTotal.toString()).mul(decodedExchangeRate);
+        return this.convertLendTokenToUnderlyingCurrency(lendTokenBalanceInBig, underlyingCurrencyId);
     }
 
     async getLendTokens(): Promise<LendToken[]> {
@@ -279,6 +287,7 @@ export class DefaultLoansAPI implements LoansAPI {
         const [accountEarned, accountDeposits, rewardAccrued, rewardCurrency, currentMarketStatus] = await Promise.all([
             this.api.query.loans.accountEarned(underlyingCurrencyId, accountId),
             this.api.query.loans.accountDeposits(lendTokenId, accountId),
+            // TODO: fix - This is returning reward per account basis, not per lend position
             this.api.query.loans.rewardAccrued(accountId),
             currencyIdToMonetaryCurrency(this.assetRegistryAPI, this, rewardCurrencyId),
             this.api.rpc.loans.getMarketStatus(underlyingCurrencyId),
@@ -304,22 +313,34 @@ export class DefaultLoansAPI implements LoansAPI {
         };
     }
 
+    _calculateEarnedDebt(borrowedAmount: Big, snapshotBorrowIndex: Big, currentBorrowIndex: Big): Big {
+        // @note Formula for computing total debt: https://docs.parallel.fi/parallel-finance/#2.6-interest-rate-index
+        // To compute only earned debt, subtract 1 from factor
+        const factor = (currentBorrowIndex.div(snapshotBorrowIndex)).sub(1);
+        return borrowedAmount.mul(factor);
+    }
+
     async _getBorrowPosition(
         accountId: AccountId,
         underlyingCurrency: CurrencyExt,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
-        lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<BorrowPosition | null> {
+        const [borrowSnapshot, marketStatus] = await Promise.all([
+            this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
+            this.api.rpc.loans.getMarketStatus(underlyingCurrencyId),
+        ]);
 
-        const [borrowSnapshot ] = await Promise.all([
-            this.api.query.loans.accountBorrows(// TODO add params)
-        ])
-
-        const underlyingCurrencyAmount = this.getLendAmountInUnderlyingCurrency()
+        const borrowedAmount = Big(borrowSnapshot.principal.toString());
+        const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
+        const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
+        const earnedDebt = this._calculateEarnedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex)
 
         return {
-
-        }
+            amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),
+            currency: underlyingCurrency,
+            earnedReward: null, // TODO: add computation for earned subsidy reward
+            earnedDebt: newMonetaryAmount(earnedDebt, underlyingCurrency),
+        };
     }
 
     async _getPositionsOfAccount<Position extends LoanPosition>(
@@ -352,11 +373,11 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
-        return this._getPositionsOfAccount(accountId, this._getLendPosition);
+        return this._getPositionsOfAccount(accountId, this._getLendPosition.bind(this));
     }
 
     async getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
-        return this._getPositionsOfAccount(accountId, this._getBorrowPosition);
+        return this._getPositionsOfAccount(accountId, this._getBorrowPosition.bind(this));
     }
 
     async _getLendApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
@@ -393,9 +414,7 @@ export class DefaultLoansAPI implements LoansAPI {
         return [totalLiquidityMonetary, availableCapacityMonetary];
     }
 
-    async _getLendAndBorrowYearlyRewardAmount(
-        underlyingCurrencyId: InterbtcPrimitivesCurrencyId
-    ): Promise<[Big, Big]> {
+    async _getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<[Big, Big]> {
         const [lendRewardSpeed, borrowRewardSpeed] = (
             await Promise.all([
                 this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
