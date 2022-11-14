@@ -258,7 +258,7 @@ export class DefaultLoansAPI implements LoansAPI {
         );
     }
 
-    async getLendPosition(
+    async _getLendPosition(
         accountId: AccountId,
         underlyingCurrency: CurrencyExt,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
@@ -304,7 +304,33 @@ export class DefaultLoansAPI implements LoansAPI {
         };
     }
 
-    async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
+    async _getBorrowPosition(
+        accountId: AccountId,
+        underlyingCurrency: CurrencyExt,
+        underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
+        lendTokenId: InterbtcPrimitivesCurrencyId
+    ): Promise<BorrowPosition | null> {
+
+        const [borrowSnapshot ] = await Promise.all([
+            this.api.query.loans.accountBorrows(// TODO add params)
+        ])
+
+        const underlyingCurrencyAmount = this.getLendAmountInUnderlyingCurrency()
+
+        return {
+
+        }
+    }
+
+    async _getPositionsOfAccount<Position extends LoanPosition>(
+        accountId: AccountId,
+        getSinglePosition: (
+            accountId: AccountId,
+            underlyingCurrency: CurrencyExt,
+            underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
+            lendTokenId: InterbtcPrimitivesCurrencyId
+        ) => Promise<Position | null>
+    ): Promise<Array<Position>> {
         const marketsEntries = await this.getLoansMarketsEntries();
         const marketsCurrencies = marketsEntries.map(([key, value]) => [
             storageKeyToNthInner(key),
@@ -318,15 +344,19 @@ export class DefaultLoansAPI implements LoansAPI {
                     this,
                     underlyingCurrencyId
                 );
-                return this.getLendPosition(accountId, underlyingCurrency, underlyingCurrencyId, lendTokenId);
+                return getSinglePosition(accountId, underlyingCurrency, underlyingCurrencyId, lendTokenId);
             })
         );
 
-        return <LendPosition[]>allMarketsPositions.filter((position) => position !== null);
+        return <Array<Position>>allMarketsPositions.filter((position) => position !== null);
     }
 
-    getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
-        return Promise.resolve(MOCKDATA_BORROW_POSITIONS);
+    async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
+        return this._getPositionsOfAccount(accountId, this._getLendPosition);
+    }
+
+    async getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
+        return this._getPositionsOfAccount(accountId, this._getBorrowPosition);
     }
 
     async _getLendApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
