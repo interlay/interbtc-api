@@ -130,48 +130,40 @@ export interface LoansAPI {
     disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void>;
 
     /**
-     * Claim subsidy reward for specified currency.
-     *
-     * @param currency Currency for which to claim reward.
-     * @throws If no position exists for `currency` and account.
-     */
-    claimSubsidyReward(currency: CurrencyExt): Promise<void>;
-
-    /**
-     * Claim subsidy rewards for all currencies available for account.
+     * Claim subsidy rewards for all markets available for account.
      */
     claimAllSubsidyRewards(): Promise<void>;
 
     /**
      * Borrow currency from the protocol.
      *
-     * @param currency Currency to borrow.
+     * @param underlyingCurrency Currency to borrow.
      * @param amount Amount of currency to borrow.
-     * @throws If there is no active market for `currency`.
+     * @throws If there is no active market for `underlyingCurrency`.
      * @throws If there is not enough collateral provided by account for
-     * `amount` of `currency`.
-     * @throws If `amount` is higher than available amount of `currency`
+     * `amount` of `underlyingCurrency`.
+     * @throws If `amount` is higher than available amount of `underlyingCurrency`
      * in the protocol.
      */
-    borrow(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
 
     /**
      * Repay borrowed loan.
      *
-     * @param currency Currency to repay.
+     * @param underlyingCurrency Currency to repay.
      * @param amount Amount of currency to repay.
-     * @throws If there is no active market for `currency`.
+     * @throws If there is no active market for `underlyingCurrency`.
      * @throws If `amount` is higher than available balance of account.
      * @throws If `amount` is higher than outstanding loan.
      */
-    repay(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
 
     /**
      * Same as `repay`, but repays full loan.
      *
-     * @param currency Currency to repay.
+     * @param underlyingCurrency Currency to repay.
      */
-    repayAll(currency: CurrencyExt): Promise<void>;
+    repayAll(underlyingCurrency: CurrencyExt): Promise<void>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
@@ -567,23 +559,36 @@ export class DefaultLoansAPI implements LoansAPI {
         await this.transactionAPI.sendLogged(enableCollateralExtrinsic, this.api.events.loans.WithdrawCollateral, true);
     }
 
-    async claimSubsidyReward(currency: CurrencyExt): Promise<void> {
-        //TODO
-    }
-
     async claimAllSubsidyRewards(): Promise<void> {
-        //TODO
+        const claimRewardsExtrinsic = this.api.tx.loans.claimReward();
+
+        await this.transactionAPI.sendLogged(claimRewardsExtrinsic, this.api.events.loans.RewardPaid, true);
     }
 
-    async borrow(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
-        //TODO
+    async borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "borrow");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const borrowExtrinsic = this.api.tx.loans.borrow(underlyingCurrencyId, amount.toString(true));
+
+        await this.transactionAPI.sendLogged(borrowExtrinsic, this.api.events.loans.Borrowed, true);
     }
 
-    async repay(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
-        //TODO
+    async repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "repay debt of");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const repay = this.api.tx.loans.repayBorrow(underlyingCurrencyId, amount.toString(true));
+
+        await this.transactionAPI.sendLogged(repay, this.api.events.loans.RepaidBorrow, true);
     }
 
-    async repayAll(currency: CurrencyExt): Promise<void> {
-        //TODO
+    async repayAll(underlyingCurrency: CurrencyExt): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "repay all debt of");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const repayAllExtrinsic = this.api.tx.loans.repayBorrowAll(underlyingCurrencyId);
+
+        await this.transactionAPI.sendLogged(repayAllExtrinsic, this.api.events.loans.RepaidBorrow, true);
     }
 }
