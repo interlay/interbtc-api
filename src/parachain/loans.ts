@@ -1,5 +1,5 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -24,15 +24,6 @@ import {
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
-
-const MOCKDATA_BORROW_POSITION_INTR: BorrowPosition = {
-    currency: Kintsugi,
-    amount: new MonetaryAmount(Kintsugi, Big(1305.73946294014)),
-    earnedReward: new MonetaryAmount(Kintsugi, Big(0)),
-    accumulatedDebt: new MonetaryAmount(Kintsugi, Big(35.231)),
-};
-
-const MOCKDATA_BORROW_POSITIONS = [MOCKDATA_BORROW_POSITION_INTR];
 
 /**
  * @category Lending protocol
@@ -326,6 +317,10 @@ export class DefaultLoansAPI implements LoansAPI {
         const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
         const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
         const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);
+
+        if (borrowedAmount.eq(0)) {
+            return null;
+        }
 
         return {
             amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),

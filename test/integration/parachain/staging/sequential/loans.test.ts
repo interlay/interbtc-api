@@ -303,12 +303,12 @@ describe("Loans", () => {
             await userInterBtcAPI.loans.withdraw(underlyingCurrency, amountToWithdraw);
 
             const [{ amount: lendAmountAfter }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
-            const actuallyWithdrawnAmount = lendAmountBefore.sub(lendAmountAfter);
+            const actuallyWithdrawnAmount = lendAmountBefore.sub(lendAmountAfter).toBig().round(2);
 
             expect(
-                actuallyWithdrawnAmount.eq(amountToWithdraw),
+                actuallyWithdrawnAmount.eq(amountToWithdraw.toBig()),
                 // eslint-disable-next-line max-len
-                `Expected withdrawn amount: ${amountToWithdraw.toHuman()} is different from the actual amount: ${actuallyWithdrawnAmount.toHuman()}!`
+                `Expected withdrawn amount: ${amountToWithdraw.toHuman()} is different from the actual amount: ${actuallyWithdrawnAmount.toString()}!`
             ).to.be.true;
         });
     });
@@ -372,11 +372,71 @@ describe("Loans", () => {
         });
     });
 
+    describe("claimAllSubsidyRewards", () => {
+        it("should claim all subsidy rewards", () => {
+            //TODO
+        });
+    });
+
+    describe("borrow", () => {
+        it("should borrow specified amount", async function () {
+            this.timeout(approx10Blocks);
+            const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
+            const borrowAmount = newMonetaryAmount(1, underlyingCurrency, true);
+            await user2InterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
+            await user2InterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
+            await user2InterBtcAPI.loans.borrow(underlyingCurrency, borrowAmount);
+
+            const [{ amount }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(user2AccountId);
+            const roundedAmount = amount.toBig().round(2);
+            expect(
+                roundedAmount.eq(borrowAmount.toBig()),
+                `Expected borrowed amount to equal ${borrowAmount.toString()}, but it is ${amount.toString()}.`
+            ).to.be.true;
+        });
+    });
+
+    describe("repay", () => {
+        it("should repay specified amount", async function () {
+            this.timeout(approx10Blocks);
+            const repayAmount = newMonetaryAmount(0.5, underlyingCurrency, true);
+            const [{ amount: borrowAmountBefore }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(
+                user2AccountId
+            );
+            await user2InterBtcAPI.loans.repay(underlyingCurrency, repayAmount);
+            const [{ amount: borrowAmountAfter }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(
+                user2AccountId
+            );
+
+            const borrowAmountAfterRounded = borrowAmountAfter.toBig().round(2);
+            const expectedRemainingAmount = borrowAmountBefore.sub(repayAmount);
+
+            expect(
+                borrowAmountAfterRounded.eq(expectedRemainingAmount.toBig()),
+                `Expected remaining borrow amount to equal ${expectedRemainingAmount.toString()}, but it is ${borrowAmountAfter.toString()}`
+            ).to.be.true;
+        });
+    });
+
+    describe("repayAll", () => {
+        it("should repay whole loan", async function () {
+            this.timeout(approx10Blocks);
+            await user2InterBtcAPI.loans.repayAll(underlyingCurrency);
+            const borrowPositions = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(user2AccountId);
+
+            expect(
+                borrowPositions,
+                `Expected to repay full borrow position, but positions: ${borrowPositions} were found`
+            ).to.be.empty;
+        });
+    });
+
     describe("getBorrowPositionsOfAccount", () => {
         before(async function () {
             this.timeout(approx10Blocks);
-            // TODO:borrow 
+            // TODO:borrow
         });
+
         it("should get borrow positions in correct format", async function () {
             //TODO
         });
