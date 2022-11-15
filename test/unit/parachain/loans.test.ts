@@ -1,10 +1,16 @@
 import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
-import { CurrencyExt, DefaultAssetRegistryAPI, DefaultLoansAPI, DefaultTransactionAPI } from "../../../src/";
+import {
+    CurrencyExt,
+    DefaultAssetRegistryAPI,
+    DefaultLoansAPI,
+    DefaultTransactionAPI,
+    newMonetaryAmount,
+} from "../../../src/";
 import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { expect } from "chai";
-import { MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+import { Interlay, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("DefaultLoansAPI", () => {
     let api: ApiPromise;
@@ -128,6 +134,31 @@ describe("DefaultLoansAPI", () => {
             );
 
             expect(actualAvailableCapacity.toBig().toNumber()).to.eq(0);
+        });
+    });
+
+    describe("_constructSubsidyReward", () => {
+        const testCurrency = Interlay;
+        it("should construct SubsidyReward as expected", () => {
+            const testAmountAtomic = 42e10;
+
+            const expectedAmount = newMonetaryAmount(testAmountAtomic, testCurrency);
+
+            const actualReward = loansApi._constructSubsidyReward(Big(testAmountAtomic), testCurrency);
+
+            expect(actualReward).to.not.be.null;
+
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            expect(expectedAmount.toBig().eq(actualReward!.amountPerUnitYearly.toBig())).to.be.eq(
+                true,
+                `Expected total amount (atomic value) to equal ${expectedAmount.toString(true)} 
+                but was: ${actualReward?.amountPerUnitYearly.toString(true)}`
+            );
+            expect(actualReward?.currency).to.eq(testCurrency);
+        });
+
+        it("should return null if the amount is zero", () => {
+            expect(loansApi._constructSubsidyReward(Big(0), testCurrency)).to.be.null;
         });
     });
 });
