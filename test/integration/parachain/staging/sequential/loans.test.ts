@@ -218,6 +218,8 @@ describe("Loans", () => {
 
             // TODO: cannot submit timestamp.set - gettin error
             //   'RpcError: 1010: Invalid Transaction: Transaction dispatch is mandatory; transactions may not have mandatory dispatches.'
+            // Solution: Move APR calculation to separate function and unit test it without using actual parachain value,
+            // mock the parachain response for this.
 
             // Manipulates time to accredit interest.
             const timestamp1MonthInFuture = Date.now() + 1000 * 60 * 60 * 24 * 30;
@@ -367,6 +369,16 @@ describe("Loans", () => {
 
             sinon.restore();
             sinon.reset();
+        });
+    });
+
+    describe("getBorrowPositionsOfAccount", () => {
+        before(async function () {
+            this.timeout(approx10Blocks);
+            // TODO:borrow 
+        });
+        it("should get borrow positions in correct format", async function () {
+            //TODO
         });
     });
 });

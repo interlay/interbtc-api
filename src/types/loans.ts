@@ -19,7 +19,7 @@ interface LendPosition extends LoanPosition {
 }
 
 interface BorrowPosition extends LoanPosition {
-    earnedDebt: MonetaryAmount<CurrencyExt>;
+    accumulatedDebt: MonetaryAmount<CurrencyExt>;
 }
 
 interface LoanAsset {
