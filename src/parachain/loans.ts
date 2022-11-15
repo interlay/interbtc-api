@@ -297,6 +297,9 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     _calculateAccumulatedDebt(borrowedAmount: Big, snapshotBorrowIndex: Big, currentBorrowIndex: Big): Big {
+        if (snapshotBorrowIndex.eq(0)) {
+            return Big(0);
+        }
         // @note Formula for computing total debt: https://docs.parallel.fi/parallel-finance/#2.6-interest-rate-index
         // To compute only earned debt, subtract 1 from factor
         const factor = currentBorrowIndex.div(snapshotBorrowIndex).sub(1);
