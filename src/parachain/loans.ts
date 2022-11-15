@@ -1,5 +1,5 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { KBtc, Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
+import { Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -29,7 +29,7 @@ const MOCKDATA_BORROW_POSITION_INTR: BorrowPosition = {
     currency: Kintsugi,
     amount: new MonetaryAmount(Kintsugi, Big(1305.73946294014)),
     earnedReward: new MonetaryAmount(Kintsugi, Big(0)),
-    earnedDebt: new MonetaryAmount(Kintsugi, Big(35.231)),
+    accumulatedDebt: new MonetaryAmount(Kintsugi, Big(35.231)),
 };
 
 const MOCKDATA_BORROW_POSITIONS = [MOCKDATA_BORROW_POSITION_INTR];
@@ -313,17 +313,17 @@ export class DefaultLoansAPI implements LoansAPI {
         };
     }
 
-    _calculateEarnedDebt(borrowedAmount: Big, snapshotBorrowIndex: Big, currentBorrowIndex: Big): Big {
+    _calculateAccumulatedDebt(borrowedAmount: Big, snapshotBorrowIndex: Big, currentBorrowIndex: Big): Big {
         // @note Formula for computing total debt: https://docs.parallel.fi/parallel-finance/#2.6-interest-rate-index
         // To compute only earned debt, subtract 1 from factor
-        const factor = (currentBorrowIndex.div(snapshotBorrowIndex)).sub(1);
+        const factor = currentBorrowIndex.div(snapshotBorrowIndex).sub(1);
         return borrowedAmount.mul(factor);
     }
 
     async _getBorrowPosition(
         accountId: AccountId,
         underlyingCurrency: CurrencyExt,
-        underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
+        underlyingCurrencyId: InterbtcPrimitivesCurrencyId
     ): Promise<BorrowPosition | null> {
         const [borrowSnapshot, marketStatus] = await Promise.all([
             this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
@@ -333,13 +333,13 @@ export class DefaultLoansAPI implements LoansAPI {
         const borrowedAmount = Big(borrowSnapshot.principal.toString());
         const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
         const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
-        const earnedDebt = this._calculateEarnedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex)
+        const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);
 
         return {
             amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),
             currency: underlyingCurrency,
             earnedReward: null, // TODO: add computation for earned subsidy reward
-            earnedDebt: newMonetaryAmount(earnedDebt, underlyingCurrency),
+            accumulatedDebt: newMonetaryAmount(accumulatedDebt, underlyingCurrency),
         };
     }
 
