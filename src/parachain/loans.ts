@@ -314,13 +314,13 @@ export class DefaultLoansAPI implements LoansAPI {
         ]);
 
         const borrowedAmount = Big(borrowSnapshot.principal.toString());
-        const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
-        const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
-        const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);
-
         if (borrowedAmount.eq(0)) {
             return null;
         }
+
+        const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
+        const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
+        const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);
 
         return {
             amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),
