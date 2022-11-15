@@ -1,5 +1,5 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { KBtc, Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
+import { Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -16,6 +16,7 @@ import Big from "big.js";
 import {
     currencyIdToMonetaryCurrency,
     decodeFixedPointType,
+    MS_PER_YEAR,
     newCurrencyId,
     newMonetaryAmount,
     storageKeyToNthInner,
@@ -363,18 +364,23 @@ export class DefaultLoansAPI implements LoansAPI {
         return [totalLiquidityMonetary, availableCapacityMonetary];
     }
 
-    async _getLendAndBorrowYearlyRewardAmount(
-        underlyingCurrencyId: InterbtcPrimitivesCurrencyId
-    ): Promise<[Big, Big]> {
-        const [lendRewardSpeed, borrowRewardSpeed] = (
+    /**
+     * Get the lend and borrow annual rewards for 1 UNIT of a given underlying currency id.
+     *
+     * @param underlyingCurrencyId currency id to get reward amounts for.
+     * @returns Annualized lend and borrow rewards for 1 unit of the given underlying currency.
+     */
+    async _getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<[Big, Big]> {
+        const blockTimeMs = (await this.api.call.auraApi.slotDuration()).toNumber();
+
+        const [lendRewardPerUnit, borrowRewardPerUnit] = (
             await Promise.all([
                 this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
                 this.api.query.loans.rewardBorrowSpeed(underlyingCurrencyId),
             ])
-        ).map((rewardSpeed) => decodeFixedPointType(rewardSpeed));
-
-        const blockTime = this.api.consts.timestamp.minimumPeriod.toNumber() * 2;
-        const blocksPerYear = (86400 * 365 * 1000) / blockTime;
+        )
+            .map((rewardSpeedRaw) => decodeFixedPointType(rewardSpeedRaw))
+            .map((rewardSpeed) => this._calculateAnnualizedRewardAmount(rewardSpeed, blockTimeMs));
         // @note could be refactored to compute APR in lib if we can get underlyingCurrency/rewardCurrency exchange rate,
         // but is it safe to assume that exchange rate for btc/underlyingCurrency will be
         // always fed to the oracle and available?
@@ -382,10 +388,12 @@ export class DefaultLoansAPI implements LoansAPI {
         // Return rate per 1 UNIT of underlying currency and compute APR
         // on UI where all exchange rates are available.
 
-        const lendRewardAmount = lendRewardSpeed.mul(blocksPerYear);
-        const borrowRewardAmount = borrowRewardSpeed.mul(blocksPerYear);
+        return [lendRewardPerUnit, borrowRewardPerUnit];
+    }
 
-        return [lendRewardAmount, borrowRewardAmount];
+    _calculateAnnualizedRewardAmount(amountPerBlock: Big, blockTimeMs: number): Big {
+        const blocksPerYear = MS_PER_YEAR.div(blockTimeMs);
+        return amountPerBlock.mul(blocksPerYear);
     }
 
     _constructSubsidyReward(amount: Big, currency: CurrencyExt): SubsidyReward | null {
