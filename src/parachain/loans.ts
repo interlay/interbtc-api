@@ -350,17 +350,31 @@ export class DefaultLoansAPI implements LoansAPI {
         const lendTokenId = await this.getLendTokenIdFromUnderlyingCurrency(underlyingCurrency);
         const [lendTokenTotalIssuance, totalBorrows, exchangeRate] = await Promise.all([
             this.api.query.tokens.totalIssuance(lendTokenId),
-            await this.api.query.loans.totalBorrows(underlyingCurrencyId),
+            this.api.query.loans.totalBorrows(underlyingCurrencyId),
             this.api.query.loans.exchangeRate(underlyingCurrencyId),
         ]);
 
+        return this._calculateLiquidityAndCapacityAmounts(
+            underlyingCurrency,
+            Big(lendTokenTotalIssuance.toString()),
+            Big(totalBorrows.toString()),
+            Big(exchangeRate.toString())
+        );
+    }
+
+    _calculateLiquidityAndCapacityAmounts(
+        underlyingCurrency: CurrencyExt,
+        lendTokenTotalIssuance: Big,
+        totalBorrows: Big,
+        exchangeRate: Big
+    ): [MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>] {
         const totalLiquidity = lendTokenTotalIssuance.mul(exchangeRate);
         // @note Available capacity to borrow is being computed in a different way
         // than in the runtime: https://docs.parallel.fi/parallel-finance/#2.1-internal-exchange-rate
         const availableCapacity = totalLiquidity.sub(totalBorrows);
 
-        const totalLiquidityMonetary = newMonetaryAmount(totalLiquidity.toString(), underlyingCurrency);
-        const availableCapacityMonetary = newMonetaryAmount(availableCapacity.toString(), underlyingCurrency);
+        const totalLiquidityMonetary = newMonetaryAmount(totalLiquidity, underlyingCurrency);
+        const availableCapacityMonetary = newMonetaryAmount(availableCapacity, underlyingCurrency);
         return [totalLiquidityMonetary, availableCapacityMonetary];
     }
 

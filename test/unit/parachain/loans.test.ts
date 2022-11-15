@@ -1,9 +1,10 @@
 import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
-import { DefaultAssetRegistryAPI, DefaultLoansAPI, DefaultTransactionAPI } from "../../../src/";
+import { CurrencyExt, DefaultAssetRegistryAPI, DefaultLoansAPI, DefaultTransactionAPI } from "../../../src/";
 import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { expect } from "chai";
+import { MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("DefaultLoansAPI", () => {
     let api: ApiPromise;
@@ -65,6 +66,68 @@ describe("DefaultLoansAPI", () => {
             const actualRewardAmount = loansApi._calculateAnnualizedRewardAmount(Big(0), 12 * 1000);
 
             expect(actualRewardAmount.toNumber()).to.be.eq(0);
+        });
+    });
+
+    describe("_calculateLiquidityAndCapacityAmounts", () => {
+        const testUnderlying: CurrencyExt = Polkadot;
+        const testExchangeRate = Big(4.2);
+        const testTotalIssuance = new MonetaryAmount(testUnderlying, 100000);
+        const testTotalBorrows = new MonetaryAmount(testUnderlying, 100);
+
+        const testIssuanceAtomicAmount = testTotalIssuance.toBig(0);
+        const testBorrowsAtomicAmount = testTotalBorrows.toBig(0);
+
+        it("should calculate amounts as expected", () => {
+            const expectedTotalLiquidityAmount = testTotalIssuance.mul(testExchangeRate);
+            const expectedAvailableCapacityAmount = expectedTotalLiquidityAmount.sub(testTotalBorrows);
+
+            const [actualTotalLiquidity, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
+                testUnderlying,
+                testIssuanceAtomicAmount,
+                testBorrowsAtomicAmount,
+                testExchangeRate
+            );
+
+            expect(actualTotalLiquidity.toString()).to.be.eq(expectedTotalLiquidityAmount.toString());
+            expect(actualAvailableCapacity.toString()).to.be.eq(expectedAvailableCapacityAmount.toString());
+        });
+
+        it("should return zero total liquidity if exchange rate is zero", () => {
+            const zeroExchangeRate = Big(0);
+            const [actualTotalLiquidity] = loansApi._calculateLiquidityAndCapacityAmounts(
+                testUnderlying,
+                testIssuanceAtomicAmount,
+                testBorrowsAtomicAmount,
+                zeroExchangeRate
+            );
+
+            expect(actualTotalLiquidity.toBig().toNumber()).to.eq(0);
+        });
+
+        it("should return zero total liquidity if total issuance is zero", () => {
+            const zeroIssuance = Big(0);
+            const [actualTotalLiquidity] = loansApi._calculateLiquidityAndCapacityAmounts(
+                testUnderlying,
+                zeroIssuance,
+                testBorrowsAtomicAmount,
+                testExchangeRate
+            );
+
+            expect(actualTotalLiquidity.toBig().toNumber()).to.eq(0);
+        });
+
+        it("should return zero available capacity if borrow is equal to issuance times exchange rate", () => {
+            const borrowAll = testTotalIssuance.mul(testExchangeRate);
+            const borrowAllAtomicAmount = borrowAll.toBig(0);
+            const [_, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
+                testUnderlying,
+                testIssuanceAtomicAmount,
+                borrowAllAtomicAmount,
+                testExchangeRate
+            );
+
+            expect(actualAvailableCapacity.toBig().toNumber()).to.eq(0);
         });
     });
 });
