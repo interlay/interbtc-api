@@ -286,13 +286,12 @@ export class DefaultLoansAPI implements LoansAPI {
             .add(earnedPrior);
 
         const isCollateral = !accountDeposits.isZero();
-        const earnedReward = decodeFixedPointType(rewardAccrued);
 
         return {
             earnedInterest: newMonetaryAmount(earnedInterest, underlyingCurrency),
             currency: underlyingCurrency,
             amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
-            earnedReward: newMonetaryAmount(earnedReward, rewardCurrency),
+            earnedReward: newMonetaryAmount(rewardAccrued.toString(), rewardCurrency),
             isCollateral,
         };
     }
@@ -518,7 +517,7 @@ export class DefaultLoansAPI implements LoansAPI {
 
     async lend(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
         await this._checkMarketState(underlyingCurrency, "lend");
-        console.log(amount.toString());
+
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const lendExtrinsic = this.api.tx.loans.mint(underlyingCurrencyId, amount.toString(true));
 
