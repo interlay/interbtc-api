@@ -2,6 +2,7 @@ import Big from "big.js";
 
 export const PERCENTAGE_GRANULARITY = 3;
 export const FIXEDI128_SCALING_FACTOR = 18;
+export const PERMILL_BASE = 1000000;
 
 // IssueCompleted errors occur due to the vault having
 // already auto-executed the issuance

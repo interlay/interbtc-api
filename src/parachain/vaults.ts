@@ -109,9 +109,9 @@ export interface VaultsAPI {
     /**
      * Get the minimum secured collateral amount required to activate a vault
      * @param collateralCurrency The currency specification, a `Monetary.js` object or `ForeignAsset`
-     * @returns the collateral value as a percentage string
+     * @returns the minimum collateral to register a vault
      */
-    getMinimumCollateral(collateralCurrency: CollateralCurrencyExt): Promise<Big>;
+    getMinimumCollateral(collateralCurrency: CollateralCurrencyExt): Promise<MonetaryAmount<CollateralCurrencyExt>>;
     /**
      * @param vaultAccountId The vault account ID
      * @param collateralCurrency The currency specification, a `Monetary.js` object or `ForeignAsset
@@ -545,11 +545,11 @@ export class DefaultVaultsAPI implements VaultsAPI {
         );
     }
 
-    async getMinimumCollateral(collateralCurrency: CollateralCurrencyExt): Promise<Big> {
+    async getMinimumCollateral(collateralCurrency: CollateralCurrencyExt): Promise<MonetaryAmount<CollateralCurrencyExt>> {
         const collateralCurrencyId = newCurrencyId(this.api, collateralCurrency);
         const minimumCollateral = await this.api.query.vaultRegistry.minimumCollateralVault(collateralCurrencyId);
 
-        return decodeFixedPointType(minimumCollateral);
+        return newMonetaryAmount(minimumCollateral.toString(), collateralCurrency);
     }
 
     async getMaxNominationRatio(collateralCurrency: CollateralCurrencyExt): Promise<Big> {
@@ -637,6 +637,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<CurrencyExt>> {
+        // TODO: This might be inaccurate if the "reserved" value is incremented by other protocols
+        // See comment: https://github.com/interlay/interbtc-api/pull/464#discussion_r954909315
         return (await this.tokensAPI.balance(collateralCurrency, vaultAccountId)).reserved;
     }
 
@@ -1071,9 +1073,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
 
         // calculate the theoretical exchange rate at which the vault would be (close to) liquidated
-        const liquidationRateCollaterallPerWrapped = lockedCollateral
+        const liquidationRateCollateralPerWrapped = lockedCollateral
             .toBig()
             .div(issuedTokens.toBig().mul(liquidationRateThreshold));
-        return liquidationRateCollaterallPerWrapped;
+        return liquidationRateCollateralPerWrapped;
     }
 }

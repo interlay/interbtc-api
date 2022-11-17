@@ -1,4 +1,4 @@
-import { AccountId, H256 } from "@polkadot/types/interfaces";
+import { AccountId, H256, Permill } from "@polkadot/types/interfaces";
 import Big, { BigSource } from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import type { Struct } from "@polkadot/types";
@@ -20,7 +20,15 @@ import {
     InterbtcPrimitivesCurrencyId,
 } from "@polkadot/types/lookup";
 
-import { currencyIdToMonetaryCurrency, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, getCurrencyIdentifier, isForeignAsset, isLendToken } from ".";
+import {
+    currencyIdToMonetaryCurrency,
+    encodeBtcAddress,
+    FIXEDI128_SCALING_FACTOR,
+    getCurrencyIdentifier,
+    isForeignAsset,
+    isLendToken,
+    PERMILL_BASE,
+} from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
 import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
@@ -148,7 +156,11 @@ export async function parseSystemVault(
         toBeRedeemedTokens: newMonetaryAmount(vault.toBeRedeemedTokens.toString(), wrappedCurrency),
         collateral: newMonetaryAmount(vault.collateral.toString(), collateralCurrency),
         currencyPair: {
-            collateralCurrency: await currencyIdToMonetaryCurrency(assetRegistryApi, loansAPI, vault.currencyPair.collateral),
+            collateralCurrency: await currencyIdToMonetaryCurrency(
+                assetRegistryApi,
+                loansAPI,
+                vault.currencyPair.collateral
+            ),
             wrappedCurrency: await currencyIdToMonetaryCurrency(assetRegistryApi, loansAPI, vault.currencyPair.wrapped),
         },
     };
@@ -219,7 +231,11 @@ export async function parseReplaceRequest(
     wrappedCurrency: WrappedCurrency,
     id: H256 | string
 ): Promise<ReplaceRequestExt> {
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, req.oldVault.currencies.collateral);
+    const collateralCurrency = await currencyIdToMonetaryCurrency(
+        assetRegistry,
+        loansAPI,
+        req.oldVault.currencies.collateral
+    );
     return {
         id: stripHexPrefix(id.toString()),
         btcAddress: encodeBtcAddress(req.btcAddress, network),
@@ -246,9 +262,13 @@ export async function parseIssueRequest(
     const status = req.status.isCompleted
         ? IssueStatus.Completed
         : req.status.isCancelled
-            ? IssueStatus.Cancelled
-            : IssueStatus.PendingWithBtcTxNotFound;
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, req.vault.currencies.collateral);
+        ? IssueStatus.Cancelled
+        : IssueStatus.PendingWithBtcTxNotFound;
+    const collateralCurrency = await currencyIdToMonetaryCurrency(
+        assetRegistry,
+        loansAPI,
+        req.vault.currencies.collateral
+    );
     return {
         id: stripHexPrefix(id.toString()),
         creationBlock: req.opentime.toNumber(),
@@ -305,7 +325,11 @@ export async function parseRedeemRequest(
     activeBlockCount: number
 ): Promise<Redeem> {
     const status = parseRedeemRequestStatus(req, redeemPeriod, activeBlockCount);
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, req.vault.currencies.collateral);
+    const collateralCurrency = await currencyIdToMonetaryCurrency(
+        assetRegistry,
+        loansAPI,
+        req.vault.currencies.collateral
+    );
 
     return {
         id: stripHexPrefix(id.toString()),
@@ -330,13 +354,20 @@ export function unwrapRawExchangeRate(option: Option<UnsignedFixedPoint>): Unsig
     return option.isSome ? (option.value as UnsignedFixedPoint) : undefined;
 }
 
-export async function encodeVaultId(assetRegistry: AssetRegistryAPI, loansAPI: LoansAPI, id: InterbtcPrimitivesVaultId): Promise<string> {
+export async function encodeVaultId(
+    assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI,
+    id: InterbtcPrimitivesVaultId
+): Promise<string> {
     const [wrappedCurrency, collateralCurrency] = await Promise.all([
         currencyIdToMonetaryCurrency(assetRegistry, loansAPI, id.currencies.wrapped),
         currencyIdToMonetaryCurrency(assetRegistry, loansAPI, id.currencies.collateral),
     ]);
-    const wrappedId = isForeignAsset(wrappedCurrency) ? wrappedCurrency.foreignAsset.id.toString() :
-    isLendToken(wrappedCurrency)? wrappedCurrency.lendToken.id : wrappedCurrency.ticker;
+    const wrappedId = isForeignAsset(wrappedCurrency)
+        ? wrappedCurrency.foreignAsset.id.toString()
+        : isLendToken(wrappedCurrency)
+        ? wrappedCurrency.lendToken.id
+        : wrappedCurrency.ticker;
     const collateralId = isForeignAsset(collateralCurrency)
         ? collateralCurrency.foreignAsset.id.toString()
         : isLendToken(collateralCurrency)
@@ -352,7 +383,10 @@ export async function queryNominationsMap(
     vaultId: InterbtcPrimitivesVaultId
 ): Promise<number | undefined> {
     for (const [entryVaultId, entryNonce] of map.entries()) {
-        if ((await encodeVaultId(assetRegistry, loansAPI, entryVaultId)) === (await encodeVaultId(assetRegistry, loansAPI, vaultId))) {
+        if (
+            (await encodeVaultId(assetRegistry, loansAPI, entryVaultId)) ===
+            (await encodeVaultId(assetRegistry, loansAPI, vaultId))
+        ) {
             return entryNonce;
         }
     }
@@ -361,4 +395,12 @@ export async function queryNominationsMap(
 
 export function getSS58Prefix(api: ApiPromise): number {
     return Number(api.registry.chainSS58?.toString());
+}
+
+export function decodePermill(amount: Permill, inPercentage: boolean = false): Big {
+    const decodedInDecimals = Big(amount.toString()).div(PERMILL_BASE);
+    if (inPercentage) {
+        return decodedInDecimals.mul(100);
+    }
+    return decodedInDecimals;
 }

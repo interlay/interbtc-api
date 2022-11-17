@@ -1,5 +1,5 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { Kintsugi, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -8,7 +8,6 @@ import {
     TickerToData,
     LendToken,
     LoanMarket,
-    SubsidyReward,
     LoanPosition,
 } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
@@ -18,6 +17,7 @@ import {
     currencyIdToMonetaryCurrency,
     decodeFixedPointType,
     MS_PER_YEAR,
+    decodePermill,
     newCurrencyId,
     newMonetaryAmount,
     storageKeyToNthInner,
@@ -25,15 +25,7 @@ import {
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
-
-const MOCKDATA_BORROW_POSITION_INTR: BorrowPosition = {
-    currency: Kintsugi,
-    amount: new MonetaryAmount(Kintsugi, Big(1305.73946294014)),
-    earnedReward: new MonetaryAmount(Kintsugi, Big(0)),
-    accumulatedDebt: new MonetaryAmount(Kintsugi, Big(35.231)),
-};
-
-const MOCKDATA_BORROW_POSITIONS = [MOCKDATA_BORROW_POSITION_INTR];
+import { DefaultInterBtcApi } from "..";
 
 /**
  * @category Lending protocol
@@ -131,48 +123,40 @@ export interface LoansAPI {
     disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void>;
 
     /**
-     * Claim subsidy reward for specified currency.
-     *
-     * @param currency Currency for which to claim reward.
-     * @throws If no position exists for `currency` and account.
-     */
-    claimSubsidyReward(currency: CurrencyExt): Promise<void>;
-
-    /**
-     * Claim subsidy rewards for all currencies available for account.
+     * Claim subsidy rewards for all markets available for account.
      */
     claimAllSubsidyRewards(): Promise<void>;
 
     /**
      * Borrow currency from the protocol.
      *
-     * @param currency Currency to borrow.
+     * @param underlyingCurrency Currency to borrow.
      * @param amount Amount of currency to borrow.
-     * @throws If there is no active market for `currency`.
+     * @throws If there is no active market for `underlyingCurrency`.
      * @throws If there is not enough collateral provided by account for
-     * `amount` of `currency`.
-     * @throws If `amount` is higher than available amount of `currency`
+     * `amount` of `underlyingCurrency`.
+     * @throws If `amount` is higher than available amount of `underlyingCurrency`
      * in the protocol.
      */
-    borrow(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
 
     /**
      * Repay borrowed loan.
      *
-     * @param currency Currency to repay.
+     * @param underlyingCurrency Currency to repay.
      * @param amount Amount of currency to repay.
-     * @throws If there is no active market for `currency`.
+     * @throws If there is no active market for `underlyingCurrency`.
      * @throws If `amount` is higher than available balance of account.
      * @throws If `amount` is higher than outstanding loan.
      */
-    repay(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
 
     /**
      * Same as `repay`, but repays full loan.
      *
-     * @param currency Currency to repay.
+     * @param underlyingCurrency Currency to repay.
      */
-    repayAll(currency: CurrencyExt): Promise<void>;
+    repayAll(underlyingCurrency: CurrencyExt): Promise<void>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
@@ -303,18 +287,20 @@ export class DefaultLoansAPI implements LoansAPI {
             .add(earnedPrior);
 
         const isCollateral = !accountDeposits.isZero();
-        const earnedReward = decodeFixedPointType(rewardAccrued);
 
         return {
             earnedInterest: newMonetaryAmount(earnedInterest, underlyingCurrency),
             currency: underlyingCurrency,
             amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
-            earnedReward: newMonetaryAmount(earnedReward, rewardCurrency),
+            earnedReward: newMonetaryAmount(rewardAccrued.toString(), rewardCurrency),
             isCollateral,
         };
     }
 
     _calculateAccumulatedDebt(borrowedAmount: Big, snapshotBorrowIndex: Big, currentBorrowIndex: Big): Big {
+        if (snapshotBorrowIndex.eq(0)) {
+            return Big(0);
+        }
         // @note Formula for computing total debt: https://docs.parallel.fi/parallel-finance/#2.6-interest-rate-index
         // To compute only earned debt, subtract 1 from factor
         const factor = currentBorrowIndex.div(snapshotBorrowIndex).sub(1);
@@ -332,6 +318,10 @@ export class DefaultLoansAPI implements LoansAPI {
         ]);
 
         const borrowedAmount = Big(borrowSnapshot.principal.toString());
+        if (borrowedAmount.eq(0)) {
+            return null;
+        }
+
         const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
         const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
         const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);
@@ -409,7 +399,7 @@ export class DefaultLoansAPI implements LoansAPI {
             underlyingCurrency,
             Big(lendTokenTotalIssuance.toString()),
             Big(totalBorrows.toString()),
-            Big(exchangeRate.toString())
+            decodeFixedPointType(exchangeRate)
         );
     }
 
@@ -461,15 +451,14 @@ export class DefaultLoansAPI implements LoansAPI {
         return amountPerBlock.mul(blocksPerYear);
     }
 
-    _constructSubsidyReward(amount: Big, currency: CurrencyExt): SubsidyReward | null {
+    _getSubsidyReward(amount: Big): MonetaryAmount<CurrencyExt> | null {
         if (amount.eq(0)) {
             return null;
         }
 
-        return {
-            currency,
-            amountPerUnitYearly: newMonetaryAmount(amount, currency),
-        };
+        // Assumes native currency of parachain is always reward currency.
+        const rewardCurrency = new DefaultInterBtcApi(this.api).getGovernanceCurrency();
+        return newMonetaryAmount(amount, rewardCurrency);
     }
 
     async _getLoanAsset(
@@ -495,10 +484,10 @@ export class DefaultLoansAPI implements LoansAPI {
         ]);
 
         // Format data.
-        const liquidationThreshold = decodeFixedPointType(marketData.liquidationThreshold);
-        const collateralThreshold = decodeFixedPointType(marketData.collateralFactor);
-        const lendReward = this._constructSubsidyReward(lendRewardAmountYearly, underlyingCurrency);
-        const borrowReward = this._constructSubsidyReward(borrowRewardAmountYearly, underlyingCurrency);
+        const liquidationThreshold = decodePermill(marketData.liquidationThreshold);
+        const collateralThreshold = decodePermill(marketData.collateralFactor);
+        const lendReward = this._getSubsidyReward(lendRewardAmountYearly);
+        const borrowReward = this._getSubsidyReward(borrowRewardAmountYearly);
 
         return [
             underlyingCurrency,
@@ -591,23 +580,36 @@ export class DefaultLoansAPI implements LoansAPI {
         await this.transactionAPI.sendLogged(enableCollateralExtrinsic, this.api.events.loans.WithdrawCollateral, true);
     }
 
-    async claimSubsidyReward(currency: CurrencyExt): Promise<void> {
-        //TODO
-    }
-
     async claimAllSubsidyRewards(): Promise<void> {
-        //TODO
+        const claimRewardsExtrinsic = this.api.tx.loans.claimReward();
+
+        await this.transactionAPI.sendLogged(claimRewardsExtrinsic, this.api.events.loans.RewardPaid, true);
     }
 
-    async borrow(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
-        //TODO
+    async borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "borrow");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const borrowExtrinsic = this.api.tx.loans.borrow(underlyingCurrencyId, amount.toString(true));
+
+        await this.transactionAPI.sendLogged(borrowExtrinsic, this.api.events.loans.Borrowed, true);
     }
 
-    async repay(currency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
-        //TODO
+    async repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "repay debt of");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const repay = this.api.tx.loans.repayBorrow(underlyingCurrencyId, amount.toString(true));
+
+        await this.transactionAPI.sendLogged(repay, this.api.events.loans.RepaidBorrow, true);
     }
 
-    async repayAll(currency: CurrencyExt): Promise<void> {
-        //TODO
+    async repayAll(underlyingCurrency: CurrencyExt): Promise<void> {
+        await this._checkMarketState(underlyingCurrency, "repay all debt of");
+
+        const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+        const repayAllExtrinsic = this.api.tx.loans.repayBorrowAll(underlyingCurrencyId);
+
+        await this.transactionAPI.sendLogged(repayAllExtrinsic, this.api.events.loans.RepaidBorrow, true);
     }
 }
