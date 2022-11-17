@@ -25,6 +25,7 @@ interface LoanAsset {
     borrowReward: MonetaryAmount<CurrencyExt> | null; // Amount of rewards yearly, null if rewards are not enabled.
     totalLiquidity: MonetaryAmount<CurrencyExt>;
     availableCapacity: MonetaryAmount<CurrencyExt>;
+    totalBorrows: MonetaryAmount<CurrencyExt>;
     liquidationThreshold: Big; // decimal
     collateralThreshold: Big; // decimal
     isActive: boolean;
