@@ -9,6 +9,7 @@ import {
     LendToken,
     LoanMarket,
     LoanPosition,
+    GovernanceCurrency,
 } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
@@ -16,6 +17,7 @@ import Big from "big.js";
 import {
     currencyIdToMonetaryCurrency,
     decodeFixedPointType,
+    MS_PER_YEAR,
     decodePermill,
     newCurrencyId,
     newMonetaryAmount,
@@ -24,7 +26,6 @@ import {
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
-import { DefaultInterBtcApi } from "..";
 
 /**
  * @category Lending protocol
@@ -161,6 +162,7 @@ export interface LoansAPI {
 export class DefaultLoansAPI implements LoansAPI {
     constructor(
         private api: ApiPromise,
+        private governanceCurrency: GovernanceCurrency,
         private assetRegistryAPI: AssetRegistryAPI,
         private transactionAPI: TransactionAPI
     ) {}
@@ -383,52 +385,81 @@ export class DefaultLoansAPI implements LoansAPI {
         return decodeFixedPointType(rawBorrowApy).mul(100);
     }
 
-    async _getTotalLiquidityAndCapacity(
+    async _getTotalLiquidityCapacityAndBorrows(
         underlyingCurrency: CurrencyExt,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId
-    ): Promise<[MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>]> {
+    ): Promise<[MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>]> {
         const lendTokenId = await this.getLendTokenIdFromUnderlyingCurrency(underlyingCurrency);
         const [lendTokenTotalIssuance, totalBorrows, exchangeRate] = await Promise.all([
             this.api.query.tokens.totalIssuance(lendTokenId),
-            await this.api.query.loans.totalBorrows(underlyingCurrencyId),
+            this.api.query.loans.totalBorrows(underlyingCurrencyId),
             this.api.query.loans.exchangeRate(underlyingCurrencyId),
         ]);
 
-        const decodedLendTokenTotalIssuance = Big(lendTokenTotalIssuance.toString());
-        const decodedTotalBorrows = Big(totalBorrows.toString());
-        const decodedExchangeRate = decodeFixedPointType(exchangeRate);
+        const [totalLiquidity, availableCapacity] = this._calculateLiquidityAndCapacityAmounts(
+            underlyingCurrency,
+            Big(lendTokenTotalIssuance.toString()),
+            Big(totalBorrows.toString()),
+            decodeFixedPointType(exchangeRate)
+        );
 
-        const totalLiquidity = decodedLendTokenTotalIssuance.mul(decodedExchangeRate);
+        const totalBorrowsMonetary = newMonetaryAmount(totalBorrows.toString(), underlyingCurrency);
+
+        return [totalLiquidity, availableCapacity, totalBorrowsMonetary];
+    }
+
+    _calculateLiquidityAndCapacityAmounts(
+        underlyingCurrency: CurrencyExt,
+        lendTokenTotalIssuance: Big,
+        totalBorrows: Big,
+        exchangeRate: Big
+    ): [MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>] {
+        const totalLiquidity = lendTokenTotalIssuance.mul(exchangeRate);
         // @note Available capacity to borrow is being computed in a different way
         // than in the runtime: https://docs.parallel.fi/parallel-finance/#2.1-internal-exchange-rate
-        const availableCapacity = totalLiquidity.sub(decodedTotalBorrows);
+        const availableCapacity = totalLiquidity.sub(totalBorrows);
 
-        const totalLiquidityMonetary = newMonetaryAmount(totalLiquidity.toString(), underlyingCurrency);
-        const availableCapacityMonetary = newMonetaryAmount(availableCapacity.toString(), underlyingCurrency);
+        const totalLiquidityMonetary = newMonetaryAmount(totalLiquidity, underlyingCurrency);
+        const availableCapacityMonetary = newMonetaryAmount(availableCapacity, underlyingCurrency);
         return [totalLiquidityMonetary, availableCapacityMonetary];
     }
 
-    async _getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<[Big, Big]> {
-        const [lendRewardSpeed, borrowRewardSpeed] = (
+    /**
+     * Get the lend and borrow annual rewards for 1 UNIT of a given underlying currency id.
+     *
+     * @param underlyingCurrencyId currency id to get reward amounts for.
+     * @returns Annualized lend and borrow rewards for 1 unit of the given underlying currency.
+     */
+    async _getLendAndBorrowYearlyRewardAmount(
+        underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
+        totalLiquidity: Big,
+        totalBorrows: Big
+    ): Promise<[Big, Big]> {
+        const blockTimeMs = (await this.api.call.auraApi.slotDuration()).toNumber();
+
+        const [lendRewardPerPool, borrowRewardPerPool] = (
             await Promise.all([
                 this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
                 this.api.query.loans.rewardBorrowSpeed(underlyingCurrencyId),
             ])
-        ).map((rewardSpeed) => decodeFixedPointType(rewardSpeed));
-
-        const blockTime = this.api.consts.timestamp.minimumPeriod.toNumber() * 2;
-        const blocksPerYear = (86400 * 365 * 1000) / blockTime;
+        )
+            .map((rewardSpeedRaw) => Big(rewardSpeedRaw.toString()))
+            .map((rewardSpeed) => this._calculateAnnualizedRewardAmount(rewardSpeed, blockTimeMs));
         // @note could be refactored to compute APR in lib if we can get underlyingCurrency/rewardCurrency exchange rate,
         // but is it safe to assume that exchange rate for btc/underlyingCurrency will be
         // always fed to the oracle and available?
 
         // Return rate per 1 UNIT of underlying currency and compute APR
         // on UI where all exchange rates are available.
+        const lendRewardPerUnit = lendRewardPerPool.div(totalLiquidity);
+        const borrowRewardPerUnit = borrowRewardPerPool.div(totalBorrows);
 
-        const lendRewardAmount = lendRewardSpeed.mul(blocksPerYear);
-        const borrowRewardAmount = borrowRewardSpeed.mul(blocksPerYear);
+        return [lendRewardPerUnit, borrowRewardPerUnit];
+    }
 
-        return [lendRewardAmount, borrowRewardAmount];
+    _calculateAnnualizedRewardAmount(amountPerBlock: Big, blockTimeMs: number): Big {
+        const blocksPerYear = MS_PER_YEAR.div(blockTimeMs);
+        return amountPerBlock.mul(blocksPerYear);
     }
 
     _getSubsidyReward(amount: Big): MonetaryAmount<CurrencyExt> | null {
@@ -437,8 +468,7 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         // Assumes native currency of parachain is always reward currency.
-        const rewardCurrency = new DefaultInterBtcApi(this.api).getGovernanceCurrency();
-        return newMonetaryAmount(amount, rewardCurrency);
+        return newMonetaryAmount(amount, this.governanceCurrency);
     }
 
     async _getLoanAsset(
@@ -451,21 +481,21 @@ export class DefaultLoansAPI implements LoansAPI {
             underlyingCurrencyId
         );
 
-        const [
-            lendApy,
-            borrowApy,
-            [totalLiquidity, availableCapacity],
-            [lendRewardAmountYearly, borrowRewardAmountYearly],
-        ] = await Promise.all([
+        const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows]] = await Promise.all([
             this._getLendApy(underlyingCurrencyId),
             this._getBorrowApy(underlyingCurrencyId),
-            this._getTotalLiquidityAndCapacity(underlyingCurrency, underlyingCurrencyId),
-            this._getLendAndBorrowYearlyRewardAmount(underlyingCurrencyId),
+            this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
         ]);
 
         // Format data.
         const liquidationThreshold = decodePermill(marketData.liquidationThreshold);
         const collateralThreshold = decodePermill(marketData.collateralFactor);
+
+        const [lendRewardAmountYearly, borrowRewardAmountYearly] = await this._getLendAndBorrowYearlyRewardAmount(
+            underlyingCurrencyId,
+            totalLiquidity.toBig(),
+            totalBorrows.toBig()
+        );
         const lendReward = this._getSubsidyReward(lendRewardAmountYearly);
         const borrowReward = this._getSubsidyReward(borrowRewardAmountYearly);
 
@@ -478,6 +508,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 currency: underlyingCurrency,
                 totalLiquidity,
                 availableCapacity,
+                totalBorrows,
                 liquidationThreshold,
                 collateralThreshold,
                 lendReward,

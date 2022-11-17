@@ -59,11 +59,11 @@ describe("vaultsAPI", () => {
         const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
         assetRegistry = new DefaultAssetRegistryAPI(api);
         const transactionAPI = new DefaultTransactionAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", undefined, ESPLORA_BASE_PATH);
 
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
+        loansAPI = new DefaultLoansAPI(api, governanceCurrency, assetRegistry, transactionAPI);
 
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(governanceCurrency);
         const aUSD = await getAUSDForeignAsset(assetRegistry);
@@ -287,8 +287,16 @@ describe("vaultsAPI", () => {
         const vaultIdsInScope = vault_1_ids;
         let countSkippedVaults = 0;
         for (const vaultId of vaultIdsInScope) {
-            const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vaultId.currencies.collateral);
-            const wrappedCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vaultId.currencies.wrapped);
+            const collateralCurrency = await currencyIdToMonetaryCurrency(
+                assetRegistry,
+                loansAPI,
+                vaultId.currencies.collateral
+            );
+            const wrappedCurrency = await currencyIdToMonetaryCurrency(
+                assetRegistry,
+                loansAPI,
+                vaultId.currencies.wrapped
+            );
             const currencyTicker = collateralCurrency.ticker;
 
             const vault = await interBtcAPI.vaults.get(vaultId.accountId, collateralCurrency);
@@ -358,7 +366,11 @@ describe("vaultsAPI", () => {
 
     it("should disable and enable issuing with vault", async () => {
         const assertVaultStatus = async (id: InterbtcPrimitivesVaultId, expectedStatus: VaultStatusExt) => {
-            const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, id.currencies.collateral);
+            const collateralCurrency = await currencyIdToMonetaryCurrency(
+                assetRegistry,
+                loansAPI,
+                id.currencies.collateral
+            );
             const currencyTicker = collateralCurrency.ticker;
             const { status } = await interBtcAPI.vaults.get(id.accountId, collateralCurrency);
             const assertionMessage = `Vault with id ${id.toString()} (collateral: ${currencyTicker}) was expected to have

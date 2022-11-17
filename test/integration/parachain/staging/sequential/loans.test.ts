@@ -57,7 +57,8 @@ describe("Loans", () => {
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
-        LoansAPI = new DefaultLoansAPI(api, userInterBtcAPI.assetRegistry, TransactionAPI);
+        const governanceCurrency = userInterBtcAPI.getGovernanceCurrency();
+        LoansAPI = new DefaultLoansAPI(api, governanceCurrency, userInterBtcAPI.assetRegistry, TransactionAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
