@@ -74,7 +74,8 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
+        const governanceCurrency = interBtcAPI.getGovernanceCurrency();
+        loansAPI = new DefaultLoansAPI(api, governanceCurrency, assetRegistry, transactionAPI);
 
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
@@ -216,7 +217,11 @@ describe("redeem", () => {
         // get BTC tx id
         const btcTxId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
 
-        const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vault_1_id.currencies.collateral);
+        const collateralCurrency = await currencyIdToMonetaryCurrency(
+            assetRegistry,
+            loansAPI,
+            vault_1_id.currencies.collateral
+        );
         const vaultBitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,
