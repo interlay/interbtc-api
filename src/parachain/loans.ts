@@ -9,6 +9,7 @@ import {
     LendToken,
     LoanMarket,
     LoanPosition,
+    GovernanceCurrency,
 } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
@@ -25,7 +26,6 @@ import {
 import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
-import { DefaultInterBtcApi } from "..";
 
 /**
  * @category Lending protocol
@@ -162,6 +162,7 @@ export interface LoansAPI {
 export class DefaultLoansAPI implements LoansAPI {
     constructor(
         private api: ApiPromise,
+        private governanceCurrency: GovernanceCurrency,
         private assetRegistryAPI: AssetRegistryAPI,
         private transactionAPI: TransactionAPI
     ) {}
@@ -457,8 +458,7 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         // Assumes native currency of parachain is always reward currency.
-        const rewardCurrency = new DefaultInterBtcApi(this.api).getGovernanceCurrency();
-        return newMonetaryAmount(amount, rewardCurrency);
+        return newMonetaryAmount(amount, this.governanceCurrency);
     }
 
     async _getLoanAsset(

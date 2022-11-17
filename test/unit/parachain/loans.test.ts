@@ -16,6 +16,7 @@ describe("DefaultLoansAPI", () => {
     let api: ApiPromise;
     let stubbedAssetRegistry: sinon.SinonStubbedInstance<DefaultAssetRegistryAPI>;
     let loansApi: DefaultLoansAPI;
+    const testGovernanceCurrency = Interlay;
 
     before(() => {
         api = new ApiPromise();
@@ -28,7 +29,7 @@ describe("DefaultLoansAPI", () => {
     beforeEach(() => {
         stubbedAssetRegistry = sinon.createStubInstance(DefaultAssetRegistryAPI);
         const transactionAPI = new DefaultTransactionAPI(api);
-        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry, transactionAPI);
+        loansApi = new DefaultLoansAPI(api, testGovernanceCurrency, stubbedAssetRegistry, transactionAPI);
     });
 
     describe("getLendPositionsOfAccount", () => {
@@ -137,28 +138,27 @@ describe("DefaultLoansAPI", () => {
         });
     });
 
-    describe("_constructSubsidyReward", () => {
-        const testCurrency = Interlay;
-        it("should construct SubsidyReward as expected", () => {
+    describe("_getSubsidyReward", () => {
+        it("should return MonetaryAmount as expected", () => {
             const testAmountAtomic = 42e10;
 
-            const expectedAmount = newMonetaryAmount(testAmountAtomic, testCurrency);
+            const expectedAmount = newMonetaryAmount(testAmountAtomic, testGovernanceCurrency);
 
-            const actualReward = loansApi._constructSubsidyReward(Big(testAmountAtomic), testCurrency);
+            const actualReward = loansApi._getSubsidyReward(Big(testAmountAtomic));
 
             expect(actualReward).to.not.be.null;
 
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            expect(expectedAmount.toBig().eq(actualReward!.amountPerUnitYearly.toBig())).to.be.eq(
+            expect(expectedAmount.toBig().eq(actualReward!.toBig())).to.be.eq(
                 true,
                 `Expected total amount (atomic value) to equal ${expectedAmount.toString(true)} 
-                but was: ${actualReward?.amountPerUnitYearly.toString(true)}`
+                but was: ${actualReward?.toString(true)}`
             );
-            expect(actualReward?.currency).to.eq(testCurrency);
+            expect(actualReward?.currency).to.eq(testGovernanceCurrency);
         });
 
         it("should return null if the amount is zero", () => {
-            expect(loansApi._constructSubsidyReward(Big(0), testCurrency)).to.be.null;
+            expect(loansApi._getSubsidyReward(Big(0))).to.be.null;
         });
     });
 });
