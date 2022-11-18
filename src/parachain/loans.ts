@@ -9,7 +9,6 @@ import {
     LendToken,
     LoanMarket,
     LoanPosition,
-    GovernanceCurrency,
 } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
@@ -72,6 +71,14 @@ export interface LoansAPI {
      * @returns Array of all LendToken currencies.
      */
     getLendTokens(): Promise<Array<LendToken>>;
+
+    /**
+     * Get accrued subsidy rewards amount for the account
+     *
+     * @param accountId Account to get rewards for
+     * @returns {MonetaryAmount<CurrencyExt>} Amount how much rewards the account can claim.
+     */
+    getAccruedRewardsOfAccount(accountId: AccountId): Promise<MonetaryAmount<CurrencyExt>>;
 
     /**
      * Lend currency to protocol for borrowing.
@@ -162,7 +169,6 @@ export interface LoansAPI {
 export class DefaultLoansAPI implements LoansAPI {
     constructor(
         private api: ApiPromise,
-        private governanceCurrency: GovernanceCurrency,
         private assetRegistryAPI: AssetRegistryAPI,
         private transactionAPI: TransactionAPI
     ) {}
@@ -258,8 +264,6 @@ export class DefaultLoansAPI implements LoansAPI {
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<LendPosition | null> {
-        const rewardCurrencyId = this.api.consts.loans.rewardAssetId;
-
         const underlyingCurrencyAmount = await this.getLendAmountInUnderlyingCurrency(
             accountId,
             lendTokenId,
@@ -270,12 +274,9 @@ export class DefaultLoansAPI implements LoansAPI {
             return null;
         }
 
-        const [accountEarned, accountDeposits, rewardAccrued, rewardCurrency, currentMarketStatus] = await Promise.all([
+        const [accountEarned, accountDeposits, currentMarketStatus] = await Promise.all([
             this.api.query.loans.accountEarned(underlyingCurrencyId, accountId),
             this.api.query.loans.accountDeposits(lendTokenId, accountId),
-            // TODO: fix - This is returning reward per account basis, not per lend position
-            this.api.query.loans.rewardAccrued(accountId),
-            currencyIdToMonetaryCurrency(this.assetRegistryAPI, this, rewardCurrencyId),
             this.api.rpc.loans.getMarketStatus(underlyingCurrencyId),
         ]);
 
@@ -293,7 +294,6 @@ export class DefaultLoansAPI implements LoansAPI {
             earnedInterest: newMonetaryAmount(earnedInterest, underlyingCurrency),
             currency: underlyingCurrency,
             amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
-            earnedReward: newMonetaryAmount(rewardAccrued.toString(), rewardCurrency),
             isCollateral,
         };
     }
@@ -330,7 +330,6 @@ export class DefaultLoansAPI implements LoansAPI {
         return {
             amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),
             currency: underlyingCurrency,
-            earnedReward: null, // TODO: add computation for earned subsidy reward
             accumulatedDebt: newMonetaryAmount(accumulatedDebt, underlyingCurrency),
         };
     }
@@ -451,8 +450,8 @@ export class DefaultLoansAPI implements LoansAPI {
 
         // Return rate per 1 UNIT of underlying currency and compute APR
         // on UI where all exchange rates are available.
-        const lendRewardPerUnit = lendRewardPerPool.div(totalLiquidity);
-        const borrowRewardPerUnit = borrowRewardPerPool.div(totalBorrows);
+        const lendRewardPerUnit = totalLiquidity.eq(0) ? lendRewardPerPool : lendRewardPerPool.div(totalLiquidity);
+        const borrowRewardPerUnit = totalBorrows.eq(0) ? borrowRewardPerPool : borrowRewardPerPool.div(totalBorrows);
 
         return [lendRewardPerUnit, borrowRewardPerUnit];
     }
@@ -462,13 +461,19 @@ export class DefaultLoansAPI implements LoansAPI {
         return amountPerBlock.mul(blocksPerYear);
     }
 
-    _getSubsidyReward(amount: Big): MonetaryAmount<CurrencyExt> | null {
+    async _getRewardCurrency(): Promise<CurrencyExt> {
+        const rewardCurrencyId = this.api.consts.loans.rewardAssetId;
+
+        return currencyIdToMonetaryCurrency(this.assetRegistryAPI, this, rewardCurrencyId);
+    }
+
+    _getSubsidyReward(amount: Big, rewardCurrency: CurrencyExt): MonetaryAmount<CurrencyExt> | null {
         if (amount.eq(0)) {
             return null;
         }
 
         // Assumes native currency of parachain is always reward currency.
-        return newMonetaryAmount(amount, this.governanceCurrency);
+        return newMonetaryAmount(amount, rewardCurrency);
     }
 
     async _getLoanAsset(
@@ -481,11 +486,13 @@ export class DefaultLoansAPI implements LoansAPI {
             underlyingCurrencyId
         );
 
-        const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows]] = await Promise.all([
-            this._getLendApy(underlyingCurrencyId),
-            this._getBorrowApy(underlyingCurrencyId),
-            this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
-        ]);
+        const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows], rewardCurrency] =
+            await Promise.all([
+                this._getLendApy(underlyingCurrencyId),
+                this._getBorrowApy(underlyingCurrencyId),
+                this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
+                this._getRewardCurrency(),
+            ]);
 
         // Format data.
         const liquidationThreshold = decodePermill(marketData.liquidationThreshold);
@@ -496,8 +503,8 @@ export class DefaultLoansAPI implements LoansAPI {
             totalLiquidity.toBig(),
             totalBorrows.toBig()
         );
-        const lendReward = this._getSubsidyReward(lendRewardAmountYearly);
-        const borrowReward = this._getSubsidyReward(borrowRewardAmountYearly);
+        const lendReward = this._getSubsidyReward(lendRewardAmountYearly, rewardCurrency);
+        const borrowReward = this._getSubsidyReward(borrowRewardAmountYearly, rewardCurrency);
 
         return [
             underlyingCurrency,
@@ -531,6 +538,15 @@ export class DefaultLoansAPI implements LoansAPI {
         );
 
         return loanAssets;
+    }
+
+    async getAccruedRewardsOfAccount(accountId: AccountId): Promise<MonetaryAmount<CurrencyExt>> {
+        const [rewardAccrued, rewardCurrency] = await Promise.all([
+            this.api.query.loans.rewardAccrued(accountId),
+            this._getRewardCurrency(),
+        ]);
+
+        return newMonetaryAmount(rewardAccrued.toString(), rewardCurrency);
     }
 
     // Check that market for given currency is added and in active state.

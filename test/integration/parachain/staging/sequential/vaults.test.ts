@@ -63,7 +63,7 @@ describe("vaultsAPI", () => {
 
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
-        loansAPI = new DefaultLoansAPI(api, governanceCurrency, assetRegistry, transactionAPI);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
 
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(governanceCurrency);
         const aUSD = await getAUSDForeignAsset(assetRegistry);

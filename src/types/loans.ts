@@ -5,7 +5,6 @@ import { CurrencyExt } from "./currency";
 interface LoanPosition {
     currency: CurrencyExt;
     amount: MonetaryAmount<CurrencyExt>;
-    earnedReward: MonetaryAmount<CurrencyExt> | null; // null if rewards are not enabled.
 }
 
 interface LendPosition extends LoanPosition {

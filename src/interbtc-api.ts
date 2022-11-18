@@ -105,7 +105,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         this.transactionAPI = new DefaultTransactionAPI(api, _account);
 
         this.assetRegistry = new DefaultAssetRegistryAPI(api);
-        this.loans = new DefaultLoansAPI(api, governanceCurrency, this.assetRegistry, this.transactionAPI);
+        this.loans = new DefaultLoansAPI(api, this.assetRegistry, this.transactionAPI);
         this.tokens = new DefaultTokensAPI(api, this.transactionAPI);
         this.system = new DefaultSystemAPI(api, this.transactionAPI);
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency, this.transactionAPI);

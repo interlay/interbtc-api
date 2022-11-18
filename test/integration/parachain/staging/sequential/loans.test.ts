@@ -57,8 +57,7 @@ describe("Loans", () => {
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
-        const governanceCurrency = userInterBtcAPI.getGovernanceCurrency();
-        LoansAPI = new DefaultLoansAPI(api, governanceCurrency, userInterBtcAPI.assetRegistry, TransactionAPI);
+        LoansAPI = new DefaultLoansAPI(api, userInterBtcAPI.assetRegistry, TransactionAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
@@ -171,9 +170,8 @@ describe("Loans", () => {
             expect(lendPosition.currency).to.be.equal(underlyingCurrency);
             expect(lendPosition.isCollateral).to.be.false;
 
-            // No interest & reward because no one borrowed yet and no reward subsidies enabled.
+            // No interest reward because no one borrowed yet.
             expect(lendPosition.earnedInterest.toBig().eq(0)).to.be.true;
-            expect(lendPosition.earnedReward?.toBig().eq(0)).to.be.true;
 
             // TODO: add tests for more markets
         });
@@ -370,6 +368,12 @@ describe("Loans", () => {
 
             sinon.restore();
             sinon.reset();
+        });
+    });
+
+    describe("getAccruedRewardsOfAccount", () => {
+        it("should return correct amount of reward", () => {
+            //TODO
         });
     });
 

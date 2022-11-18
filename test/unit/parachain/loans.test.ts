@@ -29,7 +29,7 @@ describe("DefaultLoansAPI", () => {
     beforeEach(() => {
         stubbedAssetRegistry = sinon.createStubInstance(DefaultAssetRegistryAPI);
         const transactionAPI = new DefaultTransactionAPI(api);
-        loansApi = new DefaultLoansAPI(api, testGovernanceCurrency, stubbedAssetRegistry, transactionAPI);
+        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry, transactionAPI);
     });
 
     describe("getLendPositionsOfAccount", () => {
@@ -144,7 +144,7 @@ describe("DefaultLoansAPI", () => {
 
             const expectedAmount = newMonetaryAmount(testAmountAtomic, testGovernanceCurrency);
 
-            const actualReward = loansApi._getSubsidyReward(Big(testAmountAtomic));
+            const actualReward = loansApi._getSubsidyReward(Big(testAmountAtomic), testGovernanceCurrency);
 
             expect(actualReward).to.not.be.null;
 
@@ -158,7 +158,7 @@ describe("DefaultLoansAPI", () => {
         });
 
         it("should return null if the amount is zero", () => {
-            expect(loansApi._getSubsidyReward(Big(0))).to.be.null;
+            expect(loansApi._getSubsidyReward(Big(0), testGovernanceCurrency)).to.be.null;
         });
     });
 });

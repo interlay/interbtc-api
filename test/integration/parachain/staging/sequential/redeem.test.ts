@@ -74,8 +74,7 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        const governanceCurrency = interBtcAPI.getGovernanceCurrency();
-        loansAPI = new DefaultLoansAPI(api, governanceCurrency, assetRegistry, transactionAPI);
+        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
 
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
