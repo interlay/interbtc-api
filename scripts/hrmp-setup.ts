@@ -54,7 +54,7 @@ const args = yargs(hideBin(process.argv))
     })
     .option("with-defaults-of", {
         description: "Which default values to use",
-        choices: ['kintsugi', 'interlay'],
+        choices: ['kintsugi', 'interlay', 'rococo'],
     })
     .argv;
 
@@ -268,6 +268,20 @@ async function main(): Promise<void> {
             }
             if (args['relay-endpoint'] === undefined) {
                 args['relay-endpoint'] = "wss://kusama-rpc.polkadot.io";
+            }
+            if (args['xcm-fee'] === undefined) {
+                args['xcm-fee'] = 410000000000;
+            }
+            if (args['transact-weight'] === undefined) {
+                args['transact-weight'] = 10000000000;
+            }
+            break;
+        case 'rococo':
+            if (args['parachain-endpoint'] === undefined) {
+                args['parachain-endpoint'] = "wss://api-rococo.interlay.io/parachain";
+            }
+            if (args['relay-endpoint'] === undefined) {
+                args['relay-endpoint'] = "wss://rococo-rpc.polkadot.io";
             }
             if (args['xcm-fee'] === undefined) {
                 args['xcm-fee'] = 410000000000;
