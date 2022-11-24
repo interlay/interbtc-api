@@ -164,6 +164,21 @@ export interface LoansAPI {
      * @param underlyingCurrency Currency to repay.
      */
     repayAll(underlyingCurrency: CurrencyExt): Promise<void>;
+
+    /**
+     * Liquidates borrow position for exchange of collateral.
+     *
+     * @param borrower AccountId of borrower whose position will be liquidated.
+     * @param liquidationCurrency Currency of position that will be liquidated.
+     * @param repayAmount Amount to be repaid.
+     * @param collateralCurrency Collateral currency which will be claimed by liquidator.
+     */
+    liquidateBorrowPosition(
+        borrower: AccountId,
+        liquidationCurrency: CurrencyExt,
+        repayAmount: MonetaryAmount<CurrencyExt>,
+        collateralCurrency: CurrencyExt
+    ): Promise<void>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
@@ -638,5 +653,24 @@ export class DefaultLoansAPI implements LoansAPI {
         const repayAllExtrinsic = this.api.tx.loans.repayBorrowAll(underlyingCurrencyId);
 
         await this.transactionAPI.sendLogged(repayAllExtrinsic, this.api.events.loans.RepaidBorrow, true);
+    }
+
+    async liquidateBorrowPosition(
+        borrower: AccountId,
+        liquidationCurrency: CurrencyExt,
+        repayAmount: MonetaryAmount<CurrencyExt>,
+        collateralCurrency: CurrencyExt
+    ): Promise<void> {
+        const liquidationCurrencyId = newCurrencyId(this.api, liquidationCurrency);
+        const collateralCurrencyId = newCurrencyId(this.api, collateralCurrency);
+        const rawAmount = repayAmount.toString(true);
+        const liquidateBorrowExtrinsic = this.api.tx.loans.liquidateBorrow(
+            borrower,
+            liquidationCurrencyId,
+            rawAmount,
+            collateralCurrencyId
+        );
+
+        await this.transactionAPI.sendLogged(liquidateBorrowExtrinsic, this.api.events.loans.LiquidatedBorrow, true);
     }
 }
