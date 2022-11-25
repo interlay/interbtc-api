@@ -1,15 +1,6 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import {
-    BorrowPosition,
-    CurrencyExt,
-    LoanAsset,
-    LendPosition,
-    TickerToData,
-    LendToken,
-    LoanMarket,
-    LoanPosition,
-} from "../types";
+import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, LendToken, LoanPosition } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
@@ -22,7 +13,7 @@ import {
     newMonetaryAmount,
     storageKeyToNthInner,
 } from "../utils";
-import { InterbtcPrimitivesCurrencyId, PalletLoansMarket } from "@polkadot/types/lookup";
+import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
 
@@ -173,16 +164,8 @@ export class DefaultLoansAPI implements LoansAPI {
         private transactionAPI: TransactionAPI
     ) {}
 
-    static parseMarket(market: PalletLoansMarket): LoanMarket {
-        // TODO
-        return {
-            ...market,
-            lendTokenId: market.lendTokenId.asLendToken.toNumber(),
-        };
-    }
-
     // Wrapped call to make mocks in tests simple.
-    async getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<PalletLoansMarket>][]> {
+    async getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<LoansMarket>][]> {
         const entries = await this.api.query.loans.markets.entries();
         return entries.filter((entry) => entry[1].isSome);
     }
@@ -478,7 +461,7 @@ export class DefaultLoansAPI implements LoansAPI {
 
     async _getLoanAsset(
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
-        marketData: PalletLoansMarket
+        marketData: LoansMarket
     ): Promise<[CurrencyExt, LoanAsset]> {
         const underlyingCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
