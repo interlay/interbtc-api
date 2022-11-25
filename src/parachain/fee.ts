@@ -55,7 +55,12 @@ export interface FeeAPI {
 }
 
 export class DefaultFeeAPI implements FeeAPI {
-    constructor(private api: ApiPromise, private oracleAPI: OracleAPI, private assetRegistryAPI: AssetRegistryAPI, private loansAPI: LoansAPI) {}
+    constructor(
+        private api: ApiPromise,
+        private oracleAPI: OracleAPI,
+        private assetRegistryAPI: AssetRegistryAPI,
+        private loansAPI: LoansAPI
+    ) {}
 
     async getGriefingCollateral(
         amount: MonetaryAmount<WrappedCurrency>,

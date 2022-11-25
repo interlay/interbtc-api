@@ -40,7 +40,7 @@ export type UnwrappedAssetRegistryMetadataTuple = [StorageKey<[u32]>, OrmlTraits
 export type SystemCollateralCeilingTuple = [StorageKey<[InterbtcPrimitivesVaultCurrencyPair]>, Option<u128>];
 
 export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
-    constructor(private api: ApiPromise) { }
+    constructor(private api: ApiPromise) {}
 
     static metadataToCurrency(metadata: OrmlTraitsAssetRegistryAssetMetadata): Currency {
         const symbol = decodeBytesAsString(metadata.symbol);
@@ -61,10 +61,10 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         return {
             foreignAsset: {
                 id: keyInner.toNumber(),
-                coingeckoId
+                coingeckoId,
             },
-            ...currencyPart
-        }
+            ...currencyPart,
+        };
     }
 
     // wrapped call for easier mocking in tests
@@ -106,10 +106,10 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         return {
             foreignAsset: {
                 id: numberId,
-                coingeckoId
+                coingeckoId,
             },
-            ...currencyPart
-        }
+            ...currencyPart,
+        };
     }
 
     // wrapped call for easier mocking in tests
