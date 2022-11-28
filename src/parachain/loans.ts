@@ -104,7 +104,7 @@ export interface LoansAPI {
 
     /**
      * Enable lend position of account as collateral for borrowing.
-     *        await this._checkMarketState(underlyingCurrency, "withdraw");
+     *
      * @param underlyingCurrency Currency to enable as collateral.
      * @throws If there is no existing lend position for `currency`.
      */
@@ -212,16 +212,28 @@ export class DefaultLoansAPI implements LoansAPI {
         return amount.mul(decodedExchangeRate);
     }
 
-    async getLendAmountInUnderlyingCurrency(
+    /**
+     * Get lend position amounts in both underlying and lend currencies.
+     *
+     * @param accountId AccountId to get position information about
+     * @param lendTokenId LendToken CurrencyId of the position
+     * @param underlyingCurrencyId Underlying CurrencyId of the position
+     * @returns Lend position amounts in underlying currency and lend token
+     */
+    async getLendPositionAmounts(
         accountId: AccountId,
         lendTokenId: InterbtcPrimitivesCurrencyId,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId
-    ): Promise<Big> {
+    ): Promise<[Big, Big]> {
         const lendTokenBalance = await this.api.query.tokens.accounts(accountId, lendTokenId);
         const lendTokenBalanceTotal = lendTokenBalance.free.add(lendTokenBalance.reserved);
         const lendTokenBalanceInBig = Big(lendTokenBalanceTotal.toString());
 
-        return this.convertLendTokenToUnderlyingCurrency(lendTokenBalanceInBig, underlyingCurrencyId);
+        const amountInUnderlying = await this.convertLendTokenToUnderlyingCurrency(
+            lendTokenBalanceInBig,
+            underlyingCurrencyId
+        );
+        return [amountInUnderlying, lendTokenBalanceInBig];
     }
 
     async getLendTokens(): Promise<LendToken[]> {
@@ -247,7 +259,7 @@ export class DefaultLoansAPI implements LoansAPI {
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<LendPosition | null> {
-        const underlyingCurrencyAmount = await this.getLendAmountInUnderlyingCurrency(
+        const [underlyingCurrencyAmount, lendTokenAmount] = await this.getLendPositionAmounts(
             accountId,
             lendTokenId,
             underlyingCurrencyId
@@ -266,10 +278,7 @@ export class DefaultLoansAPI implements LoansAPI {
         const startingExchangeRate = decodeFixedPointType(accountEarned.exchangeRatePrior);
         const currentExchangeRate = decodeFixedPointType(currentMarketStatus[2]);
         const earnedPrior = decodeFixedPointType(accountEarned.totalEarnedPrior);
-        const earnedInterest = currentExchangeRate
-            .sub(startingExchangeRate)
-            .mul(underlyingCurrencyAmount) // TODO: check whether to use underlying or lendtoken balance here
-            .add(earnedPrior);
+        const earnedInterest = currentExchangeRate.sub(startingExchangeRate).mul(lendTokenAmount).add(earnedPrior);
 
         const isCollateral = !accountDeposits.isZero();
 
