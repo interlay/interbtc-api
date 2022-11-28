@@ -78,7 +78,7 @@ export class DefaultSystemAPI implements SystemAPI {
     }
 
     async setCode(code: string): Promise<void> {
-        const tx = this.api.tx.sudo.sudoUncheckedWeight(this.api.tx.system.setCode(code), 0);
+        const tx = this.api.tx.sudo.sudoUncheckedWeight(this.api.tx.system.setCode(code), "0");
         await this.transactionAPI.sendLogged(tx, this.api.events.system.CodeUpdated, true);
     }
 

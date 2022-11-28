@@ -33,6 +33,7 @@ import { OracleAPI } from "./oracle";
 import { CollateralCurrencyExt, Redeem, WrappedCurrency } from "../types";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { SystemAPI } from "./system";
+import { LoansAPI } from "./loans";
 
 /**
  * @category BTC Bridge
@@ -226,7 +227,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
         private oracleAPI: OracleAPI,
         private transactionAPI: TransactionAPI,
         private assetRgistryAPI: AssetRegistryAPI,
-        private systemAPI: SystemAPI
+        private systemAPI: SystemAPI,
+        private loansAPI: LoansAPI
     ) {}
 
     private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
@@ -410,6 +412,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
                     return parseRedeemRequest(
                         this.vaultsAPI,
                         this.assetRgistryAPI,
+                        this.loansAPI,
                         req.unwrap(),
                         this.btcNetwork,
                         storageKeyToNthInner(id),
@@ -469,6 +472,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
                     parseRedeemRequest(
                         this.vaultsAPI,
                         this.assetRgistryAPI,
+                        this.loansAPI,
                         redeemRequest.unwrap(),
                         this.btcNetwork,
                         redeemId,

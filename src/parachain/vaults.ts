@@ -38,7 +38,7 @@ import {
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
-import { AssetRegistryAPI, SystemAPI } from "./index";
+import { AssetRegistryAPI, SystemAPI, LoansAPI } from "./index";
 import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
 
@@ -426,7 +426,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private rewardsAPI: RewardsAPI,
         private systemAPI: SystemAPI,
         private transactionAPI: TransactionAPI,
-        private assetRegistryAPI: AssetRegistryAPI
+        private assetRegistryAPI: AssetRegistryAPI,
+        private loansAPI: LoansAPI
     ) {}
 
     getWrappedCurrency(): WrappedCurrency {
@@ -565,6 +566,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     ): Promise<MonetaryAmount<CollateralCurrencyExt>> {
         const collateralCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
+            this.loansAPI,
             vaultId.currencies.collateral
         );
         if (nonce === undefined) {
@@ -685,7 +687,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const [collateral, maxNominationRatio] = await Promise.all([
             this.getCollateral(vaultAccountId, collateralCurrency),
             this.getMaxNominationRatio(
-                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vault.id.currencies.collateral)
+                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, vault.id.currencies.collateral)
             ),
         ]);
         return collateral.mul(maxNominationRatio).sub(vault.backingCollateral);
@@ -699,6 +701,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         }
         return await parseSystemVault(
             this.assetRegistryAPI,
+            this.loansAPI,
             liquidationVault.value as VaultRegistrySystemVault,
             this.wrappedCurrency,
             collateralCurrency
@@ -712,7 +715,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     async isBelowPremiumThreshold(vaultId: InterbtcPrimitivesVaultId): Promise<boolean> {
         const [premiumRedeemThreshold, vaultCollateralization] = await Promise.all([
             this.getPremiumRedeemThreshold(
-                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.collateral)
+                await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, vaultId.currencies.collateral)
             ),
             this.getCollateralizationFromVault(vaultId),
         ]);
@@ -761,7 +764,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     ): Promise<Big> {
         const vault = await this.get(
             vaultId.accountId,
-            await currencyIdToMonetaryCurrency(this.assetRegistryAPI, vaultId.currencies.collateral)
+            await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, vaultId.currencies.collateral)
         );
         const issuedTokens = await (onlyIssued ? Promise.resolve(vault.issuedTokens) : vault.getBackedTokens());
         if (issuedTokens.isZero()) {
@@ -843,7 +846,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             currencies: vaultId.currencies,
         });
         const wrappedCurrencyPrimitive = newCurrencyId(this.api, this.getWrappedCurrency());
-        const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, wrappedCurrencyPrimitive);
+        const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, wrappedCurrencyPrimitive);
         const amount = newMonetaryAmount(balance.amount.toString(), currency);
         return amount;
     }
@@ -876,7 +879,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         for (const [vaultId, balanceWrapper] of premiumRedeemVaults) {
             const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
 
-            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, vaultId);
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, this.loansAPI, vaultId);
             map.set(ibtcPrimitivesVaultId, amount);
         }
         return map;
@@ -888,7 +891,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         for (const [vaultId, balanceWrapper] of issuableVaults) {
             const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
 
-            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, vaultId);
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, this.loansAPI, vaultId);
             vaultIdsToAmountsMap.set(ibtcPrimitivesVaultId, amount);
         }
 
@@ -990,6 +993,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     async parseVault(vault: VaultRegistryVault): Promise<VaultExt> {
         const collateralCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
+            this.loansAPI,
             vault.id.currencies.collateral
         );
         const replaceCollateral = newMonetaryAmount(vault.replaceCollateral.toString(), collateralCurrency);
@@ -1005,6 +1009,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.oracleAPI,
             this.systemAPI,
             this.assetRegistryAPI,
+            this.loansAPI,
             backingCollateral,
             vault.id,
             this.parseVaultStatus(vault.status),
@@ -1040,6 +1045,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     async toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<void> {
         const collateralCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
+            this.loansAPI,
             vaultId.currencies.collateral
         );
         const tx = this.buildAcceptNewIssuesExtrinsic(collateralCurrency, acceptNewIssues);

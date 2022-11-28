@@ -59,8 +59,10 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         const coingeckoId = decodeBytesAsString(metadata.additional.coingeckoId);
 
         return {
-            id: keyInner.toNumber(),
-            coingeckoId,
+            foreignAsset: {
+                id: keyInner.toNumber(),
+                coingeckoId,
+            },
             ...currencyPart,
         };
     }
@@ -102,8 +104,10 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         const numberId = id instanceof u32 ? id.toNumber() : id;
 
         return {
-            id: numberId,
-            coingeckoId,
+            foreignAsset: {
+                id: numberId,
+                coingeckoId,
+            },
             ...currencyPart,
         };
     }
@@ -135,6 +139,6 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
         );
 
         // filter all foreign assets to include only those with a collateral ceiling
-        return foreignAssets.filter((foreignAsset) => collateralForeignAssetIdSet.has(foreignAsset.id));
+        return foreignAssets.filter((foreignAsset) => collateralForeignAssetIdSet.has(foreignAsset.foreignAsset.id));
     }
 }

@@ -125,16 +125,16 @@ describe("DefaultAssetRegistryAPI", () => {
                 `Expected currency base to be ${mockMetadataValues.decimals}, but was ${actual.decimals}`
             );
 
-            expect(actual.coingeckoId).to.equal(
+            expect(actual.foreignAsset.coingeckoId).to.equal(
                 mockMetadataValues.coingeckoId,
-                `Expected coingecko id to be ${mockMetadataValues.coingeckoId}, but was ${actual.coingeckoId}`
+                `Expected coingecko id to be ${mockMetadataValues.coingeckoId}, but was ${actual.foreignAsset.coingeckoId}`
             );
         });
     });
 
     describe("getCollateralForeignAssets", () => {
         // only id matters for these tests
-        const mockForeignAssets = [<ForeignAsset>{ id: 1 }, <ForeignAsset>{ id: 2 }, <ForeignAsset>{ id: 3 }];
+        const mockForeignAssets = [<ForeignAsset>{ foreignAsset: {id: 1} }, <ForeignAsset>{ foreignAsset: {id: 2} }, <ForeignAsset>{ foreignAsset: {id: 3 }}];
 
         const prepareMocks = (
             sinon: sinon.SinonSandbox,
@@ -171,7 +171,7 @@ describe("DefaultAssetRegistryAPI", () => {
 
         it("should return only foreign assets, not tokens with collateral ceilings set", async () => {
             // pick an asset id that we expect to get returned
-            const expectedForeignAssetId = mockForeignAssets[0].id;
+            const expectedForeignAssetId = mockForeignAssets[0].foreignAsset.id;
 
             // only bother mocking collateral currencies, the wrapped side is ignored
             const mockCurrencyPairs = [
@@ -190,7 +190,7 @@ describe("DefaultAssetRegistryAPI", () => {
                         isForeignAsset: false,
                         isToken: true,
                         // logically inconsistent (but trying to trick into having a valid result if this is used when it shouldn't)
-                        asForeignAsset: api.createType("u32", mockForeignAssets[mockForeignAssets.length - 1].id),
+                        asForeignAsset: api.createType("u32", mockForeignAssets[mockForeignAssets.length - 1].foreignAsset.id),
                         type: "Token",
                     },
                 },
@@ -203,7 +203,7 @@ describe("DefaultAssetRegistryAPI", () => {
             // expect one returned value
             expect(actual).to.have.lengthOf(1);
 
-            const actualAssetId = actual[0].id;
+            const actualAssetId = actual[0].foreignAsset.id;
             expect(actualAssetId).to.be.eq(expectedForeignAssetId);
         });
     });

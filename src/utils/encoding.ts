@@ -1,4 +1,4 @@
-import { AccountId, H256 } from "@polkadot/types/interfaces";
+import { AccountId, H256, Permill } from "@polkadot/types/interfaces";
 import Big, { BigSource } from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import type { Struct } from "@polkadot/types";
@@ -20,13 +20,21 @@ import {
     InterbtcPrimitivesCurrencyId,
 } from "@polkadot/types/lookup";
 
-import { currencyIdToMonetaryCurrency, encodeBtcAddress, FIXEDI128_SCALING_FACTOR, isForeignAsset } from ".";
+import {
+    currencyIdToMonetaryCurrency,
+    encodeBtcAddress,
+    FIXEDI128_SCALING_FACTOR,
+    getCurrencyIdentifier,
+    isForeignAsset,
+    isLendToken,
+    PERMILL_BASE,
+} from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
 import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
-import { AssetRegistryAPI, VaultsAPI } from "../parachain";
+import { AssetRegistryAPI, LoansAPI, VaultsAPI } from "../parachain";
 
 /**
  * Converts endianness of a Uint8Array
@@ -137,6 +145,7 @@ export interface DecodedRequestExt extends Omit<DecodedRequest, "btc_address"> {
 
 export async function parseSystemVault(
     assetRegistryApi: AssetRegistryAPI,
+    loansAPI: LoansAPI,
     vault: VaultRegistrySystemVault,
     wrappedCurrency: WrappedCurrency,
     collateralCurrency: CollateralCurrencyExt
@@ -147,8 +156,12 @@ export async function parseSystemVault(
         toBeRedeemedTokens: newMonetaryAmount(vault.toBeRedeemedTokens.toString(), wrappedCurrency),
         collateral: newMonetaryAmount(vault.collateral.toString(), collateralCurrency),
         currencyPair: {
-            collateralCurrency: await currencyIdToMonetaryCurrency(assetRegistryApi, vault.currencyPair.collateral),
-            wrappedCurrency: await currencyIdToMonetaryCurrency(assetRegistryApi, vault.currencyPair.wrapped),
+            collateralCurrency: await currencyIdToMonetaryCurrency(
+                assetRegistryApi,
+                loansAPI,
+                vault.currencyPair.collateral
+            ),
+            wrappedCurrency: await currencyIdToMonetaryCurrency(assetRegistryApi, loansAPI, vault.currencyPair.wrapped),
         },
     };
 }
@@ -171,11 +184,12 @@ export function newVaultId(
 export async function decodeRpcVaultId(
     api: ApiPromise,
     assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI,
     vaultId: VaultId
 ): Promise<InterbtcPrimitivesVaultId> {
     const [collateralCcy, wrappedCcy] = await Promise.all([
-        currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.collateral),
-        currencyIdToMonetaryCurrency(assetRegistry, vaultId.currencies.wrapped),
+        currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vaultId.currencies.collateral),
+        currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vaultId.currencies.wrapped),
     ]);
 
     return newVaultId(api, vaultId.account_id.toString(), collateralCcy, wrappedCcy);
@@ -195,7 +209,7 @@ export function newVaultCurrencyPair(
 }
 
 export function newCurrencyId(api: ApiPromise, currency: CurrencyExt): InterbtcPrimitivesCurrencyId {
-    const identifier = isForeignAsset(currency) ? { foreignAsset: currency.id } : { token: currency.ticker };
+    const identifier = getCurrencyIdentifier(currency);
     return api.createType("InterbtcPrimitivesCurrencyId", identifier);
 }
 
@@ -211,12 +225,17 @@ export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): Bal
 
 export async function parseReplaceRequest(
     assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI,
     req: InterbtcPrimitivesReplaceReplaceRequest,
     network: Network,
     wrappedCurrency: WrappedCurrency,
     id: H256 | string
 ): Promise<ReplaceRequestExt> {
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.oldVault.currencies.collateral);
+    const collateralCurrency = await currencyIdToMonetaryCurrency(
+        assetRegistry,
+        loansAPI,
+        req.oldVault.currencies.collateral
+    );
     return {
         id: stripHexPrefix(id.toString()),
         btcAddress: encodeBtcAddress(req.btcAddress, network),
@@ -235,6 +254,7 @@ export async function parseReplaceRequest(
 export async function parseIssueRequest(
     vaultsAPI: VaultsAPI,
     assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI,
     req: InterbtcPrimitivesIssueIssueRequest,
     network: Network,
     id: H256 | string
@@ -244,7 +264,11 @@ export async function parseIssueRequest(
         : req.status.isCancelled
         ? IssueStatus.Cancelled
         : IssueStatus.PendingWithBtcTxNotFound;
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
+    const collateralCurrency = await currencyIdToMonetaryCurrency(
+        assetRegistry,
+        loansAPI,
+        req.vault.currencies.collateral
+    );
     return {
         id: stripHexPrefix(id.toString()),
         creationBlock: req.opentime.toNumber(),
@@ -293,6 +317,7 @@ export function parseRedeemRequestStatus(
 export async function parseRedeemRequest(
     vaultsAPI: VaultsAPI,
     assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI,
     req: InterbtcPrimitivesRedeemRedeemRequest,
     network: Network,
     id: H256 | string,
@@ -300,7 +325,11 @@ export async function parseRedeemRequest(
     activeBlockCount: number
 ): Promise<Redeem> {
     const status = parseRedeemRequestStatus(req, redeemPeriod, activeBlockCount);
-    const collateralCurrency = await currencyIdToMonetaryCurrency(assetRegistry, req.vault.currencies.collateral);
+    const collateralCurrency = await currencyIdToMonetaryCurrency(
+        assetRegistry,
+        loansAPI,
+        req.vault.currencies.collateral
+    );
 
     return {
         id: stripHexPrefix(id.toString()),
@@ -325,25 +354,39 @@ export function unwrapRawExchangeRate(option: Option<UnsignedFixedPoint>): Unsig
     return option.isSome ? (option.value as UnsignedFixedPoint) : undefined;
 }
 
-export async function encodeVaultId(assetRegistry: AssetRegistryAPI, id: InterbtcPrimitivesVaultId): Promise<string> {
+export async function encodeVaultId(
+    assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI,
+    id: InterbtcPrimitivesVaultId
+): Promise<string> {
     const [wrappedCurrency, collateralCurrency] = await Promise.all([
-        currencyIdToMonetaryCurrency(assetRegistry, id.currencies.wrapped),
-        currencyIdToMonetaryCurrency(assetRegistry, id.currencies.collateral),
+        currencyIdToMonetaryCurrency(assetRegistry, loansAPI, id.currencies.wrapped),
+        currencyIdToMonetaryCurrency(assetRegistry, loansAPI, id.currencies.collateral),
     ]);
-    const wrappedId = isForeignAsset(wrappedCurrency) ? wrappedCurrency.id.toString() : wrappedCurrency.ticker;
+    const wrappedId = isForeignAsset(wrappedCurrency)
+        ? wrappedCurrency.foreignAsset.id.toString()
+        : isLendToken(wrappedCurrency)
+        ? wrappedCurrency.lendToken.id
+        : wrappedCurrency.ticker;
     const collateralId = isForeignAsset(collateralCurrency)
-        ? collateralCurrency.id.toString()
+        ? collateralCurrency.foreignAsset.id.toString()
+        : isLendToken(collateralCurrency)
+        ? collateralCurrency.lendToken.id.toString()
         : collateralCurrency.ticker;
     return `${id.accountId.toString()}-${wrappedId}-${collateralId}`;
 }
 
 export async function queryNominationsMap(
     assetRegistry: AssetRegistryAPI,
+    loansAPI: LoansAPI,
     map: Map<InterbtcPrimitivesVaultId, number>,
     vaultId: InterbtcPrimitivesVaultId
 ): Promise<number | undefined> {
     for (const [entryVaultId, entryNonce] of map.entries()) {
-        if ((await encodeVaultId(assetRegistry, entryVaultId)) === (await encodeVaultId(assetRegistry, vaultId))) {
+        if (
+            (await encodeVaultId(assetRegistry, loansAPI, entryVaultId)) ===
+            (await encodeVaultId(assetRegistry, loansAPI, vaultId))
+        ) {
             return entryNonce;
         }
     }
@@ -352,4 +395,12 @@ export async function queryNominationsMap(
 
 export function getSS58Prefix(api: ApiPromise): number {
     return Number(api.registry.chainSS58?.toString());
+}
+
+export function decodePermill(amount: Permill, inPercentage: boolean = false): Big {
+    const decodedInDecimals = Big(amount.toString()).div(PERMILL_BASE);
+    if (inPercentage) {
+        return decodedInDecimals.mul(100);
+    }
+    return decodedInDecimals;
 }
