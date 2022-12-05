@@ -301,7 +301,8 @@ docker volume rm $(docker volume ls -q)
 
 Contributions are what make the open source community such an amazing place to be learn, inspire, and create. Any contributions you make are greatly appreciated.
 
-1. Set up git so you can [sign your commits](https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work) (Alternative link: [GitHub: Signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) )
+1. Set up git so you can [sign your commits](https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work) (Alternative link: [GitHub: Signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits))  
+Unsigned PRs cannot be merged, so do not skip this step.
 2. Fork the Project
 3. Create your Feature Branch (git checkout -b yourname/AmazingFeature)
 4. Commit your Changes (git commit -m 'Add some AmazingFeature')
