@@ -1,15 +1,20 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import {
+    createExchangeRateOracleKey,
     CurrencyExt,
+    currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     DefaultLoansAPI,
     DefaultTransactionAPI,
+    getStorageMapItemKey,
     InterBtcApi,
     LendToken,
     newAccountId,
     newCurrencyId,
     newMonetaryAmount,
+    setStorageAtKey,
+    storageKeyToNthInner,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
@@ -41,6 +46,8 @@ describe("Loans", () => {
     let lendTokenId: InterbtcPrimitivesCurrencyId;
     let underlyingCurrencyId: InterbtcPrimitivesCurrencyId;
     let underlyingCurrency: CurrencyExt;
+    let underlyingCurrencyId2: InterbtcPrimitivesCurrencyId;
+    let underlyingCurrency2: CurrencyExt;
 
     before(async function () {
         this.timeout(approx10Blocks);
@@ -63,6 +70,13 @@ describe("Loans", () => {
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
         underlyingCurrency = sudoInterBtcAPI.getGovernanceCurrency();
 
+        underlyingCurrencyId2 = sudoInterBtcAPI.api.consts.currency.getRelayChainCurrencyId;
+        underlyingCurrency2 = await currencyIdToMonetaryCurrency(
+            userInterBtcAPI.assetRegistry,
+            user2InterBtcAPI.loans,
+            underlyingCurrencyId2
+        );
+
         lendTokenId = newCurrencyId(sudoInterBtcAPI.api, { lendToken: { id: 1 } } as LendToken);
 
         const percentageToPermill = (percentage: number) => percentage * 10000;
@@ -82,22 +96,19 @@ describe("Loans", () => {
                     jumpUtilization: percentageToPermill(80),
                 },
             },
-            state: "Pending",
+            state: "Active",
             supplyCap: "5000000000000000000000",
             borrowCap: "5000000000000000000000",
             lendTokenId,
         };
 
-        const addMarketExtrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(underlyingCurrencyId, marketData);
-        const activateMarketExtrinsic = sudoInterBtcAPI.api.tx.loans.activateMarket(underlyingCurrencyId);
-        const addMarketAndActivateExtrinsic = sudoInterBtcAPI.api.tx.utility.batchAll([
-            addMarketExtrinsic,
-            activateMarketExtrinsic,
-        ]);
+        const addMarket1Extrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(underlyingCurrencyId, marketData);
+        const addMarket2Extrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(underlyingCurrencyId2, marketData);
+        const addMarkets = sudoInterBtcAPI.api.tx.utility.batchAll([addMarket1Extrinsic, addMarket2Extrinsic]);
 
         const [eventFound] = await Promise.all([
             waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
-            api.tx.sudo.sudo(addMarketAndActivateExtrinsic).signAndSend(sudoAccount),
+            api.tx.sudo.sudo(addMarkets).signAndSend(sudoAccount),
         ]);
         expect(
             eventFound,
@@ -445,5 +456,55 @@ describe("Loans", () => {
         it("should get borrow positions in correct format", async function () {
             //TODO
         });
+    });
+
+    describe("liquidateBorrowPosition", () => {
+        it("should liquidate position when possible", async function () {
+            this.timeout(approx10Blocks);
+            // Supply asset by account1, borrow by account2
+            const borrowAmount = newMonetaryAmount(10, underlyingCurrency, true);
+            await userInterBtcAPI.loans.lend(underlyingCurrency2, borrowAmount);
+            await user2InterBtcAPI.loans.borrow(underlyingCurrency2, borrowAmount);
+
+            // Remove authorized oracle to make sure price won't be fed.
+            const authorizedOracles = await api.query.oracle.authorizedOracles.entries();
+            const authorizedOraclesAccountIds = authorizedOracles.map(([key]) => storageKeyToNthInner(key));
+            const removeAllOraclesExtrinsic = sudoInterBtcAPI.api.tx.utility.batchAll(
+                authorizedOraclesAccountIds.map((accountId) =>
+                    sudoInterBtcAPI.api.tx.oracle.removeAuthorizedOracle(accountId)
+                )
+            );
+            const [removeOraclesEventFound] = await Promise.all([
+                waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
+                api.tx.sudo.sudo(removeAllOraclesExtrinsic).signAndSend(sudoAccount),
+            ]);
+            expect(
+                removeOraclesEventFound,
+                `Sudo event to remove authorized oracles not found - timed out after ${approx10Blocks} ms`
+            ).to.be.true;
+
+            // Change Exchange rate storage for currency2.
+            const exchangeRateOracleKey = createExchangeRateOracleKey(api, underlyingCurrency2);
+            const initialExchangeRate = await api.query.oracle.aggregate(exchangeRateOracleKey);
+
+            // Extremely increase exchange rate of borrowed asset to trigger liquidation.
+            const newExchangeRate = "0x1";
+
+            const exchangeRateStorageKey = getStorageMapItemKey("Oracle", "Aggregate", exchangeRateOracleKey.toHex());
+            await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, newExchangeRate, sudoAccount);
+
+            const repayAmount = newMonetaryAmount(1, underlyingCurrency, true); // repay smallest amount
+            await userInterBtcAPI.loans.liquidateBorrowPosition(
+                user2AccountId,
+                underlyingCurrency2,
+                repayAmount,
+                underlyingCurrency
+            );
+            // const initialExchangeRate = (await api.query.oracle.aggregate(  )
+            // const liquidatingExchangeRate =
+
+            // after test add authorized oracle and reset exchange rate
+        });
+        it("should throw when no position can be liquidated", () => {});
     });
 });
