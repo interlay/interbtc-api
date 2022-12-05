@@ -13,6 +13,7 @@ It is implemented as a collection of open-source Substrate modules using Rust: <
 
 - [TypeScript](https://github.com/Microsoft/TypeScript)
 - [polkadot-js](https://polkadot.js.org/)
+- [nvm](https://github.com/nvm-sh/nvm)
 - [yarn](https://github.com/yarnpkg/yarn)
 - [docker-compose](https://docs.docker.com/compose/)
 
@@ -90,60 +91,7 @@ const requestResults = await interBTC.redeem.request(amount, btcAddress);
 
 At this point, one more more Vaults will send BTC to the address specified within 24 hours.
 
-### More Examples
-
-There are plenty more examples how to use this library. Best is to take a look at the integration tests: https://github.com/interlay/interbtc-api/tree/master/test/integration
-
-## API Documentation
-
-Please check the documentation at https://docs.interlay.io/interbtc-api/#/classes/DefaultInterBtcApi
-
-## Development
-
-### Clone this Repository
-
-```bash
-git@gitlab.com:interlay/interbtc-api.git
-cd interbtc-api
-```
-
-### Setting up a Local Development Environment
-
-You can spin up the parachain including the different clients with docker-compose:
-
-```bash
-docker-compose up
-```
-
-If you want to run components individually, you can clone the repositories and run the commands as done in `docker-compose.yml`.
-
-To install dependencies, run
-
-```bash
-yarn install
-```
-
-Build the library using
-
-```bash
-yarn build
-```
-
-### Testing
-
-To run only unit tests, use
-
-```bash
-yarn test:unit
-```
-
-Note that the parachain needs to be running for all tests to pass.
-
-Then, to run tests, run
-
-```bash
-yarn test
-```
+### Creating an AccountId Instance
 
 Certain API calls require a parameter of type `AccountId`, which represents the Polkadot/Kusama account and can be instantiated as follows
 
@@ -159,13 +107,132 @@ const feesEarnedByActiveStakedRelayer = await interBTC.stakedRelayer.getFeesEarn
 );
 ```
 
+### More Examples
+
+There are many examples in the integration tests, showing how to use this library. Take a look at them here: https://github.com/interlay/interbtc-api/tree/master/test/integration
+
+## API Documentation
+
+Please check the documentation at https://docs.interlay.io/interbtc-api/#/classes/DefaultInterBtcApi
+
+## Development
+
+### Fork this Repository
+Follow Github's instructions on [how to fork a repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo) to create your own fork.
+
+### Clone Your Repository
+
+```bash
+git@github.com:<your_github_profile>/interbtc-api.git
+cd interbtc-api
+```
+
+### Setting up a Local Development Environment
+
+Start by setting your Node version via `nvm`
+
+```bash
+nvm use
+```
+(If necessary, `nvm` will guide you on how to install the version.)
+
+Next, install the dependencies
+
+```bash
+yarn install
+```
+
+Finally, build the library
+
+```bash
+yarn build
+```
+
+### Testing
+
+To run unit tests only, use
+
+```bash
+yarn test:unit
+```
+
+#### Start the Parachain Locally for Integration/All Tests
+
+Note that the parachain needs to be running for all tests to run.
+
+```bash
+yarn docker-parachain-start
+```
+
+The default parachain started is Kintsugi (KINT). To choose a specific chain, use the optional `--chain` parameter.
+e.g. to start Kintsugi explicitly
+
+```bash
+yarn docker-parachain-start --chain=KINT
+```
+
+Or, to start Interlay locally use
+
+```bash
+yarn docker-parachain-start --chain=KINT
+```
+
+When in doubt, start with Kintsugi. You will know when to use Interlay
+
+#### Rebuild Generated Docker Files
+
+`yarn docker-parachain-start` saves some docker compose files locally under `local-setup`. It saves the generated docker compose files to avoid having to rebuild/regenerate all data just to restart the development environment. In most cases, you don't need to rebuild those unless there have been changes to the related docker images in our fork of the [parachain-launch project](https://github.com/interlay/parachain-launch).
+
+In order to force a fresh rebuild of all `docker-compose.yml` files and the raw genesis parachain json used for the local test environment, make sure to delete the existing `local-setup` folder
+
+```bash
+rm -r local-setup
+```
+
+#### Run All Tests
+Then, to run all tests:
+
+```bash
+yarn test
+```
+
+#### Run Integration Tests Only
+
+```bash
+yarn test:integration
+```
+
+Note: While the parachain is starting up, there will be warnings from the integration tests until it can locate the locally running test vaults. Expect the startup to take around 2-3 minutes (after `yarn docker-parachain-start`), and only start the integration tests after that time frame.
+
+Another option is to switch to the `local-setup` directory and there check for the vaults to start - for example, to see the logs for vault 1, use this:
+```bash
+# in <project_folder>/local-setup
+docker-compose logs -f vault_1
+```
+
+(Note: The optional `-f` flag attaches the terminal to the log output, you will need to ctrl+C to exit. Alternatively, omit the flag to just get the current latest log entries.)
+
+#### Stop the Local Parachain
+
+To stop the locally running parachain, run:
+
+```bash
+yarn docker-parachain-stop
+```
+
+Note: This will remove the volumes attached to the images. So your chain will start next time in a clean/wiped state. 
+
 ### Updating Types
 
-Run the parachain (or indeed any Substrate node) and download the metadata:
+We only need to update types when we have changed to newer docker images for the parachain / clients.
+
+Run the parachain (via `yarn docker-parachain-start` as shown above, or indeed any Substrate node) and download the metadata:
 
 ```bash
 curl -H "Content-Type: application/json" -d '{"id":"1", "jsonrpc":"2.0", "method": "state_getMetadata", "params":[]}' http://localhost:9933 > src/json/parachain.json
 ```
+
+(Remember to remove `local-setup` if you want to generate types for a new version of the parachain.)
 
 Then, update the metadata by building the library:
 
