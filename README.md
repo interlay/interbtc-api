@@ -174,7 +174,7 @@ yarn docker-parachain-start --chain=KINT
 Or, to start Interlay locally use
 
 ```bash
-yarn docker-parachain-start --chain=KINT
+yarn docker-parachain-start --chain=INTR
 ```
 
 When in doubt, start with Kintsugi. You will know when to use Interlay
