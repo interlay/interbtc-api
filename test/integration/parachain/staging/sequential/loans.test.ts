@@ -459,7 +459,7 @@ describe("Loans", () => {
     });
 
     describe("liquidateBorrowPosition", () => {
-        it("should liquidate position when possible", async function () {
+        it.only("should liquidate position when possible", async function () {
             this.timeout(approx10Blocks);
             // Supply asset by account1, borrow by account2
             const borrowAmount = newMonetaryAmount(10, underlyingCurrency, true);
@@ -485,10 +485,10 @@ describe("Loans", () => {
 
             // Change Exchange rate storage for currency2.
             const exchangeRateOracleKey = createExchangeRateOracleKey(api, underlyingCurrency2);
-            const initialExchangeRate = await api.query.oracle.aggregate(exchangeRateOracleKey);
+            const initialExchangeRate = (await api.query.oracle.aggregate(exchangeRateOracleKey)).toHex();
 
             // Extremely increase exchange rate of borrowed asset to trigger liquidation.
-            const newExchangeRate = "0x1";
+            const newExchangeRate = "0x100";
 
             const exchangeRateStorageKey = getStorageMapItemKey("Oracle", "Aggregate", exchangeRateOracleKey.toHex());
             await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, newExchangeRate, sudoAccount);
@@ -500,11 +500,27 @@ describe("Loans", () => {
                 repayAmount,
                 underlyingCurrency
             );
-            // const initialExchangeRate = (await api.query.oracle.aggregate(  )
-            // const liquidatingExchangeRate =
 
-            // after test add authorized oracle and reset exchange rate
+            // Restore exchange rate
+            await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, initialExchangeRate, sudoAccount);
+            // Restore authorized oracles
+
+            const restoreAllOraclesExtrinsic = sudoInterBtcAPI.api.tx.utility.batchAll(
+                authorizedOracles.map(([key, value]) =>
+                    sudoInterBtcAPI.api.tx.oracle.insertAuthorizedOracle(storageKeyToNthInner(key), value)
+                )
+            );
+            const [restoreOraclesEventFound] = await Promise.all([
+                waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
+                api.tx.sudo.sudo(restoreAllOraclesExtrinsic).signAndSend(sudoAccount),
+            ]);
+            expect(
+                restoreOraclesEventFound,
+                `Sudo event to remove authorized oracles not found - timed out after ${approx10Blocks} ms`
+            ).to.be.true;
         });
-        it("should throw when no position can be liquidated", () => {});
+        it("should throw when no position can be liquidated", () => {
+            //TODO
+        });
     });
 });
