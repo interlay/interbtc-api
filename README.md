@@ -210,7 +210,7 @@ Another option is to switch to the `local-setup` directory and there check for t
 docker-compose logs -f vault_1
 ```
 
-(Note: The optional `-f` flag attaches the terminal to the log output, you will need to ctrl+C to exit. Alternatively, omit the flag to just get the current latest log entries.)
+(Note: The optional `-f` flag attaches the terminal to the log output, you will need to <kbd>Ctrl</kbd> + <kbd>C</kbd> to exit. Alternatively, omit the flag to just get the current latest log entries.)
 
 #### Stop the Local Parachain
 
