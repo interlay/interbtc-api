@@ -160,7 +160,7 @@ Note that the parachain needs to be running for all tests to run.
 yarn docker-parachain-start
 ```
 
-The default parachain started is Kintsugi (KINT). To choose a specific chain, use the optional `--chain` parameter.
+The default parachain started is an image of Kintsugi (KINT). To choose a specific chain's image, use the optional `--chain` parameter.
 e.g. to start Kintsugi explicitly
 
 ```bash
@@ -172,8 +172,6 @@ Or, to start Interlay locally use
 ```bash
 yarn docker-parachain-start --chain=INTR
 ```
-
-When in doubt, start with Kintsugi. You will know when to use Interlay
 
 #### Rebuild Generated Docker Files
 
