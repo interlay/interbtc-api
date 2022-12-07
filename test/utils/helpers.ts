@@ -19,8 +19,13 @@ import {
     ForeignAsset,
     GovernanceCurrency,
     CollateralCurrencyExt,
+    storageKeyToNthInner,
+    createExchangeRateOracleKey,
+    getStorageMapItemKey,
+    setStorageAtKey,
 } from "../../src";
 import { SUDO_URI } from "../config";
+import { expect } from "chai";
 
 export const SLEEP_TIME_MS = 1000;
 
@@ -69,6 +74,70 @@ export async function callWithExchangeRate(
     } finally {
         await oracleAPI.setExchangeRate(initialExchangeRate);
         await oracleAPI.waitForExchangeRateUpdate(initialExchangeRate);
+    }
+
+    return result;
+}
+
+// Calls fn wrapped in custom exchange rate with oracles removed, so that
+// exchange rate can not be overwritten during the test execution
+export async function callWithExchangeRateOverwritten(
+    sudoInterBtcAPI: InterBtcApi,
+    currency: CurrencyExt,
+    newExchangeRateHex: `0x${string}`,
+    fn: () => Promise<void>
+): Promise<void> {
+    const { account: sudoAccount, api } = sudoInterBtcAPI;
+    const approx10Blocks = APPROX_BLOCK_TIME_MS * 10;
+    if (!sudoAccount) {
+        throw new Error("callWithExchangeRate: sudo account is not set.");
+    }
+    // Remove authorized oracle to make sure price won't be fed.
+    const authorizedOracles = await api.query.oracle.authorizedOracles.entries();
+    const authorizedOraclesAccountIds = authorizedOracles.map(([key]) => storageKeyToNthInner(key));
+    const removeAllOraclesExtrinsic = api.tx.utility.batchAll(
+        authorizedOraclesAccountIds.map((accountId) => api.tx.oracle.removeAuthorizedOracle(accountId))
+    );
+    const [removeOraclesEventFound] = await Promise.all([
+        waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
+        api.tx.sudo.sudo(removeAllOraclesExtrinsic).signAndSend(sudoAccount),
+    ]);
+    expect(
+        removeOraclesEventFound,
+        `Sudo event to remove authorized oracles not found - timed out after ${approx10Blocks} ms`
+    ).to.be.true;
+
+    // Change Exchange rate storage for currency.
+    const exchangeRateOracleKey = createExchangeRateOracleKey(api, currency);
+    const initialExchangeRate = (await api.query.oracle.aggregate(exchangeRateOracleKey)).toHex();
+
+    const exchangeRateStorageKey = getStorageMapItemKey("Oracle", "Aggregate", exchangeRateOracleKey.toHex());
+    await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, newExchangeRateHex, sudoAccount);
+
+    let result: Promise<void>;
+    try {
+        await fn();
+        result = Promise.resolve();
+    } catch (error) {
+        console.log(`Error: ${(error as Error).toString()}`);
+        result = Promise.reject(error);
+    } finally {
+        // Restore exchange rate
+        await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, initialExchangeRate, sudoAccount);
+        // Restore authorized oracles
+        const restoreAllOraclesExtrinsic = api.tx.utility.batchAll(
+            authorizedOracles.map(([key, value]) =>
+                api.tx.oracle.insertAuthorizedOracle(storageKeyToNthInner(key), value)
+            )
+        );
+        const [restoreOraclesEventFound] = await Promise.all([
+            waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
+            api.tx.sudo.sudo(restoreAllOraclesExtrinsic).signAndSend(sudoAccount),
+        ]);
+        expect(
+            restoreOraclesEventFound,
+            `Sudo event to remove authorized oracles not found - timed out after ${approx10Blocks} ms`
+        ).to.be.true;
     }
 
     return result;
