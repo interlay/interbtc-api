@@ -8,7 +8,6 @@ import Big from "big.js";
 import {
     CurrencyIdLiteral,
     DefaultInterBtcApi,
-    DefaultTransactionAPI,
     FIXEDI128_SCALING_FACTOR,
     getStorageMapItemKey,
     InterbtcPrimitivesVaultId,
@@ -16,7 +15,9 @@ import {
     stripHexPrefix,
     VaultRegistryVault,
     WrappedCurrency,
-    currencyIdToMonetaryCurrency
+    currencyIdToMonetaryCurrency,
+    setStorageAtKey,
+    setStorageAtKeyBatch,
 } from "../..";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI, VAULT_1_URI } from "../../../test/config";
 import { sudo } from "../../../test/utils/helpers";
@@ -27,9 +28,9 @@ const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 
 interface SetBalanceParams {
-    value: number,
-    currencySymbol: string,
-    address: string
+    value: number;
+    currencySymbol: string;
+    address: string;
 }
 
 interface SetVaultParamsBase {
@@ -83,18 +84,6 @@ const getCurrencyFromSymbol = (symbol: string) => {
     }
 };
 
-const setStorageAtKey = async (api: ApiPromise, key: string, data: `0x${string}`) => {
-    const tx = api.tx.sudo.sudo(api.tx.system.setStorage([[key, data]]));
-    await DefaultTransactionAPI.sendLogged(api, sudoAccount, tx, undefined, true);
-};
-
-const setStorageAtKeyBatch = async (api: ApiPromise, newStorage: [string, `0x${string}`][]) => {
-    const txs = newStorage.map((storage) => api.tx.sudo.sudo(api.tx.system.setStorage([storage])));
-    const batchedTxs = api.tx.utility.batchAll(txs);
-    await DefaultTransactionAPI.sendLogged(api, sudoAccount, batchedTxs, undefined, true);
-};
-
-
 const constructVaultId = (
     api: ApiPromise,
     accountId: string,
@@ -109,7 +98,7 @@ const constructVaultId = (
 
 const getVault = async (api: ApiPromise, vaultId: InterbtcPrimitivesVaultId) => {
     const vaults = await api.query.vaultRegistry.vaults.entries();
-    const vault = vaults.find(vault => vault[1].value.id.eq(vaultId));
+    const vault = vaults.find((vault) => vault[1].value.id.eq(vaultId));
 
     if (vault === undefined) {
         throw new Error(`Vault not found, vault id: ${vaultId.toString()}`);
@@ -120,7 +109,7 @@ const getVault = async (api: ApiPromise, vaultId: InterbtcPrimitivesVaultId) => 
 const modifyVaultData = async (
     api: ApiPromise,
     vaultId: InterbtcPrimitivesVaultId,
-    modifier: ((vaultData: MutableVaultData) => MutableVaultData)
+    modifier: (vaultData: MutableVaultData) => MutableVaultData
 ) => {
     const [storageKey, vaultData] = await getVault(api, vaultId);
 
@@ -130,64 +119,77 @@ const modifyVaultData = async (
     const storageData = api.createType("Option<VaultRegistryVault>", modifiedVaultData).toHex();
 
     console.log("Writing into vault storage...");
-    await setStorageAtKey(api, storageKey.toString(), storageData);
+    await setStorageAtKey(api, storageKey.toString(), storageData, sudoAccount);
 };
 
-const disconnectApiOnExit = <Params>(
-    api: ApiPromise,
-    callback: (params: Params) => Promise<void>
-) => async (params: Params) => {
-    await callback(params);
-    await api.disconnect();
-};
+const disconnectApiOnExit =
+    <Params>(api: ApiPromise, callback: (params: Params) => Promise<void>) =>
+    async (params: Params) => {
+        await callback(params);
+        await api.disconnect();
+    };
 
 // Changes deposited collateral and issued tokens of the vault to allow premium redeem
 const setPremiumRedeem = (interBtcApi: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        interBtcApi.api,
-        async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
-            const { api } = interBtcApi;
-            const collateralCurrency = getCurrencyFromSymbol(collateralSymbol);
-            const wrappedCurrency = getCurrencyFromSymbol(wrappedSymbol) as WrappedCurrency;
-            const vaultId = newVaultId(api, accountId, collateralCurrency, wrappedCurrency);
+    disconnectApiOnExit(interBtcApi.api, async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
+        const { api } = interBtcApi;
+        const collateralCurrency = getCurrencyFromSymbol(collateralSymbol);
+        const wrappedCurrency = getCurrencyFromSymbol(wrappedSymbol) as WrappedCurrency;
+        const vaultId = newVaultId(api, accountId, collateralCurrency, wrappedCurrency);
 
-            const oneBTC = "100000000";
-            const parsedIssuedTokens = api.createType("u128", oneBTC);
-            // Sets issued tokens amount to 1 BTC
-            const newIssuedTokensAmount = newMonetaryAmount(oneBTC, wrappedCurrency);
-            const issuedTokensModifier = (vaultData: MutableVaultData): MutableVaultData =>
-                ({ ...vaultData, issuedTokens: parsedIssuedTokens });
+        const oneBTC = "100000000";
+        const parsedIssuedTokens = api.createType("u128", oneBTC);
+        // Sets issued tokens amount to 1 BTC
+        const newIssuedTokensAmount = newMonetaryAmount(oneBTC, wrappedCurrency);
+        const issuedTokensModifier = (vaultData: MutableVaultData): MutableVaultData => ({
+            ...vaultData,
+            issuedTokens: parsedIssuedTokens,
+        });
 
-            console.log("Setting vault issued tokens to 1 BTC...");
-            await modifyVaultData(api, vaultId, issuedTokensModifier);
+        console.log("Setting vault issued tokens to 1 BTC...");
+        await modifyVaultData(api, vaultId, issuedTokensModifier);
 
-            // Sets vault backing collateral to average between premium redeem threshold and liquidation threshold
-            const premiumRedeemThreshold = await interBtcApi.vaults.getPremiumRedeemThreshold(collateralCurrency);
-            const liquidationThreshold = await interBtcApi.vaults.getLiquidationCollateralThreshold(collateralCurrency);
-            const newCollateralizationRatio = premiumRedeemThreshold.add(liquidationThreshold).div(2);
-            const newIssuedTokensInCollateralAmount = await interBtcApi.oracle.convertWrappedToCurrency(
-                newIssuedTokensAmount,
-                collateralCurrency
-            );
-            const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
-            const newCollateralAmount = newIssuedTokensInCollateralAmount.toBig().mul(newCollateralizationRatio).mul(scalingFactor);
-            const totalStakeDataHex = api.createType("u128", newCollateralAmount.toFixed()).toHex(true);
+        // Sets vault backing collateral to average between premium redeem threshold and liquidation threshold
+        const premiumRedeemThreshold = await interBtcApi.vaults.getPremiumRedeemThreshold(collateralCurrency);
+        const liquidationThreshold = await interBtcApi.vaults.getLiquidationCollateralThreshold(collateralCurrency);
+        const newCollateralizationRatio = premiumRedeemThreshold.add(liquidationThreshold).div(2);
+        const newIssuedTokensInCollateralAmount = await interBtcApi.oracle.convertWrappedToCurrency(
+            newIssuedTokensAmount,
+            collateralCurrency
+        );
+        const scalingFactor = new Big(Math.pow(10, FIXEDI128_SCALING_FACTOR));
+        const newCollateralAmount = newIssuedTokensInCollateralAmount
+            .toBig()
+            .mul(newCollateralizationRatio)
+            .mul(scalingFactor);
+        const totalStakeDataHex = api.createType("u128", newCollateralAmount.toFixed()).toHex(true);
 
-            const nonceHex = api.createType("u32", 0).toHex();     // 0 nonce by default
-            const totalStakeStorageKey = getStorageMapItemKey("VaultStaking", "TotalCurrentStake", nonceHex, vaultId.toHex());
+        const nonceHex = api.createType("u32", 0).toHex(); // 0 nonce by default
+        const totalStakeStorageKey = getStorageMapItemKey(
+            "VaultStaking",
+            "TotalCurrentStake",
+            nonceHex,
+            vaultId.toHex()
+        );
 
-            console.log("Setting backing collateral...");
-            await setStorageAtKey(api, totalStakeStorageKey, totalStakeDataHex);
-            console.log(
-                `OK: Vault collateralization ratio succesfully set to premium redeem value: ${newCollateralizationRatio.toString()}.`
-            );
-        }
-    );
+        console.log("Setting backing collateral...");
+        await setStorageAtKey(api, totalStakeStorageKey, totalStakeDataHex, sudoAccount);
+        console.log(
+            `OK: Vault collateralization ratio succesfully set to premium redeem value: ${newCollateralizationRatio.toString()}.`
+        );
+    });
 
 const setLiquidationVault = ({ api }: DefaultInterBtcApi) =>
     disconnectApiOnExit(
         api,
-        async ({ collateralSymbol, wrappedSymbol, toBeIssued, toBeRedeemed, issued, collateral }: SetLiquidationVaultParams) => {
+        async ({
+            collateralSymbol,
+            wrappedSymbol,
+            toBeIssued,
+            toBeRedeemed,
+            issued,
+            collateral,
+        }: SetLiquidationVaultParams) => {
             const collateralCurrency = getCurrencyFromSymbol(collateralSymbol);
             const wrappedCurrency = getCurrencyFromSymbol(wrappedSymbol) as WrappedCurrency;
             const currencyPair = newVaultCurrencyPair(api, collateralCurrency, wrappedCurrency);
@@ -199,144 +201,177 @@ const setLiquidationVault = ({ api }: DefaultInterBtcApi) =>
                 toBeIssuedTokens: api.createType("u128", toBeIssued),
                 toBeRedeemedTokens: api.createType("u128", toBeRedeemed),
                 issuedTokens: api.createType("u128", issued),
-                collateral: api.createType("u128", collateral)
-
+                collateral: api.createType("u128", collateral),
             };
             const storageData = api.createType("Option<VaultRegistrySystemVault>", liquidationVault).toHex();
 
             console.log(`Setting the liquidation vault for currency pair ${collateralSymbol}-${wrappedSymbol}...`);
-            await setStorageAtKey(api, storageKey, storageData);
+            await setStorageAtKey(api, storageKey, storageData, sudoAccount);
             console.log("OK: Liquidation vault successfully set.");
         }
     );
 
 const setBalance = (interBtcApi: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        interBtcApi.api,
-        async ({ address, currencySymbol, value }: SetBalanceParams) => {
-            const { api } = interBtcApi;
-            console.log(`Setting ${currencySymbol} balance of ${address} to ${value}...`);
-            const account = newAccountId(api, address);
+    disconnectApiOnExit(interBtcApi.api, async ({ address, currencySymbol, value }: SetBalanceParams) => {
+        const { api } = interBtcApi;
+        console.log(`Setting ${currencySymbol} balance of ${address} to ${value}...`);
+        const account = newAccountId(api, address);
 
-            const currency = getCurrencyFromSymbol(currencySymbol);
+        const currency = getCurrencyFromSymbol(currencySymbol);
 
-            const amount = newMonetaryAmount(value, currency);
+        const amount = newMonetaryAmount(value, currency);
 
-            await sudo(interBtcApi, async () => await interBtcApi.tokens.setBalance(account, amount));
-            console.log("OK: Balance successfully set.");
-        }
-    );
+        await sudo(interBtcApi, async () => await interBtcApi.tokens.setBalance(account, amount));
+        console.log("OK: Balance successfully set.");
+    });
 
 const setVaultIssuedTokens = ({ api }: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        api,
-        async ({ accountId, collateralSymbol, wrappedSymbol, value }: SetIssuedTokensParams) => {
-            const vaultId = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol);
+    disconnectApiOnExit(api, async ({ accountId, collateralSymbol, wrappedSymbol, value }: SetIssuedTokensParams) => {
+        const vaultId = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol);
 
-            const parsedIssuedTokens = api.createType("u128", value);
+        const parsedIssuedTokens = api.createType("u128", value);
 
-            const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, issuedTokens: parsedIssuedTokens });
+        const modifier = (vaultData: MutableVaultData): MutableVaultData => ({
+            ...vaultData,
+            issuedTokens: parsedIssuedTokens,
+        });
 
-            console.log(`Setting vault issued tokens to ${value}...`);
-            await modifyVaultData(api, vaultId, modifier);
-            console.log("OK: Succesfully set vault issued tokens.");
-        }
-    );
+        console.log(`Setting vault issued tokens to ${value}...`);
+        await modifyVaultData(api, vaultId, modifier);
+        console.log("OK: Succesfully set vault issued tokens.");
+    });
 
 const setVaultBan = (interBtcApi: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        interBtcApi.api,
-        async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
-            const { api } = interBtcApi;
-            const vaultId = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol);
-            const currentBlockNumber = await interBtcApi.system.getCurrentBlockNumber();
+    disconnectApiOnExit(interBtcApi.api, async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
+        const { api } = interBtcApi;
+        const vaultId = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol);
+        const currentBlockNumber = await interBtcApi.system.getCurrentBlockNumber();
 
-            // Bans vault for the next 1000 blocks
-            const newBannedUntil = api.createType("Option<u32>", currentBlockNumber + 1000);
+        // Bans vault for the next 1000 blocks
+        const newBannedUntil = api.createType("Option<u32>", currentBlockNumber + 1000);
 
-            const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, bannedUntil: newBannedUntil });
+        const modifier = (vaultData: MutableVaultData): MutableVaultData => ({
+            ...vaultData,
+            bannedUntil: newBannedUntil,
+        });
 
-            console.log("Setting vault to be banned for the next 1,000 blocks...");
-            await modifyVaultData(api, vaultId, modifier);
-            console.log(`OK: Succesfully banned vault until block ${newBannedUntil}.`);
-        }
-    );
+        console.log("Setting vault to be banned for the next 1,000 blocks...");
+        await modifyVaultData(api, vaultId, modifier);
+        console.log(`OK: Succesfully banned vault until block ${newBannedUntil}.`);
+    });
 
 const setVaultUnban = ({ api }: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        api,
-        async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
-            const vaultId = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol);
+    disconnectApiOnExit(api, async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
+        const vaultId = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol);
 
-            const newBannedUntil = null;
+        const newBannedUntil = null;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const modifier = (vaultData: MutableVaultData): MutableVaultData => ({ ...vaultData, bannedUntil: <any>newBannedUntil });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const modifier = (vaultData: MutableVaultData): MutableVaultData => ({
+            ...vaultData,
+            bannedUntil: <any>newBannedUntil,
+        });
 
-            console.log("Setting vault to be unbanned...");
-            await modifyVaultData(api, vaultId, modifier);
-            console.log("OK: Succesfully unbanned vault.");
-        }
-    );
+        console.log("Setting vault to be unbanned...");
+        await modifyVaultData(api, vaultId, modifier);
+        console.log("OK: Succesfully unbanned vault.");
+    });
 
 const fundVaultAccount = (interBtcApi: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        interBtcApi.api,
-        async ({ accountId, collateralSymbol }: FundVaultAccountParams) => {
-            const newCollateralBalance = 10000000000000;
-            console.log("Funding vault account with collateral token...");
-            await setBalance(interBtcApi)({ address: accountId, currencySymbol: collateralSymbol, value: newCollateralBalance });
-        }
-    );
+    disconnectApiOnExit(interBtcApi.api, async ({ accountId, collateralSymbol }: FundVaultAccountParams) => {
+        const newCollateralBalance = 10000000000000;
+        console.log("Funding vault account with collateral token...");
+        await setBalance(interBtcApi)({
+            address: accountId,
+            currencySymbol: collateralSymbol,
+            value: newCollateralBalance,
+        });
+    });
 
 const setVaultReward = (interBtcApi: DefaultInterBtcApi) =>
-    disconnectApiOnExit(
-        interBtcApi.api,
-        async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
-            const { api } = interBtcApi;
-            const nonceHex = interBtcApi.api.createType("u32", 0).toHex();
-            const vaultIdHex = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol).toHex();
-            const accountHex = api.createType("AccountId32", accountId).toHex();
-            const rewardCurrencyHex = newCurrencyId(api, interBtcApi.getGovernanceCurrency()).toHex();
-            const nonceVaultIdTupleHex = nonceHex + stripHexPrefix(vaultIdHex) as `0x${string}`;
-            const nonceVaultIdAccountTupleHex = nonceVaultIdTupleHex + stripHexPrefix(accountHex) as `0x${string}`;
-            const vaultIdAccountTupleHex = vaultIdHex + stripHexPrefix(accountHex) as `0x${string}`;
+    disconnectApiOnExit(interBtcApi.api, async ({ accountId, collateralSymbol, wrappedSymbol }: SetVaultParamsBase) => {
+        const { api } = interBtcApi;
+        const nonceHex = interBtcApi.api.createType("u32", 0).toHex();
+        const vaultIdHex = constructVaultId(api, accountId, collateralSymbol, wrappedSymbol).toHex();
+        const accountHex = api.createType("AccountId32", accountId).toHex();
+        const rewardCurrencyHex = newCurrencyId(api, interBtcApi.getGovernanceCurrency()).toHex();
+        const nonceVaultIdTupleHex = (nonceHex + stripHexPrefix(vaultIdHex)) as `0x${string}`;
+        const nonceVaultIdAccountTupleHex = (nonceVaultIdTupleHex + stripHexPrefix(accountHex)) as `0x${string}`;
+        const vaultIdAccountTupleHex = (vaultIdHex + stripHexPrefix(accountHex)) as `0x${string}`;
 
-            // Global pool
-            const globalRewardTallyStorageKey = getStorageMapItemKey("VaultRewards", "RewardTally", rewardCurrencyHex, vaultIdHex);
-            const globalRewardTallyData = "0x109da49d82b6fe2c4d740f50a4040000";
-            const globalStakeStorageKey = getStorageMapItemKey("VaultRewards", "Stake", vaultIdHex);
-            const globalStakeData = "0x0000c0f26e1f724ad547030000000000";
+        // Global pool
+        const globalRewardTallyStorageKey = getStorageMapItemKey(
+            "VaultRewards",
+            "RewardTally",
+            rewardCurrencyHex,
+            vaultIdHex
+        );
+        const globalRewardTallyData = "0x109da49d82b6fe2c4d740f50a4040000";
+        const globalStakeStorageKey = getStorageMapItemKey("VaultRewards", "Stake", vaultIdHex);
+        const globalStakeData = "0x0000c0f26e1f724ad547030000000000";
 
-            console.log("Writing into VaultRewards storage...");
-            await setStorageAtKeyBatch(interBtcApi.api, [
+        console.log("Writing into VaultRewards storage...");
+        await setStorageAtKeyBatch(
+            interBtcApi.api,
+            [
                 [globalRewardTallyStorageKey, globalRewardTallyData],
-                [globalStakeStorageKey, globalStakeData]
-            ]);
+                [globalStakeStorageKey, globalStakeData],
+            ],
+            sudoAccount
+        );
 
-            // Local pool
-            const localRewardPerTokenStorageKey =
-                getStorageMapItemKey("VaultStaking", "RewardPerToken", rewardCurrencyHex, nonceVaultIdTupleHex);
-            const localRewardPerTokenData = "0x2ea3f99f9a5c380d0000000000000000";
-            const localRewardTallyStorageKey =
-                getStorageMapItemKey("VaultStaking", "RewardTally", rewardCurrencyHex, nonceVaultIdAccountTupleHex);
-            const localRewardTallyData = "0xe0efbe1ff0a9ea7217f3dc0a3c000000";
-            const localSlashPerTokenStorageKey = getStorageMapItemKey("VaultStaking", "SlashPerToken", nonceHex, vaultIdHex);
-            const localSlashPerTokenData = "0xcf149c9d789c05000000000000000000";
-            const localSlashTallyStorageKey = getStorageMapItemKey("VaultStaking", "SlashTally", nonceHex, vaultIdAccountTupleHex);
-            const localSlashTallyData = "0xa62ed4024fa35e810e117c1900000000";
-            const localStakeStorageKey = getStorageMapItemKey("VaultStaking", "Stake", nonceHex, vaultIdAccountTupleHex);
-            const localStakeData = "0x14b9f12a808c9588a5f278073f000000";
-            const localTotalCurrentStakeStorageKey = getStorageMapItemKey("VaultStaking", "TotalCurrentStake", nonceHex, vaultIdHex);
-            const localTotalCurrentStakeData = "0x000000fed5929588a5f278073f000000";
-            const localTotalRewardsStorageKey =
-                getStorageMapItemKey("VaultStaking", "TotalRewards", rewardCurrencyHex, nonceVaultIdTupleHex);
-            const localTotalRewardsData = "0x000064a7b3b6e00d0000000000000000";
-            const localTotalStakeStorageKey = getStorageMapItemKey("VaultStaking", "TotalStake", nonceHex, vaultIdHex);
-            const localTotalStakeData = "0x14b9f12a808c9588a5f278073f000000";
+        // Local pool
+        const localRewardPerTokenStorageKey = getStorageMapItemKey(
+            "VaultStaking",
+            "RewardPerToken",
+            rewardCurrencyHex,
+            nonceVaultIdTupleHex
+        );
+        const localRewardPerTokenData = "0x2ea3f99f9a5c380d0000000000000000";
+        const localRewardTallyStorageKey = getStorageMapItemKey(
+            "VaultStaking",
+            "RewardTally",
+            rewardCurrencyHex,
+            nonceVaultIdAccountTupleHex
+        );
+        const localRewardTallyData = "0xe0efbe1ff0a9ea7217f3dc0a3c000000";
+        const localSlashPerTokenStorageKey = getStorageMapItemKey(
+            "VaultStaking",
+            "SlashPerToken",
+            nonceHex,
+            vaultIdHex
+        );
+        const localSlashPerTokenData = "0xcf149c9d789c05000000000000000000";
+        const localSlashTallyStorageKey = getStorageMapItemKey(
+            "VaultStaking",
+            "SlashTally",
+            nonceHex,
+            vaultIdAccountTupleHex
+        );
+        const localSlashTallyData = "0xa62ed4024fa35e810e117c1900000000";
+        const localStakeStorageKey = getStorageMapItemKey("VaultStaking", "Stake", nonceHex, vaultIdAccountTupleHex);
+        const localStakeData = "0x14b9f12a808c9588a5f278073f000000";
+        const localTotalCurrentStakeStorageKey = getStorageMapItemKey(
+            "VaultStaking",
+            "TotalCurrentStake",
+            nonceHex,
+            vaultIdHex
+        );
+        const localTotalCurrentStakeData = "0x000000fed5929588a5f278073f000000";
+        const localTotalRewardsStorageKey = getStorageMapItemKey(
+            "VaultStaking",
+            "TotalRewards",
+            rewardCurrencyHex,
+            nonceVaultIdTupleHex
+        );
+        const localTotalRewardsData = "0x000064a7b3b6e00d0000000000000000";
+        const localTotalStakeStorageKey = getStorageMapItemKey("VaultStaking", "TotalStake", nonceHex, vaultIdHex);
+        const localTotalStakeData = "0x14b9f12a808c9588a5f278073f000000";
 
-            console.log("Writing into VaultStaking storage...");
-            await setStorageAtKeyBatch(api, [
+        console.log("Writing into VaultStaking storage...");
+        await setStorageAtKeyBatch(
+            api,
+            [
                 [localRewardPerTokenStorageKey, localRewardPerTokenData],
                 [localRewardTallyStorageKey, localRewardTallyData],
                 [localSlashPerTokenStorageKey, localSlashPerTokenData],
@@ -344,12 +379,12 @@ const setVaultReward = (interBtcApi: DefaultInterBtcApi) =>
                 [localStakeStorageKey, localStakeData],
                 [localTotalCurrentStakeStorageKey, localTotalCurrentStakeData],
                 [localTotalRewardsStorageKey, localTotalRewardsData],
-                [localTotalStakeStorageKey, localTotalStakeData]
-            ]);
-            console.log("OK: Successfully set vault reward.");
-        }
-    );
-
+                [localTotalStakeStorageKey, localTotalStakeData],
+            ],
+            sudoAccount
+        );
+        console.log("OK: Successfully set vault reward.");
+    });
 
 async function main(): Promise<void> {
     console.log("Initializing crypto functions...");
@@ -370,7 +405,8 @@ async function main(): Promise<void> {
         await currencyIdToMonetaryCurrency(
             sudoAccountInterBtcApi.assetRegistry,
             sudoAccountInterBtcApi.loans,
-            sudoAccountInterBtcApi.api.consts.currency.getRelayChainCurrencyId)
+            sudoAccountInterBtcApi.api.consts.currency.getRelayChainCurrencyId
+        )
     ).ticker;
     const defaultWrappedSymbol = sudoAccountInterBtcApi.getWrappedCurrency().ticker;
     console.log(`Default vault to use: ${defaultVaultAccountId}-${defaultCollateralSymbol}-${defaultWrappedSymbol}.\n`);
@@ -381,22 +417,22 @@ async function main(): Promise<void> {
             type: "string",
             demandOption: false,
             describe: "accountId of the vault",
-            default: defaultVaultAccountId
+            default: defaultVaultAccountId,
         },
         collateralSymbol: {
             alias: "c",
             type: "string",
             demandOption: false,
             describe: "collateral currency symbol of the vault",
-            default: defaultCollateralSymbol
+            default: defaultCollateralSymbol,
         },
         wrappedSymbol: {
             alias: "w",
             type: "string",
             demandOption: false,
             describe: "wrapped currency symbol of the vault",
-            default: defaultWrappedSymbol
-        }
+            default: defaultWrappedSymbol,
+        },
     };
 
     try {
@@ -409,20 +445,20 @@ async function main(): Promise<void> {
                         alias: "v",
                         type: "number",
                         demandOption: true,
-                        describe: "new balance value"
+                        describe: "new balance value",
                     },
                     currencySymbol: {
                         alias: "c",
                         type: "string",
                         demandOption: true,
-                        describe: "currency symbol in which to set balance"
+                        describe: "currency symbol in which to set balance",
                     },
                     address: {
                         alias: "a",
                         type: "string",
                         demandOption: false,
-                        describe: "address of which to set balance"
-                    }
+                        describe: "address of which to set balance",
+                    },
                 },
                 setBalance(sudoAccountInterBtcApi)
             )
@@ -435,39 +471,39 @@ async function main(): Promise<void> {
                         type: "string",
                         demandOption: false,
                         describe: "collateral currency symbol of liquidation vault",
-                        default: defaultCollateralSymbol
+                        default: defaultCollateralSymbol,
                     },
                     wrappedSymbol: {
                         alias: "w",
                         type: "string",
                         demandOption: false,
                         describe: "wrapped currency symbol of liquidation vault",
-                        default: defaultWrappedSymbol
+                        default: defaultWrappedSymbol,
                     },
                     toBeIssued: {
                         type: "string",
                         demandOption: false,
                         default: "20000000",
-                        describe: "toBeIssuedTokens value of liquidation vault"
+                        describe: "toBeIssuedTokens value of liquidation vault",
                     },
                     issued: {
                         type: "string",
                         demandOption: false,
                         default: "30000000",
-                        describe: "issuedTokens value of liquidation vault"
+                        describe: "issuedTokens value of liquidation vault",
                     },
                     toBeRedeemed: {
                         type: "string",
                         demandOption: false,
                         default: "10000000",
-                        describe: "toBeRedeemedTokens value of liquidation vault"
+                        describe: "toBeRedeemedTokens value of liquidation vault",
                     },
                     collateral: {
                         type: "string",
                         demandOption: false,
                         default: "100000000",
-                        describe: "collateral value of liquidation vault"
-                    }
+                        describe: "collateral value of liquidation vault",
+                    },
                 },
                 setLiquidationVault(sudoAccountInterBtcApi)
             )
@@ -480,8 +516,8 @@ async function main(): Promise<void> {
                         alias: "v",
                         type: "string",
                         demandOption: true,
-                        describe: "new issued tokens value"
-                    }
+                        describe: "new issued tokens value",
+                    },
                 },
                 setVaultIssuedTokens(sudoAccountInterBtcApi)
             )
@@ -497,12 +533,7 @@ async function main(): Promise<void> {
                 SET_VAULT_PARAMS_BASE,
                 setVaultBan(sudoAccountInterBtcApi)
             )
-            .command(
-                "vaultUnban",
-                "Unbans vault",
-                SET_VAULT_PARAMS_BASE,
-                setVaultUnban(sudoAccountInterBtcApi)
-            )
+            .command("vaultUnban", "Unbans vault", SET_VAULT_PARAMS_BASE, setVaultUnban(sudoAccountInterBtcApi))
             .command(
                 "vaultFund",
                 "Funds vault account with collateral token",
@@ -512,15 +543,15 @@ async function main(): Promise<void> {
                         type: "string",
                         demandOption: false,
                         describe: "accountId of the vault",
-                        default: defaultVaultAccountId
+                        default: defaultVaultAccountId,
                     },
                     collateralSymbol: {
                         alias: "c",
                         type: "string",
                         demandOption: false,
                         describe: "collateral currency symbol of the vault",
-                        default: defaultCollateralSymbol
-                    }
+                        default: defaultCollateralSymbol,
+                    },
                 },
                 fundVaultAccount(sudoAccountInterBtcApi)
             )
@@ -532,8 +563,7 @@ async function main(): Promise<void> {
             )
             .help()
             .strict()
-            .recommendCommands()
-            .argv;
+            .recommendCommands().argv;
     } catch (error) {
         console.error(`Error: ${error.message}`);
     }

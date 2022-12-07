@@ -2,6 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import {
     CurrencyExt,
+    currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     DefaultLoansAPI,
     DefaultTransactionAPI,
@@ -13,12 +14,12 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { APPROX_BLOCK_TIME_MS, waitForEvent } from "../../../../utils/helpers";
+import { APPROX_BLOCK_TIME_MS, callWithExchangeRateOverwritten, waitForEvent } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
 
-import { Kusama, MonetaryAmount } from "@interlay/monetary-js";
+import { InterBtc, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 
 describe("Loans", () => {
@@ -38,9 +39,12 @@ describe("Loans", () => {
     let userAccountId: AccountId;
     let user2AccountId: AccountId;
 
-    let lendTokenId: InterbtcPrimitivesCurrencyId;
+    let lendTokenId1: InterbtcPrimitivesCurrencyId;
+    let lendTokenId2: InterbtcPrimitivesCurrencyId;
     let underlyingCurrencyId: InterbtcPrimitivesCurrencyId;
     let underlyingCurrency: CurrencyExt;
+    let underlyingCurrencyId2: InterbtcPrimitivesCurrencyId;
+    let underlyingCurrency2: CurrencyExt;
 
     before(async function () {
         this.timeout(approx10Blocks);
@@ -63,11 +67,19 @@ describe("Loans", () => {
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
         underlyingCurrency = sudoInterBtcAPI.getGovernanceCurrency();
 
-        lendTokenId = newCurrencyId(sudoInterBtcAPI.api, { lendToken: { id: 1 } } as LendToken);
+        underlyingCurrencyId2 = sudoInterBtcAPI.api.consts.currency.getRelayChainCurrencyId;
+        underlyingCurrency2 = await currencyIdToMonetaryCurrency(
+            userInterBtcAPI.assetRegistry,
+            user2InterBtcAPI.loans,
+            underlyingCurrencyId2
+        );
+
+        lendTokenId1 = newCurrencyId(sudoInterBtcAPI.api, { lendToken: { id: 1 } } as LendToken);
+        lendTokenId2 = newCurrencyId(sudoInterBtcAPI.api, { lendToken: { id: 2 } } as LendToken);
 
         const percentageToPermill = (percentage: number) => percentage * 10000;
 
-        const marketData = {
+        const marketData = (id: InterbtcPrimitivesCurrencyId) => ({
             collateralFactor: percentageToPermill(50),
             liquidationThreshold: percentageToPermill(55),
             reserveFactor: percentageToPermill(15),
@@ -85,19 +97,29 @@ describe("Loans", () => {
             state: "Pending",
             supplyCap: "5000000000000000000000",
             borrowCap: "5000000000000000000000",
-            lendTokenId,
-        };
+            lendTokenId: id,
+        });
 
-        const addMarketExtrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(underlyingCurrencyId, marketData);
-        const activateMarketExtrinsic = sudoInterBtcAPI.api.tx.loans.activateMarket(underlyingCurrencyId);
-        const addMarketAndActivateExtrinsic = sudoInterBtcAPI.api.tx.utility.batchAll([
-            addMarketExtrinsic,
-            activateMarketExtrinsic,
+        const addMarket1Extrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(
+            underlyingCurrencyId,
+            marketData(lendTokenId1)
+        );
+        const addMarket2Extrinsic = sudoInterBtcAPI.api.tx.loans.addMarket(
+            underlyingCurrencyId2,
+            marketData(lendTokenId2)
+        );
+        const activateMarket1Extrinsic = sudoInterBtcAPI.api.tx.loans.activateMarket(underlyingCurrencyId);
+        const activateMarket2Extrinsic = sudoInterBtcAPI.api.tx.loans.activateMarket(underlyingCurrencyId2);
+        const addMarkets = sudoInterBtcAPI.api.tx.utility.batchAll([
+            addMarket1Extrinsic,
+            addMarket2Extrinsic,
+            activateMarket1Extrinsic,
+            activateMarket2Extrinsic,
         ]);
 
         const [eventFound] = await Promise.all([
             waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
-            api.tx.sudo.sudo(addMarketAndActivateExtrinsic).signAndSend(sudoAccount),
+            api.tx.sudo.sudo(addMarkets).signAndSend(sudoAccount),
         ]);
         expect(
             eventFound,
@@ -140,7 +162,7 @@ describe("Loans", () => {
             expect(lendToken.name).to.be.eq(`q${underlyingCurrency.name}`);
             expect(lendToken.ticker).to.be.eq(`q${underlyingCurrency.ticker}`);
 
-            expect(lendToken.lendToken.id).to.be.eq(lendTokenId.asLendToken.toNumber());
+            expect(lendToken.lendToken.id).to.be.eq(lendTokenId1.asLendToken.toNumber());
         });
 
         it("should return empty array if no market exists", async () => {
@@ -241,13 +263,13 @@ describe("Loans", () => {
     describe("getUnderlyingCurrencyFromLendTokenId", () => {
         it("should return correct underlying currency for lend token", async () => {
             const returnedUnderlyingCurrency = await userInterBtcAPI.loans.getUnderlyingCurrencyFromLendTokenId(
-                lendTokenId
+                lendTokenId1
             );
 
             expect(returnedUnderlyingCurrency).to.deep.equal(underlyingCurrency);
         });
         it("should throw when lend token id is of non-existing currency", async () => {
-            const invalidLendTokenId = (lendTokenId = newCurrencyId(sudoInterBtcAPI.api, {
+            const invalidLendTokenId = (lendTokenId1 = newCurrencyId(sudoInterBtcAPI.api, {
                 lendToken: { id: 999 },
             } as LendToken));
 
@@ -270,7 +292,7 @@ describe("Loans", () => {
             expect(actuallyLentAmount.eq(lendAmount)).to.be.true;
         });
         it("should throw if trying to lend from inactive market", async () => {
-            const inactiveUnderlyingCurrency = Kusama;
+            const inactiveUnderlyingCurrency = InterBtc;
             const amount = newMonetaryAmount(1, inactiveUnderlyingCurrency);
 
             await expect(userInterBtcAPI.loans.lend(inactiveUnderlyingCurrency, amount)).to.be.rejected;
@@ -444,6 +466,43 @@ describe("Loans", () => {
 
         it("should get borrow positions in correct format", async function () {
             //TODO
+        });
+    });
+
+    describe("liquidateBorrowPosition", () => {
+        it("should liquidate position when possible", async function () {
+            this.timeout(approx10Blocks * 2);
+            // Supply asset by account1, borrow by account2
+            const borrowAmount = newMonetaryAmount(10, underlyingCurrency2, true);
+            await userInterBtcAPI.loans.lend(underlyingCurrency2, borrowAmount);
+            await user2InterBtcAPI.loans.borrow(underlyingCurrency2, borrowAmount);
+
+            // Increase exchange rate of borrowed asset to trigger liquidation.
+            const newExchangeRate = "0x00000000000000000001000000000000";
+            const wrappedCall = async () => {
+                const repayAmount = newMonetaryAmount(1, underlyingCurrency2); // repay smallest amount
+                await userInterBtcAPI.loans.liquidateBorrowPosition(
+                    user2AccountId,
+                    underlyingCurrency2,
+                    repayAmount,
+                    underlyingCurrency
+                );
+            };
+
+            await callWithExchangeRateOverwritten(sudoInterBtcAPI, underlyingCurrency2, newExchangeRate, wrappedCall);
+        });
+        it("should throw when no position can be liquidated", async function () {
+            this.timeout(approx10Blocks);
+            const repayAmount = newMonetaryAmount(1, underlyingCurrency2, true); // repay smallest amount
+
+            await expect(
+                userInterBtcAPI.loans.liquidateBorrowPosition(
+                    user2AccountId,
+                    underlyingCurrency2,
+                    repayAmount,
+                    underlyingCurrency
+                )
+            ).to.be.rejected;
         });
     });
 });

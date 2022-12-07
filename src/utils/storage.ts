@@ -68,3 +68,23 @@ async function setStorage(
     const tx = api.tx.sudo.sudo(api.tx.system.setStorage([[storageKey, storageData] as ITuple<[StorageKey, Bytes]>]));
     await DefaultTransactionAPI.sendLogged(api, account, tx, undefined, true);
 }
+
+export async function setStorageAtKey(
+    api: ApiPromise,
+    key: string,
+    data: `0x${string}`,
+    sudoAccount: AddressOrPair
+): Promise<void> {
+    const tx = api.tx.sudo.sudo(api.tx.system.setStorage([[key, data]]));
+    await DefaultTransactionAPI.sendLogged(api, sudoAccount, tx, undefined, true);
+}
+
+export async function setStorageAtKeyBatch(
+    api: ApiPromise,
+    newStorage: [string, `0x${string}`][],
+    sudoAccount: AddressOrPair
+): Promise<void> {
+    const txs = newStorage.map((storage) => api.tx.sudo.sudo(api.tx.system.setStorage([storage])));
+    const batchedTxs = api.tx.utility.batchAll(txs);
+    await DefaultTransactionAPI.sendLogged(api, sudoAccount, batchedTxs, undefined, true);
+}
