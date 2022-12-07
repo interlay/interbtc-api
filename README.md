@@ -111,10 +111,6 @@ const feesEarnedByActiveStakedRelayer = await interBTC.stakedRelayer.getFeesEarn
 
 There are many examples in the integration tests, showing how to use this library. Take a look at them here: https://github.com/interlay/interbtc-api/tree/master/test/integration
 
-## API Documentation
-
-Please check the documentation at https://docs.interlay.io/interbtc-api/#/classes/DefaultInterBtcApi
-
 ## Development
 
 ### Fork this Repository
