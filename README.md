@@ -181,7 +181,7 @@ When in doubt, start with Kintsugi. You will know when to use Interlay
 
 #### Rebuild Generated Docker Files
 
-`yarn docker-parachain-start` saves some docker compose files locally under `local-setup`. It saves the generated docker compose files to avoid having to rebuild/regenerate all data just to restart the development environment. In most cases, you don't need to rebuild those unless there have been changes to the related docker images in our fork of the [parachain-launch project](https://github.com/interlay/parachain-launch).
+`yarn docker-parachain-start` saves docker compose files locally in `local-setup` directory to avoid rebuilding all data just to restart the development environment. In most cases, you don't need to rebuild those unless there have been changes to the related docker images in our fork of the [parachain-launch project](https://github.com/interlay/parachain-launch).
 
 In order to force a fresh rebuild of all `docker-compose.yml` files and the raw genesis parachain json used for the local test environment, make sure to delete the existing `local-setup` folder
 
