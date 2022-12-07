@@ -186,7 +186,7 @@ When in doubt, start with Kintsugi. You will know when to use Interlay
 In order to force a fresh rebuild of all configuration files used for the local test environment, delete the existing `local-setup` folder and run `yarn docker-parachain-start`. This will automatically regenerate all configuration files and start the parachain.
 
 ```bash
-rm -r local-setup
+rm -r local-setup && yarn docker-parachain-start
 ```
 
 #### Run All Tests
