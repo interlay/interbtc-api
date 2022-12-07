@@ -183,7 +183,7 @@ When in doubt, start with Kintsugi. You will know when to use Interlay
 
 `yarn docker-parachain-start` saves docker compose files locally in `local-setup` directory to avoid rebuilding all data just to restart the development environment. In most cases, you don't need to rebuild those unless there have been changes to the related docker images in our fork of the [parachain-launch project](https://github.com/interlay/parachain-launch).
 
-In order to force a fresh rebuild of all `docker-compose.yml` files and the raw genesis parachain json used for the local test environment, make sure to delete the existing `local-setup` folder
+In order to force a fresh rebuild of all configuration files used for the local test environment, delete the existing `local-setup` folder and run `yarn docker-parachain-start`. This will automatically regenerate all configuration files and start the parachain.
 
 ```bash
 rm -r local-setup
