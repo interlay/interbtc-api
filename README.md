@@ -307,7 +307,7 @@ Unsigned PRs cannot be merged, so do not skip this step.
 3. Create your Feature Branch (git checkout -b yourname/AmazingFeature)
 4. Commit your Changes (git commit -m 'Add some AmazingFeature')
 5. Push to the Branch (git push origin yourname/AmazingFeature)
-6. Open a Pull Request
+6. Open a Pull Request with a description of feature you are adding
 
 If you are searching for a place to start or would like to discuss features, reach out to us:
 
