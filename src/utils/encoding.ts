@@ -35,6 +35,7 @@ import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from ".
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, LoansAPI, VaultsAPI } from "../parachain";
+import { AddressOrPair } from "@polkadot/api/types";
 
 /**
  * Converts endianness of a Uint8Array
@@ -221,6 +222,25 @@ export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): Bal
     return api.createType("BalanceWrapper", {
         amount: api.createType("Text", Big(atomicAmount).toString()),
     });
+}
+
+export function addressOrPairAsAccountId(api: ApiPromise, addyOrpair: AddressOrPair): AccountId {
+    // need to explicitly try and figure out which type this is, so cast to any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const input = addyOrpair as any;
+
+    // a string is a string is a string
+    if (typeof input === "string") {
+        return newAccountId(api, input);
+    }
+
+    // keyring pair has .address field as string
+    if (typeof input.address === "string") {
+        return newAccountId(api, input.address);
+    }
+
+    // AccountId and Account will have .toString() methods, try those
+    return newAccountId(api, input.toString());
 }
 
 export async function parseReplaceRequest(

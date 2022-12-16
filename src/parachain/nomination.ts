@@ -20,6 +20,8 @@ import { UnsignedFixedPoint } from "../interfaces";
 import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { currencyIdToMonetaryCurrency } from "../utils/currency";
 import { LoansAPI } from "./loans";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 export enum NominationAmountType {
     Raw = "raw",
@@ -145,11 +147,40 @@ export class DefaultNominationAPI implements NominationAPI {
         private loansAPI: LoansAPI
     ) {}
 
+    static buildDepositCollateralExtrinsic(
+        api: ApiPromise,
+        vaultAccountId: AccountId,
+        amount: MonetaryAmount<CollateralCurrencyExt>,
+        wrappedCurrency: Currency
+    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+        const vaultId = newVaultId(api, vaultAccountId.toString(), amount.currency, wrappedCurrency);
+        const amountAsPlanck = api.createType("Balance", amount.toString(true));
+        return api.tx.nomination.depositCollateral(vaultId, amountAsPlanck);
+    }
+
     async depositCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
-        const vaultId = newVaultId(this.api, vaultAccountId.toString(), amount.currency, this.wrappedCurrency);
-        const amountAsPlanck = this.api.createType("Balance", amount.toString(true));
-        const tx = this.api.tx.nomination.depositCollateral(vaultId, amountAsPlanck);
+        const tx = DefaultNominationAPI.buildDepositCollateralExtrinsic(
+            this.api,
+            vaultAccountId,
+            amount,
+            this.wrappedCurrency
+        );
         await this.transactionAPI.sendLogged(tx, this.api.events.nomination.DepositCollateral, true);
+    }
+
+    static async buildWithdrawCollateralExtrinsic(
+        api: ApiPromise,
+        rewardsAPI: RewardsAPI,
+        vaultAccountId: AccountId,
+        amount: MonetaryAmount<CollateralCurrencyExt>,
+        wrappedCurrency: Currency,
+        nonce?: number
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
+        const vaultId = newVaultId(api, vaultAccountId.toString(), amount.currency, wrappedCurrency);
+        const definedNonce = nonce ? nonce : await rewardsAPI.getStakingPoolNonce(amount.currency, vaultAccountId);
+        const amountAsPlanck = api.createType("Balance", amount.toString(true));
+        const parsedNonce = api.createType("Index", definedNonce);
+        return api.tx.nomination.withdrawCollateral(vaultId, amountAsPlanck, parsedNonce);
     }
 
     async withdrawCollateral(
@@ -157,11 +188,14 @@ export class DefaultNominationAPI implements NominationAPI {
         amount: MonetaryAmount<CollateralCurrencyExt>,
         nonce?: number
     ): Promise<void> {
-        const vaultId = newVaultId(this.api, vaultAccountId.toString(), amount.currency, this.wrappedCurrency);
-        const definedNonce = nonce ? nonce : await this.rewardsAPI.getStakingPoolNonce(amount.currency, vaultAccountId);
-        const amountAsPlanck = this.api.createType("Balance", amount.toString(true));
-        const parsedNonce = this.api.createType("Index", definedNonce);
-        const tx = this.api.tx.nomination.withdrawCollateral(vaultId, amountAsPlanck, parsedNonce);
+        const tx = await DefaultNominationAPI.buildWithdrawCollateralExtrinsic(
+            this.api,
+            this.rewardsAPI,
+            vaultAccountId,
+            amount,
+            this.wrappedCurrency,
+            nonce
+        );
         await this.transactionAPI.sendLogged(tx, this.api.events.nomination.WithdrawCollateral, true);
     }
 
@@ -226,7 +260,12 @@ export class DefaultNominationAPI implements NominationAPI {
 
             // Cannot just do `nonces.get(rawNomination.vaultId)` because vaultId objects differ
             // ever so slightly even if they have identical properties
-            const vaultIdHighestNonce = await queryNominationsMap(this.assetRegistryAPI, this.loansAPI, nonces, rawNomination.vaultId);
+            const vaultIdHighestNonce = await queryNominationsMap(
+                this.assetRegistryAPI,
+                this.loansAPI,
+                nonces,
+                rawNomination.vaultId
+            );
             // Only consider active nominations, i.e. with the latest nonce
             if (rawNomination.nonce === vaultIdHighestNonce && rawNomination.amount.toBig().gt(0)) {
                 nominations.push(rawNomination);
@@ -248,7 +287,11 @@ export class DefaultNominationAPI implements NominationAPI {
                         this.loansAPI,
                         rawNomination.vaultId.currencies.collateral
                     ),
-                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, rawNomination.vaultId.currencies.wrapped)
+                    await currencyIdToMonetaryCurrency(
+                        this.assetRegistryAPI,
+                        this.loansAPI,
+                        rawNomination.vaultId.currencies.wrapped
+                    )
                 );
                 return {
                     nonce: rawNomination.nonce,
