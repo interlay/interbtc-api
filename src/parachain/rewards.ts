@@ -49,7 +49,7 @@ export interface RewardsAPI {
      * @returns The stake, as a Big object
      */
     getStakingPoolTotalStake(
-        collateralCurrencyIdLiteral: CollateralCurrencyExt,
+        collateralCurrency: CollateralCurrencyExt,
         vaultAccountId: AccountId,
         nonce?: number
     ): Promise<Big>;
@@ -94,8 +94,8 @@ export interface RewardsAPI {
      * @returns A Monetary.js amount object, representing the reward in the given currency
      */
     computeRewardInRewardsPool(
-        rewardCurrencyIdLiteral: Currency,
-        vaultCollateralIdLiteral: CollateralCurrencyExt,
+        rewardCurrency: Currency,
+        vaultCollateral: CollateralCurrencyExt,
         vaultAccountId: AccountId
     ): Promise<MonetaryAmount<Currency>>;
     /**
@@ -120,8 +120,8 @@ export interface RewardsAPI {
      * @returns The reward tally, as a Big object
      */
     getRewardsPoolRewardTally(
-        rewardCurrencyIdLiteral: Currency,
-        vaultCollateralIdLiteral: CollateralCurrencyExt,
+        rewardCurrency: Currency,
+        vaultCollateral: CollateralCurrencyExt,
         vaultAccountId: AccountId
     ): Promise<Big>;
     /**
