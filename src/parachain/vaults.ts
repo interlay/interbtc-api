@@ -671,19 +671,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         rewardCurrency: Currency,
         nonce?: number
     ): Promise<MonetaryAmount<Currency>> {
-        const [totalGlobalReward, globalRewardShare] = await Promise.all([
-            this.rewardsAPI.computeRewardInRewardsPool(rewardCurrency, collateralCurrency, vaultAccountId),
-            this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
-        ]);
-        const ownGlobalReward = totalGlobalReward.mul(globalRewardShare);
-        const localReward = await this.rewardsAPI.computeRewardInStakingPool(
-            vaultAccountId,
-            nominatorId,
-            collateralCurrency,
-            rewardCurrency,
-            nonce
-        );
-        return ownGlobalReward.add(localReward);
+        return this.rewardsAPI.computeRewardInRewardsPool(rewardCurrency, collateralCurrency, vaultAccountId);
     }
 
     async getWrappedReward(
