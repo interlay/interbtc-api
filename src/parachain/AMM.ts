@@ -1,4 +1,4 @@
-import { BitcoinAmount, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { AddressOrPair } from "@polkadot/api/types";
 import { AccountId } from "@polkadot/types/interfaces";
@@ -48,75 +48,6 @@ export interface MultiPathElement {
 
 type MultiPath = Array<MultiPathElement>;
 
-// TODO: remove this class
-export class MultiRoute {
-    public readonly inputCurrency: CurrencyExt;
-    public readonly inputAmount: MonetaryAmount<CurrencyExt>;
-    public readonly outputCurrency: CurrencyExt;
-    public readonly routePath: MultiPathElement[];
-    public readonly currencyPath: CurrencyExt[];
-
-    // TODO: needed for price impact computation
-    // public get midPrice(): Price {
-    //     const prices: Price[] = [];
-    //     let currentAmount = this.inputAmount;
-
-    //     for (const [i, path] of this.routePath.entries()) {
-    //         let price: Price;
-
-    //         if (path.stable) {
-    //             // TODO
-    //             //   const outputAmount = getStableSwapOutputAmount(path, currentAmount);
-    //             //   price = new Price(
-    //             //     path.input,
-    //             //     path.output,
-    //             //     JSBI.multiply(ONE, currentAmount.decimalScale),
-    //             //     JSBI.multiply(ONE, outputAmount.decimalScale)
-    //             //   );
-    //             //   currentAmount = outputAmount;
-    //         } else {
-    //             const pair = path.pair;
-
-    //             price = this.currencyPath[i].equals(pair.token0)
-    //                 ? new Price(pair.reserve0.token, pair.reserve1.token, pair.reserve0.raw, pair.reserve1.raw)
-    //                 : new Price(pair.reserve1.token, pair.reserve0.token, pair.reserve1.raw, pair.reserve0.raw);
-    //             currentAmount = this.currencyPath[i].equals(pair.token0)
-    //                 ? new TokenAmount(pair.token1, currentAmount.multiply(price).raw)
-    //                 : new TokenAmount(pair.token0, currentAmount.multiply(price).raw);
-    //         }
-
-    //         prices.push(price);
-    //     }
-
-    //     return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0]);
-    // }
-
-    public constructor(path: MultiPath, inputAmount: MonetaryAmount<CurrencyExt>, outputCurrency: CurrencyExt) {
-        // TODO: decide if these checks are needed or not
-        //   invariant(paths.length > 0, 'POOLS');
-        //   invariant(paths[0].input.equals(inputAmount.token), 'INPUT');
-        //   invariant(typeof output === 'undefined' || paths[paths.length - 1].output.equals(output), 'OUTPUT');
-
-        const currencyPath: CurrencyExt[] = [inputAmount.currency];
-
-        for (const [i, pathElement] of path.entries()) {
-            const currentInput = currencyPath[i];
-
-            if (!isCurrencyEqual(pathElement.input, currentInput)) {
-                throw new Error(
-                    `MultiRoute: Invalid sequence of currencies, expected ${currentInput.name}, but got ${pathElement.input.name}!`
-                );
-            }
-            currencyPath.push(pathElement.output);
-        }
-
-        this.routePath = path;
-        this.currencyPath = currencyPath;
-        this.inputCurrency = inputAmount.currency;
-        this.inputAmount = inputAmount;
-        this.outputCurrency = outputCurrency ?? path[path.length - 1].output;
-    }
-}
 class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
     public type = PoolType.STANDARD;
     public token0: CurrencyExt;
@@ -168,17 +99,98 @@ class StableLiquidityPool implements LiquidityPoolBase {
 
 type LiquidityPool = StandardLiquidityPool | StableLiquidityPool;
 
-// TODO: Consider creating class for Trade object.
+// TODO: improve, simplify, verify computation
+const computeMiddlePrice = (path: MultiPath, inputAmount: MonetaryAmount<CurrencyExt>): Big => {
+    const prices: Big[] = [];
+    const currencyPath = [inputAmount.currency, ...path.map((pathElement) => pathElement.output)];
+
+    let currentInputAmount = inputAmount;
+    for (const [i, pathElement] of path.entries()) {
+        let currentPrice: Big;
+        if (pathElement.stable) {
+            // TODO: how to compute middle price for curve pools?
+            //
+            // const outputAmount = getStableSwapOutputAmount(pathElement, currentInputAmount);
+            // currentPrice = new Price(
+            //     pathElement.input,
+            //     pathElement.output,
+            //     JSBI.multiply(ONE, currentInputAmount.decimalScale),
+            //     JSBI.multiply(ONE, outputAmount.decimalScale)
+            // );
+            // currentInputAmount = outputAmount;
+        } else {
+            const pair = pathElement.pair;
+            if (isCurrencyEqual(currencyPath[i], pair.token0)) {
+                // TODO: can we put this into 1 monetary amount variable and use only that ??
+                currentPrice = pair.reserve1.toBig().div(pair.reserve0.toBig());
+                currentInputAmount = new MonetaryAmount(pair.token1, currentInputAmount.mul(currentPrice).toBig());
+            } else {
+                currentPrice = pair.reserve0.toBig().div(pair.reserve1.toBig());
+                currentInputAmount = new MonetaryAmount(pair.token0, currentInputAmount.mul(currentPrice).toBig());
+            }
+        }
+
+        prices.push(currentPrice);
+    }
+
+    return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0]);
+};
+
+const computePriceImpact = (
+    path: MultiPath,
+    inputAmount: MonetaryAmount<CurrencyExt>,
+    outputAmount: MonetaryAmount<CurrencyExt>
+): string => {
+    const midPrice = computeMiddlePrice(path, inputAmount);
+    const exactQuote = midPrice.mul(inputAmount.toBig());
+    // calculate priceImpact := (exactQuote - outputAmount) / exactQuote
+    const priceImpact = exactQuote.sub(outputAmount.toBig()).div(exactQuote);
+    // Return percentage.
+    return priceImpact.mul(100).toString();
+};
+
 class Trade {
-    public executionPrice: Big;
+    public executionPrice: MonetaryAmount<CurrencyExt>;
     public priceImpact: string; // Percentage.
-    public estimatedOutputAmount: MonetaryAmount<CurrencyExt>;
     constructor(
-        public path: MultiPath // Is empty array if no path was found.
+        public path: MultiPath, // Is empty array if no path was found.
+        public inputAmount: MonetaryAmount<CurrencyExt>,
+        public outputAmount: MonetaryAmount<CurrencyExt>
     ) {
-        this.executionPrice = Big(0); // TODO
-        this.priceImpact = "0%"; // TODO
-        this.estimatedOutputAmount = BitcoinAmount.zero(); // TODO
+        const rawPrice = outputAmount.toBig().div(inputAmount.toBig());
+        this.executionPrice = new MonetaryAmount(outputAmount.currency, rawPrice);
+        this.priceImpact = computePriceImpact(path, inputAmount, outputAmount);
+    }
+
+    public isBetter(anotherTrade: Trade | null): boolean {
+        if (anotherTrade === null) {
+            return true;
+        }
+
+        if (
+            !this.inputAmount.eq(anotherTrade.inputAmount) ||
+            !isCurrencyEqual(this.outputAmount.currency, anotherTrade.outputAmount.currency)
+        ) {
+            throw new Error("Trade: isBetterThan: Comparing 2 different trades is not possible.");
+        }
+
+        // TODO: extend comparator in case of same output amount but different paths,
+        //       prefer trade with lower price impact
+        return this.outputAmount.gte(anotherTrade.outputAmount);
+    }
+
+    /**
+     * Get minimum output amount for trade with provided maximum allowed slippage.
+     *
+     * @param {number} maxSlippage Maximum slippage in percentage.
+     * @returns {MonetaryAmount<CurrencyExt>} Minimum output amount of trade allowed with provided slippage.
+     */
+    public getMinimumOutputAmount(maxSlippage: number): MonetaryAmount<CurrencyExt> {
+        const maxSlippageInDecimal = maxSlippage / 100;
+        const amount = Big(1).sub(maxSlippageInDecimal).mul(this.outputAmount.toBig());
+        const minimumAmountOut = new MonetaryAmount(this.outputAmount.currency, amount);
+
+        return minimumAmountOut;
     }
 }
 
@@ -210,65 +222,69 @@ const getAllTradingPairs = (pools: Array<LiquidityPool>): Array<TradingPair> => 
     return pairs;
 };
 
-const MAX_HOPS = 4; // TODO: add as parameter?
+const HOP_LIMIT = 4; // TODO: add as parameter?
 
-const findBestTradeWithHopLimit = (
+const findBestTradeRecursively = (
     inputAmount: MonetaryAmount<CurrencyExt>,
     outputCurrency: CurrencyExt,
     pairs: Array<TradingPair>,
     hopLimit: number,
     path: MultiPath,
-    originalInputCurrency = inputAmount.currency,
-    result: Array<Trade> = []
-) => {
-    if (hopLimit <= 0) {
-        throw new Error("findBestTradeWithHopLimit: Invalid hop limit.");
-    }
-    if (inputAmount.currency === originalInputCurrency && path.length === 0) {
-        throw new Error("findBestTradeWithHopLimit: Invalid recursion.");
-    }
-
-    const inputCurrency = inputAmount.currency;
-
-    for (const [index, pair] of pairs.entries()) {
-        const isInputCurrencyInPair =
-            isCurrencyEqual(inputCurrency, pair.token0) || isCurrencyEqual(inputCurrency, pair.token1);
-        if (!isInputCurrencyInPair) {
-            continue;
-        }
-        const [amountOut, pool] = pair.getOutputAmount(inputAmount);
-
-        // Complete path is found
-        if (isCurrencyEqual(outputCurrency, amountOut.currency)) {
-            const tradePath = [...path, pair.pathOf(inputCurrency)];
-            const multiRoute = new MultiRoute(tradePath, inputAmount, outputCurrency);
-        }
-    }
-};
-
-const findBestRoute = (
-    inputAmount: MonetaryAmount<CurrencyExt>,
-    outputCurrency: CurrencyExt,
-    pools: Array<LiquidityPool>
+    originalInputAmount = inputAmount
 ): Trade | null => {
-    const pairs = getAllTradingPairs(pools);
-
-    if (pairs.length === 0 || inputAmount.isZero()) {
+    if (hopLimit <= 0) {
         return null;
     }
+    const inputCurrency = inputAmount.currency;
+    let bestTrade: Trade | null = null;
 
-    for (let hopLimit = 1; hopLimit <= MAX_HOPS; hopLimit++) {}
+    for (const pair of pairs) {
+        if (isCurrencyEqual(inputCurrency, pair.token0) || isCurrencyEqual(inputCurrency, pair.token1)) {
+            // Skip iteration if input currency is not part of current pair.
+            continue;
+        }
+        const [outputAmount] = pair.getOutputAmount(inputAmount);
+        const currentPath = [...path, pair.pathOf(inputCurrency)];
+
+        // Complete path is found
+        if (isCurrencyEqual(outputCurrency, outputAmount.currency)) {
+            const trade = new Trade(currentPath, originalInputAmount, outputAmount);
+            if (trade.isBetter(bestTrade)) {
+                bestTrade = trade;
+            }
+        } else {
+            // Recursively check starting from current pair with decreased hop amount.
+            const trade = findBestTradeRecursively(
+                outputAmount,
+                outputCurrency,
+                pairs,
+                hopLimit - 1,
+                currentPath,
+                originalInputAmount
+            );
+            if (trade !== null && trade.isBetter(bestTrade)) {
+                bestTrade = trade;
+            }
+        }
+    }
+
+    return bestTrade;
 };
 
 export interface AMMAPI {
     /**
      * Get optimal trade for provided trade type and amount.
      *
-     * @param {MonetaryAmount<CurrencyExt>} amount Amount to be exchanged.
+     * @param {MonetaryAmount<CurrencyExt>} inputAmount Amount to be exchanged.
+     * @param {CurrencyExt} outputCurrency Currency to purchase.
      * @param {Array<LiquidityPool>} pools Array of all liquidity pools.
-     * @returns {Promise<Trade>} Data about optimal trade.
+     * @returns {Trade | null} Optimal trade information or null if the trade is not possible.
      */
-    getOptimalTrade(amount: MonetaryAmount<CurrencyExt>, pools: Array<LiquidityPool>): Promise<Trade>;
+    getOptimalTrade(
+        inputAmount: MonetaryAmount<CurrencyExt>,
+        outputCurrency: CurrencyExt,
+        pools: Array<LiquidityPool>
+    ): Trade | null;
 
     /**
      * Get expected amounts and slippage for deposit of liquidity to pool.
@@ -319,15 +335,13 @@ export interface AMMAPI {
     /**
      * Swap assets.
      *
-     * @param {TradePath} path Trade path.
-     * @param {MonetaryAmount<CurrencyExt>} amount Amount to be swapped for.
-     * @param {MonetaryAmount<CurrencyExt>} minimumAmountOut Other amount limit.
+     * @param {Trade} trade Trade object containing information about the trade.
+     * @param {MonetaryAmount<CurrencyExt>} minimumAmountOut Minimum output amount to be received.
      * @param {AddressOrPair} recipient Recipient address.
      * @param {number | string} deadline Deadline block for the swap transaction.
      */
     swap(
-        amount: MonetaryAmount<CurrencyExt>,
-        path: TradePath,
+        trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
         recipient: AddressOrPair,
         deadline: number | string
@@ -336,10 +350,10 @@ export interface AMMAPI {
     /**
      * Adds liquidity to liquidity pool
      *
-     * @param {PooledCurrencies} pooledTokens Array of monetary amounts of pooled tokens.
-     * @param {PoolType} type Type of liquidity pool.
+     * @param {PooledCurrencies} amounts Array of monetary amounts of pooled tokens.
+     * @param {LiquidityPool} pool Type of liquidity pool.
      */
-    addLiquidity(pooledTokens: PooledCurrencies, type: PoolType): Promise<void>;
+    addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void>;
 
     /**
      * Removes liquidity from pool.
@@ -354,9 +368,21 @@ export interface AMMAPI {
 
 export class DefaultAMMAPI implements AMMAPI {
     constructor(private api: ApiPromise) {}
-    getOptimalTrade(type: TradeType, amount: MonetaryAmount<CurrencyExt>, pools: Array<LiquidityPool>): Promise<Trade> {
-        throw new Error("Method not implemented.");
+
+    getOptimalTrade(
+        inputAmount: MonetaryAmount<CurrencyExt>,
+        outputCurrency: CurrencyExt,
+        pools: Array<LiquidityPool>
+    ): Trade | null {
+        const pairs = getAllTradingPairs(pools);
+
+        if (pairs.length === 0 || inputAmount.isZero()) {
+            return null;
+        }
+
+        return findBestTradeRecursively(inputAmount, outputCurrency, pairs, HOP_LIMIT, []);
     }
+
     getExpectedLiquidityDepositAmounts(
         pooledCurrencies: PooledCurrencies,
         poolType: PoolType,
@@ -383,23 +409,21 @@ export class DefaultAMMAPI implements AMMAPI {
         throw new Error("Method not implemented.");
     }
     swap(
-        type: TradeType,
-        path: TradePath,
-        amount: MonetaryAmount<CurrencyExt>,
-        otherLimitAmount: MonetaryAmount<CurrencyExt>,
+        trade: Trade,
+        minimumAmountOut: MonetaryAmount<CurrencyExt>,
         recipient: AddressOrPair,
-        deadline: string | number
+        deadline: number | string
     ): Promise<void> {
         return new Promise(function () {
             //
         });
     }
-    addLiquidity(pooledTokens: PooledCurrencies, type: PoolType): Promise<void> {
+    addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void> {
         return new Promise(function () {
             //
         });
     }
-    removeLiquidity(amount: MonetaryAmount<CurrencyExt>, customCurrenciesProportion?: PooledCurrencies): Promise<void> {
+    removeLiquidity(amount: MonetaryAmount<LPToken>, customCurrenciesProportion?: PooledCurrencies): Promise<void> {
         return new Promise(function () {
             //
         });
