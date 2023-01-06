@@ -138,6 +138,7 @@ export class DefaultAMMAPI implements AMMAPI {
     }> {
         throw new Error("Method not implemented.");
     }
+
     getExpectedLiquidityWithdrawalAmounts(
         amount: MonetaryAmount<CurrencyExt>,
         customCurrenciesProportion?: PooledCurrencies
@@ -147,34 +148,33 @@ export class DefaultAMMAPI implements AMMAPI {
     }> {
         throw new Error("Method not implemented.");
     }
+
     getLiquidityProvidedByAccount(accountId: AccountId): Promise<MonetaryAmount<CurrencyExt>[]> {
         throw new Error("Method not implemented.");
     }
+
     getLiquidityPools(): Promise<Array<LiquidityPool>> {
         throw new Error("Method not implemented.");
     }
-    swap(
+
+    async swap(
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
         recipient: AddressOrPair,
         deadline: number | string
     ): Promise<void> {
-        return new Promise(function () {
-            //
-        });
+        //TODO
     }
-    addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void> {
-        return new Promise(function () {
-            //
-        });
+
+    async addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void> {
+        //TODO
     }
-    removeLiquidity(
+
+    async removeLiquidity(
         amount: MonetaryAmount<LPToken>,
         pool: LiquidityPool,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<void> {
-        return new Promise(function () {
-            //
-        });
+        //TODO
     }
 }

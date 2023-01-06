@@ -1,11 +1,8 @@
-import { TradingPair } from "../trade/trade";
+import { CurrencyExt } from "@interlay/interbtc/types";
+import { MonetaryAmount } from "@interlay/monetary-js";
+import { MultiPathElement, TradingPair } from "../trade/trade";
 import { StableLiquidityPool } from "./stable";
 import { isStandardPool, LiquidityPool } from "./types";
-
-const convertStablePoolToTradingPairs = (pool: StableLiquidityPool): Array<TradingPair> => {
-    // TODO
-    return [];
-};
 
 /**
  * Get all trading pairs based on provided pools.
@@ -27,4 +24,18 @@ const getAllTradingPairs = (pools: Array<LiquidityPool>): Array<TradingPair> => 
     return pairs;
 };
 
-export { getAllTradingPairs };
+const convertStablePoolToTradingPairs = (pool: StableLiquidityPool): Array<TradingPair> => {
+    // TODO
+    return [];
+};
+
+// SOURCE: @zenlink-dex/sdk
+const getStableSwapOutputAmount = (
+    path: MultiPathElement,
+    inputAmount: MonetaryAmount<CurrencyExt>
+): MonetaryAmount<CurrencyExt> => {
+    // TODO
+    return new MonetaryAmount(inputAmount.currency, 0);
+};
+
+export { getAllTradingPairs, getStableSwapOutputAmount };

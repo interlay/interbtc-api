@@ -2,9 +2,11 @@ import { CurrencyExt } from "@interlay/interbtc/types";
 import { isCurrencyEqual } from "@interlay/interbtc/utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
+import { getStableSwapOutputAmount } from "../liquidity-pool/utils";
 import { MultiPath } from "./trade";
 
 // TODO: improve, simplify, verify computation
+// SOURCE: @zenlink-dex/sdk-core
 const computeMiddlePrice = (path: MultiPath, inputAmount: MonetaryAmount<CurrencyExt>): Big => {
     const prices: Big[] = [];
     const currencyPath = [inputAmount.currency, ...path.map((pathElement) => pathElement.output)];
@@ -33,7 +35,7 @@ const computeMiddlePrice = (path: MultiPath, inputAmount: MonetaryAmount<Currenc
         prices.push(currentPrice);
     }
 
-    return prices.slice(1).reduce((accumulator, currentValue) => accumulator.multiply(currentValue), prices[0]);
+    return prices.slice(1).reduce((accumulator, currentValue) => accumulator.mul(currentValue), prices[0]);
 };
 
 const computePriceImpact = (

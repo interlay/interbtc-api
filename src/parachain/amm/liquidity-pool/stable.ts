@@ -11,6 +11,7 @@ class StableLiquidityPool implements LiquidityPoolBase {
         public tradingFee: Big,
         public poolId: number
     ) {}
+    // TODO
 }
 
 export { StableLiquidityPool };
