@@ -35,8 +35,8 @@ import { createInterBtcApi } from "@interlay/interbtc";
 // const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9944";
 // if you want to use the Interlay-hosted beta network
 const PARACHAIN_ENDPOINT = "wss://api.interlay.io/parachain";
-const isMainnet = false;
-const interBTC = await createInterBtcApi(PARACHAIN_ENDPOINT, isMainnet);
+const bitcoinNetwork = "mainnet";
+const interBTC = await createInterBtcApi(PARACHAIN_ENDPOINT, bitcoinNetwork);
 ```
 
 ### Attaching an Account
