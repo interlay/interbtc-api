@@ -2,9 +2,9 @@ import { CurrencyExt } from "@interlay/interbtc/types";
 import { isCurrencyEqual } from "@interlay/interbtc/utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { TradingPair, MultiPathElement } from "../trade/trade";
+import { MultiPathElementStandard, MultiPathElementType } from "../trade/types";
 import { PoolType, LPToken, PooledCurrencies } from "../types";
-import { LiquidityPoolBase } from "./types";
+import { LiquidityPoolBase, TradingPair } from "./types";
 
 class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
     public type = PoolType.STANDARD;
@@ -27,9 +27,9 @@ class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
         this.reserve1 = pooledCurrencies[1];
     }
 
-    public pathOf(inputCurrency: CurrencyExt): MultiPathElement {
+    public pathOf(inputCurrency: CurrencyExt): MultiPathElementStandard {
         return {
-            stable: false,
+            type: MultiPathElementType.STANDARD,
             input: inputCurrency,
             output: isCurrencyEqual(inputCurrency, this.token0) ? this.token1 : this.token0,
             pair: this,

@@ -29,7 +29,7 @@ import {
     tokenSymbolToCurrency,
 } from ".";
 import { AssetRegistryAPI } from "./parachain/asset-registry";
-import { AMMAPI, DefaultAMMAPI } from "./parachain/AMM";
+import { AMMAPI, DefaultAMMAPI } from "./parachain/amm";
 
 export * from "./factory";
 export * from "./parachain/transaction";

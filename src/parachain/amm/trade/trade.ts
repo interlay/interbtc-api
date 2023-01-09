@@ -1,21 +1,8 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { CurrencyExt, isCurrencyEqual } from "../../..";
-import { StableLiquidityPool } from "../liquidity-pool/stable";
-import { TradingPair } from "../liquidity-pool/types";
+import { MultiPath } from "./types";
 import { computePriceImpact } from "./utils";
-
-interface MultiPathElement {
-    stable: boolean;
-    input: CurrencyExt;
-    output: CurrencyExt;
-    pair: TradingPair;
-    pool?: StableLiquidityPool;
-    basePool?: StableLiquidityPool;
-    fromBase?: boolean;
-}
-
-type MultiPath = Array<MultiPathElement>;
 
 class Trade {
     public executionPrice: MonetaryAmount<CurrencyExt>;
@@ -30,6 +17,13 @@ class Trade {
         this.priceImpact = computePriceImpact(path, inputAmount, outputAmount);
     }
 
+    /**
+     * Comparator for 2 trades with same input and output.
+     *
+     * @param anotherTrade Trade to compare.
+     * @returns true if `this` trade is better, false if `anotherTrade` is better.
+     * @throws When provided trade has different input or output currency.
+     */
     public isBetter(anotherTrade: Trade | null): boolean {
         if (anotherTrade === null) {
             return true;
@@ -63,4 +57,3 @@ class Trade {
 }
 
 export { Trade };
-export type { MultiPath, MultiPathElement, TradingPair };

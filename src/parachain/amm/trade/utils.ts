@@ -3,7 +3,7 @@ import { isCurrencyEqual } from "@interlay/interbtc/utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { getStableSwapOutputAmount } from "../liquidity-pool/utils";
-import { MultiPath } from "./trade";
+import { isStableMultiPathElement, MultiPath } from "./types";
 
 // TODO: improve, simplify, verify computation
 // SOURCE: @zenlink-dex/sdk-core
@@ -14,7 +14,7 @@ const computeMiddlePrice = (path: MultiPath, inputAmount: MonetaryAmount<Currenc
     let currentInputAmount = inputAmount;
     for (const [i, pathElement] of path.entries()) {
         let currentPrice: Big;
-        if (pathElement.stable) {
+        if (isStableMultiPathElement(pathElement)) {
             // TODO: Is this a correct way to compute middle price for curve pool?
             //       Won't this always show 0% price impact for curve-pool only trades?
 
