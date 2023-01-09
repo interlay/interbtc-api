@@ -1,6 +1,7 @@
 import { AccountId, H256, Permill } from "@polkadot/types/interfaces";
 import Big, { BigSource } from "big.js";
 import { ApiPromise } from "@polkadot/api";
+import { isKeyringPair } from "@polkadot/api/util";
 import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
@@ -225,22 +226,8 @@ export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): Bal
 }
 
 export function addressOrPairAsAccountId(api: ApiPromise, addyOrpair: AddressOrPair): AccountId {
-    // need to explicitly try and figure out which type this is, so cast to any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const input = addyOrpair as any;
-
-    // a string is a string is a string
-    if (typeof input === "string") {
-        return newAccountId(api, input);
-    }
-
-    // keyring pair has .address field as string
-    if (typeof input.address === "string") {
-        return newAccountId(api, input.address);
-    }
-
-    // AccountId and Account will have .toString() methods, try those
-    return newAccountId(api, input.toString());
+    const addressString: string = isKeyringPair(addyOrpair) ? addyOrpair.address : addyOrpair.toString();
+    return newAccountId(api, addressString);
 }
 
 export async function parseReplaceRequest(
