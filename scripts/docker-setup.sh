@@ -23,9 +23,7 @@ if ! [ -d "local-setup" ]
 then
     mkdir local-setup
     git clone https://github.com/interlay/parachain-launch/
-    # todo: remove temp PR fetch instructions once we have merged the parachain-launch PR and use tag instead
-    cd parachain-launch && git fetch origin pull/18/head:pr_branch && git checkout pr_branch && yarn install
-    # cd parachain-launch && git checkout 1.1.0-20221125 && yarn install
+    cd parachain-launch && git checkout 1.1.0-p1.21.0-c1.19.0 && yarn install
     yarn start generate --config=configs/kintsugi.yml --servicesPath=configs/kintsugi-services.yml --yes --output=local-setup-kint
     mv local-setup-kint ../local-setup/kint
     yarn start generate --config=configs/interlay.yml --servicesPath=configs/interlay-services.yml --yes --output=local-setup-intr
