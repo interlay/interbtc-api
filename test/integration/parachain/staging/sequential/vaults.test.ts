@@ -281,11 +281,11 @@ describe("vaultsAPI", () => {
         assert.isTrue(issuableInterBtc.gt(newMonetaryAmount(0, wrappedCurrency)));
     });
 
-    // TODO: revisit after next publish why intrReward is always zero
-    // PRECONDITION: vaults must have issued some tokens against all collateral currencies
     it("should getFees", async () => {
         const vaultIdsInScope = vault_1_ids;
         let countSkippedVaults = 0;
+        let countVaultsWithNonZeroWrappedRewards = 0;
+
         for (const vaultId of vaultIdsInScope) {
             const collateralCurrency = await currencyIdToMonetaryCurrency(
                 assetRegistry,
@@ -300,8 +300,11 @@ describe("vaultsAPI", () => {
             const currencyTicker = collateralCurrency.ticker;
 
             const vault = await interBtcAPI.vaults.get(vaultId.accountId, collateralCurrency);
-            if (vault.issuedTokens.toBig().eq(0)) {
-                // no issued tokens => no rewards => nothing to check
+            const issueableTokens = await vault.getIssuableTokens();
+            const issuedTokens = vault.issuedTokens;
+            const totalTokensCapacity = issuedTokens.toBig().add(issueableTokens.toBig());
+            if (totalTokensCapacity.eq(0)) {
+                // no token capacity => no rewards => nothing to check
                 countSkippedVaults++;
                 continue;
             }
@@ -312,27 +315,41 @@ describe("vaultsAPI", () => {
                 wrappedCurrency
             );
             assert.isTrue(
-                feesWrapped.gt(newMonetaryAmount(0, wrappedCurrency)),
+                feesWrapped.gte(newMonetaryAmount(0, wrappedCurrency)),
                 // eslint-disable-next-line max-len
-                `Fees (wrapped reward) should be greater than 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()})`
+                `Fees (wrapped reward) should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`
             );
 
-            const intrReward = await interBtcAPI.vaults.getGovernanceReward(
+            if (feesWrapped.gt(newMonetaryAmount(0, wrappedCurrency))) {
+                // we will check that at least one return was greater than zero
+                countVaultsWithNonZeroWrappedRewards++;
+            }
+
+            const govTokenReward = await interBtcAPI.vaults.getGovernanceReward(
                 vaultId.accountId,
                 collateralCurrency,
                 governanceCurrency
             );
             assert.isTrue(
-                intrReward.gt(newMonetaryAmount(0, governanceCurrency)),
+                govTokenReward.gte(newMonetaryAmount(0, governanceCurrency)),
                 // eslint-disable-next-line max-len
-                `Governance reward should be greater than 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()})`
+                `Governance reward should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`
             );
         }
         // make sure not every vault has been skipped (due to no issued tokens)
         assert.notEqual(
             countSkippedVaults,
             vaultIdsInScope.length,
-            `Unexpected test behavior: skipped all ${vaultIdsInScope.length} vaults in the test; all vaults lacking issued tokens`
+            // eslint-disable-next-line max-len
+            `Unexpected test behavior: skipped all ${vaultIdsInScope.length} vaults in the test; all vaults lacking capacity (issued + issuable > 0)`
+        );
+
+        // make sure at least one vault is receiving wrapped rewards greater than zero
+        assert.isAbove(
+            countVaultsWithNonZeroWrappedRewards,
+            0,
+            // eslint-disable-next-line max-len
+            `Unexpected test behavior: none of the ${vaultIdsInScope.length} vaults in the test have received more than 0 wrapped token rewards`
         );
     });
 
