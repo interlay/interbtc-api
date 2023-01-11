@@ -8,7 +8,7 @@ import {
     OrmlTraitsAssetRegistryAssetMetadata,
 } from "@polkadot/types/lookup";
 import { DefaultAssetRegistryAPI, ForeignAsset } from "../../../src/";
-import { AssetRegistryMetadataTuple } from "@interlay/interbtc/parachain/asset-registry";
+import { AssetRegistryMetadataTuple } from "@interlay/interbtc-api/parachain/asset-registry";
 import * as allThingsEncoding from "../../../src/utils/encoding";
 
 describe("DefaultAssetRegistryAPI", () => {
@@ -134,7 +134,11 @@ describe("DefaultAssetRegistryAPI", () => {
 
     describe("getCollateralForeignAssets", () => {
         // only id matters for these tests
-        const mockForeignAssets = [<ForeignAsset>{ foreignAsset: {id: 1} }, <ForeignAsset>{ foreignAsset: {id: 2} }, <ForeignAsset>{ foreignAsset: {id: 3 }}];
+        const mockForeignAssets = [
+            <ForeignAsset>{ foreignAsset: { id: 1 } },
+            <ForeignAsset>{ foreignAsset: { id: 2 } },
+            <ForeignAsset>{ foreignAsset: { id: 3 } },
+        ];
 
         const prepareMocks = (
             sinon: sinon.SinonSandbox,
@@ -190,7 +194,10 @@ describe("DefaultAssetRegistryAPI", () => {
                         isForeignAsset: false,
                         isToken: true,
                         // logically inconsistent (but trying to trick into having a valid result if this is used when it shouldn't)
-                        asForeignAsset: api.createType("u32", mockForeignAssets[mockForeignAssets.length - 1].foreignAsset.id),
+                        asForeignAsset: api.createType(
+                            "u32",
+                            mockForeignAssets[mockForeignAssets.length - 1].foreignAsset.id
+                        ),
                         type: "Token",
                     },
                 },
