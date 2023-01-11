@@ -1,5 +1,5 @@
-import { CurrencyExt } from "@interlay/interbtc/types";
-import { isCurrencyEqual } from "@interlay/interbtc/utils";
+import { CurrencyExt } from "../../../types";
+import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { MultiPathElementStandard, MultiPathElementType } from "../trade/types";
