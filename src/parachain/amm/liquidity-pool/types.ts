@@ -1,4 +1,4 @@
-import { CurrencyExt } from "@interlay/interbtc/types";
+import { CurrencyExt } from "../../../types";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { MultiPathElement } from "../trade/types";

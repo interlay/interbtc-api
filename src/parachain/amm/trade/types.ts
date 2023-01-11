@@ -1,4 +1,4 @@
-import { CurrencyExt } from "@interlay/interbtc/types";
+import { CurrencyExt } from "../../../types";
 import { StableLiquidityPool } from "../liquidity-pool/stable";
 import { TradingPair } from "../liquidity-pool/types";
 
