@@ -49,7 +49,7 @@ export interface RewardsAPI {
      * @returns The stake, as a Big object
      */
     getStakingPoolTotalStake(
-        collateralCurrencyIdLiteral: CollateralCurrencyExt,
+        collateralCurrency: CollateralCurrencyExt,
         vaultAccountId: AccountId,
         nonce?: number
     ): Promise<Big>;
@@ -94,8 +94,8 @@ export interface RewardsAPI {
      * @returns A Monetary.js amount object, representing the reward in the given currency
      */
     computeRewardInRewardsPool(
-        rewardCurrencyIdLiteral: Currency,
-        vaultCollateralIdLiteral: CollateralCurrencyExt,
+        rewardCurrency: Currency,
+        vaultCollateral: CollateralCurrencyExt,
         vaultAccountId: AccountId
     ): Promise<MonetaryAmount<Currency>>;
     /**
@@ -120,15 +120,16 @@ export interface RewardsAPI {
      * @returns The reward tally, as a Big object
      */
     getRewardsPoolRewardTally(
-        rewardCurrencyIdLiteral: Currency,
-        vaultCollateralIdLiteral: CollateralCurrencyExt,
+        rewardCurrency: Currency,
+        vaultCollateral: CollateralCurrencyExt,
         vaultAccountId: AccountId
     ): Promise<Big>;
     /**
-     * @param currency The reward currency
+     * @param rewardCurrency The reward currency
+     * @param collateralCurrency The colalteral currency
      * @returns The reward per token, as a Big object
      */
-    getRewardsPoolRewardPerToken(currencyId: Currency): Promise<Big>;
+    getRewardsPoolRewardPerToken(rewardCurrency: Currency, collateralCurrency: CollateralCurrencyExt): Promise<Big>;
     /**
      * @param vaultId VaultId object
      * @param nonce Staking pool nonce
@@ -309,14 +310,14 @@ export class DefaultRewardsAPI implements RewardsAPI {
     }
 
     async getRewardsPoolStake(vaultCollateral: CollateralCurrencyExt, vaultAccountId: AccountId): Promise<Big> {
+        const collateralCurrencyId = newCurrencyId(this.api, vaultCollateral);
         const collateralCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistry,
             this.loansAPI,
-
-            newCurrencyId(this.api, vaultCollateral)
+            collateralCurrencyId
         );
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
-        return decodeFixedPointType(await this.api.query.vaultRewards.stake(vaultId));
+        return decodeFixedPointType(await this.api.query.vaultRewards.stake([collateralCurrencyId, vaultId]));
     }
 
     async getRewardsPoolRewardTally(
@@ -325,13 +326,21 @@ export class DefaultRewardsAPI implements RewardsAPI {
         vaultAccountId: AccountId
     ): Promise<Big> {
         const rewardCurrencyId = newCurrencyId(this.api, rewardCurrency);
+        const collateralCurrencyId = newCurrencyId(this.api, vaultCollateral);
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), vaultCollateral, this.wrappedCurrency);
-        return decodeFixedPointType(await this.api.query.vaultRewards.rewardTally(rewardCurrencyId, vaultId));
+        return decodeFixedPointType(
+            await this.api.query.vaultRewards.rewardTally(rewardCurrencyId, [collateralCurrencyId, vaultId])
+        );
     }
 
-    async getRewardsPoolRewardPerToken(currency: Currency): Promise<Big> {
+    async getRewardsPoolRewardPerToken(
+        rewardCurrency: Currency,
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<Big> {
+        const rewardCurrencyId = newCurrencyId(this.api, rewardCurrency);
+        const collateralCurrencyId = newCurrencyId(this.api, collateralCurrency);
         return decodeFixedPointType(
-            await this.api.query.vaultRewards.rewardPerToken(newCurrencyId(this.api, currency))
+            await this.api.query.vaultRewards.rewardPerToken(rewardCurrencyId, collateralCurrencyId)
         );
     }
 

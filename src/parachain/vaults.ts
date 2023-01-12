@@ -21,6 +21,7 @@ import {
     addHexPrefix,
     currencyIdToMonetaryCurrency,
     decodeRpcVaultId,
+    addressOrPairAsAccountId,
 } from "../utils";
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
@@ -38,7 +39,7 @@ import {
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
-import { AssetRegistryAPI, SystemAPI, LoansAPI } from "./index";
+import { AssetRegistryAPI, SystemAPI, LoansAPI, DefaultNominationAPI } from "./index";
 import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";
 
@@ -222,11 +223,11 @@ export interface VaultsAPI {
      * Build withdraw collateral extrinsic (transaction) without sending it.
      *
      * @param amount The amount of collateral to withdraw
-     * @returns A withdraw collateral submittable extrinsic.
+     * @returns A withdraw collateral submittable extrinsic as promise.
      */
     buildWithdrawCollateralExtrinsic(
         amount: MonetaryAmount<CollateralCurrencyExt>
-    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>>;
 
     /**
      * @param amount The amount of collateral to withdraw
@@ -478,25 +479,44 @@ export class DefaultVaultsAPI implements VaultsAPI {
         ]);
     }
 
-    buildWithdrawCollateralExtrinsic(
+    async buildWithdrawCollateralExtrinsic(
         amount: MonetaryAmount<CollateralCurrencyExt>
-    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
-        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
-        const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
-        return this.api.tx.vaultRegistry.withdrawCollateral(currencyPair, amountAtomicUnit);
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
+        const account = this.transactionAPI.getAccount();
+        if (account == undefined) {
+            throw new Error("Account must be connected to create a collateral withdrawal request.");
+        }
+        const vaultAccountId = addressOrPairAsAccountId(this.api, account);
+
+        return await DefaultNominationAPI.buildWithdrawCollateralExtrinsic(
+            this.api,
+            this.rewardsAPI,
+            vaultAccountId,
+            amount,
+            this.wrappedCurrency
+        );
     }
 
     async withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
-        const tx = this.buildWithdrawCollateralExtrinsic(amount);
+        const tx = await this.buildWithdrawCollateralExtrinsic(amount);
         await this.transactionAPI.sendLogged(tx, this.api.events.vaultRegistry.WithdrawCollateral, true);
     }
 
     buildDepositCollateralExtrinsic(
         amount: MonetaryAmount<CollateralCurrencyExt>
     ): SubmittableExtrinsic<"promise", ISubmittableResult> {
-        const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
-        const currencyPair = newVaultCurrencyPair(this.api, amount.currency, this.wrappedCurrency);
-        return this.api.tx.vaultRegistry.depositCollateral(currencyPair, amountAtomicUnit);
+        const account = this.transactionAPI.getAccount();
+        if (account == undefined) {
+            throw new Error("Account must be connected to create a collateral deposit request.");
+        }
+        const vaultAccountId = addressOrPairAsAccountId(this.api, account);
+
+        return DefaultNominationAPI.buildDepositCollateralExtrinsic(
+            this.api,
+            vaultAccountId,
+            amount,
+            this.wrappedCurrency
+        );
     }
 
     async depositCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
@@ -545,7 +565,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         );
     }
 
-    async getMinimumCollateral(collateralCurrency: CollateralCurrencyExt): Promise<MonetaryAmount<CollateralCurrencyExt>> {
+    async getMinimumCollateral(
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<MonetaryAmount<CollateralCurrencyExt>> {
         const collateralCurrencyId = newCurrencyId(this.api, collateralCurrency);
         const minimumCollateral = await this.api.query.vaultRegistry.minimumCollateralVault(collateralCurrencyId);
 
@@ -649,19 +671,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         rewardCurrency: Currency,
         nonce?: number
     ): Promise<MonetaryAmount<Currency>> {
-        const [totalGlobalReward, globalRewardShare] = await Promise.all([
-            this.rewardsAPI.computeRewardInRewardsPool(rewardCurrency, collateralCurrency, vaultAccountId),
-            this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
-        ]);
-        const ownGlobalReward = totalGlobalReward.mul(globalRewardShare);
-        const localReward = await this.rewardsAPI.computeRewardInStakingPool(
-            vaultAccountId,
-            nominatorId,
-            collateralCurrency,
-            rewardCurrency,
-            nonce
-        );
-        return ownGlobalReward.add(localReward);
+        return this.rewardsAPI.computeRewardInRewardsPool(rewardCurrency, collateralCurrency, vaultAccountId);
     }
 
     async getWrappedReward(
@@ -846,7 +856,11 @@ export class DefaultVaultsAPI implements VaultsAPI {
             currencies: vaultId.currencies,
         });
         const wrappedCurrencyPrimitive = newCurrencyId(this.api, this.getWrappedCurrency());
-        const currency = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, wrappedCurrencyPrimitive);
+        const currency = await currencyIdToMonetaryCurrency(
+            this.assetRegistryAPI,
+            this.loansAPI,
+            wrappedCurrencyPrimitive
+        );
         const amount = newMonetaryAmount(balance.amount.toString(), currency);
         return amount;
     }
@@ -879,7 +893,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
         for (const [vaultId, balanceWrapper] of premiumRedeemVaults) {
             const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
 
-            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, this.loansAPI, vaultId);
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(
+                this.api,
+                this.assetRegistryAPI,
+                this.loansAPI,
+                vaultId
+            );
             map.set(ibtcPrimitivesVaultId, amount);
         }
         return map;
@@ -891,7 +910,12 @@ export class DefaultVaultsAPI implements VaultsAPI {
         for (const [vaultId, balanceWrapper] of issuableVaults) {
             const amount = newMonetaryAmount(balanceWrapper.amount.toString(), this.getWrappedCurrency());
 
-            const ibtcPrimitivesVaultId = await decodeRpcVaultId(this.api, this.assetRegistryAPI, this.loansAPI, vaultId);
+            const ibtcPrimitivesVaultId = await decodeRpcVaultId(
+                this.api,
+                this.assetRegistryAPI,
+                this.loansAPI,
+                vaultId
+            );
             vaultIdsToAmountsMap.set(ibtcPrimitivesVaultId, amount);
         }
 

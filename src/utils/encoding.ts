@@ -1,6 +1,7 @@
 import { AccountId, H256, Permill } from "@polkadot/types/interfaces";
 import Big, { BigSource } from "big.js";
 import { ApiPromise } from "@polkadot/api";
+import { isKeyringPair } from "@polkadot/api/util";
 import type { Struct } from "@polkadot/types";
 import { Network } from "bitcoinjs-lib";
 import { StorageKey } from "@polkadot/types/primitive/StorageKey";
@@ -35,6 +36,7 @@ import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from ".
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, LoansAPI, VaultsAPI } from "../parachain";
+import { AddressOrPair } from "@polkadot/api/types";
 
 /**
  * Converts endianness of a Uint8Array
@@ -221,6 +223,11 @@ export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): Bal
     return api.createType("BalanceWrapper", {
         amount: api.createType("Text", Big(atomicAmount).toString()),
     });
+}
+
+export function addressOrPairAsAccountId(api: ApiPromise, addyOrpair: AddressOrPair): AccountId {
+    const addressString: string = isKeyringPair(addyOrpair) ? addyOrpair.address : addyOrpair.toString();
+    return newAccountId(api, addressString);
 }
 
 export async function parseReplaceRequest(

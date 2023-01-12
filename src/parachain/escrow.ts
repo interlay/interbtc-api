@@ -4,19 +4,8 @@ import { AccountId } from "@polkadot/types/interfaces";
 import BN from "bn.js";
 import Big from "big.js";
 
-import {
-    decodeFixedPointType,
-    newCurrencyId,
-    newMonetaryAmount,
-    toVoting,
-    estimateReward,
-} from "../utils";
-import {
-    GovernanceCurrency,
-    parseEscrowLockedBalance,
-    StakedBalance,
-    VotingCurrency,
-} from "../types";
+import { decodeFixedPointType, newCurrencyId, newMonetaryAmount, toVoting, estimateReward } from "../utils";
+import { GovernanceCurrency, parseEscrowLockedBalance, StakedBalance, VotingCurrency } from "../types";
 import { SystemAPI } from "./system";
 import { TransactionAPI } from ".";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
@@ -247,24 +236,24 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async getEscrowStake(accountId: AccountId): Promise<Big> {
-        const rawStake = await this.api.query.escrowRewards.stake(accountId);
+        const rawStake = await this.api.query.escrowRewards.stake([null, accountId]);
         return decodeFixedPointType(rawStake);
     }
 
     async getEscrowTotalStake(): Promise<Big> {
-        const rawTotalStake = await this.api.query.escrowRewards.totalStake();
+        const rawTotalStake = await this.api.query.escrowRewards.totalStake(null);
         return decodeFixedPointType(rawTotalStake);
     }
 
     async getRewardTally(accountId: AccountId): Promise<Big> {
         const governanceCurrencyId = newCurrencyId(this.api, this.governanceCurrency);
-        const rawRewardTally = await this.api.query.escrowRewards.rewardTally(governanceCurrencyId, accountId);
+        const rawRewardTally = await this.api.query.escrowRewards.rewardTally(governanceCurrencyId, [null, accountId]);
         return decodeFixedPointType(rawRewardTally);
     }
 
     async getRewardPerToken(): Promise<Big> {
         const governanceCurrencyId = newCurrencyId(this.api, this.governanceCurrency);
-        const rawRewardPerToken = await this.api.query.escrowRewards.rewardPerToken(governanceCurrencyId);
+        const rawRewardPerToken = await this.api.query.escrowRewards.rewardPerToken(governanceCurrencyId, null);
         return decodeFixedPointType(rawRewardPerToken);
     }
 
@@ -290,13 +279,13 @@ export class DefaultEscrowAPI implements EscrowAPI {
     }
 
     async votingBalance(accountId: AccountId, blockNumber?: number): Promise<MonetaryAmount<GovernanceCurrency>> {
-        const maybeBlockNumber = blockNumber === undefined? null : blockNumber.toString();
+        const maybeBlockNumber = blockNumber === undefined ? null : blockNumber.toString();
         const balance = await this.api.rpc.escrow.balanceAt(accountId.toString(), maybeBlockNumber);
         return newMonetaryAmount(balance.amount.toString(), toVoting(this.governanceCurrency));
     }
 
     async totalVotingSupply(blockNumber?: number): Promise<MonetaryAmount<VotingCurrency>> {
-        const maybeBlockNumber = blockNumber === undefined? null : blockNumber.toString();
+        const maybeBlockNumber = blockNumber === undefined ? null : blockNumber.toString();
         const supply = await this.api.rpc.escrow.totalSupply(maybeBlockNumber);
         return newMonetaryAmount(supply.amount.toString(), toVoting(this.governanceCurrency));
     }
