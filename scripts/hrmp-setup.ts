@@ -7,6 +7,7 @@ import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
 
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { assert } from "console";
+import { BN } from "bn.js";
 
 const readline = require("readline");
 const yargs = require("yargs/yargs");
@@ -42,7 +43,7 @@ const args = yargs(hideBin(process.argv))
     .option("action", {
         description: "The action to do",
         demandOption: true,
-        choices: ['request', 'accept', 'batched', 'statemin*'],
+        choices: ['request', 'accept', 'batched', 'statemin*', 'check-sovereign-balance'],
     })
     .option("xcm-fee", {
         description: "The amount to use for the xcm fee",
@@ -382,6 +383,41 @@ async function main(): Promise<void> {
             printExtrinsic("Statemin* xcm call", xcmStateminToRelay, args["parachain-endpoint"]);
             printExtrinsic("Relaychain::Transact", batchedTransact, args["relay-endpoint"]);
             printExtrinsic("Relaychain preimage", preimage, args["relay-endpoint"]);
+            break;
+        case "check-sovereign-balance":
+            console.log("querying...");
+            var relayToken = { Token: "DOT" };
+            var paraId = 2032;
+            var unit = 10000000000;
+            var sovereignAccount = '5Ec4AhPbMHQn55fjyQCTm5UHAzjSgtBFWBuieCK2DwbDqGSG'
+            if (args['with-defaults-of'] == 'kintsugi') {
+                relayToken = { Token: "KSM" };
+                paraId = 2092;
+                unit = 1000000000000;
+                sovereignAccount = '5Ec4AhNv5VHwnnfJk1AWA3UtfV2oMeN1HDYmaSDPEd3nyXW4';
+            }
+
+            const issuance = new BN(await (await paraApi.query.tokens.totalIssuance(relayToken)).toString());
+
+            // // Check from hrmp items..
+            // var total = 0;
+            // const allChannels = await relayApi.query.hrmp.hrmpChannels.entries();
+            // allChannels.map(([rawKey, entry]) => {
+            //     const key = JSON.parse(rawKey.args[0].toString());
+            //     const parsed = JSON.parse(entry.toString());
+            //     if (key.sender == paraId) {
+            //         total += parsed.senderDeposit;
+            //     } else if (key.recipient == paraId) {
+            //         total += parsed.recipientDeposit;
+            //     }
+            // });
+            // console.log("total deposit:", total.toString());
+            const relayBalance = JSON.parse(await (await relayApi.query.system.account(sovereignAccount)).toString());
+            const free = new BN(relayBalance.data.free.replace(/0x/, ''), 16);
+            const surplus = free.sub(issuance); 
+            console.log("Issuance:", issuance.toString());
+            console.log("Sovereign:", free.toString());
+            console.log("Surplus:", surplus.toString(), "planck, or", (surplus.toNumber()/unit).toString());
             break;
     }
 
