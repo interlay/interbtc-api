@@ -5,13 +5,14 @@ import Big from "big.js";
 import { PoolType, LPToken, PooledCurrencies } from "../types";
 import { LiquidityPoolBase } from "./types";
 
+// SOURCE: @zenlink-dex/sdk-core
 class StableLiquidityPool implements LiquidityPoolBase {
     public type = PoolType.STABLE;
     constructor(
         public lpToken: LPToken,
         public pooledCurrencies: PooledCurrencies,
         public apr: string,
-        public tradingFee: Big,
+        public tradingFee: Big, // Decimal point
         public poolId: number,
         public A: Big,
         public totalSupply: MonetaryAmount<LPToken>
@@ -23,6 +24,12 @@ class StableLiquidityPool implements LiquidityPoolBase {
 
     private _distance(x: Big, y: Big): Big {
         return x.sub(y).abs();
+    }
+
+    private get _feePerToken(): Big {
+        const nCoins = Big(this.pooledCurrencies.length);
+
+        return this.tradingFee.mul(nCoins).div(nCoins.sub(1).mul(4));
     }
 
     private _getD(amountsInBaseDenomination: Array<Big>, amp: Big): Big {
@@ -58,15 +65,79 @@ class StableLiquidityPool implements LiquidityPoolBase {
         throw new Error("_getD: Calculation error.");
     }
 
-    public getTokenIndex(currency: CurrencyExt): number {
-        return this.pooledCurrencies.findIndex(({ currency: pooledCurrency }) =>
-            isCurrencyEqual(currency, pooledCurrency)
-        );
+    private _getY(inIndex: number, outIndex: number, inBalance: Big, normalizedBalances: Array<Big>): Big {
+        const nCoins = this.pooledCurrencies.length;
+        if (inIndex === outIndex) {
+            throw new Error("_getY: inIndex and outIndex must be different");
+        }
+        if (inIndex >= nCoins || outIndex >= nCoins) {
+            throw new Error("_getY: Index out of range.");
+        }
+
+        const amp = this.A;
+        const Ann = amp.mul(nCoins);
+        const D = this._getD(normalizedBalances, amp);
+
+        let sum = Big(0);
+        let c = D;
+
+        for (let i = 0; i < nCoins; i++) {
+            if (i === outIndex) continue;
+            const x = i === inIndex ? inBalance : normalizedBalances[i];
+
+            sum = sum.add(x);
+            c = c.mul(D).div(x.mul(nCoins));
+        }
+
+        c = c.mul(D).div(Ann.mul(nCoins));
+        const b = sum.add(D.div(Ann));
+
+        let lastY = Big(0);
+        let y = D;
+
+        for (let i = 0; i < 255; i++) {
+            lastY = y;
+            y = y.mul(y).add(c).div(y.mul(2).add(b).sub(D));
+            if (this._distance(lastY, y).lte(1)) {
+                return y;
+            }
+        }
+
+        throw new Error("_getY: Calculation error.");
     }
 
-    // TODO: rename to 'currenciesInBaseDenomination'
-    public get xp(): Array<Big> {
-        return this._xp(this.pooledCurrencies);
+    private _getYD(A: Big, index: number, xp: Array<Big>, D: Big): Big {
+        const nCoins = this.pooledCurrencies.length;
+
+        if (index >= nCoins) {
+            throw new Error("_getYD: Index out of range.");
+        }
+        const Ann = A.mul(Big(nCoins));
+        let c = D;
+        let s = Big(0);
+        let _x = Big(0);
+        let yPrev = Big(0);
+
+        for (let i = 0; i < nCoins; i++) {
+            if (i === index) continue;
+            _x = xp[i];
+            s = s.add(_x);
+            c = c.mul(D).div(_x.mul(Big(nCoins)));
+        }
+
+        c = c.mul(D).div(Ann.mul(Big(nCoins)));
+        const b = s.add(D.div(Ann));
+        let y = D;
+
+        for (let i = 0; i < 255; i++) {
+            yPrev = y;
+            y = y.mul(y).add(c).div(y.mul(2).add(b).sub(D));
+            if (this._distance(yPrev, y).lte(1)) {
+                return y;
+            }
+        }
+
+        throw new Error("_getYD: Calculation error.");
     }
 
     /**
@@ -76,7 +147,7 @@ class StableLiquidityPool implements LiquidityPoolBase {
      * @returns Amounts containing currency amounts at the same index as `this.pooledCurrencies`
      * @throws When currencies of `amounts` differ from `pooledCurrencies`
      */
-    _sortAmounts(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<MonetaryAmount<CurrencyExt>> {
+    private _sortAmounts(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<MonetaryAmount<CurrencyExt>> {
         if (amounts.length !== this.pooledCurrencies.length) {
             throw new Error(
                 "StableLiquidityPool: _sortAmounts: Amounts count is different from pooledCurrencies count."
@@ -100,6 +171,21 @@ class StableLiquidityPool implements LiquidityPoolBase {
             sortedAmounts[indexToSave] = amount;
         }
         return sortedAmounts;
+    }
+
+    public involvesToken(currency: CurrencyExt): boolean {
+        return this.pooledCurrencies.some(({ currency: pooledCurrency }) => isCurrencyEqual(pooledCurrency, currency));
+    }
+
+    public getTokenIndex(currency: CurrencyExt): number {
+        return this.pooledCurrencies.findIndex(({ currency: pooledCurrency }) =>
+            isCurrencyEqual(currency, pooledCurrency)
+        );
+    }
+
+    // TODO: rename to 'currenciesInBaseDenomination'
+    public get xp(): Array<Big> {
+        return this._xp(this.pooledCurrencies);
     }
 
     // TODO: rename to something like `calculateLiquidityDeposit`
@@ -138,8 +224,40 @@ class StableLiquidityPool implements LiquidityPoolBase {
         tokenLPAmount: MonetaryAmount<LPToken>,
         outputCurrencyIndex: number
     ): [MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>] {
-        //TODO
-        throw new Error("Method not implemented.");
+        if (outputCurrencyIndex >= this.pooledCurrencies.length) {
+            throw new Error("StableLiquidityPool: calculateRemoveLiquidityOneToken: Currency index out of range.");
+        }
+
+        const amp = this.A;
+        const xp = this.xp;
+        const D0 = this._getD(xp, amp);
+        const D1 = D0.sub(tokenLPAmount.toBig().mul(D0).div(this.totalSupply.toBig()));
+        const newY = this._getYD(amp, outputCurrencyIndex, xp, D1);
+        const reducedXP = xp;
+        const _fee = this._feePerToken;
+
+        for (let i = 0; i < this.pooledCurrencies.length; i++) {
+            let expectedDx = Big(0);
+
+            if (i === outputCurrencyIndex) {
+                expectedDx = xp[i].mul(D1).div(D0).sub(newY);
+            } else {
+                expectedDx = xp[i].sub(xp[i].mul(D1).div(D0));
+            }
+
+            reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx));
+        }
+
+        let dy = reducedXP[outputCurrencyIndex].sub(this._getYD(amp, outputCurrencyIndex, reducedXP, D1));
+
+        // TODO: check validity of this
+        dy = dy.sub(1);
+        const fee = xp[outputCurrencyIndex].sub(newY).sub(dy);
+
+        return [
+            new MonetaryAmount(this.pooledCurrencies[outputCurrencyIndex].currency, dy),
+            new MonetaryAmount(this.pooledCurrencies[outputCurrencyIndex].currency, fee),
+        ];
     }
 
     public calculateSwap(
@@ -147,8 +265,15 @@ class StableLiquidityPool implements LiquidityPoolBase {
         outputIndex: number,
         inputAmount: MonetaryAmount<CurrencyExt>
     ): MonetaryAmount<CurrencyExt> {
-        // TODO
-        throw new Error("Method not implemented.");
+        const normalizedBalances = this.xp;
+        const newInBalance = normalizedBalances[inputIndex].add(inputAmount.toBig());
+
+        const outBalance = this._getY(inputIndex, outputIndex, newInBalance, normalizedBalances);
+        // TODO: check validity of sub(1)
+        const outAmount = normalizedBalances[outputIndex].sub(outBalance).sub(1);
+        const fee = this.tradingFee.mul(outAmount);
+
+        return new MonetaryAmount(this.pooledCurrencies[outputIndex].currency, outAmount.sub(fee));
     }
 }
 

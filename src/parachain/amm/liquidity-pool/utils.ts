@@ -3,7 +3,7 @@ import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { isStablePlainMultiPathElement, MultiPathElementStable } from "../trade/types";
 import { StableLiquidityPool } from "./stable";
-import { isStandardPool, LiquidityPool, TradingPair } from "./types";
+import { isStablePool, isStandardPool, LiquidityPool, TradingPair } from "./types";
 
 /**
  * Get all trading pairs based on provided pools.
@@ -12,12 +12,14 @@ import { isStandardPool, LiquidityPool, TradingPair } from "./types";
  * @returns {Array<TradingPair>} All trading pairs.
  */
 const getAllTradingPairs = (pools: Array<LiquidityPool>): Array<TradingPair> => {
+    const stablePools = pools.filter(isStablePool);
     const pairs: Array<TradingPair> = [];
+
     pools.forEach((pool) => {
         if (isStandardPool(pool)) {
             pairs.push(pool);
         } else {
-            const stablePairs = convertStablePoolToTradingPairs(pool);
+            const stablePairs = convertStablePoolToTradingPairs(pool, stablePools);
             pairs.push(...stablePairs);
         }
     });
@@ -25,9 +27,36 @@ const getAllTradingPairs = (pools: Array<LiquidityPool>): Array<TradingPair> => 
     return pairs;
 };
 
-const convertStablePoolToTradingPairs = (pool: StableLiquidityPool): Array<TradingPair> => {
-    // TODO
-    return [];
+const convertStablePoolToTradingPairs = (
+    pool: StableLiquidityPool,
+    stablePools: Array<StableLiquidityPool>
+): Array<TradingPair> => {
+    const pairs: Array<TradingPair> = [];
+    const relatedSwaps = stablePools.filter((otherPool) => otherPool.involvesToken(pool.lpToken));
+
+    for (let j = 0; j < pool.pooledCurrencies.length; j++) {
+        for (let k = j + 1; k < pool.pooledCurrencies.length; k++) {
+            const token0 = pool.pooledCurrencies[j];
+            const token1 = pool.pooledCurrencies[k];
+
+            pairs.push(convertPoolToAbstractPair(pool, token0, token1));
+        }
+
+        if (!relatedSwaps.length) continue;
+
+        for (const otherSwap of relatedSwaps) {
+            for (const token of otherSwap.pooledCurrencies) {
+                if (token.equals(pool.lpToken)) continue;
+
+                const token0 = pool.pooledCurrencies[j];
+                const token1 = token;
+
+                pairs.push(convertPoolAndBaseToAbstractPair(pool, otherSwap, token0, token1));
+            }
+        }
+    }
+
+    return pairs;
 };
 
 // SOURCE: @zenlink-dex/sdk
