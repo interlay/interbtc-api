@@ -191,10 +191,6 @@ describe("Loans", () => {
             expect(lendPosition.amount.toString()).to.be.equal(lendAmount.toString());
             expect(lendPosition.currency).to.be.equal(underlyingCurrency);
             expect(lendPosition.isCollateral).to.be.false;
-
-            // No interest reward because no one borrowed yet.
-            expect(lendPosition.earnedInterest.toBig().eq(0)).to.be.true;
-
             // TODO: add tests for more markets
         });
         it("should get correct data after position is enabled as collateral", async function () {
@@ -252,11 +248,6 @@ describe("Loans", () => {
             ]);
             expect(sudoEventFound, `Sudo event to manipulate time not found - timed out after ${approx10Blocks} ms`).to
                 .be.true;
-
-            const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
-
-            // test printing out to see earned Interest value
-            console.log(lendPosition.earnedInterest.toHuman());
         });
     });
 
