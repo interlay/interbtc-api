@@ -9,7 +9,6 @@ interface LoanPosition {
 
 interface LendPosition extends LoanPosition {
     isCollateral: boolean;
-    earnedInterest: MonetaryAmount<CurrencyExt>;
 }
 
 interface BorrowPosition extends LoanPosition {

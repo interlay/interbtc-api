@@ -274,7 +274,7 @@ export class DefaultLoansAPI implements LoansAPI {
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<LendPosition | null> {
-        const [underlyingCurrencyAmount, lendTokenAmount] = await this.getLendPositionAmounts(
+        const [underlyingCurrencyAmount] = await this.getLendPositionAmounts(
             accountId,
             lendTokenId,
             underlyingCurrencyId
@@ -284,21 +284,11 @@ export class DefaultLoansAPI implements LoansAPI {
             return null;
         }
 
-        const [accountEarned, accountDeposits, currentMarketStatus] = await Promise.all([
-            this.api.query.loans.accountEarned(underlyingCurrencyId, accountId),
-            this.api.query.loans.accountDeposits(lendTokenId, accountId),
-            this.api.rpc.loans.getMarketStatus(underlyingCurrencyId),
-        ]);
-
-        const startingExchangeRate = decodeFixedPointType(accountEarned.exchangeRatePrior);
-        const currentExchangeRate = decodeFixedPointType(currentMarketStatus[2]);
-        const earnedPrior = decodeFixedPointType(accountEarned.totalEarnedPrior);
-        const earnedInterest = currentExchangeRate.sub(startingExchangeRate).mul(lendTokenAmount).add(earnedPrior);
+        const accountDeposits = await this.api.query.loans.accountDeposits(lendTokenId, accountId);
 
         const isCollateral = !accountDeposits.isZero();
 
         return {
-            earnedInterest: newMonetaryAmount(earnedInterest, underlyingCurrency),
             currency: underlyingCurrency,
             amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
             isCollateral,
