@@ -1,7 +1,13 @@
 import { CurrencyExt } from "../../../types";
 import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { isStablePlainMultiPathElement, MultiPathElementStable } from "../trade/types";
+import {
+    isStablePlainMultiPathElement,
+    MultiPathElementStable,
+    MultiPathElementStableMeta,
+    MultiPathElementStablePlain,
+    MultiPathElementType,
+} from "../trade/types";
 import { StableLiquidityPool } from "./stable";
 import { isStablePool, isStandardPool, LiquidityPool, TradingPair } from "./types";
 
@@ -27,31 +33,87 @@ const getAllTradingPairs = (pools: Array<LiquidityPool>): Array<TradingPair> => 
     return pairs;
 };
 
+function generateOutputFunction<Path extends MultiPathElementStable>(pathOf: (currency: CurrencyExt) => Path) {
+    return (inputAmount: MonetaryAmount<CurrencyExt>): MonetaryAmount<CurrencyExt> =>
+        getStableSwapOutputAmount(pathOf(inputAmount.currency), inputAmount);
+}
+
+function convertPoolToTradingPair(pool: StableLiquidityPool, token0: CurrencyExt, token1: CurrencyExt): TradingPair {
+    if (!(pool.involvesToken(token0) && pool.involvesToken(token1))) {
+        throw new Error("converPoolToTradingPair: provided currencies are not part of pool.");
+    }
+
+    const pathOf = (currency: CurrencyExt): MultiPathElementStablePlain => ({
+        type: MultiPathElementType.STABLE_PLAIN,
+        input: currency,
+        output: isCurrencyEqual(currency, token0) ? token1 : token0,
+        pool: pool,
+    });
+
+    return {
+        token0,
+        token1,
+        reserve0: pool.pooledCurrencies[pool.getTokenIndex(token0)],
+        reserve1: pool.pooledCurrencies[pool.getTokenIndex(token1)],
+        getOutputAmount: generateOutputFunction(pathOf),
+        pathOf,
+    };
+}
+
+function convertPoolAndBaseToTradingPair(
+    basePool: StableLiquidityPool,
+    pool: StableLiquidityPool,
+    token0: CurrencyExt,
+    token1: CurrencyExt
+): TradingPair {
+    if (!(basePool.involvesToken(token0) && pool.involvesToken(token1))) {
+        throw new Error("converPoolAndBaseToTradingPair: incorrect tokens provided");
+    }
+
+    const pathOf = (currency: CurrencyExt): MultiPathElementStableMeta => ({
+        type: MultiPathElementType.STABLE_META,
+        input: currency,
+        output: isCurrencyEqual(currency, token0) ? token1 : token0,
+        pool: pool,
+        basePool: basePool,
+        fromBase: !!isCurrencyEqual(currency, token0),
+    });
+
+    return {
+        token0,
+        token1,
+        reserve0: basePool.pooledCurrencies[basePool.getTokenIndex(token0)],
+        reserve1: pool.pooledCurrencies[pool.getTokenIndex(token1)],
+        getOutputAmount: generateOutputFunction(pathOf),
+        pathOf,
+    };
+}
+
 const convertStablePoolToTradingPairs = (
     pool: StableLiquidityPool,
     stablePools: Array<StableLiquidityPool>
 ): Array<TradingPair> => {
     const pairs: Array<TradingPair> = [];
-    const relatedSwaps = stablePools.filter((otherPool) => otherPool.involvesToken(pool.lpToken));
+    const relatedPools = stablePools.filter((otherPool) => otherPool.involvesToken(pool.lpToken));
 
     for (let j = 0; j < pool.pooledCurrencies.length; j++) {
         for (let k = j + 1; k < pool.pooledCurrencies.length; k++) {
-            const token0 = pool.pooledCurrencies[j];
-            const token1 = pool.pooledCurrencies[k];
+            const token0 = pool.pooledCurrencies[j].currency;
+            const token1 = pool.pooledCurrencies[k].currency;
 
-            pairs.push(convertPoolToAbstractPair(pool, token0, token1));
+            pairs.push(convertPoolToTradingPair(pool, token0, token1));
         }
 
-        if (!relatedSwaps.length) continue;
+        if (!relatedPools.length) continue;
 
-        for (const otherSwap of relatedSwaps) {
-            for (const token of otherSwap.pooledCurrencies) {
-                if (token.equals(pool.lpToken)) continue;
+        for (const otherPool of relatedPools) {
+            for (const { currency } of otherPool.pooledCurrencies) {
+                if (isCurrencyEqual(currency, pool.lpToken)) continue;
 
-                const token0 = pool.pooledCurrencies[j];
-                const token1 = token;
+                const token0 = pool.pooledCurrencies[j].currency;
+                const token1 = currency;
 
-                pairs.push(convertPoolAndBaseToAbstractPair(pool, otherSwap, token0, token1));
+                pairs.push(convertPoolAndBaseToTradingPair(pool, otherPool, token0, token1));
             }
         }
     }

@@ -7,7 +7,6 @@ import { StableLiquidityPool } from "./stable";
 import { StandardLiquidityPool } from "./standard";
 
 interface TradingPair {
-    type: PoolType;
     token0: CurrencyExt;
     token1: CurrencyExt;
     reserve0: MonetaryAmount<CurrencyExt>;
