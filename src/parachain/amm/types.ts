@@ -6,9 +6,7 @@ enum PoolType {
     STABLE = "STABLE",
 }
 
-type LPToken = CurrencyExt; // TODO: specify when the currencies are refactored to have LP token type
-
 type PooledCurrencies = Array<MonetaryAmount<CurrencyExt>>;
 
 export { PoolType };
-export type { LPToken, PooledCurrencies };
+export type { PooledCurrencies };

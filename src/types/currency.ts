@@ -36,10 +36,14 @@ export type CollateralIdLiteral =
 const CollateralCurrency = [Polkadot, Kusama, Interlay, Kintsugi] as const;
 type CollateralCurrency = typeof CollateralCurrency[number];
 
-export type ForeignAsset = Currency & {foreignAsset: { id: number; coingeckoId: string }};
-export type LendToken = Currency & {lendToken: { id: number }}; 
+export type ForeignAsset = Currency & { foreignAsset: { id: number; coingeckoId: string } };
+export type LendToken = Currency & { lendToken: { id: number } };
+export type StandardLPToken = Currency & { lpToken: { token0: CurrencyExt; token1: CurrencyExt } };
+export type StableLPToken = Currency & { stableLpToken: { poolId: number } };
+
+export type LPToken = StandardLPToken | StableLPToken;
 export type CollateralCurrencyExt = CollateralCurrency | ForeignAsset | LendToken;
-export type CurrencyExt = Currency | ForeignAsset | LendToken;
+export type CurrencyExt = Currency | ForeignAsset | LendToken | LPToken;
 
 export const WrappedCurrency = [InterBtc, KBtc];
 export type WrappedCurrency = typeof WrappedCurrency[number];
@@ -59,16 +63,16 @@ export type StakedBalance = {
 };
 
 type NativeCurrencyIdentifier = {
-    token: string
-}
+    token: string;
+};
 
 type ForeignAssetIdentifier = {
-    foreignAsset: number
-}
+    foreignAsset: number;
+};
 
 type LendTokenIdentifier = {
-    lendToken: number
-}
+    lendToken: number;
+};
 
 export type CurrencyIdentifier = NativeCurrencyIdentifier | ForeignAssetIdentifier | LendTokenIdentifier;
 

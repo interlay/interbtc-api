@@ -1,21 +1,21 @@
-import { CurrencyExt } from "../../../types";
+import { CurrencyExt, StableLPToken } from "../../../types";
 import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { PoolType, LPToken, PooledCurrencies } from "../types";
+import { PoolType, PooledCurrencies } from "../types";
 import { LiquidityPoolBase } from "./types";
 
 // SOURCE: @zenlink-dex/sdk-core
 class StableLiquidityPool implements LiquidityPoolBase {
     public type = PoolType.STABLE;
     constructor(
-        public lpToken: LPToken,
+        public lpToken: StableLPToken,
         public pooledCurrencies: PooledCurrencies,
         public apr: string,
         public tradingFee: Big, // Decimal point
         public poolId: number,
         public A: Big,
-        public totalSupply: MonetaryAmount<LPToken>
+        public totalSupply: MonetaryAmount<StableLPToken>
     ) {}
 
     private _xp(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<Big> {
@@ -221,7 +221,7 @@ class StableLiquidityPool implements LiquidityPoolBase {
     }
 
     public calculateRemoveLiquidityOneToken(
-        tokenLPAmount: MonetaryAmount<LPToken>,
+        tokenLPAmount: MonetaryAmount<StableLPToken>,
         outputCurrencyIndex: number
     ): [MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>] {
         if (outputCurrencyIndex >= this.pooledCurrencies.length) {

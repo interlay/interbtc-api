@@ -1,9 +1,9 @@
-import { CurrencyExt } from "../../../types";
+import { CurrencyExt, StandardLPToken } from "../../../types";
 import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { MultiPathElementStandard, MultiPathElementType } from "../trade/types";
-import { PoolType, LPToken, PooledCurrencies } from "../types";
+import { PoolType, PooledCurrencies } from "../types";
 import { LiquidityPoolBase, TradingPair } from "./types";
 
 class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
@@ -13,10 +13,11 @@ class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
     public reserve0: MonetaryAmount<CurrencyExt>;
     public reserve1: MonetaryAmount<CurrencyExt>;
     constructor(
-        public lpToken: LPToken,
+        public lpToken: StandardLPToken,
         public pooledCurrencies: PooledCurrencies,
         public apr: string,
-        public tradingFee: Big
+        public tradingFee: Big,
+        public isTradingActive: boolean // True if in `Trading` state, false if in `Bootstrap` state
     ) {
         if (pooledCurrencies.length !== 2) {
             throw new Error("Standard liquidity pool has to always consist of 2 currencies!");

@@ -1,8 +1,8 @@
-import { CurrencyExt } from "../../../types";
+import { LPToken, CurrencyExt } from "../../../types";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { MultiPathElement } from "../trade/types";
-import { PoolType, LPToken, PooledCurrencies } from "../types";
+import { PoolType, PooledCurrencies } from "../types";
 import { StableLiquidityPool } from "./stable";
 import { StandardLiquidityPool } from "./standard";
 

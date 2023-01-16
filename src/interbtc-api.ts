@@ -175,7 +175,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.assetRegistry,
             this.loans
         );
-        this.AMM = new DefaultAMMAPI(api);
+        this.AMM = new DefaultAMMAPI(api, this.assetRegistry, this.loans, this.tokens, this.transactionAPI);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

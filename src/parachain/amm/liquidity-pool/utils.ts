@@ -1,4 +1,4 @@
-import { CurrencyExt } from "../../../types";
+import { CurrencyExt, StableLPToken } from "../../../types";
 import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import {
@@ -23,7 +23,10 @@ const getAllTradingPairs = (pools: Array<LiquidityPool>): Array<TradingPair> => 
 
     pools.forEach((pool) => {
         if (isStandardPool(pool)) {
-            pairs.push(pool);
+            // Exclude pool in Bootstrap status
+            if (pool.isTradingActive) {
+                pairs.push(pool);
+            }
         } else {
             const stablePairs = convertStablePoolToTradingPairs(pool, stablePools);
             pairs.push(...stablePairs);
@@ -150,14 +153,14 @@ const calculateStableSwapToBase = (
     basePool: StableLiquidityPool,
     tokenIndexFrom: number,
     tokenIndexTo: number,
-    amount: MonetaryAmount<CurrencyExt>
+    amount: MonetaryAmount<StableLPToken>
 ): MonetaryAmount<CurrencyExt> => {
     const baseToken = basePool.lpToken;
     const baseTokenIndex = pool.getTokenIndex(baseToken);
     let tokenLPAmount = amount;
 
     if (baseTokenIndex !== tokenIndexFrom) {
-        tokenLPAmount = pool.calculateSwap(tokenIndexFrom, baseTokenIndex, amount);
+        tokenLPAmount = pool.calculateSwap(tokenIndexFrom, baseTokenIndex, amount) as MonetaryAmount<StableLPToken>;
     }
 
     return basePool.calculateRemoveLiquidityOneToken(tokenLPAmount, tokenIndexTo)[0];
@@ -186,7 +189,13 @@ const getStableSwapOutputAmount = (
         const fromIndex = path.pool.getTokenIndex(path.input);
         const toIndex = path.basePool.getTokenIndex(path.output);
 
-        outputAmount = calculateStableSwapToBase(path.pool, path.basePool, fromIndex, toIndex, inputAmount);
+        outputAmount = calculateStableSwapToBase(
+            path.pool,
+            path.basePool,
+            fromIndex,
+            toIndex,
+            inputAmount as MonetaryAmount<StableLPToken>
+        );
     }
 
     return outputAmount;
