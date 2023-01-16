@@ -14,17 +14,20 @@ import { TokensAPI } from "./tokens";
 import { InterbtcPrimitivesCurrencyId } from "../interfaces";
 import { CurrencyExt, LPToken, StableLPToken, StandardLPToken } from "../types";
 import { currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
-import { StandardLiquidityPool } from "./amm/liquidity-pool/standard";
-import { LiquidityPool } from "./amm/liquidity-pool/types";
-import { getAllTradingPairs } from "./amm/liquidity-pool/utils";
-import { Trade } from "./amm/trade/trade";
-import { PooledCurrencies, PoolType } from "./amm/types";
-import { findBestTradeRecursively } from "./amm/utils";
 import { AssetRegistryAPI } from "./asset-registry";
 import { LoansAPI } from "./loans";
 import { TransactionAPI } from "./transaction";
 import Big from "big.js";
-import { StableLiquidityPool } from "./amm/liquidity-pool/stable";
+import {
+    LiquidityPool,
+    Trade,
+    PooledCurrencies,
+    PoolType,
+    getAllTradingPairs,
+    findBestTradeRecursively,
+    StandardLiquidityPool,
+    StableLiquidityPool,
+} from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
 
