@@ -29,6 +29,7 @@ import {
     tokenSymbolToCurrency,
 } from ".";
 import { AssetRegistryAPI } from "./parachain/asset-registry";
+import { AMMAPI, DefaultAMMAPI } from "./parachain/amm";
 
 export * from "./factory";
 export * from "./parachain/transaction";
@@ -62,6 +63,7 @@ export interface InterBtcApi {
     readonly escrow: EscrowAPI;
     readonly assetRegistry: AssetRegistryAPI;
     readonly loans: LoansAPI;
+    readonly amm: AMMAPI;
     setAccount(account: AddressOrPair, signer?: Signer): void;
     removeAccount(): void;
     readonly account: AddressOrPair | undefined;
@@ -89,6 +91,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
     public readonly escrow: EscrowAPI;
     public readonly assetRegistry: AssetRegistryAPI;
     public readonly loans: LoansAPI;
+    public readonly amm: AMMAPI;
     private transactionAPI: TransactionAPI;
 
     constructor(
@@ -172,6 +175,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.assetRegistry,
             this.loans
         );
+        this.amm = new DefaultAMMAPI(api, this.assetRegistry, this.loans, this.tokens, this.transactionAPI);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

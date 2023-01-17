@@ -15,7 +15,14 @@ import {
     VoteKintsugi,
 } from "@interlay/monetary-js";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt, LendToken, CurrencyIdentifier } from "../types/currency";
+import {
+    GovernanceCurrency,
+    CurrencyExt,
+    ForeignAsset,
+    CollateralCurrencyExt,
+    LendToken,
+    CurrencyIdentifier,
+} from "../types/currency";
 import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { newCurrencyId, storageKeyToNthInner } from "./encoding";
@@ -57,9 +64,13 @@ export function atomicToBaseAmount(atomicAmount: BigSource, currency: Currency):
     return new Big(atomicAmount).div(new Big(10).pow(currency.decimals));
 }
 
-export function newMonetaryAmount(amount: BigSource, currency: CurrencyExt, base = false): MonetaryAmount<CurrencyExt> {
+export function newMonetaryAmount<CurrencyT extends CurrencyExt>(
+    amount: BigSource,
+    currency: CurrencyT,
+    base = false
+): MonetaryAmount<CurrencyT> {
     const finalAmount = base ? new Big(amount) : atomicToBaseAmount(amount, currency);
-    return new MonetaryAmount<CurrencyExt>(currency, finalAmount);
+    return new MonetaryAmount<CurrencyT>(currency, finalAmount);
 }
 
 export function newCollateralBTCExchangeRate(
@@ -165,6 +176,7 @@ export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier
     return { token: currency.ticker };
 }
 
+// TODO: add StandardLpToken and StableLpToken
 export async function currencyIdToMonetaryCurrency(
     assetRegistryApi: AssetRegistryAPI,
     loansApi: LoansAPI,
