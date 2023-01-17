@@ -1,4 +1,4 @@
-import { CurrencyExt, StableLPToken } from "../../../types";
+import { CurrencyExt, StableLpToken } from "../../../types";
 import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import {
@@ -153,14 +153,14 @@ const calculateStableSwapToBase = (
     basePool: StableLiquidityPool,
     tokenIndexFrom: number,
     tokenIndexTo: number,
-    amount: MonetaryAmount<StableLPToken>
+    amount: MonetaryAmount<StableLpToken>
 ): MonetaryAmount<CurrencyExt> => {
     const baseToken = basePool.lpToken;
     const baseTokenIndex = pool.getTokenIndex(baseToken);
     let tokenLPAmount = amount;
 
     if (baseTokenIndex !== tokenIndexFrom) {
-        tokenLPAmount = pool.calculateSwap(tokenIndexFrom, baseTokenIndex, amount) as MonetaryAmount<StableLPToken>;
+        tokenLPAmount = pool.calculateSwap(tokenIndexFrom, baseTokenIndex, amount) as MonetaryAmount<StableLpToken>;
     }
 
     return basePool.calculateRemoveLiquidityOneToken(tokenLPAmount, tokenIndexTo)[0];
@@ -194,7 +194,7 @@ const getStableSwapOutputAmount = (
             path.basePool,
             fromIndex,
             toIndex,
-            inputAmount as MonetaryAmount<StableLPToken>
+            inputAmount as MonetaryAmount<StableLpToken>
         );
     }
 

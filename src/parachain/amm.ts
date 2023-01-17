@@ -12,7 +12,7 @@ import {
 } from "@polkadot/types/lookup";
 import { TokensAPI } from "./tokens";
 import { InterbtcPrimitivesCurrencyId } from "../interfaces";
-import { CurrencyExt, LPToken, StableLPToken, StandardLPToken } from "../types";
+import { CurrencyExt, LpToken, StableLpToken, StandardLpToken } from "../types";
 import { currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI } from "./asset-registry";
 import { LoansAPI } from "./loans";
@@ -36,17 +36,17 @@ export interface AMMAPI {
      * Get standard LP token currency lib type from currencyId primitive.
      *
      * @param currencyId Id of standard LP token.
-     * @returns {StandardLPToken} Lib type currency object for standard LP token.
+     * @returns {StandardLpToken} Lib type currency object for standard LP token.
      */
-    getStandardLPToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StandardLPToken>;
+    getStandardLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StandardLpToken>;
 
     /**
      * Get stable LP token currency lib type from currencyId primitive.
      *
      * @param currencyId Id of stable LP token.
-     * @returns {StableLPToken} Lib type currency object for stable LP token.
+     * @returns {StableLpToken} Lib type currency object for stable LP token.
      */
-    getStableLPToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StableLPToken>;
+    getStableLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StableLpToken>;
     /**
      * Get optimal trade for provided trade type and amount.
      *
@@ -73,7 +73,7 @@ export interface AMMAPI {
         poolType: PoolType,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<{
-        minLPTokens: MonetaryAmount<LPToken>;
+        minLpTokens: MonetaryAmount<LpToken>;
         slippage: number; // can be negative for slippage bonus
     }>;
 
@@ -84,7 +84,7 @@ export interface AMMAPI {
      * @param customCurrenciesProportion Optional parameter to specify custom proportion of currencies to withdraw.
      */
     getExpectedLiquidityWithdrawalAmounts(
-        amount: MonetaryAmount<LPToken>,
+        amount: MonetaryAmount<LpToken>,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<{
         expectedPooledCurrencyAmounts: MonetaryAmount<CurrencyExt>;
@@ -95,10 +95,10 @@ export interface AMMAPI {
      * Get liquidity provided by account.
      *
      * @param {AccountId} accountId Account to get provided liquidity information about.
-     * @returns {Promise<Array<MonetaryAmount<LPToken>>>} Array of LP token amounts that represent
+     * @returns {Promise<Array<MonetaryAmount<LpToken>>>} Array of LP token amounts that represent
      *          account's positions in respective liquidity pools.
      */
-    getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LPToken>>>;
+    getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpToken>>>;
 
     /**
      * Get all liquidity pools.
@@ -133,14 +133,14 @@ export interface AMMAPI {
     /**
      * Removes liquidity from pool.
      *
-     * @param {MonetaryAmount<LPToken>} amount Amount of LP token to be removed
+     * @param {MonetaryAmount<LpToken>} amount Amount of LP token to be removed
      * @param {LiquidityPool} pool Liquidity pool to remove from.
      * @param customCurrenciesProportion Optional parameter that allows to specify proportion
      *        of pooled currencies in which the liquidity should be withdrawn.
      * @note Removes `amount` of liquidity in LP token, breaks it down and transfers to account.
      */
     removeLiquidity(
-        amount: MonetaryAmount<LPToken>,
+        amount: MonetaryAmount<LpToken>,
         pool: LiquidityPool,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<void>;
@@ -174,7 +174,7 @@ export class DefaultAMMAPI implements AMMAPI {
         poolType: PoolType,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<{
-        minLPTokens: MonetaryAmount<LPToken>;
+        minLpTokens: MonetaryAmount<LpToken>;
         slippage: number; // can be negative for slippage bonus
     }> {
         throw new Error("Method not implemented.");
@@ -190,11 +190,11 @@ export class DefaultAMMAPI implements AMMAPI {
         throw new Error("Method not implemented.");
     }
 
-    public async getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LPToken>>> {
+    public async getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpToken>>> {
         throw new Error("Method not implemented.");
     }
 
-    public async getStandardLPToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StandardLPToken> {
+    public async getStandardLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StandardLpToken> {
         if (!currencyId.isLpToken) {
             throw new Error("Provided currencyId is not standard LP token.");
         }
@@ -220,10 +220,10 @@ export class DefaultAMMAPI implements AMMAPI {
         };
     }
 
-    private _getStableLPTokenFromPoolData(
+    private _getStableLpTokenFromPoolData(
         poolId: number,
         basePoolData: ZenlinkStableAmmPrimitivesBasePool
-    ): StableLPToken {
+    ): StableLpToken {
         const [ticker, decimals] = [
             basePoolData.lpCurrencySymbol.toString(),
             basePoolData.lpCurrencyDecimal.toNumber(),
@@ -239,19 +239,19 @@ export class DefaultAMMAPI implements AMMAPI {
         };
     }
 
-    public async getStableLPToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StableLPToken> {
+    public async getStableLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StableLpToken> {
         if (!currencyId.isStableLpToken) {
             throw new Error("Provided currencyId is not stable LP token.");
         }
 
         const poolId = await this.api.query.zenlinkStableAmm.lpCurrencies(currencyId);
         if (!poolId.isSome) {
-            throw new Error(`getStableLPToken: Invalid pool id for currencyId ${currencyId.toString()}`);
+            throw new Error(`getStableLpToken: Invalid pool id for currencyId ${currencyId.toString()}`);
         }
 
         const poolData = await this.api.query.zenlinkStableAmm.pools(poolId.unwrap());
         if (!poolData.isSome) {
-            throw new Error(`getStableLPToken: Invalid pool data for currencyId ${currencyId.toString()}`);
+            throw new Error(`getStableLpToken: Invalid pool data for currencyId ${currencyId.toString()}`);
         }
 
         const basePoolData = this._getStableBasePool(poolData.unwrap());
@@ -259,7 +259,7 @@ export class DefaultAMMAPI implements AMMAPI {
             throw new Error("Provided currencyId is not active LP token.");
         }
 
-        return this._getStableLPTokenFromPoolData(poolId.unwrap().toNumber(), basePoolData);
+        return this._getStableLpTokenFromPoolData(poolId.unwrap().toNumber(), basePoolData);
     }
 
     private async _getStandardPoolReserveBalances<Currency0 extends CurrencyExt, Currency1 extends CurrencyExt>(
@@ -308,7 +308,7 @@ export class DefaultAMMAPI implements AMMAPI {
         );
 
         const [lpToken, pooledCurrencies, apr, tradingFee] = await Promise.all([
-            this.getStandardLPToken(lpTokenCurrencyId),
+            this.getStandardLpToken(lpTokenCurrencyId),
             this._getStandardPoolReserveBalances(token0, token1, pairAccount),
             this._getStandardPoolAPR(pairCurrencies),
             this._getStandardPoolTradingFee(pairCurrencies),
@@ -388,7 +388,7 @@ export class DefaultAMMAPI implements AMMAPI {
             poolBase.lpCurrencyId,
         ];
 
-        const lpToken = this._getStableLPTokenFromPoolData(poolId, poolBase);
+        const lpToken = this._getStableLpTokenFromPoolData(poolId, poolBase);
 
         const [pooledCurrencies, apr, A, totalSupply] = await Promise.all([
             this._getStablePoolPooledCurrencies(pooledCurrencyIds, pooledCurrencyBalances),
@@ -427,17 +427,20 @@ export class DefaultAMMAPI implements AMMAPI {
         deadline: number | string
     ): Promise<void> {
         //TODO
+        throw new Error("Method not implemented.");
     }
 
     async addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void> {
         //TODO
+        throw new Error("Method not implemented.");
     }
 
     async removeLiquidity(
-        amount: MonetaryAmount<LPToken>,
+        amount: MonetaryAmount<LpToken>,
         pool: LiquidityPool,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<void> {
         //TODO
+        throw new Error("Method not implemented.");
     }
 }

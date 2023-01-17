@@ -176,7 +176,7 @@ export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier
     return { token: currency.ticker };
 }
 
-// TODO: add StandardLPToken and StableLPToken
+// TODO: add StandardLpToken and StableLpToken
 export async function currencyIdToMonetaryCurrency(
     assetRegistryApi: AssetRegistryAPI,
     loansApi: LoansAPI,

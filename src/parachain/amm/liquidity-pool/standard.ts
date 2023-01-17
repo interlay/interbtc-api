@@ -1,4 +1,4 @@
-import { CurrencyExt, StandardLPToken } from "../../../types";
+import { CurrencyExt, StandardLpToken } from "../../../types";
 import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
@@ -13,7 +13,7 @@ class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
     public reserve0: MonetaryAmount<CurrencyExt>;
     public reserve1: MonetaryAmount<CurrencyExt>;
     constructor(
-        public lpToken: StandardLPToken,
+        public lpToken: StandardLpToken,
         public pooledCurrencies: PooledCurrencies,
         public apr: string,
         public tradingFee: Big,
