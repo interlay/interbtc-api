@@ -4,7 +4,7 @@ import { AccountId } from "@polkadot/types/interfaces";
 import BN from "bn.js";
 import Big from "big.js";
 
-import { decodeFixedPointType, newCurrencyId, newMonetaryAmount, toVoting, estimateReward } from "../utils";
+import { decodeFixedPointType, newCurrencyId, newMonetaryAmount, toVoting, ATOMIC_UNIT } from "../utils";
 import { GovernanceCurrency, parseEscrowLockedBalance, StakedBalance, VotingCurrency } from "../types";
 import { SystemAPI } from "./system";
 import { TransactionAPI } from ".";
@@ -210,29 +210,38 @@ export class DefaultEscrowAPI implements EscrowAPI {
         amount: MonetaryAmount<GovernanceCurrency>;
         apy: Big;
     }> {
-        const [userStake, totalStake, blockReward, stakedBalance, currentBlockNumber, minimumBlockPeriod, maxPeriod] =
-            await Promise.all([
-                this.getEscrowStake(accountId),
-                this.getEscrowTotalStake(),
-                this.getRewardPerBlock(),
-                this.getStakedBalance(accountId),
-                this.systemAPI.getCurrentBlockNumber(),
-                this.api.consts.timestamp.minimumPeriod,
-                this.getMaxPeriod(),
-            ]);
+        const stakedBalance = await this.getStakedBalance(accountId);
 
-        return estimateReward(
-            this.governanceCurrency,
-            userStake,
-            totalStake,
-            blockReward,
-            stakedBalance,
-            currentBlockNumber,
-            minimumBlockPeriod.toNumber(),
-            maxPeriod.toNumber(),
-            amountToLock,
-            blockLockTimeExtension
+        let atomicStakedAmount: Big = stakedBalance.amount.toBig(ATOMIC_UNIT);
+
+        let nullableAmountToCheck: bigint | null = null;
+        if (amountToLock && !amountToLock.isZero()) {
+            atomicStakedAmount = atomicStakedAmount.add(amountToLock.toBig(ATOMIC_UNIT));
+            // get as bigint for the rpc api
+            nullableAmountToCheck = BigInt(atomicStakedAmount.toString());
+        }
+
+        let nullableBlockToEnd: bigint | null = null;
+        if (blockLockTimeExtension) {
+            const currentEndBlock = !stakedBalance.amount.isZero() ? BigInt(stakedBalance.endBlock) : BigInt(0);
+            nullableBlockToEnd = currentEndBlock + BigInt(blockLockTimeExtension);
+        }
+
+        const rawRewardRate = await this.api.rpc.reward.estimateEscrowRewardRate(
+            accountId,
+            nullableAmountToCheck,
+            nullableBlockToEnd
         );
+
+        // annual reward rate
+        const rewardRate = decodeFixedPointType(rawRewardRate);
+        // reward amount
+        const rewardAmount = newMonetaryAmount(atomicStakedAmount, this.governanceCurrency).mul(rewardRate);
+
+        return {
+            amount: rewardAmount,
+            apy: rewardRate.mul(100),
+        };
     }
 
     async getEscrowStake(accountId: AccountId): Promise<Big> {
