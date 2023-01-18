@@ -80,7 +80,7 @@ export class DefaultFeeAPI implements FeeAPI {
 
         const nativeCurrency = await currencyIdToMonetaryCurrency(
             this.assetRegistryAPI,
-            this.loansAPI,
+            this.api,
             this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId
         );
         const [griefingCollateralRate, griefingAmount] = await Promise.all([

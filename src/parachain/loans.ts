@@ -49,14 +49,6 @@ export interface LoansAPI {
     getLoanAssets(): Promise<TickerToData<LoanAsset>>;
 
     /**
-     * Get underlying currency of lend token id,
-     *
-     * @param lendTokenId Currency id of the lend token to get currency from
-     * @returns Underlying CurrencyExt for provided lend token
-     */
-    getUnderlyingCurrencyFromLendTokenId(lendTokenId: InterbtcPrimitivesCurrencyId): Promise<CurrencyExt>;
-
-    /**
      * Get all lend token currencies.
      *
      * @returns Array of all LendToken currencies.
@@ -199,18 +191,6 @@ export class DefaultLoansAPI implements LoansAPI {
         };
     }
 
-    async getUnderlyingCurrencyFromLendTokenId(lendTokenId: InterbtcPrimitivesCurrencyId): Promise<CurrencyExt> {
-        const underlyingCurrencyId = await this.api.query.loans.underlyingAssetId(lendTokenId);
-
-        const underlyingCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistryAPI,
-            this,
-            underlyingCurrencyId.unwrap()
-        );
-
-        return underlyingCurrency;
-    }
-
     async getLendTokenIdFromUnderlyingCurrency(currency: CurrencyExt): Promise<InterbtcPrimitivesCurrencyId> {
         const currencyId = newCurrencyId(this.api, currency);
         const { value } = await this.api.query.loans.markets(currencyId);
@@ -260,7 +240,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 const underlyingCurrencyId = storageKeyToNthInner(key);
                 const underlyingCurrency = await currencyIdToMonetaryCurrency(
                     this.assetRegistryAPI,
-                    this,
+                    this.api,
                     underlyingCurrencyId
                 );
                 return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, lendTokenId);

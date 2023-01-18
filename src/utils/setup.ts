@@ -213,11 +213,7 @@ async function main(params: InitializationParams): Promise<void> {
     const sudoAccountInterBtcApi = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
     const wrappedCurrency = sudoAccountInterBtcApi.getWrappedCurrency();
-    const collateralCurrencies = await getCollateralCurrencies(
-        sudoAccountInterBtcApi.api,
-        sudoAccountInterBtcApi.assetRegistry,
-        sudoAccountInterBtcApi.loans
-    );
+    const collateralCurrencies = await getCollateralCurrencies(sudoAccountInterBtcApi.api);
     // TODO: figure out if we want to initialize alternative collateral currencies (like KINT in additon to KSM), too?
     const collateralCurrency = collateralCurrencies[0];
 

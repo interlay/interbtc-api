@@ -14,6 +14,7 @@ import {
     VoteInterlay,
     VoteKintsugi,
 } from "@interlay/monetary-js";
+import { u32 } from "@polkadot/types";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 import {
     GovernanceCurrency,
@@ -22,15 +23,18 @@ import {
     CollateralCurrencyExt,
     LendToken,
     CurrencyIdentifier,
+    StandardLpToken,
+    StableLpToken,
 } from "../types/currency";
-import { ApiPromise } from "@polkadot/api";
 import { FeeEstimationType } from "../types/oracleTypes";
-import { newCurrencyId, storageKeyToNthInner } from "./encoding";
+import { decodeBytesAsString, newCurrencyId, newForeignAssetId, storageKeyToNthInner } from "./encoding";
 import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../interfaces";
-import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { DefaultAssetRegistryAPI } from "../parachain/asset-registry";
 import { Option } from "@polkadot/types/codec";
 import { u128 } from "@polkadot/types";
-import { DefaultLoansAPI, LoansAPI } from "../parachain";
+import { DefaultLoansAPI } from "../parachain";
+import { DefaultAMMAPI } from "../parachain/amm";
+import { ApiPromise } from "@polkadot/api";
 
 // set maximum exponents
 Big.PE = 21;
@@ -117,11 +121,7 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
  * @param loansAPI LoansAPI to fetch Lend Tokens if needed.
  * @returns An array of collateral currencies.
  */
-export async function getCollateralCurrencies(
-    api: ApiPromise,
-    assetRegistry: AssetRegistryAPI,
-    loansAPI: LoansAPI
-): Promise<Array<CollateralCurrencyExt>> {
+export async function getCollateralCurrencies(api: ApiPromise): Promise<Array<CollateralCurrencyExt>> {
     const collatCeilEntries = await api.query.vaultRegistry.systemCollateralCeiling.entries();
 
     const isOptionGreaterThanZero = (value: Option<u128>) =>
@@ -132,9 +132,7 @@ export async function getCollateralCurrencies(
         .map(([storageKey, _]) => storageKeyToNthInner(storageKey));
 
     return Promise.all(
-        collateralCurrencyPrimitives.map((currencyPair) =>
-            currencyIdToMonetaryCurrency(assetRegistry, loansAPI, currencyPair.collateral)
-        )
+        collateralCurrencyPrimitives.map((currencyPair) => currencyIdToMonetaryCurrency(api, currencyPair.collateral))
     );
 }
 
@@ -150,10 +148,12 @@ export function isLendToken(currencyExt: CurrencyExt): currencyExt is LendToken 
     return (currencyExt as any).lendToken !== undefined;
 }
 
+// TODO: addLPTokens
 export function isCurrency(currencyExt: CurrencyExt): currencyExt is Currency {
     return !isForeignAsset(currencyExt) && !isLendToken(currencyExt);
 }
 
+// TODO: addLPTokens
 export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyExt): boolean {
     if (isCurrency(currency) && isCurrency(otherCurrency)) {
         return currency.ticker === otherCurrency.ticker;
@@ -166,6 +166,7 @@ export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyEx
     return false;
 }
 
+// TODO: add lptokens
 export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier {
     if (isForeignAsset(currency)) {
         return { foreignAsset: currency.foreignAsset.id };
@@ -176,20 +177,23 @@ export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier
     return { token: currency.ticker };
 }
 
-// TODO: add StandardLpToken and StableLpToken
 export async function currencyIdToMonetaryCurrency(
-    assetRegistryApi: AssetRegistryAPI,
-    loansApi: LoansAPI,
+    api: ApiPromise,
     currencyId: InterbtcPrimitivesCurrencyId
 ): Promise<CurrencyExt> {
     if (currencyId.isToken) {
         return tokenSymbolToCurrency(currencyId.asToken);
     } else if (currencyId.isForeignAsset) {
+        const assetRegistryApi = new DefaultAssetRegistryAPI(api);
         const foreignAssetId = currencyId.asForeignAsset;
         return assetRegistryApi.getForeignAsset(foreignAssetId);
     } else if (currencyId.isLendToken) {
-        const underlyingCurrency = await loansApi.getUnderlyingCurrencyFromLendTokenId(currencyId);
+        const underlyingCurrency = await getUnderlyingCurrencyFromLendTokenId(api, currencyId);
         return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, currencyId);
+    } else if (currencyId.isLpToken) {
+        return getStandardLpTokenFromCurrencyId(api, currencyId);
+    } else if (currencyId.isStableLpToken) {
+        return getStableLpTokenFromCurrencyId(api, currencyId);
     }
 
     throw new Error(`No handling implemented for currencyId type of ${currencyId.type}`);
@@ -215,4 +219,108 @@ export function tokenSymbolToCurrency(tokenSymbol: InterbtcPrimitivesTokenSymbol
         return Interlay;
     }
     throw new Error(`No entry provided for token symbol of type '${tokenSymbol?.type}'`);
+}
+
+/**
+ * Get foreign asset by its id.
+ * @param id The id of the foreign asset.
+ * @returns The foreign asset.
+ */
+export async function getForeignAssetFromId(api: ApiPromise, id: number | u32): Promise<ForeignAsset> {
+    const u32Id = id instanceof u32 ? id : newForeignAssetId(api, id);
+    const optionMetadata = await api.query.assetRegistry.metadata(u32Id);
+
+    if (!optionMetadata.isSome) {
+        return Promise.reject(new Error("Foreign asset not found"));
+    }
+    const currencyPart = DefaultAssetRegistryAPI.metadataToCurrency(optionMetadata.unwrap());
+    const coingeckoId = decodeBytesAsString(optionMetadata.unwrap().additional.coingeckoId);
+
+    const numberId = id instanceof u32 ? id.toNumber() : id;
+
+    return {
+        foreignAsset: {
+            id: numberId,
+            coingeckoId,
+        },
+        ...currencyPart,
+    };
+}
+
+/**
+ * Get underlying currency of lend token id,
+ *
+ * @param lendTokenId Currency id of the lend token to get currency from
+ * @returns Underlying CurrencyExt for provided lend token
+ */
+async function getUnderlyingCurrencyFromLendTokenId(
+    api: ApiPromise,
+    lendTokenId: InterbtcPrimitivesCurrencyId
+): Promise<CurrencyExt> {
+    const underlyingCurrencyId = await api.query.loans.underlyingAssetId(lendTokenId);
+
+    const underlyingCurrency = await currencyIdToMonetaryCurrency(api, underlyingCurrencyId.unwrap());
+
+    return underlyingCurrency;
+}
+
+/**
+ * Get standard LP token currency lib type from currencyId primitive.
+ *
+ * @param currencyId Id of standard LP token.
+ * @returns {StandardLpToken} Lib type currency object for standard LP token.
+ */
+export async function getStandardLpTokenFromCurrencyId(
+    api: ApiPromise,
+    currencyId: InterbtcPrimitivesCurrencyId
+): Promise<StandardLpToken> {
+    if (!currencyId.isLpToken) {
+        throw new Error("Provided currencyId is not standard LP token.");
+    }
+    const standardLpTokenCurrencyId = currencyId.asLpToken;
+    const [token0, token1] = await Promise.all(
+        standardLpTokenCurrencyId.map((currencyId) =>
+            currencyIdToMonetaryCurrency(api, currencyId as InterbtcPrimitivesCurrencyId)
+        )
+    );
+
+    return {
+        name: `LP ${token0.ticker}-${token1.ticker}`, // TODO
+        ticker: `LP ${token0.ticker}-${token1.ticker}`, // TODO
+        decimals: 18, // TODO: check
+        lpToken: {
+            token0,
+            token1,
+        },
+    };
+}
+
+/**
+ * Get stable LP token currency lib type from currencyId primitive.
+ *
+ * @param currencyId Id of stable LP token.
+ * @returns {StableLpToken} Lib type currency object for stable LP token.
+ */
+export async function getStableLpTokenFromCurrencyId(
+    api: ApiPromise,
+    currencyId: InterbtcPrimitivesCurrencyId
+): Promise<StableLpToken> {
+    if (!currencyId.isStableLpToken) {
+        throw new Error("Provided currencyId is not stable LP token.");
+    }
+
+    const poolId = currencyId.asStableLpToken.toNumber();
+    const poolData = await api.query.zenlinkStableAmm.pools(poolId);
+
+    if (!poolData.isSome) {
+        throw new Error(`getStableLpToken: Invalid pool data for currencyId ${currencyId.toString()}`);
+    }
+
+    const basePoolData = DefaultAMMAPI.getStableBasePool(poolData.unwrap());
+
+    if (basePoolData === null) {
+        throw new Error("Provided currencyId is not active LP token.");
+    }
+
+    return DefaultAMMAPI.getStableLpTokenFromPoolData(poolId, basePoolData);
 }

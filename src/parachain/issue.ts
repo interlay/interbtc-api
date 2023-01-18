@@ -247,7 +247,7 @@ export class DefaultIssueAPI implements IssueAPI {
                 const vaultId = newVaultId(
                     this.api,
                     vaultAccountId.toString(),
-                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, collateralCurrencyId),
+                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.api, collateralCurrencyId),
                     this.wrappedCurrency
                 );
                 const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>([

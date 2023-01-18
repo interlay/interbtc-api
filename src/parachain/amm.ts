@@ -12,7 +12,7 @@ import {
 } from "@polkadot/types/lookup";
 import { TokensAPI } from "./tokens";
 import { InterbtcPrimitivesCurrencyId } from "../interfaces";
-import { CurrencyExt, LpCurrency, StableLpToken, StandardLpToken } from "../types";
+import { CurrencyExt, LpCurrency, StableLpToken } from "../types";
 import { currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI } from "./asset-registry";
 import { LoansAPI } from "./loans";
@@ -27,26 +27,12 @@ import {
     findBestTradeRecursively,
     StandardLiquidityPool,
     StableLiquidityPool,
+    getStandardLpTokenFromCurrencyId,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
 
 export interface AMMAPI {
-    /**
-     * Get standard LP token currency lib type from currencyId primitive.
-     *
-     * @param currencyId Id of standard LP token.
-     * @returns {StandardLpToken} Lib type currency object for standard LP token.
-     */
-    getStandardLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StandardLpToken>;
-
-    /**
-     * Get stable LP token currency lib type from currencyId primitive.
-     *
-     * @param currencyId Id of stable LP token.
-     * @returns {StableLpToken} Lib type currency object for stable LP token.
-     */
-    getStableLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StableLpToken>;
     /**
      * Get optimal trade for provided trade type and amount.
      *
@@ -147,6 +133,34 @@ export interface AMMAPI {
 }
 
 export class DefaultAMMAPI implements AMMAPI {
+    static getStableBasePool(poolData: ZenlinkStableAmmPrimitivesPool): ZenlinkStableAmmPrimitivesBasePool | null {
+        if (poolData.isBase) {
+            return poolData.asBase;
+        }
+        if (poolData.isMeta) {
+            return poolData.asMeta.info;
+        }
+        return null;
+    }
+
+    static getStableLpTokenFromPoolData(
+        poolId: number,
+        basePoolData: ZenlinkStableAmmPrimitivesBasePool
+    ): StableLpToken {
+        const [ticker, decimals] = [
+            basePoolData.lpCurrencySymbol.toString(),
+            basePoolData.lpCurrencyDecimal.toNumber(),
+        ];
+        return {
+            name: ticker,
+            ticker,
+            decimals,
+            stableLpToken: {
+                poolId,
+            },
+        };
+    }
+
     constructor(
         private api: ApiPromise,
         private assetRegistryAPI: AssetRegistryAPI,
@@ -194,72 +208,8 @@ export class DefaultAMMAPI implements AMMAPI {
         throw new Error("Method not implemented.");
     }
 
-    public async getStandardLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StandardLpToken> {
-        if (!currencyId.isLpToken) {
-            throw new Error("Provided currencyId is not standard LP token.");
-        }
-        const standardLpTokenCurrencyId = currencyId.asLpToken;
-        const [token0, token1] = await Promise.all(
-            standardLpTokenCurrencyId.map((currencyId) =>
-                currencyIdToMonetaryCurrency(
-                    this.assetRegistryAPI,
-                    this.loansAPI,
-                    currencyId as InterbtcPrimitivesCurrencyId
-                )
-            )
-        );
-
-        return {
-            name: `LP ${token0.ticker}-${token1.ticker}`, // TODO
-            ticker: `LP ${token0.ticker}-${token1.ticker}`, // TODO
-            decimals: 18, // TODO: check
-            lpToken: {
-                token0,
-                token1,
-            },
-        };
-    }
-
-    private _getStableLpTokenFromPoolData(
-        poolId: number,
-        basePoolData: ZenlinkStableAmmPrimitivesBasePool
-    ): StableLpToken {
-        const [ticker, decimals] = [
-            basePoolData.lpCurrencySymbol.toString(),
-            basePoolData.lpCurrencyDecimal.toNumber(),
-        ];
-        return {
-            // TODO: check if we are able to get any other name
-            name: ticker,
-            ticker,
-            decimals,
-            stableLpToken: {
-                poolId,
-            },
-        };
-    }
-
-    public async getStableLpToken(currencyId: InterbtcPrimitivesCurrencyId): Promise<StableLpToken> {
-        if (!currencyId.isStableLpToken) {
-            throw new Error("Provided currencyId is not stable LP token.");
-        }
-
-        const poolId = await this.api.query.zenlinkStableAmm.lpCurrencies(currencyId);
-        if (!poolId.isSome) {
-            throw new Error(`getStableLpToken: Invalid pool id for currencyId ${currencyId.toString()}`);
-        }
-
-        const poolData = await this.api.query.zenlinkStableAmm.pools(poolId.unwrap());
-        if (!poolData.isSome) {
-            throw new Error(`getStableLpToken: Invalid pool data for currencyId ${currencyId.toString()}`);
-        }
-
-        const basePoolData = this._getStableBasePool(poolData.unwrap());
-        if (basePoolData === null) {
-            throw new Error("Provided currencyId is not active LP token.");
-        }
-
-        return this._getStableLpTokenFromPoolData(poolId.unwrap().toNumber(), basePoolData);
+    public async getLpTokens(): Promise<Array<LpCurrency>> {
+        const standardPools = await this.api.query.zenlinkProtocol.liquidityPairs.entries();
     }
 
     private async _getStandardPoolReserveBalances<Currency0 extends CurrencyExt, Currency1 extends CurrencyExt>(
@@ -300,15 +250,12 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         const pairAccount = typedPairStatus.pairAccount;
-        // TODO: update currency types to include LP tokens
         const [token0, token1] = await Promise.all(
-            pairCurrencies.map((currency) =>
-                currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, currency)
-            )
+            pairCurrencies.map((currency) => currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.api, currency))
         );
 
         const [lpToken, pooledCurrencies, apr, tradingFee] = await Promise.all([
-            this.getStandardLpToken(lpTokenCurrencyId),
+            getStandardLpTokenFromCurrencyId(this.assetRegistryAPI, this.api, lpTokenCurrencyId),
             this._getStandardPoolReserveBalances(token0, token1, pairAccount),
             this._getStandardPoolAPR(pairCurrencies),
             this._getStandardPoolTradingFee(pairCurrencies),
@@ -337,24 +284,12 @@ export class DefaultAMMAPI implements AMMAPI {
         throw new Error("Method not implemented.");
     }
 
-    private _getStableBasePool(poolData: ZenlinkStableAmmPrimitivesPool): ZenlinkStableAmmPrimitivesBasePool | null {
-        if (poolData.isBase) {
-            return poolData.asBase;
-        }
-        if (poolData.isMeta) {
-            return poolData.asMeta.info;
-        }
-        return null;
-    }
-
     private async _getStablePoolPooledCurrencies(
         currencyIds: Array<InterbtcPrimitivesCurrencyId>,
         balances: Array<u128>
     ): Promise<Array<MonetaryAmount<CurrencyExt>>> {
         const pooledMonetaryCurrencies = await Promise.all(
-            currencyIds.map((currencyId) =>
-                currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, currencyId)
-            )
+            currencyIds.map((currencyId) => currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.api, currencyId))
         );
 
         const pooledCurrencies = pooledMonetaryCurrencies.map((currency, index) =>
@@ -375,7 +310,7 @@ export class DefaultAMMAPI implements AMMAPI {
         poolId: number,
         poolData: ZenlinkStableAmmPrimitivesPool
     ): Promise<StableLiquidityPool | null> {
-        const poolBase = this._getStableBasePool(poolData);
+        const poolBase = DefaultAMMAPI.getStableBasePool(poolData);
         if (poolBase === null) {
             return null;
         }
@@ -388,7 +323,7 @@ export class DefaultAMMAPI implements AMMAPI {
             poolBase.lpCurrencyId,
         ];
 
-        const lpToken = this._getStableLpTokenFromPoolData(poolId, poolBase);
+        const lpToken = DefaultAMMAPI.getStableLpTokenFromPoolData(poolId, poolBase);
 
         const [pooledCurrencies, apr, A, totalSupply] = await Promise.all([
             this._getStablePoolPooledCurrencies(pooledCurrencyIds, pooledCurrencyBalances),
