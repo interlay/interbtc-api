@@ -226,6 +226,14 @@ export class DefaultEscrowAPI implements EscrowAPI {
             nullableBlockToEnd = BigInt(blockLockTimeExtension);
         }
 
+        // if there is no staked amount and no added amount to be checked, return 0
+        if (atomicStakedAmount.eq(Big(0))) {
+            return {
+                amount: newMonetaryAmount(0, this.governanceCurrency),
+                apy: Big(0),
+            };
+        }
+
         const rawRewardRate = await this.api.rpc.reward.estimateEscrowRewardRate(
             accountId,
             nullableAmountToCheck,
