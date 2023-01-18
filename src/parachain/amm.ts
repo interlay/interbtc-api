@@ -27,6 +27,9 @@ import {
     findBestTradeRecursively,
     StandardLiquidityPool,
     StableLiquidityPool,
+    isStableMultiPathElement,
+    encodeSwapParamsForStandardPoolsOnly,
+    encodeSwapParamsForStandardAndStablePools,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
@@ -420,14 +423,62 @@ export class DefaultAMMAPI implements AMMAPI {
         return [...standardPools, ...stablePools];
     }
 
+    private async _swapThroughStandardPoolsOnly(
+        trade: Trade,
+        minimumAmountOut: MonetaryAmount<CurrencyExt>,
+        recipient: string,
+        deadline: number | string
+    ): Promise<void> {
+        const { amountIn, amountOutMin, path } = encodeSwapParamsForStandardPoolsOnly(
+            this.api,
+            trade,
+            minimumAmountOut
+        );
+        const swapExtrinsic = this.api.tx.zenlinkProtocol.swapExactAssetsForAssets(
+            amountIn,
+            amountOutMin,
+            path,
+            recipient,
+            deadline
+        );
+
+        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.zenlinkProtocol.AssetSwap, true);
+    }
+
+    private async _swapThroughStandardAndStablePools(
+        trade: Trade,
+        minimumAmountOut: MonetaryAmount<CurrencyExt>,
+        recipient: string,
+        deadline: number | string
+    ): Promise<void> {
+        const { amountIn, amountOutMin, path } = encodeSwapParamsForStandardAndStablePools(
+            this.api,
+            trade,
+            minimumAmountOut
+        );
+        const swapExtrinsic = this.api.tx.zenlinkSwapRouter.swapExactTokenForTokensThroughStablePool(
+            amountIn,
+            amountOutMin,
+            path,
+            recipient,
+            deadline
+        );
+
+        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.zenlinkStableAmm.CurrencyExchange);
+    }
+
     async swap(
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
-        recipient: AddressOrPair,
+        recipient: string,
         deadline: number | string
     ): Promise<void> {
-        //TODO
-        throw new Error("Method not implemented.");
+        const containsStablePool = trade.path.some(isStableMultiPathElement);
+        if (containsStablePool) {
+            await this._swapThroughStandardAndStablePools(trade, minimumAmountOut, recipient, deadline);
+        } else {
+            await this._swapThroughStandardPoolsOnly(trade, minimumAmountOut, recipient, deadline);
+        }
     }
 
     async addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void> {
