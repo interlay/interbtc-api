@@ -184,9 +184,8 @@ export async function currencyIdToMonetaryCurrency(
     if (currencyId.isToken) {
         return tokenSymbolToCurrency(currencyId.asToken);
     } else if (currencyId.isForeignAsset) {
-        const assetRegistryApi = new DefaultAssetRegistryAPI(api);
         const foreignAssetId = currencyId.asForeignAsset;
-        return assetRegistryApi.getForeignAsset(foreignAssetId);
+        return getForeignAssetFromId(api, foreignAssetId);
     } else if (currencyId.isLendToken) {
         const underlyingCurrency = await getUnderlyingCurrencyFromLendTokenId(api, currencyId);
         return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, currencyId);
