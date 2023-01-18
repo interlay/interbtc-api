@@ -464,7 +464,7 @@ export class DefaultAMMAPI implements AMMAPI {
             deadline
         );
 
-        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.zenlinkStableAmm.CurrencyExchange);
+        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.zenlinkStableAmm.CurrencyExchange, true);
     }
 
     async swap(
