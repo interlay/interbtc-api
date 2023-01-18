@@ -217,14 +217,13 @@ export class DefaultEscrowAPI implements EscrowAPI {
         let nullableAmountToCheck: bigint | null = null;
         if (amountToLock && !amountToLock.isZero()) {
             atomicStakedAmount = atomicStakedAmount.add(amountToLock.toBig(ATOMIC_UNIT));
-            // get as bigint for the rpc api
-            nullableAmountToCheck = BigInt(atomicStakedAmount.toString());
+            // get atomic amount to lock as bigint for the rpc api
+            nullableAmountToCheck = BigInt(amountToLock.toBig(ATOMIC_UNIT).toString());
         }
 
         let nullableBlockToEnd: bigint | null = null;
         if (blockLockTimeExtension) {
-            const currentEndBlock = !stakedBalance.amount.isZero() ? BigInt(stakedBalance.endBlock) : BigInt(0);
-            nullableBlockToEnd = currentEndBlock + BigInt(blockLockTimeExtension);
+            nullableBlockToEnd = BigInt(blockLockTimeExtension);
         }
 
         const rawRewardRate = await this.api.rpc.reward.estimateEscrowRewardRate(
