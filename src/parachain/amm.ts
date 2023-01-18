@@ -12,7 +12,7 @@ import {
 } from "@polkadot/types/lookup";
 import { TokensAPI } from "./tokens";
 import { InterbtcPrimitivesCurrencyId } from "../interfaces";
-import { CurrencyExt, LpToken, StableLpToken, StandardLpToken } from "../types";
+import { CurrencyExt, LpCurrency, StableLpToken, StandardLpToken } from "../types";
 import { currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI } from "./asset-registry";
 import { LoansAPI } from "./loans";
@@ -73,7 +73,7 @@ export interface AMMAPI {
         poolType: PoolType,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<{
-        minLpTokens: MonetaryAmount<LpToken>;
+        minLpTokens: MonetaryAmount<LpCurrency>;
         slippage: number; // can be negative for slippage bonus
     }>;
 
@@ -84,7 +84,7 @@ export interface AMMAPI {
      * @param customCurrenciesProportion Optional parameter to specify custom proportion of currencies to withdraw.
      */
     getExpectedLiquidityWithdrawalAmounts(
-        amount: MonetaryAmount<LpToken>,
+        amount: MonetaryAmount<LpCurrency>,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<{
         expectedPooledCurrencyAmounts: MonetaryAmount<CurrencyExt>;
@@ -95,10 +95,10 @@ export interface AMMAPI {
      * Get liquidity provided by account.
      *
      * @param {AccountId} accountId Account to get provided liquidity information about.
-     * @returns {Promise<Array<MonetaryAmount<LpToken>>>} Array of LP token amounts that represent
+     * @returns {Promise<Array<MonetaryAmount<LpCurrency>>>} Array of LP token amounts that represent
      *          account's positions in respective liquidity pools.
      */
-    getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpToken>>>;
+    getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpCurrency>>>;
 
     /**
      * Get all liquidity pools.
@@ -133,14 +133,14 @@ export interface AMMAPI {
     /**
      * Removes liquidity from pool.
      *
-     * @param {MonetaryAmount<LpToken>} amount Amount of LP token to be removed
+     * @param {MonetaryAmount<LpCurrency>} amount Amount of LP token to be removed
      * @param {LiquidityPool} pool Liquidity pool to remove from.
      * @param customCurrenciesProportion Optional parameter that allows to specify proportion
      *        of pooled currencies in which the liquidity should be withdrawn.
      * @note Removes `amount` of liquidity in LP token, breaks it down and transfers to account.
      */
     removeLiquidity(
-        amount: MonetaryAmount<LpToken>,
+        amount: MonetaryAmount<LpCurrency>,
         pool: LiquidityPool,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<void>;
@@ -174,7 +174,7 @@ export class DefaultAMMAPI implements AMMAPI {
         poolType: PoolType,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<{
-        minLpTokens: MonetaryAmount<LpToken>;
+        minLpTokens: MonetaryAmount<LpCurrency>;
         slippage: number; // can be negative for slippage bonus
     }> {
         throw new Error("Method not implemented.");
@@ -190,7 +190,7 @@ export class DefaultAMMAPI implements AMMAPI {
         throw new Error("Method not implemented.");
     }
 
-    public async getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpToken>>> {
+    public async getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpCurrency>>> {
         throw new Error("Method not implemented.");
     }
 
@@ -436,7 +436,7 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     async removeLiquidity(
-        amount: MonetaryAmount<LpToken>,
+        amount: MonetaryAmount<LpCurrency>,
         pool: LiquidityPool,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<void> {
