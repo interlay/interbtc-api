@@ -1,4 +1,4 @@
-import { LpToken, CurrencyExt } from "../../../types";
+import { LpCurrency, CurrencyExt } from "../../../types";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { MultiPathElement } from "../trade/types";
@@ -17,7 +17,7 @@ interface TradingPair {
 
 interface LiquidityPoolBase {
     type: PoolType;
-    lpToken: LpToken;
+    lpToken: LpCurrency;
     pooledCurrencies: PooledCurrencies; // Array of 2 for standard pools, array of 2+ for stable pools.
     apr: string; // Percentage.
     tradingFee: Big; // Decimal.

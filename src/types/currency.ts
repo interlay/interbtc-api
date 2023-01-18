@@ -47,9 +47,10 @@ export type StandardLpToken = Currency & {
 
 export type StableLpToken = Currency & { stableLpToken: { poolId: number } };
 
-export type LpToken = StandardLpToken | StableLpToken;
+// Needs to be called currency in order to avoid having same name as runtime type `LpToken`
+export type LpCurrency = StandardLpToken | StableLpToken;
 export type CollateralCurrencyExt = CollateralCurrency | ForeignAsset | LendToken;
-export type CurrencyExt = Currency | ForeignAsset | LendToken | LpToken;
+export type CurrencyExt = Currency | ForeignAsset | LendToken | LpCurrency;
 
 export const WrappedCurrency = [InterBtc, KBtc];
 export type WrappedCurrency = typeof WrappedCurrency[number];
