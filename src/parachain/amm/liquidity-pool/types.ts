@@ -19,7 +19,7 @@ interface LiquidityPoolBase {
     type: PoolType;
     lpToken: LpCurrency;
     pooledCurrencies: PooledCurrencies; // Array of 2 for standard pools, array of 2+ for stable pools.
-    apr: string; // Percentage.
+    apr: Big; // Percentage.
     tradingFee: Big; // Decimal.
 }
 

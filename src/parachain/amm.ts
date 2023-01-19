@@ -31,6 +31,7 @@ import {
     encodeSwapParamsForStandardPoolsOnly,
     encodeSwapParamsForStandardAndStablePools,
     addressOrPairAsAccountId,
+    decodeFixedPointType,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
@@ -266,27 +267,27 @@ export class DefaultAMMAPI implements AMMAPI {
         return this._getStableLpTokenFromPoolData(poolId.unwrap().toNumber(), basePoolData);
     }
 
-    private async _getStandardPoolReserveBalances<Currency0 extends CurrencyExt, Currency1 extends CurrencyExt>(
-        token0: Currency0,
-        token1: Currency1,
+    private async _getStandardPoolReserveBalances(
+        token0: CurrencyExt,
+        token1: CurrencyExt,
         pairAccount: AccountId
-    ): Promise<[MonetaryAmount<Currency0>, MonetaryAmount<Currency1>]> {
-        // TODO
-        throw new Error("Method not implemented.");
-    }
+    ): Promise<[MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>]> {
+        const [token0Balance, token1Balance] = await Promise.all([
+            this.tokensAPI.balance(token0, pairAccount),
+            this.tokensAPI.balance(token1, pairAccount),
+        ]);
+        // TODO: check if transferable or free balance should be used here
+        const token0MonetaryAmount = token0Balance.transferable;
+        const token1MonetaryAmount = token1Balance.transferable;
 
-    private async _getStandardPoolTradingFee(
-        pairCurrencies: [InterbtcPrimitivesCurrencyId, InterbtcPrimitivesCurrencyId]
-    ): Promise<Big> {
-        // TODO
-        throw new Error("Method not implemented.");
+        return [token0MonetaryAmount, token1MonetaryAmount];
     }
 
     private async _getStandardPoolAPR(
         pairCurrencies: [InterbtcPrimitivesCurrencyId, InterbtcPrimitivesCurrencyId]
-    ): Promise<string> {
-        // TODO: return percentage APR for pool
-        throw new Error("Method not implemented.");
+    ): Promise<Big> {
+        // TODO: Implement when farming pallet is added to runtime
+        return Big(0);
     }
 
     private async _getStandardLiquidityPool(
@@ -296,9 +297,16 @@ export class DefaultAMMAPI implements AMMAPI {
     ): Promise<StandardLiquidityPool | null> {
         let typedPairStatus: ZenlinkProtocolPrimitivesPairMetadata | ZenlinkProtocolPrimitivesBootstrapParameter;
         let isTradingActive: boolean;
-        if (pairStatus.isTrading || pairStatus.isBootstrap) {
-            typedPairStatus = pairStatus.isTrading ? pairStatus.asTrading : pairStatus.asBootstrap;
-            isTradingActive = pairStatus.isTrading;
+        let tradingFee: Big;
+
+        if (pairStatus.isTrading) {
+            typedPairStatus = pairStatus.asTrading;
+            isTradingActive = true;
+            tradingFee = decodeFixedPointType(typedPairStatus.feeRate);
+        } else if (pairStatus.isBootstrap) {
+            typedPairStatus = pairStatus.asBootstrap;
+            isTradingActive = false;
+            tradingFee = Big(0);
         } else {
             return null;
         }
@@ -311,11 +319,10 @@ export class DefaultAMMAPI implements AMMAPI {
             )
         );
 
-        const [lpToken, pooledCurrencies, apr, tradingFee] = await Promise.all([
+        const [lpToken, pooledCurrencies, apr] = await Promise.all([
             this.getStandardLpToken(lpTokenCurrencyId),
             this._getStandardPoolReserveBalances(token0, token1, pairAccount),
             this._getStandardPoolAPR(pairCurrencies),
-            this._getStandardPoolTradingFee(pairCurrencies),
         ]);
 
         return new StandardLiquidityPool(lpToken, pooledCurrencies, apr, tradingFee, isTradingActive);
@@ -336,9 +343,9 @@ export class DefaultAMMAPI implements AMMAPI {
         return pools.filter((pool) => pool !== null) as Array<StandardLiquidityPool>;
     }
 
-    private _getStablePoolAPR(poolId: number): Promise<string> {
-        // TODO: return percentage APR for pool
-        throw new Error("Method not implemented.");
+    private async _getStablePoolAPR(poolId: number): Promise<Big> {
+        // TODO: Implement when farming pallet is added to runtime
+        return Big(0);
     }
 
     private _getStableBasePool(poolData: ZenlinkStableAmmPrimitivesPool): ZenlinkStableAmmPrimitivesBasePool | null {
@@ -368,11 +375,9 @@ export class DefaultAMMAPI implements AMMAPI {
         return pooledCurrencies;
     }
 
-    private async _getStablePoolAmplificationCoefficient(
-        lpTokenCurrencyId: InterbtcPrimitivesCurrencyId
-    ): Promise<Big> {
-        // TODO: Use rpc call rpc.zenlinkStableAmm.getA
-        throw new Error("Method not implemented.");
+    private async _getStablePoolAmplificationCoefficient(poolId: number): Promise<Big> {
+        const rawA = await this.api.rpc.zenlinkStableAmm.getA(poolId);
+        return Big(rawA.toString());
     }
 
     private async _getStableLiquidityPool(
@@ -384,12 +389,11 @@ export class DefaultAMMAPI implements AMMAPI {
             return null;
         }
 
-        const [pooledCurrencyIds, pooledCurrencyBalances, tradingFee, lpTokenCurrencyId] = [
+        const [pooledCurrencyIds, pooledCurrencyBalances, tradingFee] = [
             poolBase.currencyIds,
             poolBase.balances,
-            // TODO: check number base for fee (is there a need to divide?)
-            Big(poolBase.fee.toString()),
-            poolBase.lpCurrencyId,
+            // TODO: check number base for fee
+            decodeFixedPointType(poolBase.fee),
         ];
 
         const lpToken = this._getStableLpTokenFromPoolData(poolId, poolBase);
@@ -397,7 +401,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const [pooledCurrencies, apr, A, totalSupply] = await Promise.all([
             this._getStablePoolPooledCurrencies(pooledCurrencyIds, pooledCurrencyBalances),
             this._getStablePoolAPR(poolId),
-            this._getStablePoolAmplificationCoefficient(lpTokenCurrencyId),
+            this._getStablePoolAmplificationCoefficient(poolId),
             this.tokensAPI.total(lpToken),
         ]);
 
