@@ -25,6 +25,7 @@ import {
     CurrencyIdentifier,
     StandardLpToken,
     StableLpToken,
+    StandardPooledTokenIdentifier,
 } from "../types/currency";
 import { FeeEstimationType } from "../types/oracleTypes";
 import { decodeBytesAsString, newCurrencyId, newForeignAssetId, storageKeyToNthInner } from "./encoding";
@@ -117,8 +118,6 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
  * Will return all collateral currencies for which the parachain has a system collateral ceiling value
  * greater than zero.
  * @param api ApiPromise instance to query the parachain
- * @param assetRegistry AssetRegistryAPI instance to fetch foreign asset data (if needed)
- * @param loansAPI LoansAPI to fetch Lend Tokens if needed.
  * @returns An array of collateral currencies.
  */
 export async function getCollateralCurrencies(api: ApiPromise): Promise<Array<CollateralCurrencyExt>> {
@@ -148,12 +147,23 @@ export function isLendToken(currencyExt: CurrencyExt): currencyExt is LendToken 
     return (currencyExt as any).lendToken !== undefined;
 }
 
-// TODO: addLPTokens
-export function isCurrency(currencyExt: CurrencyExt): currencyExt is Currency {
-    return !isForeignAsset(currencyExt) && !isLendToken(currencyExt);
+export function isStandardLpToken(currencyExt: CurrencyExt): currencyExt is StandardLpToken {
+    return (currencyExt as StandardLpToken).lpToken !== undefined;
 }
 
-// TODO: addLPTokens
+export function isStableLpToken(currencyExt: CurrencyExt): currencyExt is StableLpToken {
+    return (currencyExt as StableLpToken).stableLpToken !== undefined;
+}
+
+export function isCurrency(currencyExt: CurrencyExt): currencyExt is Currency {
+    return (
+        !isForeignAsset(currencyExt) &&
+        !isLendToken(currencyExt) &&
+        !isStandardLpToken(currencyExt) &&
+        !isStableLpToken(currencyExt)
+    );
+}
+
 export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyExt): boolean {
     if (isCurrency(currency) && isCurrency(otherCurrency)) {
         return currency.ticker === otherCurrency.ticker;
@@ -161,12 +171,18 @@ export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyEx
         return currency.foreignAsset.id === otherCurrency.foreignAsset.id;
     } else if (isLendToken(currency) && isLendToken(otherCurrency)) {
         return currency.lendToken.id === otherCurrency.lendToken.id;
+    } else if (isStandardLpToken(currency) && isStandardLpToken(otherCurrency)) {
+        return (
+            isCurrencyEqual(currency.lpToken.token0, otherCurrency.lpToken.token0) &&
+            isCurrencyEqual(currency.lpToken.token1, otherCurrency.lpToken.token1)
+        );
+    } else if (isStableLpToken(currency) && isStableLpToken(otherCurrency)) {
+        return currency.stableLpToken.poolId === otherCurrency.stableLpToken.poolId;
     }
 
     return false;
 }
 
-// TODO: add lptokens
 export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier {
     if (isForeignAsset(currency)) {
         return { foreignAsset: currency.foreignAsset.id };
@@ -174,6 +190,15 @@ export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier
     if (isLendToken(currency)) {
         return { lendToken: currency.lendToken.id };
     }
+    if (isStableLpToken(currency)) {
+        return { stableLpToken: currency.stableLpToken.poolId };
+    }
+    if (isStandardLpToken(currency)) {
+        const token0 = getCurrencyIdentifier(currency.lpToken.token0) as StandardPooledTokenIdentifier;
+        const token1 = getCurrencyIdentifier(currency.lpToken.token1) as StandardPooledTokenIdentifier;
+        return { lpToken: [token0, token1] };
+    }
+
     return { token: currency.ticker };
 }
 
@@ -252,7 +277,7 @@ export async function getForeignAssetFromId(api: ApiPromise, id: number | u32): 
  * @param lendTokenId Currency id of the lend token to get currency from
  * @returns Underlying CurrencyExt for provided lend token
  */
-async function getUnderlyingCurrencyFromLendTokenId(
+export async function getUnderlyingCurrencyFromLendTokenId(
     api: ApiPromise,
     lendTokenId: InterbtcPrimitivesCurrencyId
 ): Promise<CurrencyExt> {
@@ -284,9 +309,9 @@ export async function getStandardLpTokenFromCurrencyId(
     );
 
     return {
-        name: `LP ${token0.ticker}-${token1.ticker}`, // TODO
-        ticker: `LP ${token0.ticker}-${token1.ticker}`, // TODO
-        decimals: 18, // TODO: check
+        name: `LP ${token0.ticker}-${token1.ticker}`,
+        ticker: `LP ${token0.ticker}-${token1.ticker}`,
+        decimals: 18,
         lpToken: {
             token0,
             token1,

@@ -12,10 +12,8 @@ import {
 } from "@polkadot/types/lookup";
 import { TokensAPI } from "./tokens";
 import { InterbtcPrimitivesCurrencyId } from "../interfaces";
-import { CurrencyExt, LpCurrency, StableLpToken } from "../types";
+import { CurrencyExt, LpCurrency, StableLpToken, StandardLpToken } from "../types";
 import { currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
-import { AssetRegistryAPI } from "./asset-registry";
-import { LoansAPI } from "./loans";
 import { TransactionAPI } from "./transaction";
 import Big from "big.js";
 import {
@@ -28,11 +26,19 @@ import {
     StandardLiquidityPool,
     StableLiquidityPool,
     getStandardLpTokenFromCurrencyId,
+    storageKeyToNthInner,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
 
 export interface AMMAPI {
+    /**
+     * Get all LP tokens.
+     *
+     * @returns {Promise<Array<LpCurrency>>} Array of all standard and stable LP tokens.
+     */
+    getLpTokens(): Promise<Array<LpCurrency>>;
+
     /**
      * Get optimal trade for provided trade type and amount.
      *
@@ -161,13 +167,7 @@ export class DefaultAMMAPI implements AMMAPI {
         };
     }
 
-    constructor(
-        private api: ApiPromise,
-        private assetRegistryAPI: AssetRegistryAPI,
-        private loansAPI: LoansAPI,
-        private tokensAPI: TokensAPI,
-        private transactionAPI: TransactionAPI
-    ) {}
+    constructor(private api: ApiPromise, private tokensAPI: TokensAPI, private transactionAPI: TransactionAPI) {}
 
     public getOptimalTrade(
         inputAmount: MonetaryAmount<CurrencyExt>,
@@ -208,8 +208,36 @@ export class DefaultAMMAPI implements AMMAPI {
         throw new Error("Method not implemented.");
     }
 
-    public async getLpTokens(): Promise<Array<LpCurrency>> {
+    private async _getStandardLpTokens(): Promise<Array<StandardLpToken>> {
         const standardPools = await this.api.query.zenlinkProtocol.liquidityPairs.entries();
+        const standardLpTokens = await Promise.all(
+            standardPools.map(([_, lpTokenCurrencyId]) =>
+                getStandardLpTokenFromCurrencyId(this.api, lpTokenCurrencyId.unwrap())
+            )
+        );
+
+        return standardLpTokens;
+    }
+
+    private async _getStableLpTokens(): Promise<Array<StableLpToken>> {
+        const stablePools = await this.api.query.zenlinkStableAmm.pools.entries();
+        const stableLpTokens = stablePools.map(([key, poolData]) => {
+            const poolBase = DefaultAMMAPI.getStableBasePool(poolData.unwrap());
+            if (poolBase === null) {
+                return null;
+            }
+            return DefaultAMMAPI.getStableLpTokenFromPoolData(storageKeyToNthInner(key).toNumber(), poolBase);
+        });
+        return stableLpTokens.filter((token) => token !== null) as Array<StableLpToken>;
+    }
+
+    public async getLpTokens(): Promise<Array<LpCurrency>> {
+        const [standardLpTokens, stableLpTokens] = await Promise.all([
+            this._getStandardLpTokens(),
+            this._getStableLpTokens(),
+        ]);
+
+        return [...standardLpTokens, ...stableLpTokens];
     }
 
     private async _getStandardPoolReserveBalances<Currency0 extends CurrencyExt, Currency1 extends CurrencyExt>(
@@ -251,11 +279,11 @@ export class DefaultAMMAPI implements AMMAPI {
 
         const pairAccount = typedPairStatus.pairAccount;
         const [token0, token1] = await Promise.all(
-            pairCurrencies.map((currency) => currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.api, currency))
+            pairCurrencies.map((currency) => currencyIdToMonetaryCurrency(this.api, currency))
         );
 
         const [lpToken, pooledCurrencies, apr, tradingFee] = await Promise.all([
-            getStandardLpTokenFromCurrencyId(this.assetRegistryAPI, this.api, lpTokenCurrencyId),
+            getStandardLpTokenFromCurrencyId(this.api, lpTokenCurrencyId),
             this._getStandardPoolReserveBalances(token0, token1, pairAccount),
             this._getStandardPoolAPR(pairCurrencies),
             this._getStandardPoolTradingFee(pairCurrencies),
@@ -268,11 +296,11 @@ export class DefaultAMMAPI implements AMMAPI {
         const pairEntries = await this.api.query.zenlinkProtocol.liquidityPairs.entries();
         const pairs = pairEntries.filter(([_, lpToken]) => lpToken.isSome);
         const pairStatuses = await Promise.all(
-            pairs.map(([pairKey]) => this.api.query.zenlinkProtocol.pairStatuses(pairKey.args[0]))
+            pairs.map(([pairKey]) => this.api.query.zenlinkProtocol.pairStatuses(storageKeyToNthInner(pairKey)))
         );
         const pools = await Promise.all(
             pairs.map(([pairKey, lpToken], index) =>
-                this._getStandardLiquidityPool(pairKey.args[0], lpToken.unwrap(), pairStatuses[index])
+                this._getStandardLiquidityPool(storageKeyToNthInner(pairKey), lpToken.unwrap(), pairStatuses[index])
             )
         );
 
@@ -289,7 +317,7 @@ export class DefaultAMMAPI implements AMMAPI {
         balances: Array<u128>
     ): Promise<Array<MonetaryAmount<CurrencyExt>>> {
         const pooledMonetaryCurrencies = await Promise.all(
-            currencyIds.map((currencyId) => currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.api, currencyId))
+            currencyIds.map((currencyId) => currencyIdToMonetaryCurrency(this.api, currencyId))
         );
 
         const pooledCurrencies = pooledMonetaryCurrencies.map((currency, index) =>
@@ -340,7 +368,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const rawPoolsData = poolEntries.filter(([_, pool]) => pool.isSome);
         const pools = await Promise.all(
             rawPoolsData.map(([poolId, poolData]) =>
-                this._getStableLiquidityPool(poolId.args[0].toNumber(), poolData.unwrap())
+                this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap())
             )
         );
 

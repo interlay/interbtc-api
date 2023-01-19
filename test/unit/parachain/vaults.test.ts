@@ -31,9 +31,7 @@ describe("DefaultVaultsAPI", () => {
             null as any,
             stubbedRewardsApi,
             null as any,
-            stubbedTransactionApi,
-            null as any,
-            null as any
+            stubbedTransactionApi
         );
     });
 

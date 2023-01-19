@@ -5,9 +5,7 @@ import { Bitcoin, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 
 import { decodeFixedPointType } from "../utils/encoding";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
-import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { currencyIdToMonetaryCurrency } from "../utils";
-import { LoansAPI } from "./loans";
 
 export enum GriefingCollateralType {
     Issue,
@@ -55,12 +53,7 @@ export interface FeeAPI {
 }
 
 export class DefaultFeeAPI implements FeeAPI {
-    constructor(
-        private api: ApiPromise,
-        private oracleAPI: OracleAPI,
-        private assetRegistryAPI: AssetRegistryAPI,
-        private loansAPI: LoansAPI
-    ) {}
+    constructor(private api: ApiPromise, private oracleAPI: OracleAPI) {}
 
     async getGriefingCollateral(
         amount: MonetaryAmount<WrappedCurrency>,
@@ -79,7 +72,6 @@ export class DefaultFeeAPI implements FeeAPI {
         }
 
         const nativeCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistryAPI,
             this.api,
             this.api.consts.vaultRegistry.getGriefingCollateralCurrencyId
         );

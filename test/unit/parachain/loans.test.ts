@@ -27,9 +27,8 @@ describe("DefaultLoansAPI", () => {
     });
 
     beforeEach(() => {
-        stubbedAssetRegistry = sinon.createStubInstance(DefaultAssetRegistryAPI);
         const transactionAPI = new DefaultTransactionAPI(api);
-        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry, transactionAPI);
+        loansApi = new DefaultLoansAPI(api, transactionAPI);
     });
 
     describe("getLendPositionsOfAccount", () => {

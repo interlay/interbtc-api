@@ -2,15 +2,10 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import {
-    AssetRegistryAPI,
     currencyIdToMonetaryCurrency,
-    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
-    DefaultLoansAPI,
-    DefaultTransactionAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
-    LoansAPI,
     VaultRegistryVault,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
@@ -54,8 +49,6 @@ describe("redeem", () => {
     let wrappedCurrency: WrappedCurrency;
 
     let interBtcAPI: InterBtcApi;
-    let assetRegistry: AssetRegistryAPI;
-    let loansAPI: LoansAPI;
 
     const fetchBtcTxIdFromOpReturn = async (
         redeemRequestId: string,
@@ -69,12 +62,9 @@ describe("redeem", () => {
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        const transactionAPI = new DefaultTransactionAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
 
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
@@ -216,11 +206,7 @@ describe("redeem", () => {
         // get BTC tx id
         const btcTxId = await fetchBtcTxIdFromOpReturn(redeemRequest.id);
 
-        const collateralCurrency = await currencyIdToMonetaryCurrency(
-            assetRegistry,
-            loansAPI,
-            vault_1_id.currencies.collateral
-        );
+        const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral);
         const vaultBitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
             BITCOIN_CORE_HOST,

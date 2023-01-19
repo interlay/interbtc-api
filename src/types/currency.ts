@@ -81,7 +81,22 @@ type LendTokenIdentifier = {
     lendToken: number;
 };
 
-export type CurrencyIdentifier = NativeCurrencyIdentifier | ForeignAssetIdentifier | LendTokenIdentifier;
+type StableLpTokenIdentifier = {
+    stableLpToken: number;
+};
+
+export type StandardPooledTokenIdentifier = NativeCurrencyIdentifier | ForeignAssetIdentifier | StableLpTokenIdentifier;
+
+type StandardLpTokenIdentifier = {
+    lpToken: [StandardPooledTokenIdentifier, StandardPooledTokenIdentifier];
+};
+
+export type CurrencyIdentifier =
+    | NativeCurrencyIdentifier
+    | ForeignAssetIdentifier
+    | LendTokenIdentifier
+    | StableLpTokenIdentifier
+    | StandardLpTokenIdentifier;
 
 export class ChainBalance {
     free: MonetaryAmount<CurrencyExt>;

@@ -6,6 +6,7 @@ import {
     DefaultInterBtcApi,
     DefaultLoansAPI,
     DefaultTransactionAPI,
+    getUnderlyingCurrencyFromLendTokenId,
     InterBtcApi,
     LendToken,
     newAccountId,
@@ -61,18 +62,14 @@ describe("Loans", () => {
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
-        LoansAPI = new DefaultLoansAPI(api, userInterBtcAPI.assetRegistry, TransactionAPI);
+        LoansAPI = new DefaultLoansAPI(api, TransactionAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
         underlyingCurrency = sudoInterBtcAPI.getGovernanceCurrency();
 
         underlyingCurrencyId2 = sudoInterBtcAPI.api.consts.currency.getRelayChainCurrencyId;
-        underlyingCurrency2 = await currencyIdToMonetaryCurrency(
-            userInterBtcAPI.assetRegistry,
-            user2InterBtcAPI.loans,
-            underlyingCurrencyId2
-        );
+        underlyingCurrency2 = await currencyIdToMonetaryCurrency(api, underlyingCurrencyId2);
 
         lendTokenId1 = newCurrencyId(sudoInterBtcAPI.api, { lendToken: { id: 1 } } as LendToken);
         lendTokenId2 = newCurrencyId(sudoInterBtcAPI.api, { lendToken: { id: 2 } } as LendToken);
@@ -253,9 +250,7 @@ describe("Loans", () => {
 
     describe("getUnderlyingCurrencyFromLendTokenId", () => {
         it("should return correct underlying currency for lend token", async () => {
-            const returnedUnderlyingCurrency = await userInterBtcAPI.loans.getUnderlyingCurrencyFromLendTokenId(
-                lendTokenId1
-            );
+            const returnedUnderlyingCurrency = await getUnderlyingCurrencyFromLendTokenId(api, lendTokenId1);
 
             expect(returnedUnderlyingCurrency).to.deep.equal(underlyingCurrency);
         });
@@ -264,7 +259,7 @@ describe("Loans", () => {
                 lendToken: { id: 999 },
             } as LendToken));
 
-            await expect(userInterBtcAPI.loans.getUnderlyingCurrencyFromLendTokenId(invalidLendTokenId)).to.be.rejected;
+            await expect(getUnderlyingCurrencyFromLendTokenId(api, invalidLendTokenId)).to.be.rejected;
         });
     });
 

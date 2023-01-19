@@ -1,7 +1,6 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, LendToken, LoanPosition } from "../types";
-import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
 import {
@@ -165,11 +164,7 @@ export interface LoansAPI {
 }
 
 export class DefaultLoansAPI implements LoansAPI {
-    constructor(
-        private api: ApiPromise,
-        private assetRegistryAPI: AssetRegistryAPI,
-        private transactionAPI: TransactionAPI
-    ) {}
+    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
     // Wrapped call to make mocks in tests simple.
     async getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<LoansMarket>][]> {
@@ -238,11 +233,7 @@ export class DefaultLoansAPI implements LoansAPI {
             marketEntries.map(async ([key, market]) => {
                 const lendTokenId = market.unwrap().lendTokenId;
                 const underlyingCurrencyId = storageKeyToNthInner(key);
-                const underlyingCurrency = await currencyIdToMonetaryCurrency(
-                    this.assetRegistryAPI,
-                    this.api,
-                    underlyingCurrencyId
-                );
+                const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
                 return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, lendTokenId);
             })
         );
@@ -328,11 +319,7 @@ export class DefaultLoansAPI implements LoansAPI {
 
         const allMarketsPositions = await Promise.all(
             marketsCurrencies.map(async ([underlyingCurrencyId, lendTokenId]) => {
-                const underlyingCurrency = await currencyIdToMonetaryCurrency(
-                    this.assetRegistryAPI,
-                    this,
-                    underlyingCurrencyId
-                );
+                const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
                 return getSinglePosition(accountId, underlyingCurrency, underlyingCurrencyId, lendTokenId);
             })
         );
@@ -441,7 +428,7 @@ export class DefaultLoansAPI implements LoansAPI {
     async _getRewardCurrency(): Promise<CurrencyExt> {
         const rewardCurrencyId = this.api.consts.loans.rewardAssetId;
 
-        return currencyIdToMonetaryCurrency(this.assetRegistryAPI, this, rewardCurrencyId);
+        return currencyIdToMonetaryCurrency(this.api, rewardCurrencyId);
     }
 
     _getSubsidyReward(amount: Big, rewardCurrency: CurrencyExt): MonetaryAmount<CurrencyExt> | null {
@@ -457,11 +444,7 @@ export class DefaultLoansAPI implements LoansAPI {
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         marketData: LoansMarket
     ): Promise<[CurrencyExt, LoanAsset]> {
-        const underlyingCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistryAPI,
-            this,
-            underlyingCurrencyId
-        );
+        const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
 
         const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows], rewardCurrency] =
             await Promise.all([

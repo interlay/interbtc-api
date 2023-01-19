@@ -31,9 +31,7 @@ import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
 import { CollateralCurrencyExt, Redeem, WrappedCurrency } from "../types";
-import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { SystemAPI } from "./system";
-import { LoansAPI } from "./loans";
 
 /**
  * @category BTC Bridge
@@ -226,9 +224,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
         private vaultsAPI: VaultsAPI,
         private oracleAPI: OracleAPI,
         private transactionAPI: TransactionAPI,
-        private assetRgistryAPI: AssetRegistryAPI,
-        private systemAPI: SystemAPI,
-        private loansAPI: LoansAPI
+        private systemAPI: SystemAPI
     ) {}
 
     private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
@@ -410,9 +406,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
                 // Can be unwrapped because the filter removes `None` values
                 .map(([id, req]) => {
                     return parseRedeemRequest(
+                        this.api,
                         this.vaultsAPI,
-                        this.assetRgistryAPI,
-                        this.loansAPI,
                         req.unwrap(),
                         this.btcNetwork,
                         storageKeyToNthInner(id),
@@ -470,9 +465,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
                 .filter(([option, _]) => option.isSome)
                 .map(([redeemRequest, redeemId]) =>
                     parseRedeemRequest(
+                        this.api,
                         this.vaultsAPI,
-                        this.assetRgistryAPI,
-                        this.loansAPI,
                         redeemRequest.unwrap(),
                         this.btcNetwork,
                         redeemId,
