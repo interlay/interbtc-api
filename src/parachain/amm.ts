@@ -30,6 +30,7 @@ import {
     isStableMultiPathElement,
     encodeSwapParamsForStandardPoolsOnly,
     encodeSwapParamsForStandardAndStablePools,
+    addressOrPairAsAccountId,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
@@ -426,7 +427,7 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _swapThroughStandardPoolsOnly(
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
-        recipient: string,
+        recipient: AddressOrPair,
         deadline: number | string
     ): Promise<void> {
         const { amountIn, amountOutMin, path } = encodeSwapParamsForStandardPoolsOnly(
@@ -438,7 +439,7 @@ export class DefaultAMMAPI implements AMMAPI {
             amountIn,
             amountOutMin,
             path,
-            recipient,
+            addressOrPairAsAccountId(this.api, recipient),
             deadline
         );
 
@@ -448,7 +449,7 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _swapThroughStandardAndStablePools(
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
-        recipient: string,
+        recipient: AddressOrPair,
         deadline: number | string
     ): Promise<void> {
         const { amountIn, amountOutMin, path } = encodeSwapParamsForStandardAndStablePools(
@@ -460,7 +461,7 @@ export class DefaultAMMAPI implements AMMAPI {
             amountIn,
             amountOutMin,
             path,
-            recipient,
+            addressOrPairAsAccountId(this.api, recipient),
             deadline
         );
 
@@ -470,7 +471,7 @@ export class DefaultAMMAPI implements AMMAPI {
     async swap(
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
-        recipient: string,
+        recipient: AddressOrPair,
         deadline: number | string
     ): Promise<void> {
         const containsStablePool = trade.path.some(isStableMultiPathElement);

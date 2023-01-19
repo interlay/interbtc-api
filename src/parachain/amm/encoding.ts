@@ -37,7 +37,7 @@ function encodeSwapParamsForStandardAndStablePools(
         | {
               Stable: {
                   poolId: number;
-                  basePoolId: number | false;
+                  basePoolId: number;
                   mode: string;
                   fromCurrency: InterbtcPrimitivesCurrencyId;
                   toCurrency: InterbtcPrimitivesCurrencyId;
@@ -55,7 +55,8 @@ function encodeSwapParamsForStandardAndStablePools(
             ? {
                   Stable: {
                       poolId: pathElement.pool.poolId,
-                      basePoolId: isStableMetaMultiPathElement(pathElement) && pathElement.basePool.poolId,
+                      // Pass 0 explicitly if swap is not going through base pool
+                      basePoolId: isStableMetaMultiPathElement(pathElement) ? pathElement.basePool.poolId : 0,
                       mode: isStableMetaMultiPathElement(pathElement)
                           ? pathElement.fromBase
                               ? "FromBase"
