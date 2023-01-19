@@ -361,8 +361,17 @@ describe("vaultsAPI", () => {
                 vault_1_id.currencies.collateral
             );
             const currencyTicker = collateralCurrency.ticker;
+            const accountId = newAccountId(api, vault_1.address);
 
-            const apy = await interBtcAPI.vaults.getAPY(newAccountId(api, vault_1.address), collateralCurrency);
+            // TODO: to be removed
+            const issued = await interBtcAPI.vaults.getIssuedAmount(accountId, collateralCurrency);
+            console.log(
+                `Vault (account id: ${accountId.toString()}, collateral: ${
+                    collateralCurrency.ticker
+                }) issued amount: ${issued.toHuman()}`
+            );
+
+            const apy = await interBtcAPI.vaults.getAPY(accountId, collateralCurrency);
             const apyBig = new Big(apy);
             const apyBenchmark = new Big("0");
             assert.isTrue(
