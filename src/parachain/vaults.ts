@@ -22,6 +22,7 @@ import {
     currencyIdToMonetaryCurrency,
     decodeRpcVaultId,
     addressOrPairAsAccountId,
+    ATOMIC_UNIT,
 } from "../utils";
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
@@ -203,7 +204,7 @@ export interface VaultsAPI {
      * @param nominatorId: an account nominating this vault
      * @param collateralCurrency: the vault's collateral currency
      * @param governanceCurrency: the governance token that block rewards are paid in
-     * @returns the APY as a percentage string
+     * @returns the APY as a percentage
      */
     getBlockRewardAPY(
         vaultAccountId: AccountId,
@@ -629,30 +630,24 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultAccountId: AccountId,
         nominatorId: AccountId,
         collateralCurrency: CollateralCurrencyExt,
+        // TODO: remove unused variable, to be bundled with other future breaking changes
         governanceCurrency: GovernanceCurrency
     ): Promise<Big> {
-        const [globalRewardPerBlock, globalStake, vaultStake, vaultRewardShare, lockedCollateral, minimumBlockPeriod] =
-            await Promise.all([
-                this.rewardsAPI.getRewardPerBlock(governanceCurrency),
-                this.getTotalIssuedAmount(),
-                this.getIssuedAmount(vaultAccountId, collateralCurrency),
-                this.backingCollateralProportion(vaultAccountId, nominatorId, collateralCurrency),
-                this.getLockedCollateral(vaultAccountId, collateralCurrency),
-                this.api.consts.timestamp.minimumPeriod,
-            ]);
+        const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
+        const vaultIdParam = {
+            account_id: vaultAccountId,
+            currencies: vaultCurrencyPair,
+        };
 
-        if (globalStake.toBig().eq(0)) {
-            return Promise.reject(new Error("No issued kBTC"));
+        const issuedAmount = await this.getIssuedAmount(vaultAccountId, collateralCurrency);
+        if (issuedAmount.toBig(ATOMIC_UNIT).gt(Big(0))) {
+            // get estimated annual rewards as rate (ie. not percent)
+            const rawRewardRate = await this.api.rpc.reward.estimateVaultRewardRate(vaultIdParam);
+            const annualRewardRate = decodeFixedPointType(rawRewardRate);
+            return annualRewardRate.mul(100);
         }
-
-        const globalRewardShare = vaultStake.toBig().div(globalStake.toBig());
-        const vaultRewardPerBlock = globalRewardPerBlock.mul(globalRewardShare);
-        const ownRewardPerBlock = vaultRewardPerBlock.mul(vaultRewardShare);
-        const rewardAsWrapped = await this.oracleAPI.convertCollateralToWrapped(ownRewardPerBlock);
-        const blockTime = minimumBlockPeriod.toNumber() * 2; // ms
-        const blocksPerYear = (86400 * 365 * 1000) / blockTime;
-        const annualisedReward = rewardAsWrapped.mul(blocksPerYear);
-        return this.feeAPI.calculateAPY(annualisedReward, lockedCollateral);
+        // if no issued amount, the estimate is 0.
+        return Big(0);
     }
 
     async getLockedCollateral(

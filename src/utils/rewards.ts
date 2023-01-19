@@ -3,7 +3,9 @@ import Big from "big.js";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { ATOMIC_UNIT, newMonetaryAmount } from "./currency";
 
-// TODO: simplify this, perhaps use builder?
+/**
+ * @deprecated This calculation is no longer accurate. Use `EscrowAPI.getRewardsEstimate(...)` instead.
+ */
 export function estimateReward(
     governanceCurrency: GovernanceCurrency,
     atomicUserStake: Big,

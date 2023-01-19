@@ -361,8 +361,9 @@ describe("vaultsAPI", () => {
                 vault_1_id.currencies.collateral
             );
             const currencyTicker = collateralCurrency.ticker;
+            const accountId = newAccountId(api, vault_1.address);
 
-            const apy = await interBtcAPI.vaults.getAPY(newAccountId(api, vault_1.address), collateralCurrency);
+            const apy = await interBtcAPI.vaults.getAPY(accountId, collateralCurrency);
             const apyBig = new Big(apy);
             const apyBenchmark = new Big("0");
             assert.isTrue(
