@@ -32,7 +32,7 @@ import {
 } from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
-import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
+import { BalanceWrapper, NumberOrHex, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, LoansAPI, VaultsAPI } from "../parachain";
@@ -410,4 +410,11 @@ export function decodePermill(amount: Permill, inPercentage: boolean = false): B
         return decodedInDecimals.mul(100);
     }
     return decodedInDecimals;
+}
+
+export function decodeNumberOrHex(value: NumberOrHex): Big {
+    if (value.isHex) {
+        return Big(value.asHex.toBigInt().toString());
+    }
+    return Big(value.asNumber.toString());
 }

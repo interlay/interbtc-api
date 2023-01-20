@@ -32,6 +32,7 @@ import {
     encodeSwapParamsForStandardAndStablePools,
     addressOrPairAsAccountId,
     decodeFixedPointType,
+    decodeNumberOrHex,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
@@ -376,7 +377,8 @@ export class DefaultAMMAPI implements AMMAPI {
 
     private async _getStablePoolAmplificationCoefficient(poolId: number): Promise<Big> {
         const rawA = await this.api.rpc.zenlinkStableAmm.getA(poolId);
-        return Big(rawA.toString());
+
+        return decodeNumberOrHex(rawA);
     }
 
     private async _getStableLiquidityPool(
