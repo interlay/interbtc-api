@@ -11,7 +11,7 @@ class StableLiquidityPool implements LiquidityPoolBase {
     constructor(
         public lpToken: StableLpToken,
         public pooledCurrencies: PooledCurrencies,
-        public apr: string,
+        public apr: Big,
         public tradingFee: Big, // Decimal point
         public poolId: number,
         public A: Big,
