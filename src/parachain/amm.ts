@@ -276,9 +276,8 @@ export class DefaultAMMAPI implements AMMAPI {
             this.tokensAPI.balance(token0, pairAccount),
             this.tokensAPI.balance(token1, pairAccount),
         ]);
-        // TODO: check if transferable or free balance should be used here
-        const token0MonetaryAmount = token0Balance.transferable;
-        const token1MonetaryAmount = token1Balance.transferable;
+        const token0MonetaryAmount = token0Balance.free;
+        const token1MonetaryAmount = token1Balance.free;
 
         return [token0MonetaryAmount, token1MonetaryAmount];
     }
