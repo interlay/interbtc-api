@@ -32,7 +32,7 @@ const findBestTradeRecursively = (
     let bestTrade: Trade | null = null;
 
     for (const pair of pairs) {
-        if (isCurrencyEqual(inputCurrency, pair.token0) || isCurrencyEqual(inputCurrency, pair.token1)) {
+        if (!isCurrencyEqual(inputCurrency, pair.token0) && !isCurrencyEqual(inputCurrency, pair.token1)) {
             // Skip iteration if input currency is not part of current pair.
             continue;
         }
