@@ -33,6 +33,7 @@ import {
     addressOrPairAsAccountId,
     decodeFixedPointType,
     decodeNumberOrHex,
+    isStandardPool,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
@@ -70,12 +71,12 @@ export interface AMMAPI {
     /**
      * Get expected amounts and slippage for deposit of liquidity to pool.
      *
-     * @param {PooledCurrencies} pooledCurrencies Currencies to deposit into pool.
+     * @param {PooledCurrencies} amounts Currencies to deposit into pool.
      * @param {PoolType} poolType Pool type.
      * @param customCurrenciesProportion Optional parameter to specify custom proportion of currencies to withdraw.
      */
-    getExpectedLiquidityDepositAmounts(
-        pooledCurrencies: PooledCurrencies,
+    getExpectedLiquidityDepositAmount(
+        amounts: PooledCurrencies,
         poolType: PoolType,
         customCurrenciesProportion?: PooledCurrencies
     ): Promise<{
@@ -175,14 +176,13 @@ export class DefaultAMMAPI implements AMMAPI {
         return findBestTradeRecursively(inputAmount, outputCurrency, pairs, HOP_LIMIT);
     }
 
-    public async getExpectedLiquidityDepositAmounts(
-        pooledCurrencies: PooledCurrencies,
-        poolType: PoolType,
-        customCurrenciesProportion?: PooledCurrencies
-    ): Promise<{
-        minLpTokens: MonetaryAmount<LpCurrency>;
-        slippage: number; // can be negative for slippage bonus
-    }> {
+    public async getExpectedLiquidityDepositAmount(
+        pool: LiquidityPool,
+        amounts: PooledCurrencies
+    ): MonetaryAmount<LpCurrency> {
+        if (isStandardPool(pool)) {
+        } else {
+        }
         throw new Error("Method not implemented.");
     }
 
@@ -298,15 +298,18 @@ export class DefaultAMMAPI implements AMMAPI {
         let typedPairStatus: ZenlinkProtocolPrimitivesPairMetadata | ZenlinkProtocolPrimitivesBootstrapParameter;
         let isTradingActive: boolean;
         let tradingFee: Big;
+        let totalSupplyAmount: Big;
 
         if (pairStatus.isTrading) {
             typedPairStatus = pairStatus.asTrading;
             isTradingActive = true;
             tradingFee = decodeFixedPointType(typedPairStatus.feeRate);
+            totalSupplyAmount = Big(typedPairStatus.totalSupply.toString());
         } else if (pairStatus.isBootstrap) {
             typedPairStatus = pairStatus.asBootstrap;
             isTradingActive = false;
             tradingFee = Big(0);
+            totalSupplyAmount = Big(0);
         } else {
             return null;
         }
@@ -325,7 +328,9 @@ export class DefaultAMMAPI implements AMMAPI {
             this._getStandardPoolAPR(pairCurrencies),
         ]);
 
-        return new StandardLiquidityPool(lpToken, pooledCurrencies, apr, tradingFee, isTradingActive);
+        const totalSupply = new MonetaryAmount(lpToken, totalSupplyAmount);
+
+        return new StandardLiquidityPool(lpToken, pooledCurrencies, apr, tradingFee, isTradingActive, totalSupply);
     }
 
     public async getStandardLiquidityPools(): Promise<Array<StandardLiquidityPool>> {
