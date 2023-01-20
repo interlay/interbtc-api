@@ -15,7 +15,7 @@ class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
     constructor(
         public lpToken: StandardLpToken,
         public pooledCurrencies: PooledCurrencies,
-        public apr: string,
+        public apr: Big,
         public tradingFee: Big,
         public isTradingActive: boolean // True if in `Trading` state, false if in `Bootstrap` state
     ) {
