@@ -1,5 +1,5 @@
-import { LpCurrency, CurrencyExt } from "@interlay/interbtc-api/types";
-import { isCurrencyEqual } from "@interlay/interbtc-api/utils";
+import { LpCurrency, CurrencyExt } from "../../../types";
+import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { PooledCurrencies } from "../types";
 
