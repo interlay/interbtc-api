@@ -22,7 +22,6 @@ import {
     LiquidityPool,
     Trade,
     PooledCurrencies,
-    PoolType,
     getAllTradingPairs,
     findBestTradeRecursively,
     StandardLiquidityPool,
@@ -66,36 +65,6 @@ export interface AMMAPI {
         outputCurrency: CurrencyExt,
         pools: Array<LiquidityPool>
     ): Trade | null;
-
-    /**
-     * Get expected amounts and slippage for deposit of liquidity to pool.
-     *
-     * @param {PooledCurrencies} pooledCurrencies Currencies to deposit into pool.
-     * @param {PoolType} poolType Pool type.
-     * @param customCurrenciesProportion Optional parameter to specify custom proportion of currencies to withdraw.
-     */
-    getExpectedLiquidityDepositAmounts(
-        pooledCurrencies: PooledCurrencies,
-        poolType: PoolType,
-        customCurrenciesProportion?: PooledCurrencies
-    ): Promise<{
-        minLpTokens: MonetaryAmount<LpCurrency>;
-        slippage: number; // can be negative for slippage bonus
-    }>;
-
-    /**
-     * Get expected amounts and slippage for withdrawal of liquidity from pool.
-     *
-     * @param amount Amount of LP token to withdraw.
-     * @param customCurrenciesProportion Optional parameter to specify custom proportion of currencies to withdraw.
-     */
-    getExpectedLiquidityWithdrawalAmounts(
-        amount: MonetaryAmount<LpCurrency>,
-        customCurrenciesProportion?: PooledCurrencies
-    ): Promise<{
-        expectedPooledCurrencyAmounts: MonetaryAmount<CurrencyExt>;
-        slippage: number; // can be negative for slippage bonus
-    }>;
 
     /**
      * Get liquidity provided by account.
@@ -173,27 +142,6 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         return findBestTradeRecursively(inputAmount, outputCurrency, pairs, HOP_LIMIT);
-    }
-
-    public async getExpectedLiquidityDepositAmounts(
-        pooledCurrencies: PooledCurrencies,
-        poolType: PoolType,
-        customCurrenciesProportion?: PooledCurrencies
-    ): Promise<{
-        minLpTokens: MonetaryAmount<LpCurrency>;
-        slippage: number; // can be negative for slippage bonus
-    }> {
-        throw new Error("Method not implemented.");
-    }
-
-    public async getExpectedLiquidityWithdrawalAmounts(
-        amount: MonetaryAmount<CurrencyExt>,
-        customCurrenciesProportion?: PooledCurrencies
-    ): Promise<{
-        expectedPooledCurrencyAmounts: MonetaryAmount<CurrencyExt>;
-        slippage: number; // can be negative for slippage bonus
-    }> {
-        throw new Error("Method not implemented.");
     }
 
     public async getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpCurrency>>> {
@@ -298,15 +246,18 @@ export class DefaultAMMAPI implements AMMAPI {
         let typedPairStatus: ZenlinkProtocolPrimitivesPairMetadata | ZenlinkProtocolPrimitivesBootstrapParameter;
         let isTradingActive: boolean;
         let tradingFee: Big;
+        let totalSupplyAmount: Big;
 
         if (pairStatus.isTrading) {
             typedPairStatus = pairStatus.asTrading;
             isTradingActive = true;
             tradingFee = decodeFixedPointType(typedPairStatus.feeRate);
+            totalSupplyAmount = Big(typedPairStatus.totalSupply.toString());
         } else if (pairStatus.isBootstrap) {
             typedPairStatus = pairStatus.asBootstrap;
             isTradingActive = false;
             tradingFee = Big(0);
+            totalSupplyAmount = Big(0);
         } else {
             return null;
         }
@@ -325,7 +276,9 @@ export class DefaultAMMAPI implements AMMAPI {
             this._getStandardPoolAPR(pairCurrencies),
         ]);
 
-        return new StandardLiquidityPool(lpToken, pooledCurrencies, apr, tradingFee, isTradingActive);
+        const totalSupply = new MonetaryAmount(lpToken, totalSupplyAmount);
+
+        return new StandardLiquidityPool(lpToken, pooledCurrencies, apr, tradingFee, isTradingActive, totalSupply);
     }
 
     public async getStandardLiquidityPools(): Promise<Array<StandardLiquidityPool>> {
@@ -426,6 +379,7 @@ export class DefaultAMMAPI implements AMMAPI {
             this.getStandardLiquidityPools(),
             this.getStableLiquidityPools(),
         ]);
+
         return [...standardPools, ...stablePools];
     }
 

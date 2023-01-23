@@ -21,6 +21,7 @@ interface LiquidityPoolBase {
     pooledCurrencies: PooledCurrencies; // Array of 2 for standard pools, array of 2+ for stable pools.
     apr: Big; // Percentage.
     tradingFee: Big; // Decimal.
+    totalSupply: MonetaryAmount<LpCurrency>;
 }
 
 type LiquidityPool = StandardLiquidityPool | StableLiquidityPool;

@@ -5,8 +5,9 @@ import Big from "big.js";
 import { MultiPathElementStandard, MultiPathElementType } from "../trade/types";
 import { PoolType, PooledCurrencies } from "../types";
 import { LiquidityPoolBase, TradingPair } from "./types";
+import { LiquidityPoolCalculator } from "./calculator";
 
-class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
+class StandardLiquidityPool extends LiquidityPoolCalculator<StandardLpToken> implements LiquidityPoolBase, TradingPair {
     public type = PoolType.STANDARD;
     public token0: CurrencyExt;
     public token1: CurrencyExt;
@@ -17,8 +18,11 @@ class StandardLiquidityPool implements LiquidityPoolBase, TradingPair {
         public pooledCurrencies: PooledCurrencies,
         public apr: Big,
         public tradingFee: Big,
-        public isTradingActive: boolean // True if in `Trading` state, false if in `Bootstrap` state
+        public isTradingActive: boolean, // True if in `Trading` state, false if in `Bootstrap` state
+        public totalSupply: MonetaryAmount<StandardLpToken>
     ) {
+        super(pooledCurrencies, totalSupply);
+
         if (pooledCurrencies.length !== 2) {
             throw new Error("Standard liquidity pool has to always consist of 2 currencies!");
         }
