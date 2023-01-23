@@ -38,9 +38,16 @@ describe("systemAPI", () => {
 
     // TODO: Unskip once differences between rococo-local and standalone are fixed
     it.skip("should setCode", async () => {
-        const code = fs.readFileSync(
-            path.join(__dirname, "../../../mock/rococo_runtime.compact.wasm")
-        ).toString("hex");
+        const code = fs.readFileSync(path.join(__dirname, "../../../mock/rococo_runtime.compact.wasm")).toString("hex");
         await sudo(interBtcAPI, () => interBtcAPI.system.setCode(code));
+    });
+
+    it("should getFutureBlockNumber", async () => {
+        const [currentBlockNumber, futureBlockNumber] = await Promise.all([
+            interBtcAPI.system.getCurrentBlockNumber(),
+            interBtcAPI.system.getFutureBlockNumber(120),
+        ]);
+
+        assert.isTrue(currentBlockNumber + 10 === futureBlockNumber);
     });
 });
