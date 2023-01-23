@@ -4,9 +4,10 @@ import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { PoolType, PooledCurrencies } from "../types";
 import { LiquidityPoolBase } from "./types";
+import { LiquidityPoolCalculator } from "./calculator";
 
 // SOURCE: @zenlink-dex/sdk-core
-class StableLiquidityPool implements LiquidityPoolBase {
+class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> implements LiquidityPoolBase {
     public type = PoolType.STABLE;
     constructor(
         public lpToken: StableLpToken,
@@ -16,7 +17,9 @@ class StableLiquidityPool implements LiquidityPoolBase {
         public poolId: number,
         public A: Big,
         public totalSupply: MonetaryAmount<StableLpToken>
-    ) {}
+    ) {
+        super(pooledCurrencies, totalSupply);
+    }
 
     private _xp(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<Big> {
         return amounts.map((balance) => balance.toBig());
