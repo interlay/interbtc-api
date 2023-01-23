@@ -292,6 +292,8 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     private async _getStablePoolAmplificationCoefficient(poolId: number): Promise<Big> {
+        // TODO: fix 'getA is not a function'
+        return Big(1);
         const rawA = await this.api.rpc.zenlinkStableAmm.getA(poolId);
 
         return decodeNumberOrHex(rawA);
