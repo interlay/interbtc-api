@@ -22,7 +22,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     private _xp(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<Big> {
-        return amounts.map((balance) => balance.toBig());
+        return amounts.map((balance) => balance.toBig().mul(Big(10).pow(18)));
     }
 
     private _distance(x: Big, y: Big): Big {
@@ -58,7 +58,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             D = Ann.mul(sum)
                 .add(D_P.mul(nCoins))
                 .mul(D)
-                .div(Ann.sub(1).mul(D).add(nCoins.add(1)).mul(D_P));
+                .div(Ann.sub(1).mul(D).add(nCoins.add(1).mul(D_P)));
 
             if (this._distance(D, Dprev).lte(1)) {
                 return D;
