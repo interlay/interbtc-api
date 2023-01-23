@@ -195,13 +195,13 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     /**
      *
      * @param amounts Array of monetary amount for each pooled currency of this pool.
-     * @param deposit
-     * @returns
+     * @param deposit True for deposit, false for withdrawal
+     * @returns LP token amount that will be minted/burned after operation.
      */
     public calculateTokenAmount(
         amounts: Array<MonetaryAmount<CurrencyExt>>,
         deposit: boolean
-    ): MonetaryAmount<CurrencyExt> {
+    ): MonetaryAmount<StableLpToken> {
         const sortedAmounts = this._sortAmounts(amounts);
 
         const amp = this.A;

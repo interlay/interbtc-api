@@ -32,6 +32,9 @@ import {
     addressOrPairAsAccountId,
     decodeFixedPointType,
     decodeNumberOrHex,
+    isStandardPool,
+    newCurrencyId,
+    isCurrencyEqual,
 } from "..";
 
 const HOP_LIMIT = 4; // TODO: add as parameter?
@@ -92,24 +95,37 @@ export interface AMMAPI {
     /**
      * Adds liquidity to liquidity pool
      *
-     * @param {PooledCurrencies} amounts Array of monetary amounts of pooled tokens.
+     * @param {PooledCurrencies} amounts Array of monetary amounts of pooled currencies
+     * sorted in the same order as in the pool.
      * @param {LiquidityPool} pool Type of liquidity pool.
+     * @param {number} maxSlippage Maximum allowed slippage.
+     * @param {number} deadline Deadline block number.
+     * @param {AddressOrPair} recipient Recipient of the liquidity pool token.
      */
-    addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void>;
+    addLiquidity(
+        amounts: PooledCurrencies,
+        pool: LiquidityPool,
+        maxSlippage: number,
+        deadline: number,
+        recipient: AddressOrPair
+    ): Promise<void>;
 
     /**
      * Removes liquidity from pool.
      *
      * @param {MonetaryAmount<LpCurrency>} amount Amount of LP token to be removed
      * @param {LiquidityPool} pool Liquidity pool to remove from.
-     * @param customCurrenciesProportion Optional parameter that allows to specify proportion
-     *        of pooled currencies in which the liquidity should be withdrawn.
+     * @param {number} maxSlippage Maximum allowed slippage.
+     * @param {number} deadline Deadline block number.
+     * @param {AddressOrPair} recipient Recipient of the pooled currencies.
      * @note Removes `amount` of liquidity in LP token, breaks it down and transfers to account.
      */
     removeLiquidity(
         amount: MonetaryAmount<LpCurrency>,
         pool: LiquidityPool,
-        customCurrenciesProportion?: PooledCurrencies
+        maxSlippage: number,
+        deadline: number,
+        recipient: AddressOrPair
     ): Promise<void>;
 }
 
@@ -406,15 +422,105 @@ export class DefaultAMMAPI implements AMMAPI {
         }
     }
 
-    async addLiquidity(amounts: PooledCurrencies, pool: LiquidityPool): Promise<void> {
-        //TODO
-        throw new Error("Method not implemented.");
+    private async _addLiquidityStandardPool(
+        amounts: PooledCurrencies,
+        pool: StandardLiquidityPool,
+        maxSlippageComplement: number,
+        deadline: number
+    ): Promise<void> {
+        if (amounts.length !== 2) {
+            throw new Error("Invalid count of input amounts.");
+        }
+        if (!isCurrencyEqual(pool.token0, amounts[0].currency) || !isCurrencyEqual(pool.token1, amounts[1].currency)) {
+            throw new Error("Input currencies and pool currencies differ.");
+        }
+
+        const minAmounts = amounts.map((amount) => amount.mul(maxSlippageComplement));
+        const [asset0, asset1, amount0Desired, amount1Desired, amount0Min, amount1Min] = [
+            newCurrencyId(this.api, amounts[0].currency),
+            newCurrencyId(this.api, amounts[1].currency),
+            amounts[0].toString(true),
+            amounts[1].toString(true),
+            minAmounts[0].toString(true),
+            minAmounts[1].toString(true),
+        ];
+
+        const addLiquidityToStandardPoolExtrinsic = this.api.tx.zenlinkProtocol.addLiquidity(
+            asset0,
+            asset1,
+            amount0Desired,
+            amount1Desired,
+            amount0Min,
+            amount1Min,
+            deadline
+        );
+
+        await this.transactionAPI.sendLogged(
+            addLiquidityToStandardPoolExtrinsic,
+            this.api.events.zenlinkProtocol.LiquidityAdded,
+            true
+        );
+    }
+
+    // TODO: add support for meta pools
+    private async _addLiquidityStablePool(
+        amounts: PooledCurrencies,
+        pool: StableLiquidityPool,
+        maxSlippageComplement: number,
+        deadline: number,
+        recipient: AddressOrPair
+    ): Promise<void> {
+        amounts.forEach((amount, index) => {
+            if (!isCurrencyEqual(pool.pooledCurrencies[index].currency, amount.currency)) {
+                throw new Error(
+                    `Invalid input amounts, currency ${amount.currency.ticker} is not at index ${index} of pool.`
+                );
+            }
+        });
+
+        const minAmounts = amounts.map((amount) => amount.mul(maxSlippageComplement));
+        const minimumLpTokenOut = pool.calculateTokenAmount(minAmounts, true).toString(true);
+        const recipientAccount = addressOrPairAsAccountId(this.api, recipient);
+        const rawAmounts = amounts.map((amount) => amount.toString(true));
+
+        const addLiquidityToStablePoolExtrinsic = this.api.tx.zenlinkStableAmm.addLiquidity(
+            pool.poolId,
+            rawAmounts,
+            minimumLpTokenOut,
+            recipientAccount,
+            deadline
+        );
+
+        await this.transactionAPI.sendLogged(
+            addLiquidityToStablePoolExtrinsic,
+            this.api.events.zenlinkStableAmm.AddLiquidity,
+            true
+        );
+    }
+
+    async addLiquidity(
+        amounts: PooledCurrencies,
+        pool: LiquidityPool,
+        maxSlippage: number,
+        deadline: number,
+        recipient: AddressOrPair
+    ): Promise<void> {
+        const maxSlippageComplement = 1 - maxSlippage / 100;
+
+        if (isStandardPool(pool)) {
+            await this._addLiquidityStandardPool(amounts, pool, maxSlippageComplement, deadline);
+        } else {
+            await this._addLiquidityStablePool(amounts, pool, maxSlippageComplement, deadline, recipient);
+        }
+        // TODO: add to farming, batch
     }
 
     async removeLiquidity(
         amount: MonetaryAmount<LpCurrency>,
         pool: LiquidityPool,
-        customCurrenciesProportion?: PooledCurrencies
+        maxSlippage: number,
+        deadline: number,
+        recipient: AddressOrPair
     ): Promise<void> {
         //TODO
         throw new Error("Method not implemented.");
