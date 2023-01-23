@@ -1,16 +1,7 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
-import {
-    AssetRegistryAPI,
-    DefaultAssetRegistryAPI,
-    DefaultInterBtcApi,
-    DefaultLoansAPI,
-    DefaultTransactionAPI,
-    InterBtcApi,
-    InterbtcPrimitivesVaultId,
-    LoansAPI,
-} from "../../../../../src/index";
+import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId } from "../../../../../src/index";
 
 import {
     BitcoinCoreClient,
@@ -45,8 +36,6 @@ describe.skip("NominationAPI", () => {
     let api: ApiPromise;
     let userInterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
-    let assetRegistry: AssetRegistryAPI;
-    let loansAPI: LoansAPI;
     let sudoAccount: KeyringPair;
     let userAccount: KeyringPair;
     let vault_1: KeyringPair;
@@ -60,14 +49,11 @@ describe.skip("NominationAPI", () => {
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
-        const transactionAPI = new DefaultTransactionAPI(api);
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
         // TODO: remove all uses of config currencies and query the chain instead
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
-        assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vault_1 = keyring.addFromUri(VAULT_1_URI);
@@ -98,17 +84,11 @@ describe.skip("NominationAPI", () => {
 
     it("Should opt a vault in and out of nomination", async () => {
         for (const vault_1_id of vault_1_ids) {
-            await optInWithAccount(
-                vault_1,
-                await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vault_1_id.currencies.collateral)
-            );
+            await optInWithAccount(vault_1, await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral));
             const nominationVaults = await userInterBtcAPI.nomination.listVaults();
             assert.equal(1, nominationVaults.length);
             assert.equal(vault_1.address, nominationVaults.map((v) => v.accountId.toString())[0]);
-            await optOutWithAccount(
-                vault_1,
-                await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vault_1_id.currencies.collateral)
-            );
+            await optOutWithAccount(vault_1, await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral));
             assert.equal(0, (await userInterBtcAPI.nomination.listVaults()).length);
         }
     }).timeout(2 * 60000);
@@ -119,16 +99,9 @@ describe.skip("NominationAPI", () => {
 
     it("Should nominate to and withdraw from a vault", async () => {
         for (const vault_1_id of vault_1_ids) {
-            await optInWithAccount(
-                vault_1,
-                await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vault_1_id.currencies.collateral)
-            );
+            await optInWithAccount(vault_1, await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral));
             const issueFee = await userInterBtcAPI.fee.getIssueFee();
-            const collateralCurrency = await currencyIdToMonetaryCurrency(
-                assetRegistry,
-                loansAPI,
-                vault_1_id.currencies.collateral
-            );
+            const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral);
             const nominatorDeposit = newMonetaryAmount(1, collateralCurrency, true);
             try {
                 // Set issue fees to 100%
@@ -187,14 +160,14 @@ describe.skip("NominationAPI", () => {
                 assert.equal(1, nominatorsAfterWithdrawal.length);
                 const totalNomination = await userInterBtcAPI.nomination.getTotalNomination(
                     newAccountId(api, userAccount.address),
-                    await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vault_1_id.currencies.collateral)
+                    await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral)
                 );
                 assert.equal(totalNomination.toString(), "0");
             } finally {
                 await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
                 await optOutWithAccount(
                     vault_1,
-                    await currencyIdToMonetaryCurrency(assetRegistry, loansAPI, vault_1_id.currencies.collateral)
+                    await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral)
                 );
             }
         }

@@ -12,7 +12,7 @@ import {
     newVaultCurrencyPair,
     newVaultId,
 } from "../utils";
-import { AssetRegistryAPI, InterbtcPrimitivesVaultId, LoansAPI } from "../parachain";
+import { InterbtcPrimitivesVaultId } from "../parachain";
 import { TransactionAPI } from "../parachain/transaction";
 import { WrappedCurrency, GovernanceCurrency, CollateralCurrencyExt, CurrencyExt } from "../types";
 
@@ -148,16 +148,14 @@ export class DefaultRewardsAPI implements RewardsAPI {
     constructor(
         public api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
-        private transactionAPI: TransactionAPI,
-        private assetRegistry: AssetRegistryAPI,
-        private loansAPI: LoansAPI
+        private transactionAPI: TransactionAPI
     ) {}
 
     async withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<void> {
         const definedNonce = nonce
             ? nonce
             : await this.getStakingPoolNonce(
-                  await currencyIdToMonetaryCurrency(this.assetRegistry, this.loansAPI, vaultId.currencies.collateral),
+                  await currencyIdToMonetaryCurrency(this.api, vaultId.currencies.collateral),
                   vaultId.accountId
               );
         const tx = this.api.tx.fee.withdrawRewards(vaultId, definedNonce.toString());
@@ -252,11 +250,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         vaultId: InterbtcPrimitivesVaultId,
         nominatorId: AccountId
     ): Promise<MonetaryAmount<CollateralCurrencyExt>> {
-        const collateralCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistry,
-            this.loansAPI,
-            vaultId.currencies.collateral
-        );
+        const collateralCurrency = await currencyIdToMonetaryCurrency(this.api, vaultId.currencies.collateral);
         const [stake, slashPerToken, slashTally] = await Promise.all([
             this.getStakingPoolStake(collateralCurrency, vaultId.accountId, nominatorId),
             this.getStakingPoolSlashPerToken(collateralCurrency, vaultId.accountId),
@@ -265,7 +259,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         const toSlash = computeLazyDistribution(stake, slashPerToken, slashTally);
         return newMonetaryAmount(
             stake.sub(toSlash),
-            await currencyIdToMonetaryCurrency(this.assetRegistry, this.loansAPI, vaultId.currencies.collateral)
+            await currencyIdToMonetaryCurrency(this.api, vaultId.currencies.collateral)
         );
     }
 
@@ -311,11 +305,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
 
     async getRewardsPoolStake(vaultCollateral: CollateralCurrencyExt, vaultAccountId: AccountId): Promise<Big> {
         const collateralCurrencyId = newCurrencyId(this.api, vaultCollateral);
-        const collateralCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistry,
-            this.loansAPI,
-            collateralCurrencyId
-        );
+        const collateralCurrency = await currencyIdToMonetaryCurrency(this.api, collateralCurrencyId);
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
         return decodeFixedPointType(await this.api.query.vaultRewards.stake([collateralCurrencyId, vaultId]));
     }

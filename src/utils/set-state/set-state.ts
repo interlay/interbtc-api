@@ -402,11 +402,7 @@ async function main(): Promise<void> {
 
     const defaultVaultAccountId = vault_1.address;
     const defaultCollateralSymbol = (
-        await currencyIdToMonetaryCurrency(
-            sudoAccountInterBtcApi.assetRegistry,
-            sudoAccountInterBtcApi.loans,
-            sudoAccountInterBtcApi.api.consts.currency.getRelayChainCurrencyId
-        )
+        await currencyIdToMonetaryCurrency(api, sudoAccountInterBtcApi.api.consts.currency.getRelayChainCurrencyId)
     ).ticker;
     const defaultWrappedSymbol = sudoAccountInterBtcApi.getWrappedCurrency().ticker;
     console.log(`Default vault to use: ${defaultVaultAccountId}-${defaultCollateralSymbol}-${defaultWrappedSymbol}.\n`);

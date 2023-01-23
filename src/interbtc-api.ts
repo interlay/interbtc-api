@@ -108,12 +108,12 @@ export class DefaultInterBtcApi implements InterBtcApi {
         this.transactionAPI = new DefaultTransactionAPI(api, _account);
 
         this.assetRegistry = new DefaultAssetRegistryAPI(api);
-        this.loans = new DefaultLoansAPI(api, this.assetRegistry, this.transactionAPI);
+        this.loans = new DefaultLoansAPI(api, this.transactionAPI);
         this.tokens = new DefaultTokensAPI(api, this.transactionAPI);
         this.system = new DefaultSystemAPI(api, this.transactionAPI);
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency, this.transactionAPI);
-        this.fee = new DefaultFeeAPI(api, this.oracle, this.assetRegistry, this.loans);
-        this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, this.transactionAPI, this.assetRegistry, this.loans);
+        this.fee = new DefaultFeeAPI(api, this.oracle);
+        this.rewards = new DefaultRewardsAPI(api, wrappedCurrency, this.transactionAPI);
         this.escrow = new DefaultEscrowAPI(api, governanceCurrency, this.system, this.transactionAPI);
 
         this.vaults = new DefaultVaultsAPI(
@@ -126,9 +126,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.fee,
             this.rewards,
             this.system,
-            this.transactionAPI,
-            this.assetRegistry,
-            this.loans
+            this.transactionAPI
         );
         this.faucet = new FaucetClient(api, "");
         this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
@@ -139,9 +137,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.electrsAPI,
             wrappedCurrency,
             this.fee,
-            this.transactionAPI,
-            this.assetRegistry,
-            this.loans
+            this.transactionAPI
         );
         this.issue = new DefaultIssueAPI(
             api,
@@ -150,9 +146,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             wrappedCurrency,
             this.fee,
             this.vaults,
-            this.transactionAPI,
-            this.assetRegistry,
-            this.loans
+            this.transactionAPI
         );
         this.redeem = new DefaultRedeemAPI(
             api,
@@ -162,20 +156,16 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.vaults,
             this.oracle,
             this.transactionAPI,
-            this.assetRegistry,
-            this.system,
-            this.loans
+            this.system
         );
         this.nomination = new DefaultNominationAPI(
             api,
             wrappedCurrency,
             this.vaults,
             this.rewards,
-            this.transactionAPI,
-            this.assetRegistry,
-            this.loans
+            this.transactionAPI
         );
-        this.amm = new DefaultAMMAPI(api, this.assetRegistry, this.loans, this.tokens, this.transactionAPI);
+        this.amm = new DefaultAMMAPI(api, this.tokens, this.transactionAPI);
     }
 
     setAccount(account: AddressOrPair, signer?: Signer): void {

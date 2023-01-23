@@ -2,14 +2,10 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import {
-    AssetRegistryAPI,
     currencyIdToMonetaryCurrency,
-    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
-    DefaultLoansAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
-    LoansAPI,
     VaultRegistryVault,
 } from "../../../../src/index";
 
@@ -59,8 +55,6 @@ describe("redeem", () => {
     let userInterBtcAPI: InterBtcApi;
     let oracleInterBtcAPI: InterBtcApi;
     let reporterInterBtcAPI: InterBtcApi;
-    let assetRegistry: AssetRegistryAPI;
-    let loansAPI: LoansAPI;
 
     let collateralCurrencies: Array<CollateralCurrencyExt>;
     let wrappedCurrency: WrappedCurrency;
@@ -71,10 +65,7 @@ describe("redeem", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
         const reportingVaultAccount = keyring.addFromUri(VAULT_1_URI);
-        const transactionAPI = new DefaultTransactionAPI(api);
-        assetRegistry = new DefaultAssetRegistryAPI(api);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         reporterInterBtcAPI = new DefaultInterBtcApi(api, "regtest", reportingVaultAccount, ESPLORA_BASE_PATH);
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
@@ -115,8 +106,7 @@ describe("redeem", () => {
     it.skip("should liquidate a vault that committed theft", async () => {
         for (const vaultToLiquidateId of vaultToLiquidateIds) {
             const collateralCurrency = await currencyIdToMonetaryCurrency(
-                assetRegistry,
-                loansAPI,
+                api,
                 vaultToLiquidateId.currencies.collateral
             );
             const regularExchangeRate = await oracleInterBtcAPI.oracle.getExchangeRate(collateralCurrency);

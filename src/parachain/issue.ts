@@ -26,9 +26,7 @@ import { FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, Issue, WrappedCurrency } from "../types";
-import { AssetRegistryAPI } from "../parachain/asset-registry";
 import { currencyIdToMonetaryCurrency } from "../utils";
-import { LoansAPI } from "./loans";
 
 export type IssueLimits = {
     singleVaultMaxIssuable: MonetaryAmount<WrappedCurrency>;
@@ -190,9 +188,7 @@ export class DefaultIssueAPI implements IssueAPI {
         private wrappedCurrency: WrappedCurrency,
         private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
-        private transactionAPI: TransactionAPI,
-        private assetRegistryAPI: AssetRegistryAPI,
-        private loansAPI: LoansAPI
+        private transactionAPI: TransactionAPI
     ) {}
 
     async getRequestLimits(
@@ -247,7 +243,7 @@ export class DefaultIssueAPI implements IssueAPI {
                 const vaultId = newVaultId(
                     this.api,
                     vaultAccountId.toString(),
-                    await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, collateralCurrencyId),
+                    await currencyIdToMonetaryCurrency(this.api, collateralCurrencyId),
                     this.wrappedCurrency
                 );
                 const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>([
@@ -354,14 +350,7 @@ export class DefaultIssueAPI implements IssueAPI {
                 .filter(([_, req]) => req.isSome.valueOf())
                 // Can be unwrapped because the filter removes `None` values
                 .map(([id, req]) =>
-                    parseIssueRequest(
-                        this.vaultsAPI,
-                        this.assetRegistryAPI,
-                        this.loansAPI,
-                        req.unwrap(),
-                        this.btcNetwork,
-                        storageKeyToNthInner(id)
-                    )
+                    parseIssueRequest(this.api, this.vaultsAPI, req.unwrap(), this.btcNetwork, storageKeyToNthInner(id))
                 )
         );
     }
@@ -402,14 +391,7 @@ export class DefaultIssueAPI implements IssueAPI {
             issueRequestData
                 .filter(([option, _]) => option.isSome)
                 .map(([issueRequest, issueId]) =>
-                    parseIssueRequest(
-                        this.vaultsAPI,
-                        this.assetRegistryAPI,
-                        this.loansAPI,
-                        issueRequest.unwrap(),
-                        this.btcNetwork,
-                        issueId
-                    )
+                    parseIssueRequest(this.api, this.vaultsAPI, issueRequest.unwrap(), this.btcNetwork, issueId)
                 )
         );
     }

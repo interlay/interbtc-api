@@ -18,7 +18,6 @@ import { FeeAPI } from "./fee";
 import { TransactionAPI } from "./transaction";
 import { ElectrsAPI } from "../external";
 import { CollateralCurrencyExt, ReplaceRequestExt, WrappedCurrency } from "../types";
-import { AssetRegistryAPI, LoansAPI } from "../parachain";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 
 /**
@@ -156,9 +155,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
         private feeAPI: FeeAPI,
-        private transactionAPI: TransactionAPI,
-        private assetRegistryAPI: AssetRegistryAPI,
-        private loansAPI: LoansAPI,
+        private transactionAPI: TransactionAPI
     ) {}
 
     buildRequestReplaceExtrinsic(
@@ -257,8 +254,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
                 // Can be unwrapped because the filter removes `None` values
                 .map(([id, req]) =>
                     parseReplaceRequest(
-                        this.assetRegistryAPI,
-                        this.loansAPI,
+                        this.api,
                         req.unwrap(),
                         this.btcNetwork,
                         this.wrappedCurrency,
@@ -280,8 +276,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
                     ([id, req]) =>
                         new Promise<void>((resolve) => {
                             parseReplaceRequest(
-                                this.assetRegistryAPI,
-                                this.loansAPI,
+                                this.api,
                                 req.unwrap(),
                                 this.btcNetwork,
                                 this.wrappedCurrency,
@@ -299,8 +294,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
     async getRequestById(replaceId: H256 | string): Promise<ReplaceRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
         return parseReplaceRequest(
-            this.assetRegistryAPI,
-            this.loansAPI,
+            this.api,
             await this.api.query.replace.replaceRequests.at(head, ensureHashEncoded(this.api, replaceId)),
             this.btcNetwork,
             this.wrappedCurrency,
@@ -339,7 +333,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
             requestPairs.map(
                 ([id, req]) =>
                     new Promise<[H256, ReplaceRequestExt]>((resolve) => {
-                        parseReplaceRequest(this.assetRegistryAPI, this.loansAPI, req, this.btcNetwork, this.wrappedCurrency, id).then(
+                        parseReplaceRequest(this.api, req, this.btcNetwork, this.wrappedCurrency, id).then(
                             (replaceRequest) => {
                                 resolve([id, replaceRequest]);
                             }
