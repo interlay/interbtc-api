@@ -22,7 +22,6 @@ import {
     currencyIdToMonetaryCurrency,
     decodeRpcVaultId,
     addressOrPairAsAccountId,
-    ATOMIC_UNIT,
 } from "../utils";
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
@@ -639,15 +638,10 @@ export class DefaultVaultsAPI implements VaultsAPI {
             currencies: vaultCurrencyPair,
         };
 
-        const issuedAmount = await this.getIssuedAmount(vaultAccountId, collateralCurrency);
-        if (issuedAmount.toBig(ATOMIC_UNIT).gt(Big(0))) {
-            // get estimated annual rewards as rate (ie. not percent)
-            const rawRewardRate = await this.api.rpc.reward.estimateVaultRewardRate(vaultIdParam);
-            const annualRewardRate = decodeFixedPointType(rawRewardRate);
-            return annualRewardRate.mul(100);
-        }
-        // if no issued amount, the estimate is 0.
-        return Big(0);
+        // get estimated annual rewards as rate (ie. not percent)
+        const rawRewardRate = await this.api.rpc.reward.estimateVaultRewardRate(vaultIdParam);
+        const annualRewardRate = decodeFixedPointType(rawRewardRate);
+        return annualRewardRate.mul(100);
     }
 
     async getLockedCollateral(
