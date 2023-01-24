@@ -32,7 +32,6 @@ import {
     encodeSwapParamsForStandardAndStablePools,
     addressOrPairAsAccountId,
     decodeFixedPointType,
-    decodeNumberOrHex,
     isStandardPool,
     newCurrencyId,
     isCurrencyEqual,
@@ -323,11 +322,16 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     private async _getStablePoolAmplificationCoefficient(poolId: number): Promise<Big> {
-        // TODO: fix 'getA is not a function'
-        return Big(1);
-        const rawA = await this.api.rpc.zenlinkStableAmm.getA(poolId);
+        // TODO: refactor when RPC call is added to node
+        // const rawA = await this.api.rpc.zenlinkStableAmm.getA(poolId);
+        // return decodeNumberOrHex(rawA);
+        const poolData = await this.api.query.zenlinkStableAmm.pools(poolId);
+        if (poolData.isSome) {
+            const rawA = poolData.unwrap().asBase.futureA;
+            return Big(rawA.toString());
+        }
 
-        return decodeNumberOrHex(rawA);
+        throw new Error(`_getStablePoolAmplificationCoefficient: Invalid pool id ${poolId}.`);
     }
 
     private _getStableBasePooledCurrenciesAdjustedToLpTokenAmount(
