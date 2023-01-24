@@ -18,7 +18,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         public apr: Big,
         public tradingFee: Big, // Decimal point
         public poolId: number,
-        public A: Big,
+        public amplificationCoefficient: Big,
         public totalSupply: MonetaryAmount<StableLpToken>
     ) {
         super(pooledCurrencies, totalSupply);
@@ -80,7 +80,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             throw new Error("_getY: Index out of range.");
         }
 
-        const amp = this.A;
+        const amp = this.amplificationCoefficient;
         const Ann = amp.mul(nCoins);
         const D = this._getD(normalizedBalances, amp);
 
@@ -209,7 +209,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     ): MonetaryAmount<StableLpToken> {
         const sortedAmounts = this._sortAmounts(amounts);
 
-        const amp = this.A;
+        const amp = this.amplificationCoefficient;
         const D0 = this._getD(this.xp, amp);
 
         const newBalances = this.actuallyPooledCurrencies.map((balance, i) =>
@@ -236,7 +236,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             throw new Error("StableLiquidityPool: calculateRemoveLiquidityOneToken: Currency index out of range.");
         }
 
-        const amp = this.A;
+        const amp = this.amplificationCoefficient;
         const xp = this.xp;
         const D0 = this._getD(xp, amp);
         const D1 = D0.sub(tokenLPAmount.toBig().mul(D0).div(this.totalSupply.toBig()));

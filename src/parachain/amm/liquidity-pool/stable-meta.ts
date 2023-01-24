@@ -12,7 +12,7 @@ class StableLiquidityMetaPool extends StableLiquidityPool {
         apr: Big,
         tradingFee: Big,
         poolId: number,
-        A: Big,
+        amplificationCoefficient: Big,
         totalSupply: MonetaryAmount<StableLpToken>,
         public basePool: StableLiquidityPool // Contains base pool object.
     ) {
@@ -24,7 +24,7 @@ class StableLiquidityMetaPool extends StableLiquidityPool {
             apr,
             tradingFee,
             poolId,
-            A,
+            amplificationCoefficient,
             totalSupply
         );
     }

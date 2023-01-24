@@ -198,6 +198,9 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _getStableLpTokens(): Promise<Array<StableLpToken>> {
         const stablePools = await this.api.query.zenlinkStableAmm.pools.entries();
         const stableLpTokens = stablePools.map(([key, poolData]) => {
+            if (!poolData.isSome) {
+                return null;
+            }
             const poolBase = DefaultAMMAPI.getStablePoolInfo(poolData.unwrap());
             if (poolBase === null) {
                 return null;
@@ -286,7 +289,13 @@ export class DefaultAMMAPI implements AMMAPI {
         );
         const pools = await Promise.all(
             pairs.map(([pairKey, lpToken], index) =>
-                this._getStandardLiquidityPool(storageKeyToNthInner(pairKey), lpToken.unwrap(), pairStatuses[index])
+                lpToken.isSome
+                    ? this._getStandardLiquidityPool(
+                          storageKeyToNthInner(pairKey),
+                          lpToken.unwrap(),
+                          pairStatuses[index]
+                      )
+                    : null
             )
         );
 
@@ -347,7 +356,7 @@ export class DefaultAMMAPI implements AMMAPI {
             decodeFixedPointType(poolInfo.fee),
         ];
         const lpToken = DefaultAMMAPI.getStableLpTokenFromPoolData(poolId, poolInfo);
-        const [pooledCurrenciesBase, apr, A, totalSupply] = await Promise.all([
+        const [pooledCurrenciesBase, apr, amplificationCoefficient, totalSupply] = await Promise.all([
             this._getStablePoolPooledCurrencies(pooledCurrencyIds, pooledCurrencyBalances),
             this._getStablePoolAPR(poolId),
             this._getStablePoolAmplificationCoefficient(poolId),
@@ -364,7 +373,7 @@ export class DefaultAMMAPI implements AMMAPI {
                   )
                 : pooledCurrenciesBase;
 
-        return { lpToken, actuallyPooledCurrencies, apr, A, totalSupply, tradingFee };
+        return { lpToken, actuallyPooledCurrencies, apr, amplificationCoefficient, totalSupply, tradingFee };
     }
 
     private async _getStableMetaPoolBasePool(
@@ -404,7 +413,8 @@ export class DefaultAMMAPI implements AMMAPI {
         if (processedPoolData === null) {
             return null;
         }
-        const { lpToken, actuallyPooledCurrencies, apr, tradingFee, A, totalSupply } = processedPoolData;
+        const { lpToken, actuallyPooledCurrencies, apr, tradingFee, amplificationCoefficient, totalSupply } =
+            processedPoolData;
 
         if (poolData.isBase) {
             return new StableLiquidityPool(
@@ -415,7 +425,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 apr,
                 tradingFee,
                 poolId,
-                A,
+                amplificationCoefficient,
                 totalSupply
             );
         }
@@ -437,7 +447,7 @@ export class DefaultAMMAPI implements AMMAPI {
             apr,
             tradingFee,
             poolId,
-            A,
+            amplificationCoefficient,
             totalSupply,
             basePool
         );
@@ -448,7 +458,9 @@ export class DefaultAMMAPI implements AMMAPI {
         const rawPoolsData = poolEntries.filter(([_, pool]) => pool.isSome);
         const pools = await Promise.all(
             rawPoolsData.map(([poolId, poolData]) =>
-                this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap())
+                poolData.isSome
+                    ? this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap())
+                    : null
             )
         );
 
