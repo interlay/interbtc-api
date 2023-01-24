@@ -180,7 +180,12 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     public async getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpCurrency>>> {
-        throw new Error("Method not implemented.");
+        const allLpTokens = await this.getLpTokens();
+        const accountBalances = await Promise.all(
+            allLpTokens.map((lpToken) => this.tokensAPI.balance(lpToken, accountId))
+        );
+        // Adds free and staked balances together.
+        return accountBalances.map((balance) => <MonetaryAmount<LpCurrency>>balance.free.add(balance.reserved));
     }
 
     private async _getStandardLpTokens(): Promise<Array<StandardLpToken>> {
