@@ -340,7 +340,7 @@ export async function getStableLpTokenFromCurrencyId(
         throw new Error(`getStableLpToken: Invalid pool data for currencyId ${currencyId.toString()}`);
     }
 
-    const basePoolData = DefaultAMMAPI.getStableBasePool(poolData.unwrap());
+    const basePoolData = DefaultAMMAPI.getStablePoolInfo(poolData.unwrap());
 
     if (basePoolData === null) {
         throw new Error("Provided currencyId is not active LP token.");

@@ -10,6 +10,7 @@ import {
 } from "../trade/types";
 import { StableLiquidityPool } from "./stable";
 import { isStablePool, isStandardPool, LiquidityPool, TradingPair } from "./types";
+import { StableLiquidityMetaPool } from "./stable-meta";
 
 /**
  * Get all trading pairs based on provided pools.
@@ -65,11 +66,11 @@ function convertPoolToTradingPair(pool: StableLiquidityPool, token0: CurrencyExt
 
 function convertPoolAndBaseToTradingPair(
     basePool: StableLiquidityPool,
-    pool: StableLiquidityPool,
+    metaPool: StableLiquidityMetaPool,
     token0: CurrencyExt,
     token1: CurrencyExt
 ): TradingPair {
-    if (!(basePool.involvesToken(token0) && pool.involvesToken(token1))) {
+    if (!(basePool.involvesToken(token0) && metaPool.involvesToken(token1))) {
         throw new Error("converPoolAndBaseToTradingPair: incorrect tokens provided");
     }
 
@@ -77,7 +78,7 @@ function convertPoolAndBaseToTradingPair(
         type: MultiPathElementType.STABLE_META,
         input: currency,
         output: isCurrencyEqual(currency, token0) ? token1 : token0,
-        pool: pool,
+        pool: metaPool,
         basePool: basePool,
         fromBase: !!isCurrencyEqual(currency, token0),
     });
@@ -85,8 +86,8 @@ function convertPoolAndBaseToTradingPair(
     return {
         token0,
         token1,
-        reserve0: basePool.pooledCurrencies[basePool.getTokenIndex(token0)],
-        reserve1: pool.pooledCurrencies[pool.getTokenIndex(token1)],
+        reserve0: basePool.actuallyPooledCurrencies[basePool.getTokenIndex(token0)],
+        reserve1: metaPool.actuallyPooledCurrencies[metaPool.getTokenIndex(token1)],
         getOutputAmount: generateOutputFunction(pathOf),
         pathOf,
     };
@@ -97,26 +98,28 @@ const convertStablePoolToTradingPairs = (
     stablePools: Array<StableLiquidityPool>
 ): Array<TradingPair> => {
     const pairs: Array<TradingPair> = [];
-    const relatedPools = stablePools.filter((otherPool) => otherPool.involvesToken(pool.lpToken));
+    const relatedMetaPools = <Array<StableLiquidityMetaPool>>(
+        stablePools.filter((otherPool) => otherPool.involvesToken(pool.lpToken))
+    );
 
-    for (let j = 0; j < pool.pooledCurrencies.length; j++) {
-        for (let k = j + 1; k < pool.pooledCurrencies.length; k++) {
-            const token0 = pool.pooledCurrencies[j].currency;
-            const token1 = pool.pooledCurrencies[k].currency;
+    for (let j = 0; j < pool.actuallyPooledCurrencies.length; j++) {
+        for (let k = j + 1; k < pool.actuallyPooledCurrencies.length; k++) {
+            const token0 = pool.actuallyPooledCurrencies[j].currency;
+            const token1 = pool.actuallyPooledCurrencies[k].currency;
 
             pairs.push(convertPoolToTradingPair(pool, token0, token1));
         }
 
-        if (!relatedPools.length) continue;
+        if (!relatedMetaPools.length) continue;
 
-        for (const otherPool of relatedPools) {
-            for (const { currency } of otherPool.pooledCurrencies) {
+        for (const otherMetaPool of relatedMetaPools) {
+            for (const { currency } of otherMetaPool.actuallyPooledCurrencies) {
                 if (isCurrencyEqual(currency, pool.lpToken)) continue;
 
-                const token0 = pool.pooledCurrencies[j].currency;
+                const token0 = pool.actuallyPooledCurrencies[j].currency;
                 const token1 = currency;
 
-                pairs.push(convertPoolAndBaseToTradingPair(pool, otherPool, token0, token1));
+                pairs.push(convertPoolAndBaseToTradingPair(pool, otherMetaPool, token0, token1));
             }
         }
     }
@@ -135,7 +138,7 @@ const calculateStableSwapFromBase = (
 ): MonetaryAmount<CurrencyExt> => {
     const baseToken = basePool.lpToken;
     const baseTokenIndex = pool.getTokenIndex(baseToken);
-    const baseAmounts = basePool.pooledCurrencies.map((amount) => new MonetaryAmount(amount.currency, 0));
+    const baseAmounts = basePool.actuallyPooledCurrencies.map((amount) => new MonetaryAmount(amount.currency, 0));
 
     baseAmounts[tokenIndexFrom] = amount;
     const baseLpAmount = basePool.calculateTokenAmount(baseAmounts, true);
