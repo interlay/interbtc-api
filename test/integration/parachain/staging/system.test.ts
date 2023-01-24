@@ -7,7 +7,7 @@ import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { SUDO_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { sudo } from "../../../utils/helpers";
-import { DefaultInterBtcApi, InterBtcApi } from "../../../../src";
+import { BLOCK_TIME_SECONDS, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
 describe("systemAPI", () => {
     let api: ApiPromise;
@@ -43,11 +43,13 @@ describe("systemAPI", () => {
     });
 
     it("should getFutureBlockNumber", async () => {
+        const approximately10BlocksTime = 10 * BLOCK_TIME_SECONDS;
         const [currentBlockNumber, futureBlockNumber] = await Promise.all([
             interBtcAPI.system.getCurrentBlockNumber(),
-            interBtcAPI.system.getFutureBlockNumber(120),
+            interBtcAPI.system.getFutureBlockNumber(approximately10BlocksTime),
         ]);
 
-        assert.isTrue(currentBlockNumber + 10 === futureBlockNumber);
+        assert.isAtLeast(futureBlockNumber, currentBlockNumber + 9);
+        assert.isAtMost(futureBlockNumber, currentBlockNumber + 11);
     });
 });
