@@ -8,14 +8,17 @@ import { LiquidityPoolCalculator } from "./calculator";
 
 // SOURCE: @zenlink-dex/sdk-core
 class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> implements LiquidityPoolBase {
-    public type = PoolType.STABLE;
     constructor(
+        public type: PoolType.STABLE_META | PoolType.STABLE_PLAIN,
         public lpToken: StableLpToken,
+        // Currencies that are part of the pool. In case of metapool it is LP token.
+        public actuallyPooledCurrencies: PooledCurrencies,
+        // Underlying currencies of pool. In case of metapool base currencies are extracted.
         public pooledCurrencies: PooledCurrencies,
         public apr: Big,
         public tradingFee: Big, // Decimal point
         public poolId: number,
-        public A: Big,
+        public amplificationCoefficient: Big,
         public totalSupply: MonetaryAmount<StableLpToken>
     ) {
         super(pooledCurrencies, totalSupply);
@@ -30,7 +33,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     private get _feePerToken(): Big {
-        const nCoins = Big(this.pooledCurrencies.length);
+        const nCoins = Big(this.actuallyPooledCurrencies.length);
 
         return this.tradingFee.mul(nCoins).div(nCoins.sub(1).mul(4));
     }
@@ -69,7 +72,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     private _getY(inIndex: number, outIndex: number, inBalance: Big, normalizedBalances: Array<Big>): Big {
-        const nCoins = this.pooledCurrencies.length;
+        const nCoins = this.actuallyPooledCurrencies.length;
         if (inIndex === outIndex) {
             throw new Error("_getY: inIndex and outIndex must be different");
         }
@@ -77,7 +80,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             throw new Error("_getY: Index out of range.");
         }
 
-        const amp = this.A;
+        const amp = this.amplificationCoefficient;
         const Ann = amp.mul(nCoins);
         const D = this._getD(normalizedBalances, amp);
 
@@ -110,7 +113,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     private _getYD(A: Big, index: number, xp: Array<Big>, D: Big): Big {
-        const nCoins = this.pooledCurrencies.length;
+        const nCoins = this.actuallyPooledCurrencies.length;
 
         if (index >= nCoins) {
             throw new Error("_getYD: Index out of range.");
@@ -144,16 +147,16 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     /**
-     * Sort amounts in same order as `pooledCurrencies`.
+     * Sort amounts in same order as `actuallyPooledCurrencies`.
      *
      * @param amounts Array of monetary
-     * @returns Amounts containing currency amounts at the same index as `this.pooledCurrencies`
-     * @throws When currencies of `amounts` differ from `pooledCurrencies`
+     * @returns Amounts containing currency amounts at the same index as `this.actuallyPooledCurrencies`
+     * @throws When currencies of `amounts` differ from `actuallyPooledCurrencies`
      */
     private _sortAmounts(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<MonetaryAmount<CurrencyExt>> {
-        if (amounts.length !== this.pooledCurrencies.length) {
+        if (amounts.length !== this.actuallyPooledCurrencies.length) {
             throw new Error(
-                "StableLiquidityPool: _sortAmounts: Amounts count is different from pooledCurrencies count."
+                "StableLiquidityPool: _sortAmounts: Amounts count is different from actuallyPooledCurrencies count."
             );
         }
         const sortedAmounts = new Array(amounts.length);
@@ -177,37 +180,39 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     public involvesToken(currency: CurrencyExt): boolean {
-        return this.pooledCurrencies.some(({ currency: pooledCurrency }) => isCurrencyEqual(pooledCurrency, currency));
+        return this.actuallyPooledCurrencies.some(({ currency: pooledCurrency }) =>
+            isCurrencyEqual(pooledCurrency, currency)
+        );
     }
 
     public getTokenIndex(currency: CurrencyExt): number {
-        return this.pooledCurrencies.findIndex(({ currency: pooledCurrency }) =>
+        return this.actuallyPooledCurrencies.findIndex(({ currency: pooledCurrency }) =>
             isCurrencyEqual(currency, pooledCurrency)
         );
     }
 
     // TODO: rename to 'currenciesInBaseDenomination'
     public get xp(): Array<Big> {
-        return this._xp(this.pooledCurrencies);
+        return this._xp(this.actuallyPooledCurrencies);
     }
 
     // TODO: rename to something like `calculateLiquidityDeposit`
     /**
      *
      * @param amounts Array of monetary amount for each pooled currency of this pool.
-     * @param deposit
-     * @returns
+     * @param deposit True for deposit, false for withdrawal
+     * @returns LP token amount that will be minted/burned after operation.
      */
     public calculateTokenAmount(
         amounts: Array<MonetaryAmount<CurrencyExt>>,
         deposit: boolean
-    ): MonetaryAmount<CurrencyExt> {
+    ): MonetaryAmount<StableLpToken> {
         const sortedAmounts = this._sortAmounts(amounts);
 
-        const amp = this.A;
+        const amp = this.amplificationCoefficient;
         const D0 = this._getD(this.xp, amp);
 
-        const newBalances = this.pooledCurrencies.map((balance, i) =>
+        const newBalances = this.actuallyPooledCurrencies.map((balance, i) =>
             deposit ? balance.add(sortedAmounts[i]) : balance.sub(sortedAmounts[i])
         );
         const D1 = this._getD(this._xp(newBalances), amp);
@@ -227,11 +232,11 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         tokenLPAmount: MonetaryAmount<StableLpToken>,
         outputCurrencyIndex: number
     ): [MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>] {
-        if (outputCurrencyIndex >= this.pooledCurrencies.length) {
+        if (outputCurrencyIndex >= this.actuallyPooledCurrencies.length) {
             throw new Error("StableLiquidityPool: calculateRemoveLiquidityOneToken: Currency index out of range.");
         }
 
-        const amp = this.A;
+        const amp = this.amplificationCoefficient;
         const xp = this.xp;
         const D0 = this._getD(xp, amp);
         const D1 = D0.sub(tokenLPAmount.toBig().mul(D0).div(this.totalSupply.toBig()));
@@ -239,7 +244,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         const reducedXP = xp;
         const _fee = this._feePerToken;
 
-        for (let i = 0; i < this.pooledCurrencies.length; i++) {
+        for (let i = 0; i < this.actuallyPooledCurrencies.length; i++) {
             let expectedDx = Big(0);
 
             if (i === outputCurrencyIndex) {
@@ -258,8 +263,8 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         const fee = xp[outputCurrencyIndex].sub(newY).sub(dy);
 
         return [
-            new MonetaryAmount(this.pooledCurrencies[outputCurrencyIndex].currency, dy),
-            new MonetaryAmount(this.pooledCurrencies[outputCurrencyIndex].currency, fee),
+            new MonetaryAmount(this.actuallyPooledCurrencies[outputCurrencyIndex].currency, dy),
+            new MonetaryAmount(this.actuallyPooledCurrencies[outputCurrencyIndex].currency, fee),
         ];
     }
 
@@ -276,7 +281,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         const outAmount = normalizedBalances[outputIndex].sub(outBalance).sub(1);
         const fee = this.tradingFee.mul(outAmount);
 
-        return new MonetaryAmount(this.pooledCurrencies[outputIndex].currency, outAmount.sub(fee));
+        return new MonetaryAmount(this.actuallyPooledCurrencies[outputIndex].currency, outAmount.sub(fee));
     }
 }
 

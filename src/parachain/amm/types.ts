@@ -3,7 +3,8 @@ import { CurrencyExt } from "../..";
 
 enum PoolType {
     STANDARD = "STANDARD",
-    STABLE = "STABLE",
+    STABLE_PLAIN = "STABLE_PLAIN",
+    STABLE_META = "STABLE_META",
 }
 
 type PooledCurrencies = Array<MonetaryAmount<CurrencyExt>>;

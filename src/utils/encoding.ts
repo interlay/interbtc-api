@@ -37,6 +37,7 @@ import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { VaultsAPI } from "../parachain";
 import { AddressOrPair } from "@polkadot/api/types";
+import { MonetaryAmount } from "@interlay/monetary-js";
 
 /**
  * Converts endianness of a Uint8Array
@@ -384,4 +385,8 @@ export function decodeNumberOrHex(value: NumberOrHex): Big {
         return Big(value.asHex.toBigInt().toString());
     }
     return Big(value.asNumber.toString());
+}
+
+export function monetaryAmountToRawString(amount: MonetaryAmount<CurrencyExt>): string {
+    return amount.toString(true);
 }
