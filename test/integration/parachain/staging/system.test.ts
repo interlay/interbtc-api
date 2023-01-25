@@ -7,7 +7,7 @@ import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { SUDO_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { sudo } from "../../../utils/helpers";
-import { DefaultInterBtcApi, InterBtcApi } from "../../../../src";
+import { BLOCK_TIME_SECONDS, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
 describe("systemAPI", () => {
     let api: ApiPromise;
@@ -38,9 +38,18 @@ describe("systemAPI", () => {
 
     // TODO: Unskip once differences between rococo-local and standalone are fixed
     it.skip("should setCode", async () => {
-        const code = fs.readFileSync(
-            path.join(__dirname, "../../../mock/rococo_runtime.compact.wasm")
-        ).toString("hex");
+        const code = fs.readFileSync(path.join(__dirname, "../../../mock/rococo_runtime.compact.wasm")).toString("hex");
         await sudo(interBtcAPI, () => interBtcAPI.system.setCode(code));
+    });
+
+    it("should getFutureBlockNumber", async () => {
+        const approximately10BlocksTime = 10 * BLOCK_TIME_SECONDS;
+        const [currentBlockNumber, futureBlockNumber] = await Promise.all([
+            interBtcAPI.system.getCurrentBlockNumber(),
+            interBtcAPI.system.getFutureBlockNumber(approximately10BlocksTime),
+        ]);
+
+        assert.isAtLeast(futureBlockNumber, currentBlockNumber + 9);
+        assert.isAtMost(futureBlockNumber, currentBlockNumber + 11);
     });
 });
