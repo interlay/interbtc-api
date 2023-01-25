@@ -17,7 +17,6 @@ const computeMiddlePrice = (path: MultiPath, inputAmount: MonetaryAmount<Currenc
         if (isStableMultiPathElement(pathElement)) {
             // TODO: Is this a correct way to compute middle price for curve pool?
             //       Won't this always show 0% price impact for curve-pool only trades?
-
             const outputAmount = getStableSwapOutputAmount(pathElement, currentInputAmount);
             currentPrice = outputAmount.toBig().div(currentInputAmount.toBig());
             currentInputAmount = outputAmount;

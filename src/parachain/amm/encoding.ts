@@ -18,8 +18,8 @@ function encodeSwapParamsForStandardPoolsOnly(
     amountOutMin: string;
     path: Array<InterbtcPrimitivesCurrencyId>;
 } {
-    const amountIn = trade.inputAmount._rawAmount.toString();
-    const amountOutMin = minimumAmountOut._rawAmount.toString();
+    const amountIn = trade.inputAmount.toString(true);
+    const amountOutMin = minimumAmountOut.toString(true);
     const path = trade.path
         .reduce((result, currentPathElement) => [...result, currentPathElement.output], [trade.path[0].input])
         .map((currency) => newCurrencyId(api, currency));
@@ -48,8 +48,8 @@ function encodeSwapParamsForStandardAndStablePools(
           }
     )[];
 } {
-    const amountIn = trade.inputAmount._rawAmount.toString();
-    const amountOutMin = minimumAmountOut._rawAmount.toString();
+    const amountIn = trade.inputAmount.toString(true);
+    const amountOutMin = minimumAmountOut.toString(true);
     const path = trade.path.map((pathElement) =>
         isStableMultiPathElement(pathElement)
             ? {

@@ -6,6 +6,9 @@ import { PoolType, PooledCurrencies } from "../types";
 import { LiquidityPoolBase } from "./types";
 import { LiquidityPoolCalculator } from "./calculator";
 
+// TODO: test not using multipliers at all.
+const DECIMAL_MULTIPLIER = Big(1);
+
 // SOURCE: @zenlink-dex/sdk-core
 class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> implements LiquidityPoolBase {
     constructor(
@@ -25,7 +28,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     private _xp(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<Big> {
-        return amounts.map((balance) => balance.toBig().mul(Big(10).pow(18)));
+        return amounts.map((balance) => balance.toBig().mul(DECIMAL_MULTIPLIER));
     }
 
     private _distance(x: Big, y: Big): Big {
@@ -277,8 +280,8 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         const newInBalance = normalizedBalances[inputIndex].add(inputAmount.toBig());
 
         const outBalance = this._getY(inputIndex, outputIndex, newInBalance, normalizedBalances);
-        // TODO: check validity of sub(1)
-        const outAmount = normalizedBalances[outputIndex].sub(outBalance).sub(1);
+        // TODO: test validity of not doing sub(1) here
+        const outAmount = normalizedBalances[outputIndex].sub(outBalance);
         const fee = this.tradingFee.mul(outAmount);
 
         return new MonetaryAmount(this.actuallyPooledCurrencies[outputIndex].currency, outAmount.sub(fee));
