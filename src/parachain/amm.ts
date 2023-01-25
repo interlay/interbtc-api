@@ -332,8 +332,10 @@ export class DefaultAMMAPI implements AMMAPI {
         // return decodeNumberOrHex(rawA);
         const poolData = await this.api.query.zenlinkStableAmm.pools(poolId);
         if (poolData.isSome) {
-            const rawA = poolData.unwrap().asBase.futureA;
-            return Big(rawA.toString());
+            const rawA = DefaultAMMAPI.getStablePoolInfo(poolData.unwrap())?.futureA;
+            if (rawA !== undefined) {
+                return Big(rawA.toString());
+            }
         }
 
         throw new Error(`_getStablePoolAmplificationCoefficient: Invalid pool id ${poolId}.`);
