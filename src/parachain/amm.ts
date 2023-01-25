@@ -756,7 +756,7 @@ export class DefaultAMMAPI implements AMMAPI {
         deadline: number,
         recipient: AddressOrPair
     ): Promise<void> {
-        if (isCurrencyEqual(amount.currency, pool.lpToken)) {
+        if (!isCurrencyEqual(amount.currency, pool.lpToken)) {
             throw new Error(
                 `Input amount and pool lp token should be same but are: [${amount.currency.ticker}, ${pool.lpToken.ticker}].`
             );
