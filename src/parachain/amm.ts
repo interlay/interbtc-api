@@ -223,6 +223,10 @@ export class DefaultAMMAPI implements AMMAPI {
         return [...standardLpTokens, ...stableLpTokens];
     }
 
+    private _poolHasZeroLiquidity(pooledCurrencies: PooledCurrencies): boolean {
+        return pooledCurrencies.some((amount) => amount.isZero());
+    }
+
     private async _getStandardPoolReserveBalances(
         token0: CurrencyExt,
         token1: CurrencyExt,
@@ -259,7 +263,7 @@ export class DefaultAMMAPI implements AMMAPI {
             typedPairStatus = pairStatus.asTrading;
             isTradingActive = true;
             tradingFee = decodeFixedPointType(typedPairStatus.feeRate);
-            totalSupplyAmount = Big(typedPairStatus.totalSupply.toString());
+            totalSupplyAmount = decodeFixedPointType(typedPairStatus.totalSupply);
         } else if (pairStatus.isBootstrap) {
             typedPairStatus = pairStatus.asBootstrap;
             isTradingActive = false;
@@ -280,6 +284,11 @@ export class DefaultAMMAPI implements AMMAPI {
             this._getStandardPoolAPR(pairCurrencies),
         ]);
 
+        // Do not include pools with zero liquidity.
+        if (this._poolHasZeroLiquidity(pooledCurrencies)) {
+            return null;
+        }
+
         const totalSupply = new MonetaryAmount(lpToken, totalSupplyAmount);
 
         return new StandardLiquidityPool(lpToken, pooledCurrencies, apr, tradingFee, isTradingActive, totalSupply);
@@ -293,13 +302,7 @@ export class DefaultAMMAPI implements AMMAPI {
         );
         const pools = await Promise.all(
             pairs.map(([pairKey, lpToken], index) =>
-                lpToken.isSome
-                    ? this._getStandardLiquidityPool(
-                          storageKeyToNthInner(pairKey),
-                          lpToken.unwrap(),
-                          pairStatuses[index]
-                      )
-                    : null
+                this._getStandardLiquidityPool(storageKeyToNthInner(pairKey), lpToken.unwrap(), pairStatuses[index])
             )
         );
 
@@ -427,6 +430,11 @@ export class DefaultAMMAPI implements AMMAPI {
         const { lpToken, actuallyPooledCurrencies, apr, tradingFee, amplificationCoefficient, totalSupply } =
             processedPoolData;
 
+        // Do not include pools with zero liquidity.
+        if (this._poolHasZeroLiquidity(actuallyPooledCurrencies)) {
+            return null;
+        }
+
         if (poolData.isBase) {
             return new StableLiquidityPool(
                 PoolType.STABLE_PLAIN,
@@ -451,6 +459,7 @@ export class DefaultAMMAPI implements AMMAPI {
             []
         );
 
+        console.log("createStable", pooledCurrencies.map);
         return new StableLiquidityMetaPool(
             lpToken,
             actuallyPooledCurrencies,
@@ -469,9 +478,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const rawPoolsData = poolEntries.filter(([_, pool]) => pool.isSome);
         const pools = await Promise.all(
             rawPoolsData.map(([poolId, poolData]) =>
-                poolData.isSome
-                    ? this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap())
-                    : null
+                this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap())
             )
         );
 
