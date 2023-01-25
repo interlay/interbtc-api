@@ -11,3 +11,5 @@ export const IGNORED_ERROR_MESSAGES = ["issue.IssueCompleted"];
 export const ACCOUNT_NOT_SET_ERROR_MESSAGE = "cannot sign transaction without setting account";
 
 export const MS_PER_YEAR = Big(86400 * 365 * 1000);
+
+export const BLOCK_TIME_SECONDS = 12;

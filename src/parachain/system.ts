@@ -1,6 +1,7 @@
 import { ApiPromise } from "@polkadot/api";
 import { Header, BlockHash } from "@polkadot/types/interfaces";
 import { SecurityStatusCode } from "@polkadot/types/lookup";
+import { BLOCK_TIME_SECONDS } from "../utils";
 
 import { TransactionAPI } from "./transaction";
 
@@ -45,6 +46,16 @@ export interface SystemAPI {
      * @returns The block hash for the given block number
      */
     getBlockHash(blockNumber: number): Promise<BlockHash>;
+
+    /**
+     * Get number of block that will added in amount of seconds from now.
+     *
+     * @note Based on approximate block time of 12 seconds.
+     * @param api Polkadot ApiPromise object.
+     * @param secondsFromNow Amount of seconds in the future.
+     * @returns Number of block added in future.
+     */
+    getFutureBlockNumber(secondsFromNow: number): Promise<number>;
 }
 
 export class DefaultSystemAPI implements SystemAPI {
@@ -84,5 +95,12 @@ export class DefaultSystemAPI implements SystemAPI {
 
     async getBlockHash(blockNumber: number): Promise<BlockHash> {
         return await this.api.query.system.blockHash(blockNumber);
+    }
+
+    async getFutureBlockNumber(secondsFromNow: number): Promise<number> {
+        const currentBlock = await this.getCurrentBlockNumber();
+        const differenceInBlocks = Math.round(secondsFromNow / BLOCK_TIME_SECONDS);
+
+        return currentBlock + differenceInBlocks;
     }
 }
