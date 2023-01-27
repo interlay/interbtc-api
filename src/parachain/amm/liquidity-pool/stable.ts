@@ -6,8 +6,8 @@ import { PoolType, PooledCurrencies } from "../types";
 import { LiquidityPoolBase } from "./types";
 import { LiquidityPoolCalculator } from "./calculator";
 
-// TODO: test not using multipliers at all.
-const DECIMAL_MULTIPLIER = Big(1);
+// Maximum decimal precision.
+const DECIMAL_PRECISION = Big(10).pow(18);
 
 // SOURCE: @zenlink-dex/sdk-core
 class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> implements LiquidityPoolBase {
@@ -16,7 +16,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         public lpToken: StableLpToken,
         // Currencies that are part of the pool. In case of metapool it is LP token.
         public actuallyPooledCurrencies: PooledCurrencies,
-        // Underlying currencies of pool. In case of metapool base currencies are extracted.
+        // Underlying currencies of pool. In case of metapool base currencies are included and LP token is excluded.
         public pooledCurrencies: PooledCurrencies,
         public apr: Big,
         public tradingFee: Big, // Decimal point
@@ -28,11 +28,11 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     private _xp(amounts: Array<MonetaryAmount<CurrencyExt>>): Array<Big> {
-        return amounts.map((balance) => balance.toBig().mul(DECIMAL_MULTIPLIER));
+        return amounts.map((balance) => balance.toBig());
     }
 
     private _distance(x: Big, y: Big): Big {
-        return x.sub(y).abs();
+        return x.sub(y).abs().mul(DECIMAL_PRECISION);
     }
 
     private get _feePerToken(): Big {
@@ -220,7 +220,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         );
         const D1 = this._getD(this._xp(newBalances), amp);
 
-        if (this.totalSupply.isZero()) {
+        if (this.totalSupply.toBig().eq(0)) {
             // TODO: check is D1 in base or atomic denomination??
             // if not in base divide by decimals first
             return new MonetaryAmount(this.lpToken, D1);
@@ -259,10 +259,10 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx));
         }
 
-        let dy = reducedXP[outputCurrencyIndex].sub(this._getYD(amp, outputCurrencyIndex, reducedXP, D1));
+        const dy = reducedXP[outputCurrencyIndex].sub(this._getYD(amp, outputCurrencyIndex, reducedXP, D1));
 
-        // TODO: check validity of this
-        dy = dy.sub(1);
+        // TODO: check validity of not doing this
+        // dy = dy.sub(1);
         const fee = xp[outputCurrencyIndex].sub(newY).sub(dy);
 
         return [

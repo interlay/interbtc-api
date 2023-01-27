@@ -459,7 +459,6 @@ export class DefaultAMMAPI implements AMMAPI {
             []
         );
 
-        console.log("createStable", pooledCurrencies.map);
         return new StableLiquidityMetaPool(
             lpToken,
             actuallyPooledCurrencies,
@@ -596,7 +595,7 @@ export class DefaultAMMAPI implements AMMAPI {
         recipient: AddressOrPair
     ): Promise<[SubmittableExtrinsic<ApiTypes>, AugmentedEvent<ApiTypes>]> {
         const minAmounts = amounts.map((amount) => amount.mul(maxSlippageComplement));
-        const minimumLpTokenOut = pool.calculateTokenAmount(minAmounts, true).toString(true);
+        const minimumLpTokenOut = pool.getLiquidityDepositLpTokenAmount(minAmounts[0]).toString(true);
         const recipientAccount = addressOrPairAsAccountId(this.api, recipient);
 
         if (!isStableMetaPool(pool)) {
@@ -620,13 +619,22 @@ export class DefaultAMMAPI implements AMMAPI {
             return [addLiquidityToStablePoolExtrinsic, this.api.events.zenlinkStableAmm.AddLiquidity];
         }
 
-        const metaAmounts = amounts.filter((amount) => pool.involvesToken(amount.currency));
+        // Pass 0 for LP token amount - this will be automatically changed base on how much
+        // liquidity is really added to base pool.
+        const metaAmounts = pool.actuallyPooledCurrencies.map(
+            (actuallyPooledCurrency) =>
+                amounts.find((amount) => isCurrencyEqual(amount.currency, actuallyPooledCurrency.currency)) ||
+                new MonetaryAmount(actuallyPooledCurrency.currency, 0)
+        );
         const rawMetaAmounts = metaAmounts.map(monetaryAmountToRawString);
 
         const baseAmounts = amounts.filter((amount) => pool.basePool.involvesToken(amount.currency));
         const rawBaseAmounts = baseAmounts.map(monetaryAmountToRawString);
 
-        if (metaAmounts.length + baseAmounts.length !== amounts.length) {
+        if (
+            metaAmounts.length + baseAmounts.length !==
+            pool.actuallyPooledCurrencies.length + pool.basePool.actuallyPooledCurrencies.length
+        ) {
             throw new Error("Invalid input amounts.");
         }
 
@@ -717,9 +725,17 @@ export class DefaultAMMAPI implements AMMAPI {
 
         if (isStableMetaPool(pool)) {
             const basePoolId = pool.basePool.poolId;
-            const minAmountsMeta = minAmounts
-                .filter((amount) => pool.involvesToken(amount.currency))
+            const minAmountsMeta = pool.actuallyPooledCurrencies
+                .map(
+                    (actuallyPooledCurrency) =>
+                        minAmounts.find((amount) =>
+                            isCurrencyEqual(amount.currency, actuallyPooledCurrency.currency)
+                        ) || new MonetaryAmount(actuallyPooledCurrency.currency, 0)
+                )
                 .map(monetaryAmountToRawString);
+            // const minAmountsMeta = minAmounts
+            //     .filter((amount) => pool.involvesToken(amount.currency))
+            //     .map(monetaryAmountToRawString);
             const minAmountsBase = minAmounts
                 .filter((amount) => pool.basePool.involvesToken(amount.currency))
                 .map(monetaryAmountToRawString);

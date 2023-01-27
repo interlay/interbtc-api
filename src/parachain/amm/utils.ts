@@ -37,7 +37,7 @@ const findBestTradeRecursively = (
             continue;
         }
         const outputAmount = pair.getOutputAmount(inputAmount);
-        if (outputAmount.isZero()) {
+        if (outputAmount.toBig().eq(0)) {
             // Skip iteration of output amount is zero.
             continue;
         }
