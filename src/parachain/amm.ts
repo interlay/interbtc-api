@@ -39,6 +39,7 @@ import {
     isStableMetaPool,
     isStableLpToken,
     monetaryAmountToRawString,
+    decodeBytesAsString,
 } from "..";
 import { StableLiquidityMetaPool } from "./amm/liquidity-pool/stable-meta";
 
@@ -150,7 +151,7 @@ export class DefaultAMMAPI implements AMMAPI {
         basePoolData: ZenlinkStableAmmPrimitivesBasePool
     ): StableLpToken {
         const [ticker, decimals] = [
-            basePoolData.lpCurrencySymbol.toString(),
+            decodeBytesAsString(basePoolData.lpCurrencySymbol),
             basePoolData.lpCurrencyDecimal.toNumber(),
         ];
         return {
