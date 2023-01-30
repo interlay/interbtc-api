@@ -21,8 +21,12 @@ const args = yargs(hideBin(process.argv))
     })
     .option("with-defaults-of", {
         description: "Which default values to use",
-        choices: ['testnet-kintsugi', 'testnet-interlay'],
+        choices: ['testnet-kintsugi'],
     })
+    // .option("clients-url", {
+    //     description: "Url of the clients, without the client-name. E.g. https://github.com/interlay/interbtc-clients/releases/download/1.17.6/",
+    //     demandOption: true,
+    // })
     .argv;
 
 main().catch((err) => {
@@ -205,7 +209,7 @@ function constructAnnuitySetup(api: ApiPromise) {
     return vaultAnnuity.concat(escrowAnnuity);
 }
 
-function constructAmmSetup(api: ApiPromise) {
+async function constructAmmSetup(api: ApiPromise) {
     const pools = [
         [{ Token: "KBTC" }, { Token: "KSM" }, 45_000],
         [{ Token: "KBTC" }, { ForeignAsset: 1 }, 40_000], // usdt
@@ -224,40 +228,56 @@ function constructAmmSetup(api: ApiPromise) {
             ];
     }).reduce((x, y) => { return x.concat(y);});
 
-    const basePoolSetup = api.tx.zenlinkStableAmm.createBasePool(
-        [
-            { ForeignAsset: 3 }, // LKSM
-            { ForeignAsset: 4 }, // VKSM
-            { ForeignAsset: 5 }, // SKSM
-        ],
-        [12, 12, 12], // decimals
-        200, // amplification coefficient
-        100_000_000, // max fee 1%
-        0, // no admin fee
-        Buffer.concat([
-            Buffer.from("modl"), // 4 bytes
-            Buffer.from("mod/trsy"), // 8 bytes
-        ], 32), // treasury
-        "LKSM+VKSM+SKSM" // currency symbol
-    );
+    const basePoolId = (await api.query.zenlinkStableAmm.nextPoolId() as any).toNumber(); // note: this is before the batch is executed
 
-    const metaPoolSetup = api.tx.zenlinkStableAmm.createMetaPool(
-        [
-            { StableLpToken: 0 }, // LKSM+VKSM+SKSM
-            { Token: "KSM" },
-        ],
-        [12, 12], // decimals
-        200, // amplification coefficient
-        100_000_000, // max fee 1%
-        0, // no admin fee
-        Buffer.concat([
-            Buffer.from("modl"), // 4 bytes
-            Buffer.from("mod/trsy"), // 8 bytes
-        ], 32), // treasury
-        "(LKSM+VKSM+SKSM)+KSM" // currency symbol
-    );
+    const basePoolSetup = [
+        api.tx.zenlinkStableAmm.createBasePool(
+            [
+                { ForeignAsset: 3 }, // LKSM
+                { ForeignAsset: 4 }, // VKSM
+                { ForeignAsset: 5 }, // SKSM
+            ],
+            [12, 12, 12], // decimals
+            200, // amplification coefficient
+            100_000_000, // max fee 1%
+            0, // no admin fee
+            Buffer.concat([
+                Buffer.from("modl"), // 4 bytes
+                Buffer.from("mod/trsy"), // 8 bytes
+            ], 32), // treasury
+            "LKSM+VKSM+SKSM" // currency symbol
+        ), api.tx.farming.updateRewardSchedule(
+            { StableLpToken: basePoolId },
+            { Token: "KINT" },
+            60 * 24 * 7 * 12, // three months, reward period is per minute
+            new BN(10).pow(new BN(12)).muln(15_000),
+        )
+    ];
 
-    return basicPoolSetup.concat([basePoolSetup, metaPoolSetup]);
+    const metaPoolSetup = [
+        api.tx.zenlinkStableAmm.createMetaPool(
+            [
+                { StableLpToken: basePoolId + 1}, // LKSM+VKSM+SKSM
+                { Token: "KSM" },
+            ],
+            [12, 12], // decimals
+            200, // amplification coefficient
+            100_000_000, // max fee 1%
+            0, // no admin fee
+            Buffer.concat([
+                Buffer.from("modl"), // 4 bytes
+                Buffer.from("mod/trsy"), // 8 bytes
+            ], 32), // treasury
+            "(LKSM+VKSM+SKSM)+KSM" // currency symbol
+        ), api.tx.farming.updateRewardSchedule(
+            { StableLpToken: basePoolId + 1 },
+            { Token: "KINT" },
+            60 * 24 * 7 * 12, // three months, reward period is per minute
+            new BN(10).pow(new BN(12)).muln(33_000),
+        )
+    ];
+
+    return basicPoolSetup.concat(basePoolSetup).concat(metaPoolSetup);
 }
 
 function constructForeignAssetSetup(api: ApiPromise) {
@@ -362,7 +382,7 @@ async function setupParachain() {
         constructLendingSetup(paraApi),
         constructVaultRegistrySetup(paraApi),
         constructAnnuitySetup(paraApi),
-        constructAmmSetup(paraApi),
+        await constructAmmSetup(paraApi),
     ].reduce((x, y) => { return x.concat(y);});
 
     const batched = paraApi.tx.utility.batchAll(calls);
@@ -377,11 +397,6 @@ async function main(): Promise<void> {
     await cryptoWaitReady();
 
     switch (args['with-defaults-of']) {
-        case 'testnet-interlay':
-            if (args['parachain-endpoint'] === undefined) {
-                args['parachain-endpoint'] = "wss://api.interlay.io/parachain";
-            }
-            break;
         case 'testnet-kintsugi':
             if (args['parachain-endpoint'] === undefined) {
                 args['parachain-endpoint'] = "wss://api-dev-kintsugi.interlay.io/parachain";
