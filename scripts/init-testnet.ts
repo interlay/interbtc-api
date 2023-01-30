@@ -224,7 +224,40 @@ function constructAmmSetup(api: ApiPromise) {
             ];
     }).reduce((x, y) => { return x.concat(y);});
 
-    return basicPoolSetup;
+    const basePoolSetup = api.tx.zenlinkStableAmm.createBasePool(
+        [
+            { ForeignAsset: 3 }, // LKSM
+            { ForeignAsset: 4 }, // VKSM
+            { ForeignAsset: 5 }, // SKSM
+        ],
+        [12, 12, 12], // decimals
+        200, // amplification coefficient
+        100_000_000, // max fee 1%
+        0, // no admin fee
+        Buffer.concat([
+            Buffer.from("modl"), // 4 bytes
+            Buffer.from("mod/trsy"), // 8 bytes
+        ], 32), // treasury
+        "LKSM+VKSM+SKSM" // currency symbol
+    );
+
+    const metaPoolSetup = api.tx.zenlinkStableAmm.createMetaPool(
+        [
+            { StableLpToken: 0 }, // LKSM+VKSM+SKSM
+            { Token: "KSM" },
+        ],
+        [12, 12], // decimals
+        200, // amplification coefficient
+        100_000_000, // max fee 1%
+        0, // no admin fee
+        Buffer.concat([
+            Buffer.from("modl"), // 4 bytes
+            Buffer.from("mod/trsy"), // 8 bytes
+        ], 32), // treasury
+        "(LKSM+VKSM+SKSM)+KSM" // currency symbol
+    );
+
+    return basicPoolSetup.concat([basePoolSetup, metaPoolSetup]);
 }
 
 function constructForeignAssetSetup(api: ApiPromise) {
