@@ -23,10 +23,10 @@ const args = yargs(hideBin(process.argv))
         description: "Which default values to use",
         choices: ['testnet-kintsugi'],
     })
-    // .option("clients-url", {
-    //     description: "Url of the clients, without the client-name. E.g. https://github.com/interlay/interbtc-clients/releases/download/1.17.6/",
-    //     demandOption: true,
-    // })
+    .option("clients-url", {
+        description: "Url of the clients, without the client-name. E.g. https://github.com/interlay/interbtc-clients/releases/download/1.17.6/",
+        demandOption: true,
+    })
     .argv;
 
 main().catch((err) => {
@@ -257,7 +257,7 @@ async function constructAmmSetup(api: ApiPromise) {
     const metaPoolSetup = [
         api.tx.zenlinkStableAmm.createMetaPool(
             [
-                { StableLpToken: basePoolId + 1}, // LKSM+VKSM+SKSM
+                { StableLpToken: basePoolId }, // LKSM+VKSM+SKSM
                 { Token: "KSM" },
             ],
             [12, 12], // decimals
@@ -366,6 +366,8 @@ function constructForeignAssetSetup(api: ApiPromise) {
     ];
 }
 
+// function constructClientsInfoSetup(api: ApiPromise) {
+// }
 function toUrl(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
     return "https://polkadot.js.org/apps/?rpc=" +
         encodeURIComponent(endpoint) +
