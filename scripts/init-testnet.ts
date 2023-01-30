@@ -274,6 +274,41 @@ function constructForeignAssetSetup(api: ApiPromise) {
                 additional: { feePerSecond: 233100000000, coingeckoId: "liquid-ksm" }
             },
            3
+        ), api.tx.assetRegistry.registerAsset(
+            {
+                decimals: 12,
+                name: "Voucher KSM",
+                symbol: "VKSM", 
+                existentialDeposit: 0,
+                location: {
+                    V1: {
+                        parents: 1,
+                        interior: {
+                            X2: [
+                                {
+                                    Parachain: 2001
+                                },
+                                {
+                                    GeneralKey: "0x0104"
+                                }
+                            ]
+                        }
+                    }
+                    
+                },
+                additional: { feePerSecond: 233100000000, coingeckoId: "" }
+            },
+           4
+        ), api.tx.assetRegistry.registerAsset(
+            {
+                decimals: 12,
+                name: "Staked KSM",
+                symbol: "SKSM", 
+                existentialDeposit: 0,
+                location: null,
+                additional: { feePerSecond: 233100000000, coingeckoId: "" }
+            },
+           5
         )
     ];
 }
