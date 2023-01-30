@@ -131,15 +131,20 @@ function constructLendingSetup(api: ApiPromise) {
         )
     ];
 
-
-    let activateMarkets = [
-        api.tx.loans.activateMarket({Token: "KBTC"}),
-        api.tx.loans.activateMarket({Token: "KSM"}),
-        api.tx.loans.activateMarket({ForeignAsset: 1}),
-        api.tx.loans.activateMarket({ForeignAsset: 2}),
+    const underlyingTokens = [
+        {Token: "KBTC"},
+        {Token: "KSM"},
+        {ForeignAsset: 1}, // usdt
+        {ForeignAsset: 2}, // movr
     ];
 
-    return addMarkets.concat(activateMarkets);
+    let addRewards = [api.tx.loans.addReward("100000000000000000000")];
+    let activateMarketWithRewards = underlyingTokens.map((token) => { return [
+        api.tx.loans.activateMarket(token),
+        api.tx.loans.updateMarketRewardSpeed(token, 10, 10),
+    ]}).reduce((x, y) => { return x.concat(y);});
+
+    return addMarkets.concat(addRewards).concat(activateMarketWithRewards);
 }
 
 function constructFundingSetup(api: ApiPromise) {
@@ -177,7 +182,7 @@ function constructVaultRegistrySetup(api: ApiPromise) {
     ];
 }
 
-function constructRewardsSetup(api: ApiPromise) {
+function constructAnnuitySetup(api: ApiPromise) {
     const blocksPerYears = 365 * 24 * 60 * 5; // 5 per minute
     const vaultAnnuity = [
         api.tx.tokens.setBalance(
@@ -288,7 +293,7 @@ async function setupParachain() {
         constructForeignAssetSetup(paraApi),
         constructLendingSetup(paraApi),
         constructVaultRegistrySetup(paraApi),
-        constructRewardsSetup(paraApi),
+        constructAnnuitySetup(paraApi),
         constructAmmSetup(paraApi),
     ].reduce((x, y) => { return x.concat(y);});
 
