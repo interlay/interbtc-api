@@ -280,6 +280,26 @@ function toUrl(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
         extrinsic.method.toHex();
 }
 
+async function setupParachain() {
+    const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
+
+    let calls = [
+        constructFundingSetup(paraApi),
+        constructForeignAssetSetup(paraApi),
+        constructLendingSetup(paraApi),
+        constructVaultRegistrySetup(paraApi),
+        constructRewardsSetup(paraApi),
+        constructAmmSetup(paraApi),
+    ].reduce((x, y) => { return x.concat(y);});
+
+    const batched = paraApi.tx.utility.batchAll(calls);
+    const sudo = paraApi.tx.sudo.sudo(batched.method.toHex());
+
+    console.log(toUrl(sudo, args['parachain-endpoint']));
+
+    await paraApi.disconnect();
+}
+
 async function main(): Promise<void> {
     await cryptoWaitReady();
 
@@ -296,23 +316,7 @@ async function main(): Promise<void> {
             break;
     }
 
-    const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
-
-    let calls = [
-        constructFundingSetup(paraApi),
-        constructForeignAssetSetup(paraApi),
-        constructLendingSetup(paraApi),
-        constructVaultRegistrySetup(paraApi),
-        constructRewardsSetup(paraApi),
-        constructAmmSetup(paraApi),
-    ].reduce((x, y) => { return x.concat(y);});
-
-    const batched = paraApi.tx.utility.batchAll(calls);
-    const sudo = paraApi.tx.sudo.sudo(batched.method.toHex());
-    
-    console.log(toUrl(sudo, args['parachain-endpoint']));
-
-    await paraApi.disconnect();
+    await setupParachain();
 }
 
 
