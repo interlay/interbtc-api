@@ -23,10 +23,10 @@ const args = yargs(hideBin(process.argv))
         description: "Which default values to use",
         choices: ['testnet-kintsugi'],
     })
-    .option("clients-url", {
-        description: "Url of the clients, without the client-name. E.g. https://github.com/interlay/interbtc-clients/releases/download/1.17.6/",
-        demandOption: true,
-    })
+    // .option("clients-url", {
+    //     description: "Url of the clients, without the client-name. E.g. https://github.com/interlay/interbtc-clients/releases/download/1.17.6/",
+    //     demandOption: true,
+    // })
     .argv;
 
 main().catch((err) => {
@@ -142,7 +142,12 @@ function constructLendingSetup(api: ApiPromise) {
         {ForeignAsset: 2}, // movr
     ];
 
-    let addRewards = [api.tx.loans.addReward("100000000000000000000")];
+    let addRewards = [
+        api.tx.utility.dispatchAs(
+            { system: { Signed:  "a3ckVDnZwjdBhkq1KJodZj3iCgYMseWfLA5fpqExuEpMy8Y5q" } }, // root
+            api.tx.loans.addReward("100000000000000000000")
+        )
+    ];
     let activateMarketWithRewards = underlyingTokens.map((token) => { return [
         api.tx.loans.activateMarket(token),
         api.tx.loans.updateMarketRewardSpeed(token, 10, 10),
@@ -210,6 +215,24 @@ function constructAnnuitySetup(api: ApiPromise) {
 }
 
 async function constructAmmSetup(api: ApiPromise) {
+    // workaround for broken is_exists check - TODO: remove once fixed.
+    // see https://github.com/interlay/interbtc/blob/1a1afa90228f37c9ade4acbda8275c2f5cfe85ce/parachain/runtime/testnet-kintsugi/src/zenlink.rs#L43
+    const isExistsWorkaround = [ 
+        {Token: "KBTC" },
+        { ForeignAsset: 1 },
+        { ForeignAsset: 2 },
+        { ForeignAsset: 3 },
+        { ForeignAsset: 4 },
+        { ForeignAsset: 5 }
+    ].map((token) => { 
+        return api.tx.tokens.setBalance(
+            "a3ckVDnZwjdBhkq1KJodZj3iCgYMseWfLA5fpqExuEpMy8Y5q", // root
+            token,
+            0,
+            1
+        )
+    });
+    
     const pools = [
         [{ Token: "KBTC" }, { Token: "KSM" }, 45_000],
         [{ Token: "KBTC" }, { ForeignAsset: 1 }, 40_000], // usdt
@@ -257,8 +280,8 @@ async function constructAmmSetup(api: ApiPromise) {
     const metaPoolSetup = [
         api.tx.zenlinkStableAmm.createMetaPool(
             [
-                { StableLpToken: basePoolId }, // LKSM+VKSM+SKSM
                 { Token: "KSM" },
+                { StableLpToken: basePoolId }, // LKSM+VKSM+SKSM
             ],
             [12, 12], // decimals
             200, // amplification coefficient
@@ -277,7 +300,7 @@ async function constructAmmSetup(api: ApiPromise) {
         )
     ];
 
-    return basicPoolSetup.concat(basePoolSetup).concat(metaPoolSetup);
+    return isExistsWorkaround.concat(basicPoolSetup).concat(basePoolSetup);//.concat(metaPoolSetup);
 }
 
 function constructForeignAssetSetup(api: ApiPromise) {
