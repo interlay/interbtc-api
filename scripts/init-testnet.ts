@@ -354,7 +354,7 @@ function constructForeignAssetSetup(api: ApiPromise) {
                 symbol: "USDT",
                 existentialDeposit: 0,
                 location: null,
-                additional: { feePerSecond: 8153838, coingeckoId: "" }
+                additional: { feePerSecond: 8153838, coingeckoId: "tether" }
             },
             1
         ), api.tx.assetRegistry.registerAsset(
@@ -364,7 +364,7 @@ function constructForeignAssetSetup(api: ApiPromise) {
                 symbol: "MOVR",
                 existentialDeposit: 0,
                 location: null,
-                additional: { feePerSecond: 0, coingeckoId: "" }
+                additional: { feePerSecond: 0, coingeckoId: "moonriver" }
             },
             2
         ), api.tx.assetRegistry.registerAsset(
@@ -412,7 +412,7 @@ function constructForeignAssetSetup(api: ApiPromise) {
                         }
                     }
                 },
-                additional: { feePerSecond: 233100000000, coingeckoId: "" }
+                additional: { feePerSecond: 233100000000, coingeckoId: "voucher-ksm" }
             },
             4
         ), api.tx.assetRegistry.registerAsset(
