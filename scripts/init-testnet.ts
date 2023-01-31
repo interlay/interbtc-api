@@ -157,12 +157,20 @@ function constructLendingSetup(api: ApiPromise) {
 }
 
 function constructFundingSetup(api: ApiPromise) {
-    const tokens = [{Token: "KSM"}, {Token: "KINT"}];
+    const tokens = [
+        {Token: "KSM"}, 
+        {Token: "KINT"},
+        { ForeignAsset: 1 },
+        { ForeignAsset: 2 },
+        { ForeignAsset: 3 },
+        { ForeignAsset: 4 },
+        { ForeignAsset: 5 } 
+    ];
     const faucetSetup = tokens.map((token) => {
         return api.tx.tokens.setBalance(
             "5DqzGaydetDXGya818gyuHA7GAjEWRsQN6UWNKpvfgq2KyM7",
             token,
-            20000000000000,
+            "1000000000000000000000000000", //1e24 planck
             0
         );
     });
@@ -170,7 +178,7 @@ function constructFundingSetup(api: ApiPromise) {
         api.tx.tokens.setBalance(
             "a3cgeH7D28bBsHY4hGLzxkMFUcFQmjGgDa2kmxg3D9Z6AyhtL", // treasury
             {Token: "KINT"},
-            "1000000000000000000000000", //1e12 KINT
+            "1000000000000000000000000000", //1e15 KINT
             0
         )
     ]);
@@ -218,12 +226,7 @@ async function constructAmmSetup(api: ApiPromise) {
     // workaround for broken is_exists check - TODO: remove once fixed.
     // see https://github.com/interlay/interbtc/blob/1a1afa90228f37c9ade4acbda8275c2f5cfe85ce/parachain/runtime/testnet-kintsugi/src/zenlink.rs#L43
     const isExistsWorkaround = [ 
-        {Token: "KBTC" },
-        { ForeignAsset: 1 },
-        { ForeignAsset: 2 },
-        { ForeignAsset: 3 },
-        { ForeignAsset: 4 },
-        { ForeignAsset: 5 }
+        {Token: "KBTC" }, // foreign assets also need issuance, but faucet already has those
     ].map((token) => { 
         return api.tx.tokens.setBalance(
             "a3ckVDnZwjdBhkq1KJodZj3iCgYMseWfLA5fpqExuEpMy8Y5q", // root
