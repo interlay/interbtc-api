@@ -9,6 +9,7 @@ import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { assert } from "console";
 import { isForeignAsset } from "../src";
 import { BN } from "bn.js";
+import fetch from "cross-fetch";
 
 const readline = require("readline");
 const yargs = require("yargs/yargs");
@@ -23,10 +24,10 @@ const args = yargs(hideBin(process.argv))
         description: "Which default values to use",
         choices: ['testnet-kintsugi'],
     })
-    // .option("clients-url", {
-    //     description: "Url of the clients, without the client-name. E.g. https://github.com/interlay/interbtc-clients/releases/download/1.17.6/",
-    //     demandOption: true,
-    // })
+    .option("clients-url", {
+        description: "Url of the clients, without the client-name. E.g. https://github.com/interlay/interbtc-clients/releases/download/1.17.6/",
+        demandOption: true,
+    })
     .argv;
 
 main().catch((err) => {
@@ -392,8 +393,33 @@ function constructForeignAssetSetup(api: ApiPromise) {
     ];
 }
 
-// function constructClientsInfoSetup(api: ApiPromise) {
-// }
+async function constructClientsInfoSetup(api: ApiPromise, baseUrl: String) {
+    const checksumFile = await fetch(baseUrl + 'sha256sums.txt')
+    .then(res => {
+        if (res.status >= 400) {
+            throw new Error("Bad response from server");
+        }
+        return res.text();
+    });
+
+    const re = /([a-f0-9]+)\s*[.]\/(([a-z]+)-parachain-metadata-kintsugi-testnet)/g;
+    let matches = []
+    let match;
+    while ((match = re.exec(checksumFile)) !== null) {
+        matches.push([match[1], match[2], match[3]]);
+    }
+
+    return matches.map(([checksum, fullFileName, clientName]) => {
+        return api.tx.clientsInfo.setCurrentClientRelease(
+            clientName,
+            {
+                uri: baseUrl + fullFileName,
+                checksum: "0x" + checksum,
+            }
+        )
+    });
+}
+
 function toUrl(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
     return "https://polkadot.js.org/apps/?rpc=" +
         encodeURIComponent(endpoint) +
@@ -405,6 +431,7 @@ async function setupParachain() {
     const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
 
     let calls = [
+        await constructClientsInfoSetup(paraApi, args["clients-url"]),
         constructFundingSetup(paraApi),
         constructForeignAssetSetup(paraApi),
         constructLendingSetup(paraApi),
@@ -422,6 +449,10 @@ async function setupParachain() {
 }
 
 async function main(): Promise<void> {
+    if (!args["clients-url"].endsWith("/")) {
+        throw new Error("clients-url needs to end with `/`, e.g. https://github.com/interlay/interbtc-clients/releases/download/1.19.2/");
+    }
+
     await cryptoWaitReady();
 
     switch (args['with-defaults-of']) {
