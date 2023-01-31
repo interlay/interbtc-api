@@ -161,6 +161,7 @@ function constructFundingSetup(api: ApiPromise) {
     const tokens = [
         {Token: "KSM"}, 
         {Token: "KINT"},
+        {Token: "KBTC"}, // note: if the faucet gives this, it'll lead to unredeemable kbtc
         { ForeignAsset: 1 },
         { ForeignAsset: 2 },
         { ForeignAsset: 3 },
