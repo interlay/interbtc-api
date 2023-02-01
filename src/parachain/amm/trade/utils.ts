@@ -1,9 +1,36 @@
 import { CurrencyExt } from "../../../types";
-import { isCurrencyEqual } from "../../../utils";
+import { isCurrencyEqual, newMonetaryAmount } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { getStableSwapOutputAmount } from "../liquidity-pool/utils";
-import { isStableMultiPathElement, MultiPath } from "./types";
+import { isStableMultiPathElement, MultiPath, MultiPathElementStable } from "./types";
+
+// SOURCE: Based on curvefi/curve-js middle price calculation method.
+// https://github.com/curvefi/curve-js/blob/master/src/router.ts#L573
+// @note Will always return 0% price impact for all amounts lower than 0.001
+//       in the same way as curve-js implementation.
+const computeStablePoolMiddlePrice = (
+    currentInputAmount: MonetaryAmount<CurrencyExt>,
+    pathElement: MultiPathElementStable
+): [Big, MonetaryAmount<CurrencyExt>] => {
+    const _getSmallAmountPrice = (amount: MonetaryAmount<CurrencyExt>) => {
+        const decimalsToUse = amount.currency.decimals > 5 ? amount.currency.decimals - 3 : amount.currency.decimals;
+        const smallAmount = Big(10).pow(decimalsToUse);
+        const smallMonetaryAmount = newMonetaryAmount(smallAmount, amount.currency, false);
+        if (smallMonetaryAmount.lte(amount)) {
+            return smallMonetaryAmount;
+        }
+        return amount;
+    };
+
+    const smallInputAmount = _getSmallAmountPrice(currentInputAmount);
+    const smallToCurrentRatio = currentInputAmount.div(smallInputAmount.toBig()).toBig();
+    const smallOutputAmount = getStableSwapOutputAmount(pathElement, smallInputAmount);
+    const smallPrice = smallOutputAmount.toBig().div(smallInputAmount.toBig());
+    const outputAmount = smallOutputAmount.mul(smallToCurrentRatio);
+
+    return [smallPrice, outputAmount];
+};
 
 // TODO: improve, simplify, verify computation
 // SOURCE: @zenlink-dex/sdk-core
@@ -15,11 +42,7 @@ const computeMiddlePrice = (path: MultiPath, inputAmount: MonetaryAmount<Currenc
     for (const [i, pathElement] of path.entries()) {
         let currentPrice: Big;
         if (isStableMultiPathElement(pathElement)) {
-            // TODO: Is this a correct way to compute middle price for curve pool?
-            //       Won't this always show 0% price impact for curve-pool only trades?
-            const outputAmount = getStableSwapOutputAmount(pathElement, currentInputAmount);
-            currentPrice = outputAmount.toBig().div(currentInputAmount.toBig());
-            currentInputAmount = outputAmount;
+            [currentPrice, currentInputAmount] = computeStablePoolMiddlePrice(currentInputAmount, pathElement);
         } else {
             const pair = pathElement.pair;
             if (isCurrencyEqual(currencyPath[i], pair.token0)) {
