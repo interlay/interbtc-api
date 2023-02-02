@@ -144,8 +144,8 @@ function constructLendingSetup(api: ApiPromise) {
     const underlyingTokens = [
         { Token: "KBTC" },
         { Token: "KSM" },
-        { ForeignAsset: 1 }, // usdt
-        { ForeignAsset: 2 }, // movr
+        { ForeignAsset: 1 }, // USDT
+        { ForeignAsset: 2 }, // MOVR
     ];
 
     let addRewards = [
@@ -169,11 +169,11 @@ function constructFundingSetup(api: ApiPromise) {
         { Token: "KSM" },
         { Token: "KINT" },
         { Token: "KBTC" }, // NOTE: this is unredeemable
-        { ForeignAsset: 1 },
-        { ForeignAsset: 2 },
-        { ForeignAsset: 3 },
-        { ForeignAsset: 4 },
-        { ForeignAsset: 5 }
+        { ForeignAsset: 1 }, // USDT
+        { ForeignAsset: 2 }, // MOVR
+        { ForeignAsset: 3 }, // LKSM
+        { ForeignAsset: 4 }, // VKSM
+        { ForeignAsset: 5 }, // SKSM
     ];
     return tokens.map((token) => {
         return [
@@ -181,13 +181,13 @@ function constructFundingSetup(api: ApiPromise) {
                 // faucet account
                 "5DqzGaydetDXGya818gyuHA7GAjEWRsQN6UWNKpvfgq2KyM7",
                 token,
-                "1000000000000000000000000000", //1e24 planck
+                new BN(2).pow(new BN(128)).subn(1),
                 0
             ),
             api.tx.tokens.setBalance(
                 treasuryAccount,
                 token,
-                "1000000000000000000000000000", //1e15 KINT
+                new BN(2).pow(new BN(128)).subn(1),
                 0
             )
         ]
@@ -196,7 +196,7 @@ function constructFundingSetup(api: ApiPromise) {
 
 function constructVaultRegistrySetup(api: ApiPromise) {
     const currencyPair = {
-        collateral: { ForeignAsset: 3 }, // lksm 
+        collateral: { ForeignAsset: 3 }, // LKSM 
         wrapped: { Token: "KBTC" }
     };
     return [
@@ -252,20 +252,56 @@ async function constructAmmSetup(api: ApiPromise) {
     });
 
     const pools = [
-        [{ Token: "KBTC" }, { Token: "KSM" }, 45_000],
-        [{ Token: "KBTC" }, { ForeignAsset: 1 }, 40_000], // usdt
-        [{ Token: "KBTC" }, { ForeignAsset: 2 }, 20_000], // movr
-        [{ Token: "KINT" }, { ForeignAsset: 2 }, 35_000], // movr
+        [
+            { Token: "KBTC" },
+            { Token: "KSM" },
+            45_000,
+            "10000000000", // 100 BTC
+            "63674740000000000"
+        ],
+        [
+            { Token: "KBTC" },
+            { ForeignAsset: 1 }, // USDT
+            40_000,
+            "10000000000", // 100 BTC
+            "2377141310000"
+        ],
+        [
+            { Token: "KBTC" },
+            { ForeignAsset: 2 }, // MOVR
+            20_000,
+            "10000000000", // 100 BTC
+            "267818622409032238891008"
+        ],
+        [
+            { Token: "KINT" },
+            { ForeignAsset: 2 }, // MOVR
+            35_000,
+            "100000000000000000", // 100_000 KINT
+            "11578645889226521968640"
+        ],
     ];
-    const basicPoolSetup = pools.map(([token1, token2, reward]) => {
+    const basicPoolSetup = pools.map(([token0, token1, reward, amount0, amount1]) => {
         return [
-            api.tx.zenlinkProtocol.createPair(token1, token2),
+            api.tx.zenlinkProtocol.createPair(token0, token1),
             api.tx.farming.updateRewardSchedule(
-                { LpToken: [token1, token2] },
+                { LpToken: [token0, token1] },
                 { Token: "KINT" },
                 60 * 24 * 7 * 12, // three months, reward period is per minute
                 new BN(10).pow(new BN(12)).muln(reward as any),
             ),
+            api.tx.utility.dispatchAs(
+                { system: { Signed: treasuryAccount } },
+                api.tx.zenlinkProtocol.addLiquidity(
+                    token0,
+                    token1,
+                    amount0, // amount0Desired
+                    amount1, // amount1Desired
+                    0, // amount0Min
+                    0, // amount0Min
+                    new BN(4294967295), // deadline
+                ),
+            )
         ];
     }).reduce((x, y) => { return x.concat(y); });
 
@@ -296,9 +332,9 @@ async function constructAmmSetup(api: ApiPromise) {
             api.tx.zenlinkStableAmm.addLiquidity(
                 basePoolId,
                 [
-                    100_000,
-                    100_000,
-                    100_000,
+                    "20_000_000_000_000", // 20 LKSM
+                    "20_000_000_000_000", // 20 VKSM
+                    "20_000_000_000_000", // 20 SKSM
                 ],
                 0, // min mint amount
                 treasuryAccount, // recipient
@@ -332,8 +368,8 @@ async function constructAmmSetup(api: ApiPromise) {
             api.tx.zenlinkStableAmm.addLiquidity(
                 metaPoolId,
                 [
-                    100_000,
-                    100_000,
+                    "10_000_000_000_000", // 10 KSM
+                    "80_000_000_000_000_000_000", // 80 LKSM
                 ],
                 0, // min mint amount
                 treasuryAccount, // recipient
