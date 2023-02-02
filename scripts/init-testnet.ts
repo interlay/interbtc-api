@@ -40,9 +40,12 @@ main().catch((err) => {
     console.log(err);
 });
 
+type Currency = { Token: any } | { ForeignAsset: any } | { LendToken: any };
+type LoansMarket = { collateralFactor?: any; liquidationThreshold?: any; reserveFactor?: any; closeFactor?: any; liquidateIncentive?: any; liquidateIncentiveReservedFactor?: any; rateModel?: any; state?: any; supplyCap?: any; borrowCap?: any; lendTokenId?: any };
+
 function constructLendingSetup(api: ApiPromise) {
-    const addMarkets = [
-        api.tx.loans.addMarket(
+    const markets: [Currency, LoansMarket][] = [
+        [
             {
                 Token: 'KBTC'
             },
@@ -66,7 +69,7 @@ function constructLendingSetup(api: ApiPromise) {
                 borrowCap: "2000000000",
                 lendTokenId: { LendToken: 1 }
             }
-        ), api.tx.loans.addMarket(
+        ], [
             {
                 Token: 'KSM'
             },
@@ -90,7 +93,7 @@ function constructLendingSetup(api: ApiPromise) {
                 borrowCap: "30000000000000000",
                 lendTokenId: { LendToken: 2 }
             }
-        ), api.tx.loans.addMarket(
+        ], [
             {
                 ForeignAsset: 1 // usdt
             },
@@ -114,7 +117,7 @@ function constructLendingSetup(api: ApiPromise) {
                 borrowCap: "80000000000",
                 lendTokenId: { LendToken: 3 }
             }
-        ), api.tx.loans.addMarket(
+        ], [
             {
                 ForeignAsset: 2 // movr
             },
@@ -138,30 +141,35 @@ function constructLendingSetup(api: ApiPromise) {
                 borrowCap: "20000000000000000000000",
                 lendTokenId: { LendToken: 4 }
             }
-        )
+        ],
     ];
 
-    const underlyingTokens = [
-        { Token: "KBTC" },
-        { Token: "KSM" },
-        { ForeignAsset: 1 }, // USDT
-        { ForeignAsset: 2 }, // MOVR
-    ];
+    const addMarkets = markets.map(([token, market]) => {
+        return api.tx.loans.addMarket(token, market);
+    });
 
-    let addRewards = [
+    const addRewards = [
         api.tx.utility.dispatchAs(
             { system: { Signed: treasuryAccount } },
             api.tx.loans.addReward("100000000000000000000")
         )
     ];
-    let activateMarketWithRewards = underlyingTokens.map((token) => {
+
+    const activateMarketWithRewards = markets.map(([token, _]) => {
         return [
             api.tx.loans.activateMarket(token),
             api.tx.loans.updateMarketRewardSpeed(token, 10, 10),
         ]
-    }).reduce((x, y) => { return x.concat(y); });
+    }).flat();
 
-    return addMarkets.concat(addRewards).concat(activateMarketWithRewards);
+    const addSupply = markets.map(([token, market]) => {
+        return api.tx.utility.dispatchAs(
+            { system: { Signed: treasuryAccount } },
+            api.tx.loans.mint(token, new BN(market.supplyCap).divn(10))
+        )
+    }).flat();
+
+    return [addMarkets, addRewards, activateMarketWithRewards, addSupply].flat()
 }
 
 function constructFundingSetup(api: ApiPromise) {
@@ -303,7 +311,7 @@ async function constructAmmSetup(api: ApiPromise) {
                 ),
             )
         ];
-    }).reduce((x, y) => { return x.concat(y); });
+    }).flat();
 
     // note: this is before the batch is executed
     const basePoolId = (await api.query.zenlinkStableAmm.nextPoolId() as any).toNumber();
@@ -510,7 +518,7 @@ async function setupParachain() {
         constructVaultRegistrySetup(paraApi),
         constructAnnuitySetup(paraApi),
         await constructAmmSetup(paraApi),
-    ].reduce((x, y) => { return x.concat(y); });
+    ].flat();
 
     const batched = paraApi.tx.utility.batchAll(calls);
     const sudo = paraApi.tx.sudo.sudo(batched.method.toHex());
