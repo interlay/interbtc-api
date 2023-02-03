@@ -334,7 +334,7 @@ export async function getStableLpTokenFromCurrencyId(
     }
 
     const poolId = currencyId.asStableLpToken.toNumber();
-    const poolData = await api.query.zenlinkStableAmm.pools(poolId);
+    const poolData = await api.query.dexStable.pools(poolId);
 
     if (!poolData.isSome) {
         throw new Error(`getStableLpToken: Invalid pool data for currencyId ${currencyId.toString()}`);

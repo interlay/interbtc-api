@@ -4,12 +4,12 @@ import { u128 } from "@polkadot/types";
 import { AddressOrPair, ApiTypes, AugmentedEvent, SubmittableExtrinsic } from "@polkadot/api/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import {
-    ZenlinkProtocolPrimitivesBootstrapParameter,
-    ZenlinkProtocolPrimitivesPairMetadata,
-    ZenlinkProtocolPrimitivesPairStatus,
-    ZenlinkStableAmmPrimitivesBasePool,
-    ZenlinkStableAmmPrimitivesMetaPool,
-    ZenlinkStableAmmPrimitivesPool,
+    DexStablePrimitivesMetaPool,
+    DexStablePrimitivesPool,
+    DexGeneralPrimitivesBootstrapParameter,
+    DexGeneralPrimitivesPairMetadata,
+    DexGeneralPrimitivesPairStatus,
+    DexStablePrimitivesBasePool,
 } from "@polkadot/types/lookup";
 import { TokensAPI } from "./tokens";
 import { InterbtcPrimitivesCurrencyId } from "../interfaces";
@@ -136,7 +136,7 @@ export interface AMMAPI {
 }
 
 export class DefaultAMMAPI implements AMMAPI {
-    static getStablePoolInfo(poolData: ZenlinkStableAmmPrimitivesPool): ZenlinkStableAmmPrimitivesBasePool | null {
+    static getStablePoolInfo(poolData: DexStablePrimitivesPool): DexStablePrimitivesBasePool | null {
         if (poolData.isBase) {
             return poolData.asBase;
         }
@@ -146,10 +146,7 @@ export class DefaultAMMAPI implements AMMAPI {
         return null;
     }
 
-    static getStableLpTokenFromPoolData(
-        poolId: number,
-        basePoolData: ZenlinkStableAmmPrimitivesBasePool
-    ): StableLpToken {
+    static getStableLpTokenFromPoolData(poolId: number, basePoolData: DexStablePrimitivesBasePool): StableLpToken {
         const [ticker, decimals] = [
             decodeBytesAsString(basePoolData.lpCurrencySymbol),
             basePoolData.lpCurrencyDecimal.toNumber(),
@@ -190,7 +187,7 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     private async _getStandardLpTokens(): Promise<Array<StandardLpToken>> {
-        const standardPools = await this.api.query.zenlinkProtocol.liquidityPairs.entries();
+        const standardPools = await this.api.query.dexGeneral.liquidityPairs.entries();
         const standardLpTokens = await Promise.all(
             standardPools.map(([_, lpTokenCurrencyId]) =>
                 getStandardLpTokenFromCurrencyId(this.api, lpTokenCurrencyId.unwrap())
@@ -201,7 +198,7 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     private async _getStableLpTokens(): Promise<Array<StableLpToken>> {
-        const stablePools = await this.api.query.zenlinkStableAmm.pools.entries();
+        const stablePools = await this.api.query.dexStable.pools.entries();
         const stableLpTokens = stablePools.map(([key, poolData]) => {
             if (!poolData.isSome) {
                 return null;
@@ -253,9 +250,9 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _getStandardLiquidityPool(
         pairCurrencies: [InterbtcPrimitivesCurrencyId, InterbtcPrimitivesCurrencyId],
         lpTokenCurrencyId: InterbtcPrimitivesCurrencyId,
-        pairStatus: ZenlinkProtocolPrimitivesPairStatus
+        pairStatus: DexGeneralPrimitivesPairStatus
     ): Promise<StandardLiquidityPool | null> {
-        let typedPairStatus: ZenlinkProtocolPrimitivesPairMetadata | ZenlinkProtocolPrimitivesBootstrapParameter;
+        let typedPairStatus: DexGeneralPrimitivesPairMetadata | DexGeneralPrimitivesBootstrapParameter;
         let isTradingActive: boolean;
         let tradingFee: Big;
         let totalSupplyAmount: Big;
@@ -296,10 +293,10 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     public async getStandardLiquidityPools(): Promise<Array<StandardLiquidityPool>> {
-        const pairEntries = await this.api.query.zenlinkProtocol.liquidityPairs.entries();
+        const pairEntries = await this.api.query.dexGeneral.liquidityPairs.entries();
         const pairs = pairEntries.filter(([_, lpToken]) => lpToken.isSome);
         const pairStatuses = await Promise.all(
-            pairs.map(([pairKey]) => this.api.query.zenlinkProtocol.pairStatuses(storageKeyToNthInner(pairKey)))
+            pairs.map(([pairKey]) => this.api.query.dexGeneral.pairStatuses(storageKeyToNthInner(pairKey)))
         );
         const pools = await Promise.all(
             pairs.map(([pairKey, lpToken], index) =>
@@ -332,9 +329,9 @@ export class DefaultAMMAPI implements AMMAPI {
 
     private async _getStablePoolAmplificationCoefficient(poolId: number): Promise<Big> {
         // TODO: refactor when RPC call is added to node
-        // const rawA = await this.api.rpc.zenlinkStableAmm.getA(poolId);
+        // const rawA = await this.api.rpc.dexStable.getA(poolId);
         // return decodeNumberOrHex(rawA);
-        const poolData = await this.api.query.zenlinkStableAmm.pools(poolId);
+        const poolData = await this.api.query.dexStable.pools(poolId);
         if (poolData.isSome) {
             const rawA = DefaultAMMAPI.getStablePoolInfo(poolData.unwrap())?.futureA;
             if (rawA !== undefined) {
@@ -356,7 +353,7 @@ export class DefaultAMMAPI implements AMMAPI {
 
     private async _getStableLiquidityPoolData(
         poolId: number,
-        poolData: ZenlinkStableAmmPrimitivesPool,
+        poolData: DexStablePrimitivesPool,
         metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>
     ) {
         const poolInfo = DefaultAMMAPI.getStablePoolInfo(poolData);
@@ -392,11 +389,11 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     private async _getStableMetaPoolBasePool(
-        poolData: ZenlinkStableAmmPrimitivesMetaPool,
+        poolData: DexStablePrimitivesMetaPool,
         pooledCurrencies: PooledCurrencies
     ): Promise<StableLiquidityPool> {
         const basePoolId = poolData.basePoolId;
-        const basePoolData = await this.api.query.zenlinkStableAmm.pools(basePoolId);
+        const basePoolData = await this.api.query.dexStable.pools(basePoolId);
         const pooledLpTokenAmount = <MonetaryAmount<StableLpToken>>(
             pooledCurrencies.find((amount) => isStableLpToken(amount.currency))
         );
@@ -421,7 +418,7 @@ export class DefaultAMMAPI implements AMMAPI {
 
     private async _getStableLiquidityPool(
         poolId: number,
-        poolData: ZenlinkStableAmmPrimitivesPool,
+        poolData: DexStablePrimitivesPool,
         metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>
     ): Promise<StableLiquidityPool | null> {
         const processedPoolData = await this._getStableLiquidityPoolData(poolId, poolData, metaPoolLpTokenAmount);
@@ -474,7 +471,7 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     public async getStableLiquidityPools(): Promise<Array<StableLiquidityPool>> {
-        const poolEntries = await this.api.query.zenlinkStableAmm.pools.entries();
+        const poolEntries = await this.api.query.dexStable.pools.entries();
         const rawPoolsData = poolEntries.filter(([_, pool]) => pool.isSome);
         const pools = await Promise.all(
             rawPoolsData.map(([poolId, poolData]) =>
@@ -505,7 +502,7 @@ export class DefaultAMMAPI implements AMMAPI {
             trade,
             minimumAmountOut
         );
-        const swapExtrinsic = this.api.tx.zenlinkProtocol.swapExactAssetsForAssets(
+        const swapExtrinsic = this.api.tx.dexGeneral.swapExactAssetsForAssets(
             amountIn,
             amountOutMin,
             path,
@@ -513,7 +510,7 @@ export class DefaultAMMAPI implements AMMAPI {
             deadline
         );
 
-        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.zenlinkProtocol.AssetSwap, true);
+        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.dexGeneral.AssetSwap, true);
     }
 
     private async _swapThroughStandardAndStablePools(
@@ -527,7 +524,7 @@ export class DefaultAMMAPI implements AMMAPI {
             trade,
             minimumAmountOut
         );
-        const swapExtrinsic = this.api.tx.zenlinkSwapRouter.swapExactTokenForTokensThroughStablePool(
+        const swapExtrinsic = this.api.tx.dexSwapRouter.swapExactTokenForTokensThroughStablePool(
             amountIn,
             amountOutMin,
             path,
@@ -535,7 +532,7 @@ export class DefaultAMMAPI implements AMMAPI {
             deadline
         );
 
-        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.zenlinkStableAmm.CurrencyExchange, true);
+        await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.dexStable.CurrencyExchange, true);
     }
 
     async swap(
@@ -575,7 +572,7 @@ export class DefaultAMMAPI implements AMMAPI {
             minAmounts[1].toString(true),
         ];
 
-        const addLiquidityToStandardPoolExtrinsic = this.api.tx.zenlinkProtocol.addLiquidity(
+        const addLiquidityToStandardPoolExtrinsic = this.api.tx.dexGeneral.addLiquidity(
             asset0,
             asset1,
             amount0Desired,
@@ -585,7 +582,7 @@ export class DefaultAMMAPI implements AMMAPI {
             deadline
         );
 
-        return [addLiquidityToStandardPoolExtrinsic, this.api.events.zenlinkProtocol.LiquidityAdded];
+        return [addLiquidityToStandardPoolExtrinsic, this.api.events.dexGeneral.LiquidityAdded];
     }
 
     private async _getLiquidityDepositStablePoolParams(
@@ -609,7 +606,7 @@ export class DefaultAMMAPI implements AMMAPI {
             });
 
             const rawAmounts = amounts.map(monetaryAmountToRawString);
-            const addLiquidityToStablePoolExtrinsic = this.api.tx.zenlinkStableAmm.addLiquidity(
+            const addLiquidityToStablePoolExtrinsic = this.api.tx.dexStable.addLiquidity(
                 pool.poolId,
                 rawAmounts,
                 minimumLpTokenOut,
@@ -617,7 +614,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 deadline
             );
 
-            return [addLiquidityToStablePoolExtrinsic, this.api.events.zenlinkStableAmm.AddLiquidity];
+            return [addLiquidityToStablePoolExtrinsic, this.api.events.dexStable.AddLiquidity];
         }
 
         // Pass 0 for LP token amount - this will be automatically changed base on how much
@@ -639,7 +636,7 @@ export class DefaultAMMAPI implements AMMAPI {
             throw new Error("Invalid input amounts.");
         }
 
-        const addLiquidityToStableMetaPoolExtrinsic = this.api.tx.zenlinkStableAmm.addPoolAndBasePoolLiquidity(
+        const addLiquidityToStableMetaPoolExtrinsic = this.api.tx.dexStable.addPoolAndBasePoolLiquidity(
             pool.poolId,
             pool.basePool.poolId,
             rawMetaAmounts,
@@ -649,7 +646,7 @@ export class DefaultAMMAPI implements AMMAPI {
             deadline
         );
 
-        return [addLiquidityToStableMetaPoolExtrinsic, this.api.events.zenlinkStableAmm.AddLiquidity];
+        return [addLiquidityToStableMetaPoolExtrinsic, this.api.events.dexStable.AddLiquidity];
     }
 
     async addLiquidity(
@@ -698,7 +695,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const minAmounts = outputAmounts.map((amount) => amount.mul(maxSlippageComplement).toString(true));
         const recipientAccount = addressOrPairAsAccountId(this.api, recipient);
 
-        const withdrawalExtrinsic = this.api.tx.zenlinkProtocol.removeLiquidity(
+        const withdrawalExtrinsic = this.api.tx.dexGeneral.removeLiquidity(
             newCurrencyId(this.api, pool.token0),
             newCurrencyId(this.api, pool.token1),
             amount.toString(true),
@@ -708,7 +705,7 @@ export class DefaultAMMAPI implements AMMAPI {
             deadline
         );
 
-        return [withdrawalExtrinsic, this.api.events.zenlinkProtocol.LiquidityRemoved];
+        return [withdrawalExtrinsic, this.api.events.dexGeneral.LiquidityRemoved];
     }
 
     private async _getLiquidityWithdrawalStablePoolParams(
@@ -741,7 +738,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 .filter((amount) => pool.basePool.involvesToken(amount.currency))
                 .map(monetaryAmountToRawString);
 
-            const withdrawLiquidityExtrinsic = this.api.tx.zenlinkStableAmm.removePoolAndBasePoolLiquidity(
+            const withdrawLiquidityExtrinsic = this.api.tx.dexStable.removePoolAndBasePoolLiquidity(
                 poolId,
                 basePoolId,
                 lpTokenAmount,
@@ -751,11 +748,11 @@ export class DefaultAMMAPI implements AMMAPI {
                 deadline
             );
 
-            return [withdrawLiquidityExtrinsic, this.api.events.zenlinkStableAmm.RemoveLiquidity];
+            return [withdrawLiquidityExtrinsic, this.api.events.dexStable.RemoveLiquidity];
         }
 
         const minAmountsRaw = minAmounts.map(monetaryAmountToRawString);
-        const withdrawLiquidityExtrinsic = this.api.tx.zenlinkStableAmm.removeLiquidity(
+        const withdrawLiquidityExtrinsic = this.api.tx.dexStable.removeLiquidity(
             poolId,
             lpTokenAmount,
             minAmountsRaw,
@@ -763,7 +760,7 @@ export class DefaultAMMAPI implements AMMAPI {
             deadline
         );
 
-        return [withdrawLiquidityExtrinsic, this.api.events.zenlinkStableAmm.RemoveLiquidity];
+        return [withdrawLiquidityExtrinsic, this.api.events.dexStable.RemoveLiquidity];
     }
 
     async removeLiquidity(
