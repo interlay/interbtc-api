@@ -43,7 +43,9 @@ import {
 } from "..";
 import { StableLiquidityMetaPool } from "./amm/liquidity-pool/stable-meta";
 
-const HOP_LIMIT = 4; // TODO: add as parameter?
+const HOP_LIMIT = 4;
+const FEE_MULTIPLIER_STANDARD = 1000;
+const FEE_MULTIPLIER_STABLE = 10000000000;
 
 export interface AMMAPI {
     /**
@@ -263,7 +265,7 @@ export class DefaultAMMAPI implements AMMAPI {
         if (pairStatus.isTrading) {
             typedPairStatus = pairStatus.asTrading;
             isTradingActive = true;
-            tradingFee = decodeFixedPointType(typedPairStatus.feeRate);
+            tradingFee = Big(typedPairStatus.feeRate.toString()).div(FEE_MULTIPLIER_STANDARD);
             totalSupplyAmount = decodeFixedPointType(typedPairStatus.totalSupply);
         } else if (pairStatus.isBootstrap) {
             typedPairStatus = pairStatus.asBootstrap;
@@ -367,8 +369,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const [pooledCurrencyIds, pooledCurrencyBalances, tradingFee] = [
             poolInfo.currencyIds,
             poolInfo.balances,
-            // TODO: check number base for fee
-            decodeFixedPointType(poolInfo.fee),
+            Big(poolInfo.fee.toString()).div(FEE_MULTIPLIER_STABLE),
         ];
         const lpToken = DefaultAMMAPI.getStableLpTokenFromPoolData(poolId, poolInfo);
         const [pooledCurrenciesBase, apr, amplificationCoefficient, totalSupply] = await Promise.all([

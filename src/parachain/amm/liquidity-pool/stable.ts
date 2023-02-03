@@ -121,7 +121,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         if (index >= nCoins) {
             throw new Error("_getYD: Index out of range.");
         }
-        const Ann = A.mul(Big(nCoins));
+        const Ann = A.mul(nCoins);
         let c = D;
         let s = Big(0);
         let _x = Big(0);
@@ -131,10 +131,10 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             if (i === index) continue;
             _x = xp[i];
             s = s.add(_x);
-            c = c.mul(D).div(_x.mul(Big(nCoins)));
+            c = c.mul(D).div(_x.mul(nCoins));
         }
 
-        c = c.mul(D).div(Ann.mul(Big(nCoins)));
+        c = c.mul(D).div(Ann.mul(nCoins));
         const b = s.add(D.div(Ann));
         let y = D;
 
@@ -194,22 +194,17 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         );
     }
 
-    // TODO: rename to 'currenciesInBaseDenomination'
     public get xp(): Array<Big> {
         return this._xp(this.actuallyPooledCurrencies);
     }
 
-    // TODO: rename to something like `calculateLiquidityDeposit`
     /**
      *
      * @param amounts Array of monetary amount for each pooled currency of this pool.
      * @param deposit True for deposit, false for withdrawal
      * @returns LP token amount that will be minted/burned after operation.
      */
-    public calculateTokenAmount(
-        amounts: Array<MonetaryAmount<CurrencyExt>>,
-        deposit: boolean
-    ): MonetaryAmount<StableLpToken> {
+    public calculateTokenAmount(amounts: PooledCurrencies, deposit: boolean): MonetaryAmount<StableLpToken> {
         const sortedAmounts = this._sortAmounts(amounts);
 
         const amp = this.amplificationCoefficient;
@@ -221,13 +216,10 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         const D1 = this._getD(this._xp(newBalances), amp);
 
         if (this.totalSupply.toBig().eq(0)) {
-            // TODO: check is D1 in base or atomic denomination??
-            // if not in base divide by decimals first
             return new MonetaryAmount(this.lpToken, D1);
         }
         const diff = deposit ? D1.sub(D0) : D0.sub(D1);
 
-        // TODO: is D0 in base or atomic denomination?
         return new MonetaryAmount(this.lpToken, diff.mul(this.totalSupply.toBig()).div(D0));
     }
 
@@ -239,6 +231,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             throw new Error("StableLiquidityPool: calculateRemoveLiquidityOneToken: Currency index out of range.");
         }
 
+        const outputDecimals = this.actuallyPooledCurrencies[outputCurrencyIndex].currency.decimals;
         const amp = this.amplificationCoefficient;
         const xp = this.xp;
         const D0 = this._getD(xp, amp);
@@ -259,10 +252,9 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
             reducedXP[i] = reducedXP[i].sub(_fee.mul(expectedDx));
         }
 
-        const dy = reducedXP[outputCurrencyIndex].sub(this._getYD(amp, outputCurrencyIndex, reducedXP, D1));
+        let dy = reducedXP[outputCurrencyIndex].sub(this._getYD(amp, outputCurrencyIndex, reducedXP, D1));
+        dy = dy.sub(Big(10).pow(-outputDecimals));
 
-        // TODO: check validity of not doing this
-        // dy = dy.sub(1);
         const fee = xp[outputCurrencyIndex].sub(newY).sub(dy);
 
         return [
@@ -276,12 +268,12 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         outputIndex: number,
         inputAmount: MonetaryAmount<CurrencyExt>
     ): MonetaryAmount<CurrencyExt> {
+        const outputDecimals = this.actuallyPooledCurrencies[outputIndex].currency.decimals;
         const normalizedBalances = this.xp;
         const newInBalance = normalizedBalances[inputIndex].add(inputAmount.toBig());
 
         const outBalance = this._getY(inputIndex, outputIndex, newInBalance, normalizedBalances);
-        // TODO: test validity of not doing sub(1) here
-        const outAmount = normalizedBalances[outputIndex].sub(outBalance);
+        const outAmount = normalizedBalances[outputIndex].sub(outBalance).sub(Big(10).pow(-outputDecimals));
         const fee = this.tradingFee.mul(outAmount);
 
         return new MonetaryAmount(this.actuallyPooledCurrencies[outputIndex].currency, outAmount.sub(fee));

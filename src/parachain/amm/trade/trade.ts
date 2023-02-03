@@ -6,7 +6,7 @@ import { computePriceImpact } from "./utils";
 
 class Trade {
     public executionPrice: MonetaryAmount<CurrencyExt>;
-    public priceImpact: string; // Percentage.
+    public priceImpact: Big; // Percentage.
     constructor(
         public path: MultiPath, // Is empty array if no path was found.
         public inputAmount: MonetaryAmount<CurrencyExt>,
@@ -36,9 +36,10 @@ class Trade {
             throw new Error("Trade: isBetterThan: Comparing 2 different trades is not possible.");
         }
 
-        // TODO: extend comparator in case of same output amount but different paths,
-        //       prefer trade with lower price impact
-        return this.outputAmount.gte(anotherTrade.outputAmount);
+        if (!this.outputAmount.eq(anotherTrade.outputAmount)) {
+            return this.outputAmount.gt(anotherTrade.outputAmount);
+        }
+        return this.priceImpact.lte(anotherTrade.priceImpact);
     }
 
     /**
