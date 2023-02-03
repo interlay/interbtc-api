@@ -64,13 +64,13 @@ const computePriceImpact = (
     path: MultiPath,
     inputAmount: MonetaryAmount<CurrencyExt>,
     outputAmount: MonetaryAmount<CurrencyExt>
-): string => {
+): Big => {
     const middlePrice = computeMiddlePrice(path, inputAmount);
     const exactQuote = middlePrice.mul(inputAmount.toBig());
     // calculate priceImpact := (exactQuote - outputAmount) / exactQuote
     const priceImpact = exactQuote.sub(outputAmount.toBig()).div(exactQuote);
     // Return percentage.
-    return priceImpact.mul(100).toString();
+    return priceImpact.mul(100);
 };
 
 export { computePriceImpact };
