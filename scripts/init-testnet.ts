@@ -189,13 +189,13 @@ function constructFundingSetup(api: ApiPromise) {
                 // faucet account
                 "5DqzGaydetDXGya818gyuHA7GAjEWRsQN6UWNKpvfgq2KyM7",
                 token,
-                new BN(2).pow(new BN(128)).subn(1),
+                new BN(2).pow(new BN(100)), // note: we can't set 2^128 - 1 because that would overflow total issuance
                 0
             ),
             api.tx.tokens.setBalance(
                 treasuryAccount,
                 token,
-                new BN(2).pow(new BN(128)).subn(1),
+                new BN(2).pow(new BN(100)),
                 0
             )
         ]
@@ -259,7 +259,7 @@ async function constructAmmSetup(api: ApiPromise) {
         )
     });
 
-    const pools = [
+    const pools: [{ Token: any; }, { Token: any; } | { ForeignAsset: any; }, number, string, string][] = [
         [
             { Token: "KBTC" },
             { Token: "KSM" },
@@ -291,7 +291,7 @@ async function constructAmmSetup(api: ApiPromise) {
     ];
     const basicPoolSetup = pools.map(([token0, token1, reward, amount0, amount1]) => {
         return [
-            api.tx.zenlinkProtocol.createPair(token0, token1),
+            api.tx.dexGeneral.createPair(token0, token1),
             api.tx.farming.updateRewardSchedule(
                 { LpToken: [token0, token1] },
                 { Token: "KINT" },
@@ -300,7 +300,7 @@ async function constructAmmSetup(api: ApiPromise) {
             ),
             api.tx.utility.dispatchAs(
                 { system: { Signed: treasuryAccount } },
-                api.tx.zenlinkProtocol.addLiquidity(
+                api.tx.dexGeneral.addLiquidity(
                     token0,
                     token1,
                     amount0, // amount0Desired
@@ -314,9 +314,9 @@ async function constructAmmSetup(api: ApiPromise) {
     }).flat();
 
     // note: this is before the batch is executed
-    const basePoolId = (await api.query.zenlinkStableAmm.nextPoolId() as any).toNumber();
+    const basePoolId = (await api.query.dexStable.nextPoolId() as any).toNumber();
     const basePoolSetup = [
-        api.tx.zenlinkStableAmm.createBasePool(
+        api.tx.dexStable.createBasePool(
             [
                 { ForeignAsset: 3 }, // LKSM
                 { ForeignAsset: 4 }, // VKSM
@@ -337,12 +337,12 @@ async function constructAmmSetup(api: ApiPromise) {
         ),
         api.tx.utility.dispatchAs(
             { system: { Signed: treasuryAccount } },
-            api.tx.zenlinkStableAmm.addLiquidity(
+            api.tx.dexStable.addLiquidity(
                 basePoolId,
                 [
-                    "20_000_000_000_000", // 20 LKSM
-                    "20_000_000_000_000", // 20 VKSM
-                    "20_000_000_000_000", // 20 SKSM
+                    "20000000000000", // 20 LKSM
+                    "20000000000000", // 20 VKSM
+                    "20000000000000", // 20 SKSM
                 ],
                 0, // min mint amount
                 treasuryAccount, // recipient
@@ -353,7 +353,7 @@ async function constructAmmSetup(api: ApiPromise) {
 
     const metaPoolId = basePoolId + 1;
     const metaPoolSetup = [
-        api.tx.zenlinkStableAmm.createMetaPool(
+        api.tx.dexStable.createMetaPool(
             [
                 { Token: "KSM" },
                 { StableLpToken: basePoolId }, // LKSM+VKSM+SKSM
@@ -373,11 +373,11 @@ async function constructAmmSetup(api: ApiPromise) {
         ),
         api.tx.utility.dispatchAs(
             { system: { Signed: treasuryAccount } },
-            api.tx.zenlinkStableAmm.addLiquidity(
+            api.tx.dexStable.addLiquidity(
                 metaPoolId,
                 [
-                    "10_000_000_000_000", // 10 KSM
-                    "80_000_000_000_000_000_000", // 80 LKSM
+                    "10000000000000", // 10 KSM
+                    "80000000000000000000", // 80 LKSM
                 ],
                 0, // min mint amount
                 treasuryAccount, // recipient
