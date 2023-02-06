@@ -259,37 +259,57 @@ async function constructAmmSetup(api: ApiPromise) {
         )
     });
 
-    const pools: [{ Token: any; }, { Token: any; } | { ForeignAsset: any; }, number, string, string][] = [
+    const prices:Map<string, number> = new Map();
+    prices.set(JSON.stringify({ Token: "KBTC" }), 22842.91);
+    prices.set(JSON.stringify({ Token: "KSM" }), 36.05);
+    prices.set(JSON.stringify({ Token: "KINT" }), 0.982574);
+    prices.set(JSON.stringify({ ForeignAsset: 1 }), 1); // usdt
+    prices.set(JSON.stringify({ ForeignAsset: 2 }), 8.94); // movr
+    const decimals:Map<string, number> = new Map();
+    decimals.set(JSON.stringify({ Token: "KBTC" }), 8);
+    decimals.set(JSON.stringify({ Token: "KSM" }), 12);
+    decimals.set(JSON.stringify({ Token: "KINT" }), 12);
+    decimals.set(JSON.stringify({ ForeignAsset: 1 }), 6); // usdt
+    decimals.set(JSON.stringify({ ForeignAsset: 2 }), 18); // movr
+    
+    const pools: [{ Token: any; }, { Token: any; } | { ForeignAsset: any; }, number, number][] = [
         [
             { Token: "KBTC" },
             { Token: "KSM" },
             45_000,
-            "10000000000", // 100 BTC
-            "63674740000000000"
+            500_000, // liquidity in usd
         ],
         [
             { Token: "KBTC" },
             { ForeignAsset: 1 }, // USDT
             40_000,
-            "10000000000", // 100 BTC
-            "2377141310000"
+            400_000, // liquidity in usd
         ],
         [
             { Token: "KBTC" },
             { ForeignAsset: 2 }, // MOVR
             20_000,
-            "10000000000", // 100 BTC
-            "267818622409032238891008"
+            175_000,  // liquidity in usd
         ],
         [
             { Token: "KINT" },
             { ForeignAsset: 2 }, // MOVR
             35_000,
-            "100000000000000000", // 100_000 KINT
-            "11578645889226521968640"
+            150_000,  // liquidity in usd
         ],
     ];
-    const basicPoolSetup = pools.map(([token0, token1, reward, amount0, amount1]) => {
+
+
+    const basicPoolSetup = pools.map(([token0, token1, reward, liquidity]) => {
+        // calculate liquidity amounts
+        let decimals0 = new BN(decimals.get(JSON.stringify(token0)) as number);
+        let price0 = prices.get(JSON.stringify(token0)) as number;
+        let liquidity0 = new BN(liquidity/2).mul(new BN(10).pow(decimals0)).divn(price0); 
+
+        let decimals1 = new BN(decimals.get(JSON.stringify(token1)) as number);
+        let price1 = prices.get(JSON.stringify(token1)) as number;
+        let liquidity1 = new BN(liquidity/2).mul(new BN(10).pow(decimals1)).divn(price1); 
+        
         return [
             api.tx.dexGeneral.createPair(token0, token1),
             api.tx.farming.updateRewardSchedule(
@@ -303,8 +323,8 @@ async function constructAmmSetup(api: ApiPromise) {
                 api.tx.dexGeneral.addLiquidity(
                     token0,
                     token1,
-                    amount0, // amount0Desired
-                    amount1, // amount1Desired
+                    liquidity0, // amount0Desired
+                    liquidity1, // amount1Desired
                     0, // amount0Min
                     0, // amount0Min
                     new BN(4294967295), // deadline
