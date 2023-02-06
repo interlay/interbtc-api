@@ -176,14 +176,13 @@ function constructFundingSetup(api: ApiPromise) {
     const tokens = [
         { Token: "KSM" },
         { Token: "KINT" },
-        { Token: "KBTC" }, // NOTE: this is unredeemable
         { ForeignAsset: 1 }, // USDT
         { ForeignAsset: 2 }, // MOVR
         { ForeignAsset: 3 }, // LKSM
         { ForeignAsset: 4 }, // VKSM
         { ForeignAsset: 5 }, // SKSM
     ];
-    return tokens.map((token) => {
+    const fundNormalTokens = tokens.map((token) => {
         return [
             api.tx.tokens.setBalance(
                 // faucet account
@@ -200,6 +199,25 @@ function constructFundingSetup(api: ApiPromise) {
             )
         ]
     }).flat();
+
+    // lower kbtc amounts so UI deals with it better
+    const fundKbtc = [
+        api.tx.tokens.setBalance(
+            // faucet account
+            "5DqzGaydetDXGya818gyuHA7GAjEWRsQN6UWNKpvfgq2KyM7",
+            { Token: "KBTC" },
+            new BN(4336).mul(new BN(10).pow(new BN(8))), // $100 million worth of KBTC 
+            0
+        ),
+        api.tx.tokens.setBalance(
+            treasuryAccount,
+            { Token: "KBTC" },
+            new BN(4336).mul(new BN(10).pow(new BN(8))), // $100 million worth of KBTC 
+            0
+        )
+    ];
+
+    return [fundNormalTokens, fundKbtc].flat();
 }
 
 function constructVaultRegistrySetup(api: ApiPromise) {
