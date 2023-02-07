@@ -330,7 +330,7 @@ async function constructAmmSetup(api: ApiPromise) {
         let liquidity1 = new BN(liquidity/2).mul(new BN(10).pow(decimals1)).divn(price1); 
         
         return [
-            api.tx.dexGeneral.createPair(token0, token1),
+            api.tx.dexGeneral.createPair(token0, token1, 30),
             api.tx.farming.updateRewardSchedule(
                 { LpToken: [token0, token1] },
                 { Token: "KINT" },
@@ -416,7 +416,7 @@ async function constructAmmSetup(api: ApiPromise) {
                 metaPoolId,
                 [
                     "10000000000000", // 10 KSM
-                    "80000000000000000000", // 80 LKSM
+                    "60000000000000000000", // 80 LKSM
                 ],
                 0, // min mint amount
                 treasuryAccount, // recipient
