@@ -352,6 +352,16 @@ async function constructAmmSetup(api: ApiPromise) {
         ];
     }).flat();
 
+
+    const lKsmPrice = 4.72; // https://apps.karura.network/swap
+    const vKsmPrice = prices.get(JSON.stringify({Token: "KSM"})) as number * 1.135658;  // https://bifrost.app/vstaking/vKSM
+    const sKsmPrice = 42.37; // https://analytics.parallel.fi/kusama/moneymarket/sKSM
+
+    let basePoolLiquidity = 1_100_000;
+    let lKsmDeposit = new BN(basePoolLiquidity/3).mul(new BN(10).pow(new BN(12))).divn(lKsmPrice); 
+    let vKsmDeposit = new BN(basePoolLiquidity/3).mul(new BN(10).pow(new BN(12))).divn(vKsmPrice); 
+    let sKsmDeposit = new BN(basePoolLiquidity/3).mul(new BN(10).pow(new BN(12))).divn(sKsmPrice); 
+
     // note: this is before the batch is executed
     const basePoolId = (await api.query.dexStable.nextPoolId() as any).toNumber();
     const basePoolSetup = [
@@ -379,9 +389,9 @@ async function constructAmmSetup(api: ApiPromise) {
             api.tx.dexStable.addLiquidity(
                 basePoolId,
                 [
-                    "20000000000000", // 20 LKSM
-                    "20000000000000", // 20 VKSM
-                    "20000000000000", // 20 SKSM
+                    lKsmDeposit, // 77683.474576271190 LKSM
+                    vKsmDeposit, //  8956.076760709657 VKSM
+                    sKsmDeposit, //  8653.906065612462 SKSM
                 ],
                 0, // min mint amount
                 treasuryAccount, // recipient
