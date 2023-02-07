@@ -42,6 +42,7 @@ import {
     decodeBytesAsString,
 } from "..";
 import { StableLiquidityMetaPool } from "./amm/liquidity-pool/stable-meta";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 const HOP_LIMIT = 4;
 const FEE_MULTIPLIER_STANDARD = 1000;
@@ -84,6 +85,20 @@ export interface AMMAPI {
      * @returns {Promise<Array<LiquidityPool>>} All liquidity pools.
      */
     getLiquidityPools(): Promise<Array<LiquidityPool>>;
+
+    /**
+     * Get claimable farming reward amounts for all farmed liquidity provided by account.
+     *
+     * @param accountId Account id for which to get claimable rewards.
+     * @param accountLiquidity Amount of liquidity the account has provided.
+     * @param pools All liquidity pools.
+     * @returns Map of LpCurrency -> Array of reward monetary amounts.
+     */
+    getClaimableFarmingRewards(
+        accountId: AccountId,
+        accountLiquidity: Array<MonetaryAmount<LpCurrency>>,
+        pools: Array<LiquidityPool>
+    ): Promise<Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>>;
 
     /**
      * Swap assets.
@@ -135,6 +150,14 @@ export interface AMMAPI {
         deadline: number,
         recipient: AddressOrPair
     ): Promise<void>;
+
+    /**
+     * Claim all pending farming rewards.
+     *
+     * @param claimableRewards Map of LpToken -> Array of reward monetary amounts -> supposed to be
+     *                         output of `getClaimableFarmingRewards`
+     */
+    claimFarmingRewards(claimableRewards: Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>): Promise<void>;
 }
 
 export class DefaultAMMAPI implements AMMAPI {
@@ -536,6 +559,53 @@ export class DefaultAMMAPI implements AMMAPI {
         await this.transactionAPI.sendLogged(swapExtrinsic, this.api.events.dexStable.CurrencyExchange, true);
     }
 
+    private async _getClaimableFarmingRewardsByPool(
+        accountId: AccountId,
+        lpToken: LpCurrency,
+        pool: LiquidityPool
+    ): Promise<Array<MonetaryAmount<CurrencyExt>>> {
+        const lpTokenCurrencyId = newCurrencyId(this.api, lpToken);
+        const rewardCurrencyIds = pool.rewardAmountsYearly.map(({ currency: rewardCurrency }) =>
+            newCurrencyId(this.api, rewardCurrency)
+        );
+        const farmingRewards = await Promise.all(
+            rewardCurrencyIds.map((rewardCurrencyId) =>
+                this.api.rpc.reward.computeFarmingReward(accountId, lpTokenCurrencyId, rewardCurrencyId)
+            )
+        );
+        const rewardAmounts = pool.rewardAmountsYearly.map(({ currency: rewardCurrency }, index) =>
+            newMonetaryAmount(farmingRewards[index].amount.toString(), rewardCurrency)
+        );
+
+        return rewardAmounts;
+    }
+
+    async getClaimableFarmingRewards(
+        accountId: AccountId,
+        accountLiquidity: MonetaryAmount<LpCurrency>[],
+        pools: LiquidityPool[]
+    ): Promise<Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>> {
+        const rewardAmounts = await Promise.all(
+            accountLiquidity.map(({ currency }) => {
+                const pool = pools.find((poolData) => isCurrencyEqual(poolData.lpToken, currency));
+                if (pool === undefined) {
+                    throw new Error(
+                        `getClaimableFarmingRewards: Invalid pool data passed, no pool found for LP token ${currency.name}`
+                    );
+                }
+                return this._getClaimableFarmingRewardsByPool(accountId, currency, pool);
+            })
+        );
+
+        const claimableRewards = new Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>();
+        rewardAmounts.forEach((rewards, index) => {
+            const lpToken = accountLiquidity[index].currency;
+            claimableRewards.set(lpToken, rewards);
+        });
+
+        return claimableRewards;
+    }
+
     async swap(
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
@@ -798,10 +868,29 @@ export class DefaultAMMAPI implements AMMAPI {
             );
         }
 
-        // TODO: add farm deposit extrinsic
-        let farmDepositExtrinsic: SubmittableExtrinsic<ApiTypes>;
-        const batchedExtrinsics = this.api.tx.utility.batchAll([withdrawalExtrinsic]);
+        const lpTokenCurrencyId = newCurrencyId(this.api, pool.lpToken);
+        const farmDepositExtrinsic = this.api.tx.farming.withdraw(lpTokenCurrencyId, amount.toString(true));
+
+        const batchedExtrinsics = this.api.tx.utility.batchAll([withdrawalExtrinsic, farmDepositExtrinsic]);
 
         await this.transactionAPI.sendLogged(batchedExtrinsics, withdrawalEvent, true);
+    }
+
+    async claimFarmingRewards(claimableRewards: Map<LpCurrency, MonetaryAmount<CurrencyExt>[]>): Promise<void> {
+        const claimExtrinsics: Array<SubmittableExtrinsic<"promise", ISubmittableResult>> = [];
+        for (const [lpToken, rewards] of claimableRewards.entries()) {
+            const lpTokenId = newCurrencyId(this.api, lpToken);
+            rewards.forEach((rewardAmount) => {
+                if (rewardAmount.toBig().gt(0)) {
+                    const rewardCurrencyId = newCurrencyId(this.api, rewardAmount.currency);
+                    const claimExtrinsic = this.api.tx.farming.claim(lpTokenId, rewardCurrencyId);
+                    claimExtrinsics.push(claimExtrinsic);
+                }
+            });
+        }
+
+        const batchedExtrinsics = this.api.tx.utility.batchAll(claimExtrinsics);
+
+        await this.transactionAPI.sendLogged(batchedExtrinsics, this.api.events.farming.RewardClaimed, true);
     }
 }
