@@ -148,17 +148,18 @@ function constructLendingSetup(api: ApiPromise) {
         return api.tx.loans.addMarket(token, market);
     });
 
-    const addRewards = [
-        api.tx.utility.dispatchAs(
-            { system: { Signed: treasuryAccount } },
-            api.tx.loans.addReward("100000000000000000000")
-        )
-    ];
+    // disabled: we test without incentives
+    // const addRewards = [
+    //     api.tx.utility.dispatchAs(
+    //         { system: { Signed: treasuryAccount } },
+    //         api.tx.loans.addReward("100000000000000000000")
+    //     )
+    // ];
 
     const activateMarketWithRewards = markets.map(([token, _]) => {
         return [
             api.tx.loans.activateMarket(token),
-            api.tx.loans.updateMarketRewardSpeed(token, 10, 10),
+            //api.tx.loans.updateMarketRewardSpeed(token, 10, 10), // no incentives
         ]
     }).flat();
 
@@ -169,7 +170,7 @@ function constructLendingSetup(api: ApiPromise) {
         )
     }).flat();
 
-    return [addMarkets, addRewards, activateMarketWithRewards, addSupply].flat()
+    return [addMarkets, activateMarketWithRewards, addSupply].flat()
 }
 
 function constructFundingSetup(api: ApiPromise) {
