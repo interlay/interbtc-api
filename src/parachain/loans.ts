@@ -6,11 +6,11 @@ import Big from "big.js";
 import {
     currencyIdToMonetaryCurrency,
     decodeFixedPointType,
-    MS_PER_YEAR,
     decodePermill,
     newCurrencyId,
     newMonetaryAmount,
     storageKeyToNthInner,
+    calculateAnnualizedRewardAmount,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
@@ -407,7 +407,7 @@ export class DefaultLoansAPI implements LoansAPI {
             ])
         )
             .map((rewardSpeedRaw) => Big(rewardSpeedRaw.toString()))
-            .map((rewardSpeed) => this._calculateAnnualizedRewardAmount(rewardSpeed, blockTimeMs));
+            .map((rewardSpeed) => calculateAnnualizedRewardAmount(rewardSpeed, blockTimeMs));
         // @note could be refactored to compute APR in lib if we can get underlyingCurrency/rewardCurrency exchange rate,
         // but is it safe to assume that exchange rate for btc/underlyingCurrency will be
         // always fed to the oracle and available?
@@ -418,11 +418,6 @@ export class DefaultLoansAPI implements LoansAPI {
         const borrowRewardPerUnit = totalBorrows.eq(0) ? borrowRewardPerPool : borrowRewardPerPool.div(totalBorrows);
 
         return [lendRewardPerUnit, borrowRewardPerUnit];
-    }
-
-    _calculateAnnualizedRewardAmount(amountPerBlock: Big, blockTimeMs: number): Big {
-        const blocksPerYear = MS_PER_YEAR.div(blockTimeMs);
-        return amountPerBlock.mul(blocksPerYear);
     }
 
     async _getRewardCurrency(): Promise<CurrencyExt> {

@@ -40,6 +40,7 @@ import {
     isStableLpToken,
     monetaryAmountToRawString,
     decodeBytesAsString,
+    calculateAnnualizedRewardAmount,
 } from "..";
 import { StableLiquidityMetaPool } from "./amm/liquidity-pool/stable-meta";
 import { ISubmittableResult } from "@polkadot/types/types";
@@ -265,17 +266,28 @@ export class DefaultAMMAPI implements AMMAPI {
         return [token0MonetaryAmount, token1MonetaryAmount];
     }
 
-    private async _getStandardPoolAPR(
-        pairCurrencies: [InterbtcPrimitivesCurrencyId, InterbtcPrimitivesCurrencyId]
-    ): Promise<Big> {
-        // TODO: Implement when farming pallet is added to runtime
-        return Big(0);
+    private async _getPoolRewardAmountsYearly(lpTokenCurrencyId: InterbtcPrimitivesCurrencyId, blockTimeMs: number) {
+        const rewardPeriod = this.api.consts.farming.rewardPeriod;
+        const rewardsRaw = await this.api.query.farmingRewards.rewardPerToken.entries(lpTokenCurrencyId);
+
+        const rewardAmountYearly = await Promise.all(
+            rewardsRaw.map(async ([key, value]) => {
+                const rewardCurrencyId = storageKeyToNthInner(key, 1);
+                const rewardCurrency = await currencyIdToMonetaryCurrency(this.api, rewardCurrencyId);
+                const amountPerBlock = Big(value.toString()).div(rewardPeriod.toNumber());
+                const annualizedRewardAmount = calculateAnnualizedRewardAmount(amountPerBlock, blockTimeMs);
+                return newMonetaryAmount(annualizedRewardAmount, rewardCurrency);
+            })
+        );
+
+        return rewardAmountYearly;
     }
 
     private async _getStandardLiquidityPool(
         pairCurrencies: [InterbtcPrimitivesCurrencyId, InterbtcPrimitivesCurrencyId],
         lpTokenCurrencyId: InterbtcPrimitivesCurrencyId,
-        pairStatus: DexGeneralPrimitivesPairStatus
+        pairStatus: DexGeneralPrimitivesPairStatus,
+        blockTimeMs: number
     ): Promise<StandardLiquidityPool | null> {
         let typedPairStatus: DexGeneralPrimitivesPairMetadata | DexGeneralPrimitivesBootstrapParameter;
         let isTradingActive: boolean;
@@ -301,10 +313,10 @@ export class DefaultAMMAPI implements AMMAPI {
             pairCurrencies.map((currency) => currencyIdToMonetaryCurrency(this.api, currency))
         );
 
-        const [lpToken, pooledCurrencies, apr] = await Promise.all([
+        const [lpToken, pooledCurrencies, yearlyRewards] = await Promise.all([
             getStandardLpTokenFromCurrencyId(this.api, lpTokenCurrencyId),
             this._getStandardPoolReserveBalances(token0, token1, pairAccount),
-            this._getStandardPoolAPR(pairCurrencies),
+            this._getPoolRewardAmountsYearly(lpTokenCurrencyId, blockTimeMs),
         ]);
 
         // Do not include pools with zero liquidity.
@@ -314,10 +326,17 @@ export class DefaultAMMAPI implements AMMAPI {
 
         const totalSupply = new MonetaryAmount(lpToken, totalSupplyAmount);
 
-        return new StandardLiquidityPool(lpToken, pooledCurrencies, apr, tradingFee, isTradingActive, totalSupply);
+        return new StandardLiquidityPool(
+            lpToken,
+            pooledCurrencies,
+            yearlyRewards,
+            tradingFee,
+            isTradingActive,
+            totalSupply
+        );
     }
 
-    public async getStandardLiquidityPools(): Promise<Array<StandardLiquidityPool>> {
+    public async getStandardLiquidityPools(blockTimeMs: number): Promise<Array<StandardLiquidityPool>> {
         const pairEntries = await this.api.query.dexGeneral.liquidityPairs.entries();
         const pairs = pairEntries.filter(([_, lpToken]) => lpToken.isSome);
         const pairStatuses = await Promise.all(
@@ -325,16 +344,16 @@ export class DefaultAMMAPI implements AMMAPI {
         );
         const pools = await Promise.all(
             pairs.map(([pairKey, lpToken], index) =>
-                this._getStandardLiquidityPool(storageKeyToNthInner(pairKey), lpToken.unwrap(), pairStatuses[index])
+                this._getStandardLiquidityPool(
+                    storageKeyToNthInner(pairKey),
+                    lpToken.unwrap(),
+                    pairStatuses[index],
+                    blockTimeMs
+                )
             )
         );
 
         return pools.filter((pool) => pool !== null) as Array<StandardLiquidityPool>;
-    }
-
-    private async _getStablePoolAPR(poolId: number): Promise<Big> {
-        // TODO: Implement when farming pallet is added to runtime
-        return Big(0);
     }
 
     private async _getStablePoolPooledCurrencies(
@@ -379,6 +398,7 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _getStableLiquidityPoolData(
         poolId: number,
         poolData: DexStablePrimitivesPool,
+        blockTimeMs: number,
         metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>
     ) {
         const poolInfo = DefaultAMMAPI.getStablePoolInfo(poolData);
@@ -386,15 +406,16 @@ export class DefaultAMMAPI implements AMMAPI {
             return null;
         }
 
-        const [pooledCurrencyIds, pooledCurrencyBalances, tradingFee] = [
+        const [pooledCurrencyIds, pooledCurrencyBalances, tradingFee, lpTokenCurrencyId] = [
             poolInfo.currencyIds,
             poolInfo.balances,
             Big(poolInfo.fee.toString()).div(FEE_MULTIPLIER_STABLE),
+            poolInfo.lpCurrencyId,
         ];
         const lpToken = DefaultAMMAPI.getStableLpTokenFromPoolData(poolId, poolInfo);
-        const [pooledCurrenciesBase, apr, amplificationCoefficient, totalSupply] = await Promise.all([
+        const [pooledCurrenciesBase, yearlyRewards, amplificationCoefficient, totalSupply] = await Promise.all([
             this._getStablePoolPooledCurrencies(pooledCurrencyIds, pooledCurrencyBalances),
-            this._getStablePoolAPR(poolId),
+            this._getPoolRewardAmountsYearly(lpTokenCurrencyId, blockTimeMs),
             this._getStablePoolAmplificationCoefficient(poolId),
             this.tokensAPI.total(lpToken),
         ]);
@@ -409,12 +430,13 @@ export class DefaultAMMAPI implements AMMAPI {
                   )
                 : pooledCurrenciesBase;
 
-        return { lpToken, actuallyPooledCurrencies, apr, amplificationCoefficient, totalSupply, tradingFee };
+        return { lpToken, actuallyPooledCurrencies, yearlyRewards, amplificationCoefficient, totalSupply, tradingFee };
     }
 
     private async _getStableMetaPoolBasePool(
         poolData: DexStablePrimitivesMetaPool,
-        pooledCurrencies: PooledCurrencies
+        pooledCurrencies: PooledCurrencies,
+        blockTimeMs: number
     ): Promise<StableLiquidityPool> {
         const basePoolId = poolData.basePoolId;
         const basePoolData = await this.api.query.dexStable.pools(basePoolId);
@@ -430,6 +452,7 @@ export class DefaultAMMAPI implements AMMAPI {
             const basePool = await this._getStableLiquidityPool(
                 basePoolId.toNumber(),
                 basePoolData.unwrap(),
+                blockTimeMs,
                 pooledLpTokenAmount
             );
             if (basePool === null) {
@@ -443,13 +466,19 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _getStableLiquidityPool(
         poolId: number,
         poolData: DexStablePrimitivesPool,
+        blockTimeMs: number,
         metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>
     ): Promise<StableLiquidityPool | null> {
-        const processedPoolData = await this._getStableLiquidityPoolData(poolId, poolData, metaPoolLpTokenAmount);
+        const processedPoolData = await this._getStableLiquidityPoolData(
+            poolId,
+            poolData,
+            blockTimeMs,
+            metaPoolLpTokenAmount
+        );
         if (processedPoolData === null) {
             return null;
         }
-        const { lpToken, actuallyPooledCurrencies, apr, tradingFee, amplificationCoefficient, totalSupply } =
+        const { lpToken, actuallyPooledCurrencies, yearlyRewards, tradingFee, amplificationCoefficient, totalSupply } =
             processedPoolData;
 
         // Do not include pools with zero liquidity.
@@ -463,7 +492,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 lpToken,
                 actuallyPooledCurrencies,
                 actuallyPooledCurrencies,
-                apr,
+                yearlyRewards,
                 tradingFee,
                 poolId,
                 amplificationCoefficient,
@@ -472,7 +501,7 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         // When pool is metapool, nested base pool instance is created.
-        const basePool = await this._getStableMetaPoolBasePool(poolData.asMeta, actuallyPooledCurrencies);
+        const basePool = await this._getStableMetaPoolBasePool(poolData.asMeta, actuallyPooledCurrencies, blockTimeMs);
         const pooledCurrencies = actuallyPooledCurrencies.reduce(
             (result: PooledCurrencies, currentAmount) =>
                 isStableLpToken(currentAmount.currency)
@@ -485,7 +514,7 @@ export class DefaultAMMAPI implements AMMAPI {
             lpToken,
             actuallyPooledCurrencies,
             pooledCurrencies,
-            apr,
+            yearlyRewards,
             tradingFee,
             poolId,
             amplificationCoefficient,
@@ -494,12 +523,12 @@ export class DefaultAMMAPI implements AMMAPI {
         );
     }
 
-    public async getStableLiquidityPools(): Promise<Array<StableLiquidityPool>> {
+    public async getStableLiquidityPools(blockTimeMs: number): Promise<Array<StableLiquidityPool>> {
         const poolEntries = await this.api.query.dexStable.pools.entries();
         const rawPoolsData = poolEntries.filter(([_, pool]) => pool.isSome);
         const pools = await Promise.all(
             rawPoolsData.map(([poolId, poolData]) =>
-                this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap())
+                this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap(), blockTimeMs)
             )
         );
 
@@ -507,9 +536,10 @@ export class DefaultAMMAPI implements AMMAPI {
     }
 
     async getLiquidityPools(): Promise<Array<LiquidityPool>> {
+        const blockTimeMs = (await this.api.call.auraApi.slotDuration()).toNumber();
         const [standardPools, stablePools] = await Promise.all([
-            this.getStandardLiquidityPools(),
-            this.getStableLiquidityPools(),
+            this.getStandardLiquidityPools(blockTimeMs),
+            this.getStableLiquidityPools(blockTimeMs),
         ]);
 
         return [...standardPools, ...stablePools];
@@ -748,9 +778,9 @@ export class DefaultAMMAPI implements AMMAPI {
             );
         }
 
-        // TODO: add farm deposit extrinsic
-        let farmDepositExtrinsic: SubmittableExtrinsic<ApiTypes>;
-        const batchedExtrinsics = this.api.tx.utility.batchAll([depositExtrinsic]);
+        const lpTokenCurrencyId = newCurrencyId(this.api, pool.lpToken);
+        const farmDepositExtrinsic = this.api.tx.farming.deposit(lpTokenCurrencyId);
+        const batchedExtrinsics = this.api.tx.utility.batchAll([depositExtrinsic, farmDepositExtrinsic]);
 
         await this.transactionAPI.sendLogged(batchedExtrinsics, depositEvent, true);
     }
@@ -869,9 +899,9 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         const lpTokenCurrencyId = newCurrencyId(this.api, pool.lpToken);
-        const farmDepositExtrinsic = this.api.tx.farming.withdraw(lpTokenCurrencyId, amount.toString(true));
+        const farmWithdrawalExtrinsic = this.api.tx.farming.withdraw(lpTokenCurrencyId, amount.toString(true));
 
-        const batchedExtrinsics = this.api.tx.utility.batchAll([withdrawalExtrinsic, farmDepositExtrinsic]);
+        const batchedExtrinsics = this.api.tx.utility.batchAll([farmWithdrawalExtrinsic, withdrawalExtrinsic]);
 
         await this.transactionAPI.sendLogged(batchedExtrinsics, withdrawalEvent, true);
     }

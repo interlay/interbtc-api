@@ -2,6 +2,7 @@ import { GovernanceCurrency, StakedBalance } from "../types";
 import Big from "big.js";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { ATOMIC_UNIT, newMonetaryAmount } from "./currency";
+import { MS_PER_YEAR } from "./constants";
 
 /**
  * @deprecated This calculation is no longer accurate. Use `EscrowAPI.getRewardsEstimate(...)` instead.
@@ -86,4 +87,9 @@ export function estimateReward(
         amount: monetaryRewardAmount,
         apy: apy,
     };
+}
+
+export function calculateAnnualizedRewardAmount(amountPerBlock: Big, blockTimeMs: number): Big {
+    const blocksPerYear = MS_PER_YEAR.div(blockTimeMs);
+    return amountPerBlock.mul(blocksPerYear);
 }
