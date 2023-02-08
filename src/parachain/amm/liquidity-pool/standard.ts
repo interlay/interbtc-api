@@ -38,6 +38,7 @@ class StandardLiquidityPool extends LiquidityPoolCalculator<StandardLpToken> imp
             input: inputCurrency,
             output: isCurrencyEqual(inputCurrency, this.token0) ? this.token1 : this.token0,
             pair: this,
+            pool: this,
         };
     }
 

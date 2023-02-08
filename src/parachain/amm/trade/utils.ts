@@ -45,11 +45,12 @@ const computeMiddlePrice = (path: MultiPath, inputAmount: MonetaryAmount<Currenc
             [currentPrice, currentInputAmount] = computeStablePoolMiddlePrice(currentInputAmount, pathElement);
         } else {
             const pair = pathElement.pair;
+            const tradingFeeComplement = Big(1).sub(pathElement.pool.tradingFee);
             if (isCurrencyEqual(currencyPath[i], pair.token0)) {
-                currentPrice = pair.reserve1.toBig().div(pair.reserve0.toBig());
+                currentPrice = pair.reserve1.toBig().div(pair.reserve0.toBig()).mul(tradingFeeComplement);
                 currentInputAmount = new MonetaryAmount(pair.token1, currentInputAmount.mul(currentPrice).toBig());
             } else {
-                currentPrice = pair.reserve0.toBig().div(pair.reserve1.toBig());
+                currentPrice = pair.reserve0.toBig().div(pair.reserve1.toBig()).mul(tradingFeeComplement);
                 currentInputAmount = new MonetaryAmount(pair.token0, currentInputAmount.mul(currentPrice).toBig());
             }
         }

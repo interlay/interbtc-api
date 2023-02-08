@@ -46,7 +46,7 @@ import { StableLiquidityMetaPool } from "./amm/liquidity-pool/stable-meta";
 import { ISubmittableResult } from "@polkadot/types/types";
 
 const HOP_LIMIT = 4;
-const FEE_MULTIPLIER_STANDARD = 1000;
+const FEE_MULTIPLIER_STANDARD = 10000;
 const FEE_MULTIPLIER_STABLE = 10000000000;
 
 export interface AMMAPI {

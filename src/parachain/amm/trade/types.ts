@@ -1,4 +1,5 @@
 import { CurrencyExt } from "../../../types";
+import { StandardLiquidityPool } from "../liquidity-pool";
 import { StableLiquidityPool } from "../liquidity-pool/stable";
 import { TradingPair } from "../liquidity-pool/types";
 
@@ -17,6 +18,7 @@ enum MultiPathElementType {
 interface MultiPathElementStandard extends MultiPathElementBase {
     type: MultiPathElementType.STANDARD;
     pair: TradingPair;
+    pool: StandardLiquidityPool;
 }
 
 interface MultiPathElementStablePlain extends MultiPathElementBase {
