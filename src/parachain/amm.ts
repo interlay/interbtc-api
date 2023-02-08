@@ -268,19 +268,19 @@ export class DefaultAMMAPI implements AMMAPI {
 
     private async _getPoolRewardAmountsYearly(lpTokenCurrencyId: InterbtcPrimitivesCurrencyId, blockTimeMs: number) {
         const rewardPeriod = this.api.consts.farming.rewardPeriod;
-        const rewardsRaw = await this.api.query.farmingRewards.rewardPerToken.entries(lpTokenCurrencyId);
+        const rewardsRaw = await this.api.query.farming.rewardSchedules.entries(lpTokenCurrencyId);
 
-        const rewardAmountYearly = await Promise.all(
+        const rewardAmountsYearly = await Promise.all(
             rewardsRaw.map(async ([key, value]) => {
                 const rewardCurrencyId = storageKeyToNthInner(key, 1);
                 const rewardCurrency = await currencyIdToMonetaryCurrency(this.api, rewardCurrencyId);
-                const amountPerBlock = Big(value.toString()).div(rewardPeriod.toNumber());
+                const amountPerBlock = Big(value.perPeriod.toString()).div(rewardPeriod.toNumber());
                 const annualizedRewardAmount = calculateAnnualizedRewardAmount(amountPerBlock, blockTimeMs);
                 return newMonetaryAmount(annualizedRewardAmount, rewardCurrency);
             })
         );
 
-        return rewardAmountYearly;
+        return rewardAmountsYearly;
     }
 
     private async _getStandardLiquidityPool(
