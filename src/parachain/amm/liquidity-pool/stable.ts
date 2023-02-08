@@ -18,7 +18,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         public actuallyPooledCurrencies: PooledCurrencies,
         // Underlying currencies of pool. In case of metapool base currencies are included and LP token is excluded.
         public pooledCurrencies: PooledCurrencies,
-        public apr: Big,
+        public rewardAmountsYearly: Array<MonetaryAmount<CurrencyExt>>,
         public tradingFee: Big, // Decimal point
         public poolId: number,
         public amplificationCoefficient: Big,

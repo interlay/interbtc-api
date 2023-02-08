@@ -20,9 +20,9 @@ interface LiquidityPoolBase {
     type: PoolType;
     lpToken: LpCurrency;
     pooledCurrencies: PooledCurrencies; // Array of 2 for standard pools, array of 2+ for stable pools.
-    apr: Big; // Percentage.
     tradingFee: Big; // Decimal.
     totalSupply: MonetaryAmount<LpCurrency>;
+    rewardAmountsYearly: Array<MonetaryAmount<CurrencyExt>>; //Array of monetary amounts containing reward per 1 LP token per year.
 }
 
 type LiquidityPool = StandardLiquidityPool | StableLiquidityPool | StableLiquidityMetaPool;

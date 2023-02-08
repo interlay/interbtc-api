@@ -1,4 +1,4 @@
-import { StableLpToken } from "../../../types";
+import { CurrencyExt, StableLpToken } from "../../../types";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { PooledCurrencies, PoolType } from "../types";
@@ -9,7 +9,7 @@ class StableLiquidityMetaPool extends StableLiquidityPool {
         lpToken: StableLpToken,
         metaPooledCurrencies: PooledCurrencies,
         pooledCurrencies: PooledCurrencies,
-        apr: Big,
+        rewardAmountsYearly: Array<MonetaryAmount<CurrencyExt>>,
         tradingFee: Big,
         poolId: number,
         amplificationCoefficient: Big,
@@ -21,7 +21,7 @@ class StableLiquidityMetaPool extends StableLiquidityPool {
             lpToken,
             metaPooledCurrencies,
             pooledCurrencies,
-            apr,
+            rewardAmountsYearly,
             tradingFee,
             poolId,
             amplificationCoefficient,
