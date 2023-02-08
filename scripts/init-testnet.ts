@@ -265,36 +265,23 @@ function constructAnnuitySetup(api: ApiPromise) {
 }
 
 async function constructAmmSetup(api: ApiPromise) {
-    // workaround for broken is_exists check - TODO: remove once fixed.
-    // see https://github.com/interlay/interbtc/blob/1a1afa90228f37c9ade4acbda8275c2f5cfe85ce/parachain/runtime/testnet-kintsugi/src/zenlink.rs#L43
-    const isExistsWorkaround = [
-        { Token: "KBTC" }, // foreign assets also need issuance, but faucet already has those
-    ].map((token) => {
-        return api.tx.tokens.setBalance(
-            "a3ckVDnZwjdBhkq1KJodZj3iCgYMseWfLA5fpqExuEpMy8Y5q", // root
-            token,
-            0,
-            1
-        )
-    });
-
-    const prices:Map<string, number> = new Map();
+    const prices: Map<string, number> = new Map();
     prices.set(JSON.stringify({ Token: "KBTC" }), 22842.91);
     prices.set(JSON.stringify({ Token: "KSM" }), 36.05);
     prices.set(JSON.stringify({ Token: "KINT" }), 0.982574);
     prices.set(JSON.stringify({ ForeignAsset: 1 }), 1); // usdt
     prices.set(JSON.stringify({ ForeignAsset: 2 }), 8.94); // movr
-    const decimals:Map<string, number> = new Map();
+    const decimals: Map<string, number> = new Map();
     decimals.set(JSON.stringify({ Token: "KBTC" }), 8);
     decimals.set(JSON.stringify({ Token: "KSM" }), 12);
     decimals.set(JSON.stringify({ Token: "KINT" }), 12);
     decimals.set(JSON.stringify({ ForeignAsset: 1 }), 6); // usdt
     decimals.set(JSON.stringify({ ForeignAsset: 2 }), 18); // movr
-    
+
     const pools: [{ Token: any; }, { Token: any; } | { ForeignAsset: any; }, number, number][] = [
         [
-            { Token: "KBTC" },
             { Token: "KSM" },
+            { Token: "KBTC" },
             45_000,
             500_000, // liquidity in usd
         ],
@@ -323,12 +310,12 @@ async function constructAmmSetup(api: ApiPromise) {
         // calculate liquidity amounts
         let decimals0 = new BN(decimals.get(JSON.stringify(token0)) as number);
         let price0 = prices.get(JSON.stringify(token0)) as number;
-        let liquidity0 = new BN(liquidity/2).mul(new BN(10).pow(decimals0)).divn(price0); 
+        let liquidity0 = new BN(liquidity / 2).mul(new BN(10).pow(decimals0)).divn(price0);
 
         let decimals1 = new BN(decimals.get(JSON.stringify(token1)) as number);
         let price1 = prices.get(JSON.stringify(token1)) as number;
-        let liquidity1 = new BN(liquidity/2).mul(new BN(10).pow(decimals1)).divn(price1); 
-        
+        let liquidity1 = new BN(liquidity / 2).mul(new BN(10).pow(decimals1)).divn(price1);
+
         return [
             api.tx.dexGeneral.createPair(token0, token1, 30),
             api.tx.farming.updateRewardSchedule(
@@ -353,89 +340,89 @@ async function constructAmmSetup(api: ApiPromise) {
     }).flat();
 
 
-    const lKsmPrice = 4.72; // https://apps.karura.network/swap
-    const vKsmPrice = prices.get(JSON.stringify({Token: "KSM"})) as number * 1.135658;  // https://bifrost.app/vstaking/vKSM
-    const sKsmPrice = 42.37; // https://analytics.parallel.fi/kusama/moneymarket/sKSM
+    // const lKsmPrice = 4.72; // https://apps.karura.network/swap
+    // const vKsmPrice = prices.get(JSON.stringify({ Token: "KSM" })) as number * 1.135658;  // https://bifrost.app/vstaking/vKSM
+    // const sKsmPrice = 42.37; // https://analytics.parallel.fi/kusama/moneymarket/sKSM
 
-    let basePoolLiquidity = 1_100_000;
-    let lKsmDeposit = new BN(basePoolLiquidity/3).mul(new BN(10).pow(new BN(12))).divn(lKsmPrice); 
-    let vKsmDeposit = new BN(basePoolLiquidity/3).mul(new BN(10).pow(new BN(12))).divn(vKsmPrice); 
-    let sKsmDeposit = new BN(basePoolLiquidity/3).mul(new BN(10).pow(new BN(12))).divn(sKsmPrice); 
+    // let basePoolLiquidity = 1_100_000;
+    // let lKsmDeposit = new BN(basePoolLiquidity / 3).mul(new BN(10).pow(new BN(12))).divn(lKsmPrice);
+    // let vKsmDeposit = new BN(basePoolLiquidity / 3).mul(new BN(10).pow(new BN(12))).divn(vKsmPrice);
+    // let sKsmDeposit = new BN(basePoolLiquidity / 3).mul(new BN(10).pow(new BN(12))).divn(sKsmPrice);
 
-    // note: this is before the batch is executed
-    const basePoolId = (await api.query.dexStable.nextPoolId() as any).toNumber();
-    const basePoolSetup = [
-        api.tx.dexStable.createBasePool(
-            [
-                { ForeignAsset: 3 }, // LKSM
-                { ForeignAsset: 4 }, // VKSM
-                { ForeignAsset: 5 }, // SKSM
-            ],
-            [12, 12, 12], // decimals
-            200, // amplification coefficient
-            100_000_000, // max fee 1%
-            0, // no admin fee
-            treasuryAccount,
-            "LKSM+VKSM+SKSM" // currency symbol
-        ),
-        api.tx.farming.updateRewardSchedule(
-            { StableLpToken: basePoolId },
-            { Token: "KINT" },
-            60 * 24 * 7 * 12, // three months, reward period is per minute
-            new BN(10).pow(new BN(12)).muln(15_000),
-        ),
-        api.tx.utility.dispatchAs(
-            { system: { Signed: treasuryAccount } },
-            api.tx.dexStable.addLiquidity(
-                basePoolId,
-                [
-                    lKsmDeposit, // 77683.474576271190 LKSM
-                    vKsmDeposit, //  8956.076760709657 VKSM
-                    sKsmDeposit, //  8653.906065612462 SKSM
-                ],
-                0, // min mint amount
-                treasuryAccount, // recipient
-                new BN(4294967295), // deadline
-            ),
-        )
-    ];
+    // // note: this is before the batch is executed
+    // const basePoolId = (await api.query.dexStable.nextPoolId() as any).toNumber();
+    // const basePoolSetup = [
+    //     api.tx.dexStable.createBasePool(
+    //         [
+    //             { ForeignAsset: 3 }, // LKSM
+    //             { ForeignAsset: 4 }, // VKSM
+    //             { ForeignAsset: 5 }, // SKSM
+    //         ],
+    //         [12, 12, 12], // decimals
+    //         200, // amplification coefficient
+    //         100_000_000, // max fee 1%
+    //         0, // no admin fee
+    //         treasuryAccount,
+    //         "LKSM+VKSM+SKSM" // currency symbol
+    //     ),
+    //     api.tx.farming.updateRewardSchedule(
+    //         { StableLpToken: basePoolId },
+    //         { Token: "KINT" },
+    //         60 * 24 * 7 * 12, // three months, reward period is per minute
+    //         new BN(10).pow(new BN(12)).muln(15_000),
+    //     ),
+    //     api.tx.utility.dispatchAs(
+    //         { system: { Signed: treasuryAccount } },
+    //         api.tx.dexStable.addLiquidity(
+    //             basePoolId,
+    //             [
+    //                 lKsmDeposit, // 77683.474576271190 LKSM
+    //                 vKsmDeposit, //  8956.076760709657 VKSM
+    //                 sKsmDeposit, //  8653.906065612462 SKSM
+    //             ],
+    //             0, // min mint amount
+    //             treasuryAccount, // recipient
+    //             new BN(4294967295), // deadline
+    //         ),
+    //     )
+    // ];
 
-    const metaPoolId = basePoolId + 1;
-    const metaPoolSetup = [
-        api.tx.dexStable.createMetaPool(
-            [
-                { Token: "KSM" },
-                { StableLpToken: basePoolId }, // LKSM+VKSM+SKSM
-            ],
-            [12, 18], // decimals
-            200, // amplification coefficient
-            100_000_000, // max fee 1%
-            0, // no admin fee
-            treasuryAccount,
-            "KSM+(LKSM+VKSM+SKSM)" // currency symbol
-        ),
-        api.tx.farming.updateRewardSchedule(
-            { StableLpToken: metaPoolId },
-            { Token: "KINT" },
-            60 * 24 * 7 * 12, // three months, reward period is per minute
-            new BN(10).pow(new BN(12)).muln(33_000),
-        ),
-        api.tx.utility.dispatchAs(
-            { system: { Signed: treasuryAccount } },
-            api.tx.dexStable.addLiquidity(
-                metaPoolId,
-                [
-                    "10000000000000", // 10 KSM
-                    "60000000000000000000", // 80 LKSM
-                ],
-                0, // min mint amount
-                treasuryAccount, // recipient
-                new BN(4294967295), // deadline
-            ),
-        )
-    ];
+    // const metaPoolId = basePoolId + 1;
+    // const metaPoolSetup = [
+    //     api.tx.dexStable.createMetaPool(
+    //         [
+    //             { Token: "KSM" },
+    //             { StableLpToken: basePoolId }, // LKSM+VKSM+SKSM
+    //         ],
+    //         [12, 18], // decimals
+    //         200, // amplification coefficient
+    //         100_000_000, // max fee 1%
+    //         0, // no admin fee
+    //         treasuryAccount,
+    //         "KSM+(LKSM+VKSM+SKSM)" // currency symbol
+    //     ),
+    //     api.tx.farming.updateRewardSchedule(
+    //         { StableLpToken: metaPoolId },
+    //         { Token: "KINT" },
+    //         60 * 24 * 7 * 12, // three months, reward period is per minute
+    //         new BN(10).pow(new BN(12)).muln(33_000),
+    //     ),
+    //     api.tx.utility.dispatchAs(
+    //         { system: { Signed: treasuryAccount } },
+    //         api.tx.dexStable.addLiquidity(
+    //             metaPoolId,
+    //             [
+    //                 "10000000000000", // 10 KSM
+    //                 "60000000000000000000", // 80 LKSM
+    //             ],
+    //             0, // min mint amount
+    //             treasuryAccount, // recipient
+    //             new BN(4294967295), // deadline
+    //         ),
+    //     )
+    // ];
 
-    return isExistsWorkaround.concat(basicPoolSetup).concat(basePoolSetup).concat(metaPoolSetup);
+    return basicPoolSetup; // .concat(basePoolSetup).concat(metaPoolSetup);
 }
 
 function constructForeignAssetSetup(api: ApiPromise) {
