@@ -619,9 +619,8 @@ export class DefaultAMMAPI implements AMMAPI {
             accountLiquidity.map(({ currency }) => {
                 const pool = pools.find((poolData) => isCurrencyEqual(poolData.lpToken, currency));
                 if (pool === undefined) {
-                    throw new Error(
-                        `getClaimableFarmingRewards: Invalid pool data passed, no pool found for LP token ${currency.name}`
-                    );
+                    // Return empty array for pools without liquidity.
+                    return [];
                 }
                 return this._getClaimableFarmingRewardsByPool(accountId, currency, pool);
             })
