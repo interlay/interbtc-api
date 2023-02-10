@@ -273,16 +273,24 @@ async function constructAmmSetup(api: ApiPromise) {
     prices.set(JSON.stringify({ Token: "KBTC" }), 22842.91);
     prices.set(JSON.stringify({ Token: "KSM" }), 36.05);
     prices.set(JSON.stringify({ Token: "KINT" }), 0.982574);
-    prices.set(JSON.stringify({ ForeignAsset: 1 }), 1); // usdt
-    prices.set(JSON.stringify({ ForeignAsset: 2 }), 8.94); // movr
+    prices.set(JSON.stringify({ ForeignAsset: 1 }), 1); // USDT
+    prices.set(JSON.stringify({ ForeignAsset: 2 }), 8.94); // MOVR
+    prices.set(JSON.stringify({ ForeignAsset: 6 }), 1536.51); // ETH
+    prices.set(JSON.stringify({ ForeignAsset: 7 }), 0.768930); // AUSD
+    prices.set(JSON.stringify({ ForeignAsset: 8 }), 0.208364); // KAR
+
     const decimals: Map<string, number> = new Map();
     decimals.set(JSON.stringify({ Token: "KBTC" }), 8);
     decimals.set(JSON.stringify({ Token: "KSM" }), 12);
     decimals.set(JSON.stringify({ Token: "KINT" }), 12);
-    decimals.set(JSON.stringify({ ForeignAsset: 1 }), 6); // usdt
-    decimals.set(JSON.stringify({ ForeignAsset: 2 }), 18); // movr
+    decimals.set(JSON.stringify({ ForeignAsset: 1 }), 6); // USDT
+    decimals.set(JSON.stringify({ ForeignAsset: 2 }), 18); // MOVR
+    decimals.set(JSON.stringify({ ForeignAsset: 6 }), 18); // ETH
+    decimals.set(JSON.stringify({ ForeignAsset: 7 }), 12); // AUSD
+    decimals.set(JSON.stringify({ ForeignAsset: 8 }), 12); // KAR
 
-    const pools: [{ Token: any; }, { Token: any; } | { ForeignAsset: any; }, number, number][] = [
+    // NOTE: ordering of tokens must comply with PartialOrd (for now)
+    const pools: [{ Token: any; } | { ForeignAsset: any; }, { Token: any; } | { ForeignAsset: any; }, number, number][] = [
         [
             { Token: "KSM" },
             { Token: "KBTC" },
@@ -299,16 +307,33 @@ async function constructAmmSetup(api: ApiPromise) {
             { Token: "KBTC" },
             { ForeignAsset: 2 }, // MOVR
             20_000,
-            175_000,  // liquidity in usd
+            175_000, // liquidity in usd
         ],
         [
             { Token: "KINT" },
             { ForeignAsset: 2 }, // MOVR
             35_000,
-            150_000,  // liquidity in usd
+            150_000, // liquidity in usd
+        ],
+        [
+            { Token: "KBTC" },
+            { ForeignAsset: 6 }, // ETH
+            0,
+            300_000, // liquidity in usd
+        ],
+        [
+            { ForeignAsset: 1 }, // USDT
+            { ForeignAsset: 7 }, // AUSD
+            0,
+            70_000, // liquidity in usd
+        ],
+        [
+            { ForeignAsset: 1 }, // MOVR
+            { ForeignAsset: 8 }, // KAR
+            0,
+            100_000, // liquidity in usd
         ],
     ];
-
 
     const basicPoolSetup = pools.map(([token0, token1, reward, liquidity]) => {
         // calculate liquidity amounts
@@ -321,6 +346,7 @@ async function constructAmmSetup(api: ApiPromise) {
         let liquidity1 = new BN(liquidity / 2).mul(new BN(10).pow(decimals1)).divn(price1);
 
         return [
+            // @ts-ignore
             api.tx.dexGeneral.createPair(token0, token1, 30),
             api.tx.farming.updateRewardSchedule(
                 { LpToken: [token0, token1] },
@@ -509,6 +535,36 @@ function constructForeignAssetSetup(api: ApiPromise) {
                 additional: { feePerSecond: 233100000000, coingeckoId: "" }
             },
             5
+        ), api.tx.assetRegistry.registerAsset(
+            {
+                decimals: 18,
+                name: "Ethereum",
+                symbol: "ETH",
+                existentialDeposit: 0,
+                location: null,
+                additional: { feePerSecond: 0, coingeckoId: "ethereum" }
+            },
+            6
+        ), api.tx.assetRegistry.registerAsset(
+            {
+                decimals: 12,
+                name: "Acala Dollar",
+                symbol: "AUSD",
+                existentialDeposit: 0,
+                location: null,
+                additional: { feePerSecond: 0, coingeckoId: "acala-dollar" }
+            },
+            7
+        ), api.tx.assetRegistry.registerAsset(
+            {
+                decimals: 12,
+                name: "Karura",
+                symbol: "KAR",
+                existentialDeposit: 0,
+                location: null,
+                additional: { feePerSecond: 0, coingeckoId: "karura" }
+            },
+            8
         )
     ];
 }
