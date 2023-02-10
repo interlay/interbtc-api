@@ -65,8 +65,9 @@ function constructLendingSetup(api: ApiPromise) {
                     }
                 },
                 state: "Pending",
-                supplyCap: "2000000000",
-                borrowCap: "2000000000",
+                // 100 KBTC. Mainnet will be only 20 KBTC.
+                supplyCap: "10000000000",
+                borrowCap: "10000000000",
                 lendTokenId: { LendToken: 1 }
             }
         ], [
@@ -89,6 +90,7 @@ function constructLendingSetup(api: ApiPromise) {
                     }
                 },
                 state: "Pending",
+                // 30,000 KSM
                 supplyCap: "30000000000000000",
                 borrowCap: "30000000000000000",
                 lendTokenId: { LendToken: 2 }
@@ -107,14 +109,15 @@ function constructLendingSetup(api: ApiPromise) {
                 rateModel: {
                     Jump: {
                         baseRate: 0,
-                        jumpRate: "100000000000000000",
+                        jumpRate: "150000000000000000",
                         fullRate: "400000000000000000",
                         jumpUtilization: 900000
                     }
                 },
                 state: "Pending",
-                supplyCap: "80000000000",
-                borrowCap: "80000000000",
+                // 800,000 USDT
+                supplyCap: "800000000000",
+                borrowCap: "800000000000",
                 lendTokenId: { LendToken: 3 }
             }
         ], [
@@ -131,14 +134,15 @@ function constructLendingSetup(api: ApiPromise) {
                 rateModel: {
                     Jump: {
                         baseRate: 0,
-                        jumpRate: "150000000000000000",
+                        jumpRate: "100000000000000000",
                         fullRate: "400000000000000000",
                         jumpUtilization: 900000
                     }
                 },
                 state: "Pending",
-                supplyCap: "20000000000000000000000",
-                borrowCap: "20000000000000000000000",
+                // 10,000 MOVR
+                supplyCap: "10000000000000000000000",
+                borrowCap: "10000000000000000000000",
                 lendTokenId: { LendToken: 4 }
             }
         ],
