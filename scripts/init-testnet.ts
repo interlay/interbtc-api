@@ -318,19 +318,19 @@ async function constructAmmSetup(api: ApiPromise) {
         [
             { Token: "KBTC" },
             { ForeignAsset: 6 }, // ETH
-            0,
+            35_000,
             300_000, // liquidity in usd
         ],
         [
             { ForeignAsset: 1 }, // USDT
             { ForeignAsset: 7 }, // AUSD
-            0,
+            5_000,
             70_000, // liquidity in usd
         ],
         [
             { ForeignAsset: 1 }, // MOVR
             { ForeignAsset: 8 }, // KAR
-            0,
+            30_000,
             100_000, // liquidity in usd
         ],
     ];
