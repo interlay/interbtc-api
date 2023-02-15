@@ -452,6 +452,8 @@ export class DefaultLoansAPI implements LoansAPI {
         // Format data.
         const liquidationThreshold = decodePermill(marketData.liquidationThreshold);
         const collateralThreshold = decodePermill(marketData.collateralFactor);
+        const supplyCap = newMonetaryAmount(marketData.supplyCap.toString(), underlyingCurrency);
+        const borrowCap = newMonetaryAmount(marketData.borrowCap.toString(), underlyingCurrency);
 
         const [lendRewardAmountYearly, borrowRewardAmountYearly] = await this._getLendAndBorrowYearlyRewardAmount(
             underlyingCurrencyId,
@@ -475,6 +477,8 @@ export class DefaultLoansAPI implements LoansAPI {
                 collateralThreshold,
                 lendReward,
                 borrowReward,
+                supplyCap,
+                borrowCap,
             },
         ];
     }

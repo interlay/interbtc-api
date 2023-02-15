@@ -27,6 +27,8 @@ interface LoanAsset {
     liquidationThreshold: Big; // decimal
     collateralThreshold: Big; // decimal
     isActive: boolean;
+    supplyCap: MonetaryAmount<CurrencyExt>;
+    borrowCap: MonetaryAmount<CurrencyExt>;
 }
 
 // Enables easier access to data by asset ticker key.
