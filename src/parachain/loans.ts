@@ -10,6 +10,7 @@ import {
     AccountLiquidity,
     WrappedCurrency,
     CollateralPosition,
+    UndercollateralizedPosition,
 } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
@@ -185,7 +186,12 @@ export interface LoansAPI {
      * @returns An array of `[AccountId, Shortage]` tuples, where `Shortage` is expressed in the
      * wrapped currency
      */
-    getUndercollateralizedBorrowers(): Promise<Array<[AccountId, MonetaryAmount<WrappedCurrency>]>>;
+    getUndercollateralizedBorrowers(): Promise<Array<UndercollateralizedPosition>>;
+    /**
+     * @return An array of `AccountId`s which historically borrowed from the lending protocol.
+     * This includes accounts with zero outstanding debt.
+     */
+    getBorrowerAccountIds(): Promise<Array<AccountId>>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
@@ -285,23 +291,32 @@ export class DefaultLoansAPI implements LoansAPI {
         );
     }
 
-    async getUndercollateralizedBorrowers(): Promise<Array<[AccountId, MonetaryAmount<WrappedCurrency>]>> {
+    async getBorrowerAccountIds(): Promise<Array<AccountId>> {
         const accountBorrows = await this.api.query.loans.accountBorrows.entries();
-        const uniqueBorrowers = [
+        return [
             // Even if two `AccountId`s store the same ID, the actual objects will not be equal when compared,
             // so need to use the string representation
             ...new Set(accountBorrows.map((key) => storageKeyToNthInner(key[0], 1).toString())),
-        ];
-        const borrowerLiquidityPromises = uniqueBorrowers.map(
-            (accountIdString, _index, _array): Promise<[AccountId, MonetaryAmount<WrappedCurrency>]> => {
-                const accountId = newAccountId(this.api, accountIdString);
-                return this.getLiquidationThresholdLiquidity(accountId).then((liquidity) => [
-                    accountId,
-                    liquidity.shortfall,
-                ]);
-            }
-        );
-        return (await Promise.all(borrowerLiquidityPromises)).filter((value, _index, _array) => !value[1].isZero());
+        ].map((accountIdString, _index, _arr) => newAccountId(this.api, accountIdString));
+    }
+
+    async getUndercollateralizedBorrowers(): Promise<Array<UndercollateralizedPosition>> {
+        const borrowers = await this.getBorrowerAccountIds();
+        const [liquidity, borrows, collateral] = await Promise.all([
+            Promise.all(borrowers.map(this.getLiquidationThresholdLiquidity.bind(this))),
+            Promise.all(borrowers.map(this.getBorrowPositionsOfAccount.bind(this))),
+            Promise.all(borrowers.map(this.getLendPositionsOfAccount.bind(this))),
+        ]);
+        const undercollateralizedPositions: Array<UndercollateralizedPosition> = [];
+        for (let i = 0; i < borrowers.length; i++) {
+            undercollateralizedPositions.push({
+                accountId: borrowers[i],
+                shortfall: liquidity[i].shortfall,
+                collateralPositions: collateral[i],
+                borrowPositions: borrows[i],
+            });
+        }
+        return undercollateralizedPositions.filter((position) => !position.shortfall.isZero());
     }
 
     async getLiquidationThresholdLiquidity(accountId: AccountId): Promise<AccountLiquidity> {

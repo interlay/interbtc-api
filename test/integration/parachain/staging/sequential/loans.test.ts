@@ -14,7 +14,7 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { APPROX_BLOCK_TIME_MS, callWithExchangeRateOverwritten, waitForEvent } from "../../../../utils/helpers";
+import { APPROX_BLOCK_TIME_MS, callWithExchangeRateOverwritten, waitForEvent, includesStringified } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
@@ -404,7 +404,17 @@ describe("Loans", () => {
             const borrowAmount = newMonetaryAmount(1, underlyingCurrency, true);
             await user2InterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
             await user2InterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
+            let borrowers = await user2InterBtcAPI.loans.getBorrowerAccountIds();
+            expect(
+                !includesStringified(borrowers, user2AccountId),
+                `Expected ${user2AccountId.toString()} not to be included in the result of \`getBorrowerAccountIds\``
+            ).to.be.true;
             await user2InterBtcAPI.loans.borrow(underlyingCurrency, borrowAmount);
+            borrowers = await user2InterBtcAPI.loans.getBorrowerAccountIds();
+            expect(
+                includesStringified(borrowers, user2AccountId),
+                `Expected ${user2AccountId.toString()} to be included in the result of \`getBorrowerAccountIds\``
+            ).to.be.true;
 
             const [{ amount }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(user2AccountId);
             const roundedAmount = amount.toBig().round(2);
@@ -475,14 +485,14 @@ describe("Loans", () => {
             const newExchangeRate = "0x00000000000000000001000000000000";
             const wrappedCall = async () => {
                 const repayAmount = newMonetaryAmount(1, underlyingCurrency2); // repay smallest amount
-                const undercollateralizedBorrowers = await userInterBtcAPI.loans.getUndercollateralizedBorrowers();
+                const undercollateralizedBorrowers = await user2InterBtcAPI.loans.getUndercollateralizedBorrowers();
                 expect(
                     undercollateralizedBorrowers.length,
                     `Expected one undercollateralized borrower, found ${undercollateralizedBorrowers.length}`
-                ).to.be.eq(1);
-                expect(
-                    undercollateralizedBorrowers[0][0].toString(),
-                    `Expected undercollateralized borrower to be ${undercollateralizedBorrowers[0][0].toString()}, found ${undercollateralizedBorrowers.length}`
+                    ).to.be.eq(1);
+                    expect(
+                        undercollateralizedBorrowers[0].accountId.toString(),
+                        `Expected undercollateralized borrower to be ${user2AccountId.toString()}, found ${undercollateralizedBorrowers[0].accountId.toString()}`
                 ).to.be.eq(user2AccountId.toString());
                 await userInterBtcAPI.loans.liquidateBorrowPosition(
                     user2AccountId,

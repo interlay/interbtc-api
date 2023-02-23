@@ -1,4 +1,5 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
+import { AccountId } from "@polkadot/types/interfaces";
 import Big from "big.js";
 import { CurrencyExt, WrappedCurrency } from "./currency";
 
@@ -43,9 +44,19 @@ type AccountLiquidity = {
 };
 
 type UndercollateralizedPosition = {
+    accountId: AccountId;
     shortfall: MonetaryAmount<WrappedCurrency>;
-    collateralPositions: Array<LoanPosition>,
-    borrowPositions: Array<BorrowPosition>,
-}
+    collateralPositions: Array<LoanPosition>;
+    borrowPositions: Array<BorrowPosition>;
+};
 
-export type { LoanPosition, CollateralPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket, AccountLiquidity };
+export type {
+    LoanPosition,
+    CollateralPosition,
+    BorrowPosition,
+    LoanAsset,
+    TickerToData,
+    LoanMarket,
+    AccountLiquidity,
+    UndercollateralizedPosition,
+};
