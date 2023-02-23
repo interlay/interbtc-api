@@ -190,7 +190,7 @@ describe("Loans", () => {
             const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             expect(lendPosition.amount.toString()).to.be.equal(lendAmount.toString());
-            expect(lendPosition.currency).to.be.equal(underlyingCurrency);
+            expect(lendPosition.amount.currency).to.be.equal(underlyingCurrency);
             expect(lendPosition.isCollateral).to.be.false;
             // TODO: add tests for more markets
         });

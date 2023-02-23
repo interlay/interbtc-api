@@ -3,11 +3,10 @@ import Big from "big.js";
 import { CurrencyExt, WrappedCurrency } from "./currency";
 
 interface LoanPosition {
-    currency: CurrencyExt;
     amount: MonetaryAmount<CurrencyExt>;
 }
 
-interface LendPosition extends LoanPosition {
+interface CollateralPosition extends LoanPosition {
     isCollateral: boolean;
 }
 
@@ -43,4 +42,10 @@ type AccountLiquidity = {
     shortfall: MonetaryAmount<WrappedCurrency>;
 };
 
-export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket, AccountLiquidity };
+type UndercollateralizedPosition = {
+    shortfall: MonetaryAmount<WrappedCurrency>;
+    collateralPositions: Array<LoanPosition>,
+    borrowPositions: Array<BorrowPosition>,
+}
+
+export type { LoanPosition, CollateralPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket, AccountLiquidity };

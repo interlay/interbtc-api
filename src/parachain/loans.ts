@@ -4,12 +4,12 @@ import {
     BorrowPosition,
     CurrencyExt,
     LoanAsset,
-    LendPosition,
     TickerToData,
     LendToken,
     LoanPosition,
     AccountLiquidity,
     WrappedCurrency,
+    CollateralPosition,
 } from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
@@ -39,7 +39,7 @@ export interface LoansAPI {
      * @param accountId the account Id for which to get supply positions
      * @returns Array of lend positions of account.
      */
-    getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>>;
+    getLendPositionsOfAccount(accountId: AccountId): Promise<Array<CollateralPosition>>;
 
     /**
      * Get the borrow positions for given account.
@@ -317,7 +317,7 @@ export class DefaultLoansAPI implements LoansAPI {
         underlyingCurrency: CurrencyExt,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         lendTokenId: InterbtcPrimitivesCurrencyId
-    ): Promise<LendPosition | null> {
+    ): Promise<CollateralPosition | null> {
         const [underlyingCurrencyAmount] = await this.getLendPositionAmounts(
             accountId,
             lendTokenId,
@@ -333,7 +333,6 @@ export class DefaultLoansAPI implements LoansAPI {
         const isCollateral = !accountDeposits.isZero();
 
         return {
-            currency: underlyingCurrency,
             amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
             isCollateral,
         };
@@ -352,11 +351,11 @@ export class DefaultLoansAPI implements LoansAPI {
     async _getBorrowPosition(
         accountId: AccountId,
         underlyingCurrency: CurrencyExt,
-        underlyingCurrencyId: InterbtcPrimitivesCurrencyId
+        lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<BorrowPosition | null> {
         const [borrowSnapshot, marketStatus] = await Promise.all([
-            this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
-            this.api.rpc.loans.getMarketStatus(underlyingCurrencyId),
+            this.api.query.loans.accountBorrows(lendTokenId, accountId),
+            this.api.rpc.loans.getMarketStatus(lendTokenId),
         ]);
 
         const borrowedAmount = Big(borrowSnapshot.principal.toString());
@@ -370,7 +369,6 @@ export class DefaultLoansAPI implements LoansAPI {
 
         return {
             amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),
-            currency: underlyingCurrency,
             accumulatedDebt: newMonetaryAmount(accumulatedDebt, underlyingCurrency),
         };
     }
@@ -404,7 +402,7 @@ export class DefaultLoansAPI implements LoansAPI {
         return <Array<Position>>allMarketsPositions.filter((position) => position !== null);
     }
 
-    async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
+    async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<CollateralPosition>> {
         return this._getPositionsOfAccount(accountId, this._getLendPosition.bind(this));
     }
 
