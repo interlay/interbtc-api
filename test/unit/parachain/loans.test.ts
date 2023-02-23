@@ -1,9 +1,8 @@
-import sinon from "sinon";
 import { ApiPromise } from "@polkadot/api";
 import {
     CurrencyExt,
-    DefaultAssetRegistryAPI,
     DefaultLoansAPI,
+    DefaultOracleAPI,
     DefaultTransactionAPI,
     newMonetaryAmount,
 } from "../../../src/";
@@ -11,10 +10,10 @@ import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { expect } from "chai";
 import { Interlay, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+import { getWrappedCurrencyForTest } from "test/utils/helpers";
 
 describe("DefaultLoansAPI", () => {
     let api: ApiPromise;
-    let stubbedAssetRegistry: sinon.SinonStubbedInstance<DefaultAssetRegistryAPI>;
     let loansApi: DefaultLoansAPI;
     const testGovernanceCurrency = Interlay;
 
@@ -28,7 +27,9 @@ describe("DefaultLoansAPI", () => {
 
     beforeEach(() => {
         const transactionAPI = new DefaultTransactionAPI(api);
-        loansApi = new DefaultLoansAPI(api, transactionAPI);
+        const wrappedCurrency = getWrappedCurrencyForTest(api);
+        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, transactionAPI);
+        loansApi = new DefaultLoansAPI(api, transactionAPI, oracleAPI);
     });
 
     describe("getLendPositionsOfAccount", () => {

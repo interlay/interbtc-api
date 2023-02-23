@@ -5,6 +5,7 @@ import {
     currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
     DefaultLoansAPI,
+    DefaultOracleAPI,
     DefaultTransactionAPI,
     getUnderlyingCurrencyFromLendTokenId,
     InterBtcApi,
@@ -15,7 +16,12 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { APPROX_BLOCK_TIME_MS, callWithExchangeRateOverwritten, waitForEvent } from "../../../../utils/helpers";
+import {
+    APPROX_BLOCK_TIME_MS,
+    callWithExchangeRateOverwritten,
+    getWrappedCurrencyForTest,
+    waitForEvent,
+} from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
@@ -49,7 +55,6 @@ describe("Loans", () => {
 
     before(async function () {
         this.timeout(approx10Blocks);
-
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
@@ -62,7 +67,10 @@ describe("Loans", () => {
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
-        LoansAPI = new DefaultLoansAPI(api, TransactionAPI);
+        const wrappedCurrency = getWrappedCurrencyForTest(api);
+        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, TransactionAPI);
+
+        LoansAPI = new DefaultLoansAPI(api, TransactionAPI, oracleAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;

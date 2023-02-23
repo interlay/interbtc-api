@@ -6,3 +6,4 @@ export * from "./bitcoin-core-client";
 export * from "./issueRedeem";
 export * from "./storage";
 export * from "./rewards";
+export * from "./loans";

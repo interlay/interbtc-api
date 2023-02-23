@@ -1,6 +1,6 @@
 import { Transaction } from "@interlay/esplora-btc-api";
 import { Bitcoin, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
-import { Keyring } from "@polkadot/api";
+import { ApiPromise, Keyring } from "@polkadot/api";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { FrameSystemEventRecord } from "@polkadot/types/lookup";
@@ -23,6 +23,8 @@ import {
     createExchangeRateOracleKey,
     getStorageMapItemKey,
     setStorageAtKey,
+    tokenSymbolToCurrency,
+    WrappedCurrency,
 } from "../../src";
 import { SUDO_URI } from "../config";
 import { expect } from "chai";
@@ -380,4 +382,9 @@ export function getCorrespondingCollateralCurrenciesForTests(
         default:
             throw new Error("Provided currency is not a governance currency");
     }
+}
+
+export function getWrappedCurrencyForTest(api: ApiPromise): WrappedCurrency {
+    const currencyId = api.consts.escrowRewards.getWrappedCurrencyId;
+    return tokenSymbolToCurrency(currencyId.asToken);
 }
