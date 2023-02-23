@@ -23,7 +23,7 @@ if ! [ -d "local-setup" ]
 then
     mkdir local-setup
     git clone https://github.com/interlay/parachain-launch/
-    cd parachain-launch && git checkout 1.1.0-p1.21.10-c1.19.6 && yarn install
+    cd parachain-launch && git checkout 1.1.0-p1.21.10-c1.19.7 && yarn install
     yarn start generate --config=configs/kintsugi.yml --servicesPath=configs/kintsugi-services.yml --yes --output=local-setup-kint
     mv local-setup-kint ../local-setup/kint
     yarn start generate --config=configs/interlay.yml --servicesPath=configs/interlay-services.yml --yes --output=local-setup-intr
