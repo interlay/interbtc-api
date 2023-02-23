@@ -90,7 +90,7 @@ async function setAllClientReleases(api: ApiPromise, baseUrl: String, runtimeNam
     }
 
     return matches.map(([checksum, fullFileName, clientName]) => {
-        return api.tx.clientsInfo.setCurrentClientRelease(
+        return api.tx.clientsInfo.setPendingClientRelease(
             clientName,
             {
                 uri: baseUrl + fullFileName,
