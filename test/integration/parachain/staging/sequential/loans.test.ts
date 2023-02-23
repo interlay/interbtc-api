@@ -61,7 +61,8 @@ describe("Loans", () => {
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
-        LoansAPI = new DefaultLoansAPI(api, userInterBtcAPI.assetRegistry, TransactionAPI);
+        const wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
+        LoansAPI = new DefaultLoansAPI(api, wrappedCurrency, userInterBtcAPI.assetRegistry, TransactionAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
@@ -460,6 +461,8 @@ describe("Loans", () => {
         });
     });
 
+    // Prerequisites: This test depends on the ones above. User 2 must have already 
+    // deposited funds and enabled them as collateral, so that they can successfully borrow.
     describe("liquidateBorrowPosition", () => {
         it("should liquidate position when possible", async function () {
             this.timeout(approx10Blocks * 2);
@@ -472,6 +475,15 @@ describe("Loans", () => {
             const newExchangeRate = "0x00000000000000000001000000000000";
             const wrappedCall = async () => {
                 const repayAmount = newMonetaryAmount(1, underlyingCurrency2); // repay smallest amount
+                const undercollateralizedBorrowers = await userInterBtcAPI.loans.getUndercollateralizedBorrowers();
+                expect(
+                    undercollateralizedBorrowers.length,
+                    `Expected one undercollateralized borrower, found ${undercollateralizedBorrowers.length}`
+                ).to.be.eq(1);
+                expect(
+                    undercollateralizedBorrowers[0][0].toString(),
+                    `Expected undercollateralized borrower to be ${undercollateralizedBorrowers[0][0].toString()}, found ${undercollateralizedBorrowers.length}`
+                ).to.be.eq(user2AccountId.toString());
                 await userInterBtcAPI.loans.liquidateBorrowPosition(
                     user2AccountId,
                     underlyingCurrency2,

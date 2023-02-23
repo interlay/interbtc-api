@@ -1,6 +1,6 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { CurrencyExt } from "./currency";
+import { CurrencyExt, WrappedCurrency } from "./currency";
 
 interface LoanPosition {
     currency: CurrencyExt;
@@ -38,4 +38,9 @@ interface LoanMarket {
     lendTokenId: number;
 }
 
-export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket };
+type AccountLiquidity = {
+    liquidity: MonetaryAmount<WrappedCurrency>;
+    shortfall: MonetaryAmount<WrappedCurrency>;
+};
+
+export type { LoanPosition, LendPosition, BorrowPosition, LoanAsset, TickerToData, LoanMarket, AccountLiquidity };

@@ -64,8 +64,8 @@ describe("replace", () => {
         userAccount = keyring.addFromUri(USER_1_URI);
         assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
+        loansAPI = new DefaultLoansAPI(api, wrappedCurrency, assetRegistry, transactionAPI);
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_ids = collateralCurrencies.map((collateralCurrency) =>

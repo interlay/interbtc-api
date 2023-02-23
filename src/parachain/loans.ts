@@ -1,6 +1,16 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, LendToken, LoanPosition } from "../types";
+import {
+    BorrowPosition,
+    CurrencyExt,
+    LoanAsset,
+    LendPosition,
+    TickerToData,
+    LendToken,
+    LoanPosition,
+    AccountLiquidity,
+    WrappedCurrency,
+} from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
@@ -12,6 +22,7 @@ import {
     newCurrencyId,
     newMonetaryAmount,
     storageKeyToNthInner,
+    newAccountId,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
@@ -170,11 +181,17 @@ export interface LoansAPI {
         repayAmount: MonetaryAmount<CurrencyExt>,
         collateralCurrency: CurrencyExt
     ): Promise<void>;
+    /**
+     * @returns An array of `[AccountId, Shortage]` tuples, where `Shortage` is expressed in the
+     * wrapped currency
+     */
+    getUndercollateralizedBorrowers(): Promise<Array<[AccountId, MonetaryAmount<WrappedCurrency>]>>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
     constructor(
         private api: ApiPromise,
+        private wrappedCurrency: WrappedCurrency,
         private assetRegistryAPI: AssetRegistryAPI,
         private transactionAPI: TransactionAPI
     ) {}
@@ -266,6 +283,33 @@ export class DefaultLoansAPI implements LoansAPI {
                 return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, lendTokenId);
             })
         );
+    }
+
+    async getUndercollateralizedBorrowers(): Promise<Array<[AccountId, MonetaryAmount<WrappedCurrency>]>> {
+        const accountBorrows = await this.api.query.loans.accountBorrows.entries();
+        const uniqueBorrowers = [
+            // Even if two `AccountId`s store the same ID, the actual objects will not be equal when compared,
+            // so need to use the string representation
+            ...new Set(accountBorrows.map((key) => storageKeyToNthInner(key[0], 1).toString())),
+        ];
+        const borrowerLiquidityPromises = uniqueBorrowers.map(
+            (accountIdString, _index, _array): Promise<[AccountId, MonetaryAmount<WrappedCurrency>]> => {
+                const accountId = newAccountId(this.api, accountIdString);
+                return this.getLiquidationThresholdLiquidity(accountId).then((liquidity) => [
+                    accountId,
+                    liquidity.shortfall,
+                ]);
+            }
+        );
+        return (await Promise.all(borrowerLiquidityPromises)).filter((value, _index, _array) => !value[1].isZero());
+    }
+
+    async getLiquidationThresholdLiquidity(accountId: AccountId): Promise<AccountLiquidity> {
+        const [rawLiquidity, rawShortfall] = await this.api.rpc.loans.getLiquidationThresholdLiquidity(accountId);
+        return {
+            liquidity: newMonetaryAmount(decodeFixedPointType(rawLiquidity), this.wrappedCurrency, false),
+            shortfall: newMonetaryAmount(decodeFixedPointType(rawShortfall), this.wrappedCurrency, false),
+        };
     }
 
     async _getLendPosition(
@@ -374,6 +418,7 @@ export class DefaultLoansAPI implements LoansAPI {
         // Return percentage
         return decodeFixedPointType(rawLendApy).mul(100);
     }
+
     async _getBorrowApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
         const rawBorrowApy = await this.api.query.loans.borrowRate(underlyingCurrencyId);
 
