@@ -1,6 +1,17 @@
 import { AccountId } from "@polkadot/types/interfaces";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, LendToken, LoanPosition } from "../types";
+import {
+    BorrowPosition,
+    CurrencyExt,
+    LoanAsset,
+    TickerToData,
+    LendToken,
+    LoanPosition,
+    AccountLiquidity,
+    WrappedCurrency,
+    CollateralPosition,
+    UndercollateralizedPosition,
+} from "../types";
 import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
@@ -12,6 +23,7 @@ import {
     newCurrencyId,
     newMonetaryAmount,
     storageKeyToNthInner,
+    newAccountId,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
@@ -28,7 +40,7 @@ export interface LoansAPI {
      * @param accountId the account Id for which to get supply positions
      * @returns Array of lend positions of account.
      */
-    getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>>;
+    getLendPositionsOfAccount(accountId: AccountId): Promise<Array<CollateralPosition>>;
 
     /**
      * Get the borrow positions for given account.
@@ -170,11 +182,28 @@ export interface LoansAPI {
         repayAmount: MonetaryAmount<CurrencyExt>,
         collateralCurrency: CurrencyExt
     ): Promise<void>;
+    /**
+     * @returns An array of `UndercollateralizedPosition`s, with all details needed to
+     * liquidate them (accountId, shortfall - expressed in the wrapped currency, open borrow positions, collateral
+     * deposits).
+     */
+    getUndercollateralizedBorrowers(): Promise<Array<UndercollateralizedPosition>>;
+    /**
+     * @return An array of `AccountId`s which historically borrowed from the lending protocol.
+     * This includes accounts with zero outstanding debt.
+     */
+    getBorrowerAccountIds(): Promise<Array<AccountId>>;
+    /**
+     * @param accountId The account whose liquidity to query from the chain
+     * @returns An `AccountLiquidity` object, which is valid even for accounts that didn't use the loans pallet at all
+     */
+    getLiquidationThresholdLiquidity(accountId: AccountId): Promise<AccountLiquidity>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
     constructor(
         private api: ApiPromise,
+        private wrappedCurrency: WrappedCurrency,
         private assetRegistryAPI: AssetRegistryAPI,
         private transactionAPI: TransactionAPI
     ) {}
@@ -268,12 +297,48 @@ export class DefaultLoansAPI implements LoansAPI {
         );
     }
 
+    async getBorrowerAccountIds(): Promise<Array<AccountId>> {
+        const accountBorrows = await this.api.query.loans.accountBorrows.entries();
+        return [
+            // Even if two `AccountId`s store the same ID, the actual objects will not be equal when compared,
+            // so need to use the string representation
+            ...new Set(accountBorrows.map((key) => storageKeyToNthInner(key[0], 1).toString())),
+        ].map((accountIdString, _index, _arr) => newAccountId(this.api, accountIdString));
+    }
+
+    async getUndercollateralizedBorrowers(): Promise<Array<UndercollateralizedPosition>> {
+        const borrowers = await this.getBorrowerAccountIds();
+        const [liquidity, borrows, collateral] = await Promise.all([
+            Promise.all(borrowers.map(this.getLiquidationThresholdLiquidity.bind(this))),
+            Promise.all(borrowers.map(this.getBorrowPositionsOfAccount.bind(this))),
+            Promise.all(borrowers.map(this.getLendPositionsOfAccount.bind(this))),
+        ]);
+        const undercollateralizedPositions: Array<UndercollateralizedPosition> = [];
+        for (let i = 0; i < borrowers.length; i++) {
+            undercollateralizedPositions.push({
+                accountId: borrowers[i],
+                shortfall: liquidity[i].shortfall,
+                collateralPositions: collateral[i],
+                borrowPositions: borrows[i],
+            });
+        }
+        return undercollateralizedPositions.filter((position) => !position.shortfall.isZero());
+    }
+
+    async getLiquidationThresholdLiquidity(accountId: AccountId): Promise<AccountLiquidity> {
+        const [rawLiquidity, rawShortfall] = await this.api.rpc.loans.getLiquidationThresholdLiquidity(accountId);
+        return {
+            liquidity: newMonetaryAmount(decodeFixedPointType(rawLiquidity), this.wrappedCurrency, false),
+            shortfall: newMonetaryAmount(decodeFixedPointType(rawShortfall), this.wrappedCurrency, false),
+        };
+    }
+
     async _getLendPosition(
         accountId: AccountId,
         underlyingCurrency: CurrencyExt,
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         lendTokenId: InterbtcPrimitivesCurrencyId
-    ): Promise<LendPosition | null> {
+    ): Promise<CollateralPosition | null> {
         const [underlyingCurrencyAmount] = await this.getLendPositionAmounts(
             accountId,
             lendTokenId,
@@ -289,7 +354,6 @@ export class DefaultLoansAPI implements LoansAPI {
         const isCollateral = !accountDeposits.isZero();
 
         return {
-            currency: underlyingCurrency,
             amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
             isCollateral,
         };
@@ -308,11 +372,11 @@ export class DefaultLoansAPI implements LoansAPI {
     async _getBorrowPosition(
         accountId: AccountId,
         underlyingCurrency: CurrencyExt,
-        underlyingCurrencyId: InterbtcPrimitivesCurrencyId
+        lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<BorrowPosition | null> {
         const [borrowSnapshot, marketStatus] = await Promise.all([
-            this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
-            this.api.rpc.loans.getMarketStatus(underlyingCurrencyId),
+            this.api.query.loans.accountBorrows(lendTokenId, accountId),
+            this.api.rpc.loans.getMarketStatus(lendTokenId),
         ]);
 
         const borrowedAmount = Big(borrowSnapshot.principal.toString());
@@ -326,7 +390,6 @@ export class DefaultLoansAPI implements LoansAPI {
 
         return {
             amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),
-            currency: underlyingCurrency,
             accumulatedDebt: newMonetaryAmount(accumulatedDebt, underlyingCurrency),
         };
     }
@@ -360,7 +423,7 @@ export class DefaultLoansAPI implements LoansAPI {
         return <Array<Position>>allMarketsPositions.filter((position) => position !== null);
     }
 
-    async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<LendPosition>> {
+    async getLendPositionsOfAccount(accountId: AccountId): Promise<Array<CollateralPosition>> {
         return this._getPositionsOfAccount(accountId, this._getLendPosition.bind(this));
     }
 
@@ -374,6 +437,7 @@ export class DefaultLoansAPI implements LoansAPI {
         // Return percentage
         return decodeFixedPointType(rawLendApy).mul(100);
     }
+
     async _getBorrowApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
         const rawBorrowApy = await this.api.query.loans.borrowRate(underlyingCurrencyId);
 

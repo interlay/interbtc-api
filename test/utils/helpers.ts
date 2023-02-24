@@ -381,3 +381,19 @@ export function getCorrespondingCollateralCurrenciesForTests(
             throw new Error("Provided currency is not a governance currency");
     }
 }
+
+type ImplementsToString = { toString: () => string };
+/**
+ * Alternative to `arr.includes(element)` that check stringified version of the items for equality.
+ * Useful for types such as `AccountId`.
+ * @param arr
+ * @param element
+ * @returns a boolean representing the presence of the stringified version of `elements` amongts the
+ * stringified items of `arr`
+ */
+export function includesStringified<T extends ImplementsToString>(arr: Array<T>, element: T): boolean {
+    if (arr.length == 0) {
+        return false;
+    }
+    return arr.map((x) => x.toString() == element.toString()).reduce((acc, value) => acc || value);
+}

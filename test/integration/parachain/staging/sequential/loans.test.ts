@@ -14,7 +14,7 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { APPROX_BLOCK_TIME_MS, callWithExchangeRateOverwritten, waitForEvent } from "../../../../utils/helpers";
+import { APPROX_BLOCK_TIME_MS, callWithExchangeRateOverwritten, waitForEvent, includesStringified } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
@@ -61,7 +61,8 @@ describe("Loans", () => {
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
-        LoansAPI = new DefaultLoansAPI(api, userInterBtcAPI.assetRegistry, TransactionAPI);
+        const wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
+        LoansAPI = new DefaultLoansAPI(api, wrappedCurrency, userInterBtcAPI.assetRegistry, TransactionAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
@@ -189,7 +190,7 @@ describe("Loans", () => {
             const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             expect(lendPosition.amount.toString()).to.be.equal(lendAmount.toString());
-            expect(lendPosition.currency).to.be.equal(underlyingCurrency);
+            expect(lendPosition.amount.currency).to.be.equal(underlyingCurrency);
             expect(lendPosition.isCollateral).to.be.false;
             // TODO: add tests for more markets
         });
@@ -403,7 +404,17 @@ describe("Loans", () => {
             const borrowAmount = newMonetaryAmount(1, underlyingCurrency, true);
             await user2InterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
             await user2InterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
+            let borrowers = await user2InterBtcAPI.loans.getBorrowerAccountIds();
+            expect(
+                !includesStringified(borrowers, user2AccountId),
+                `Expected ${user2AccountId.toString()} not to be included in the result of \`getBorrowerAccountIds\``
+            ).to.be.true;
             await user2InterBtcAPI.loans.borrow(underlyingCurrency, borrowAmount);
+            borrowers = await user2InterBtcAPI.loans.getBorrowerAccountIds();
+            expect(
+                includesStringified(borrowers, user2AccountId),
+                `Expected ${user2AccountId.toString()} to be included in the result of \`getBorrowerAccountIds\``
+            ).to.be.true;
 
             const [{ amount }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(user2AccountId);
             const roundedAmount = amount.toBig().round(2);
@@ -460,6 +471,8 @@ describe("Loans", () => {
         });
     });
 
+    // Prerequisites: This test depends on the ones above. User 2 must have already 
+    // deposited funds and enabled them as collateral, so that they can successfully borrow.
     describe("liquidateBorrowPosition", () => {
         it("should liquidate position when possible", async function () {
             this.timeout(approx10Blocks * 2);
@@ -472,6 +485,15 @@ describe("Loans", () => {
             const newExchangeRate = "0x00000000000000000001000000000000";
             const wrappedCall = async () => {
                 const repayAmount = newMonetaryAmount(1, underlyingCurrency2); // repay smallest amount
+                const undercollateralizedBorrowers = await user2InterBtcAPI.loans.getUndercollateralizedBorrowers();
+                expect(
+                    undercollateralizedBorrowers.length,
+                    `Expected one undercollateralized borrower, found ${undercollateralizedBorrowers.length}`
+                    ).to.be.eq(1);
+                    expect(
+                        undercollateralizedBorrowers[0].accountId.toString(),
+                        `Expected undercollateralized borrower to be ${user2AccountId.toString()}, found ${undercollateralizedBorrowers[0].accountId.toString()}`
+                ).to.be.eq(user2AccountId.toString());
                 await userInterBtcAPI.loans.liquidateBorrowPosition(
                     user2AccountId,
                     underlyingCurrency2,

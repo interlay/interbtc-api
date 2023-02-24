@@ -67,9 +67,9 @@ describe.skip("NominationAPI", () => {
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
-        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
+        loansAPI = new DefaultLoansAPI(api, wrappedCurrency, assetRegistry, transactionAPI);
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_ids = collateralCurrencies.map((collateralCurrency) =>
             newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency)

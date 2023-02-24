@@ -74,11 +74,11 @@ describe("redeem", () => {
         const transactionAPI = new DefaultTransactionAPI(api);
         assetRegistry = new DefaultAssetRegistryAPI(api);
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        loansAPI = new DefaultLoansAPI(api, assetRegistry, transactionAPI);
+        wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
+        loansAPI = new DefaultLoansAPI(api, wrappedCurrency, assetRegistry, transactionAPI);
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         reporterInterBtcAPI = new DefaultInterBtcApi(api, "regtest", reportingVaultAccount, ESPLORA_BASE_PATH);
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
-        wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
         vaultToLiquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
         vaultToLiquidateIds = collateralCurrencies.map((collateralCurrency) =>
             newVaultId(api, vaultToLiquidate.address, collateralCurrency, wrappedCurrency)

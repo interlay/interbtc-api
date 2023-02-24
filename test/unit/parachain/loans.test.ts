@@ -10,7 +10,7 @@ import {
 import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { expect } from "chai";
-import { Interlay, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+import { Interlay, KBtc, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("DefaultLoansAPI", () => {
     let api: ApiPromise;
@@ -29,7 +29,7 @@ describe("DefaultLoansAPI", () => {
     beforeEach(() => {
         stubbedAssetRegistry = sinon.createStubInstance(DefaultAssetRegistryAPI);
         const transactionAPI = new DefaultTransactionAPI(api);
-        loansApi = new DefaultLoansAPI(api, stubbedAssetRegistry, transactionAPI);
+        loansApi = new DefaultLoansAPI(api, KBtc, stubbedAssetRegistry, transactionAPI);
     });
 
     describe("getLendPositionsOfAccount", () => {
