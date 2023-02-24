@@ -395,5 +395,5 @@ export function includesStringified<T extends ImplementsToString>(arr: Array<T>,
     if (arr.length == 0) {
         return false;
     }
-    return arr.map((accountId) => accountId.toString() == element.toString()).reduce((acc, value) => acc || value);
+    return arr.map((x) => x.toString() == element.toString()).reduce((acc, value) => acc || value);
 }

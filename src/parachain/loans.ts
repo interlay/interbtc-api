@@ -183,8 +183,9 @@ export interface LoansAPI {
         collateralCurrency: CurrencyExt
     ): Promise<void>;
     /**
-     * @returns An array of `[AccountId, Shortage]` tuples, where `Shortage` is expressed in the
-     * wrapped currency
+     * @returns An array of `UndercollateralizedPosition`s, with all details needed to
+     * liquidate them (accountId, shortfall - expressed in the wrapped currency, open borrow positions, collateral
+     * deposits).
      */
     getUndercollateralizedBorrowers(): Promise<Array<UndercollateralizedPosition>>;
     /**
@@ -192,6 +193,11 @@ export interface LoansAPI {
      * This includes accounts with zero outstanding debt.
      */
     getBorrowerAccountIds(): Promise<Array<AccountId>>;
+    /**
+     * @param accountId The account whose liquidity to query from the chain
+     * @returns An `AccountLiquidity` object, which is valid even for accounts that didn't use the loans pallet at all
+     */
+    getLiquidationThresholdLiquidity(accountId: AccountId): Promise<AccountLiquidity>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
