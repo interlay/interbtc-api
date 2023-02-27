@@ -1,0 +1,46 @@
+{
+    "currencies": {
+        "BTC": {
+            "name": "Bitcoin",
+            "decimals": 8
+        },
+        "KINT": {
+            "name": "Kintsugi",
+            "decimals": 12
+        },
+        "KSM": {
+            "name": "Kusama",
+            "decimals": 12
+        }
+    },
+    "prices": [
+        {
+            "pair": [
+                "BTC",
+                "KINT"
+            ],
+            "feeds": {
+                "coingecko": [
+                    [
+                        "KINT",
+                        "BTC"
+                    ]
+                ]
+            }
+        },
+        {
+            "pair": [
+                "BTC",
+                "KSM"
+            ],
+            "feeds": {
+                "coingecko": [
+                    [
+                        "KSM",
+                        "BTC"
+                    ]
+                ]
+            }
+        }
+    ]
+}
