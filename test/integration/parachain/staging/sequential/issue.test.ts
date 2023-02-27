@@ -119,31 +119,6 @@ describe("issue", () => {
         );
     });
 
-    // auto-execution tests may stall indefinitely, due to vault client inaction.
-    // This will cause the testing pipeline to time out.
-    // TODO: Discuss if we want to test this in the lib. Should rather be tested in the clients
-    it.skip("should request and auto-execute issue", async () => {
-        for (const vault_1_id of vault_1_ids) {
-            const amount = newMonetaryAmount(0.00121, wrappedCurrency, true);
-
-            const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
-            const issueResult = await issueSingle(
-                userInterBtcAPI,
-                bitcoinCoreClient,
-                userAccount,
-                amount,
-                vault_1_id,
-                true,
-                false
-            );
-            assert.equal(
-                issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).toString(),
-                amount.sub(feesToPay).toString(),
-                "Final balance was not increased by the exact amount specified"
-            );
-        }
-    }).timeout(1000000);
-
     it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
             const currencyTicker = (
