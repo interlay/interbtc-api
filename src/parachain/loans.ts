@@ -375,14 +375,14 @@ export class DefaultLoansAPI implements LoansAPI {
         loanAssets: TickerToData<LoanAsset>
     ): LoanCollateralInfo {
         const lendCollateralPositions = lendPositions.filter(({ isCollateral }) => isCollateral);
-        const lendCollateralThresholdAdjustedPositions = lendPositions.map((position) => {
+        const lendCollateralThresholdAdjustedPositions = lendCollateralPositions.map((position) => {
             const collateralTheshold = loanAssets[position.currency.ticker].collateralThreshold;
             return {
                 ...position,
                 amount: adjustToThreshold(position.amount, collateralTheshold),
             };
         });
-        const lendLiquidationThresholdAdjustedPositions = lendPositions.map((position) => {
+        const lendLiquidationThresholdAdjustedPositions = lendCollateralPositions.map((position) => {
             const liquidationThreshold = loanAssets[position.currency.ticker].liquidationThreshold;
             return {
                 ...position,
@@ -544,8 +544,8 @@ export class DefaultLoansAPI implements LoansAPI {
         const wrappedCurrencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
         const wrappedCurrency = tokenSymbolToCurrency(wrappedCurrencyId.asToken);
         if (isCurrencyEqual(fromCurrency, wrappedCurrency)) {
-            const oneWrappedCurrencyAtomic = Big(10).pow(wrappedCurrency.decimals);
-            return new ExchangeRate(wrappedCurrency, wrappedCurrency, oneWrappedCurrencyAtomic);
+            const wrappedCurrencyToBitcoinRate = Big(1); // Use exchange rate of 1 between wrapped BTC and real BTC.
+            return new ExchangeRate(wrappedCurrency, wrappedCurrency, wrappedCurrencyToBitcoinRate);
         }
         return this.oracleAPI.getExchangeRate(fromCurrency);
     }
