@@ -1,5 +1,5 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { MonetaryAmount } from "@interlay/monetary-js";
+import { ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -9,6 +9,7 @@ import {
     LendToken,
     LoanPosition,
     LoanCollateralInfo,
+    WrappedCurrency,
 } from "../types";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
@@ -27,6 +28,8 @@ import {
     calculateThreshold,
     calculateBorrowLimitBtcChangeFactory,
     calculateLtvAndThresholdsChangeFactory,
+    isCurrencyEqual,
+    tokenSymbolToCurrency,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
@@ -537,6 +540,16 @@ export class DefaultLoansAPI implements LoansAPI {
         return newMonetaryAmount(amount, rewardCurrency);
     }
 
+    async _getExchangeRate(fromCurrency: CurrencyExt): Promise<ExchangeRate<WrappedCurrency, CurrencyExt>> {
+        const wrappedCurrencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
+        const wrappedCurrency = tokenSymbolToCurrency(wrappedCurrencyId.asToken);
+        if (isCurrencyEqual(fromCurrency, wrappedCurrency)) {
+            const oneWrappedCurrencyAtomic = Big(10).pow(wrappedCurrency.decimals);
+            return new ExchangeRate(wrappedCurrency, wrappedCurrency, oneWrappedCurrencyAtomic);
+        }
+        return this.oracleAPI.getExchangeRate(fromCurrency);
+    }
+
     async _getLoanAsset(
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         marketData: LoansMarket
@@ -549,7 +562,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 this._getBorrowApy(underlyingCurrencyId),
                 this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
                 this._getRewardCurrency(),
-                this.oracleAPI.getExchangeRate(underlyingCurrency),
+                this._getExchangeRate(underlyingCurrency),
             ]);
 
         // Format data.
