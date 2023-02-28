@@ -32,7 +32,7 @@ export interface TransactionAPI {
 }
 
 export class DefaultTransactionAPI implements TransactionAPI {
-    constructor(public api: ApiPromise, private account?: AddressOrPair) {}
+    constructor(public api: ApiPromise, private account?: AddressOrPair) { }
 
     public setAccount(account: AddressOrPair): void {
         this.account = account;
@@ -116,9 +116,9 @@ export class DefaultTransactionAPI implements TransactionAPI {
             }
         });
 
-        if (onlyInBlock) {
+        if (result.status.isInBlock) {
             console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-        } else {
+        } else if (result.status.isFinalized) {
             console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         }
         unsubscribe(result);
