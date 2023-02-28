@@ -37,6 +37,9 @@ import { createInterBtcApi } from "@interlay/interbtc";
 const PARACHAIN_ENDPOINT = "wss://api.interlay.io/parachain";
 const bitcoinNetwork = "mainnet";
 const interBTC = await createInterBtcApi(PARACHAIN_ENDPOINT, bitcoinNetwork);
+
+// When finished using the API, disconnect to allow Node scripts to gracefully terminate
+interBTC.disconnect();
 ```
 
 ### Attaching an Account
@@ -236,8 +239,19 @@ yarn build
 
 ### Usage as script
 
-This library can be used as a script for initializing a local interBTC setup (the services ran using docker-compose), to allow for manual testing of the UI.
+This library can be used as a script for various use cases. Check `package.json` for all the available scripts. 
 
+**Query Undercollateralized borrowers**
+
+Given a `PARACHAIN_ENDPOINT` (e.g. `wss://api-dev-kintsugi.interlay.io/parachain`), the following will print a table with all undercollateralized borrowers on that network.
+```bash
+yarn install
+yarn undercollateralized-borrowers --parachain-endpoint PARACHAIN_ENDPOINT
+```
+
+**Initialize Local Parachain**
+
+To initialize a local interBTC setup (the services that run using docker-compose):
 ```bash
 yarn install
 yarn initialize

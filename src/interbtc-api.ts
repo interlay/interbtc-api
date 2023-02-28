@@ -67,6 +67,7 @@ export interface InterBtcApi {
     readonly account: AddressOrPair | undefined;
     getGovernanceCurrency(): GovernanceCurrency;
     getWrappedCurrency(): WrappedCurrency;
+    disconnect(): Promise<void>;
 }
 
 /**
@@ -202,5 +203,9 @@ export class DefaultInterBtcApi implements InterBtcApi {
         const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
         // beware: this call will throw if the wrapped currency is not a token!
         return tokenSymbolToCurrency(currencyId.asToken);
+    }
+
+    public disconnect(): Promise<void> {
+        return this.api.disconnect();
     }
 }
