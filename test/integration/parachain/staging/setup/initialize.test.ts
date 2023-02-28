@@ -39,8 +39,6 @@ import {
     BITCOIN_CORE_WALLET,
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
-    VAULT_TO_LIQUIDATE_URI,
-    VAULT_TO_BAN_URI,
     USER_1_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
@@ -76,8 +74,6 @@ describe("Initialize parachain state", () => {
     let vault_1: KeyringPair;
     let vault_2: KeyringPair;
     let vault_3: KeyringPair;
-    let vault_to_ban: KeyringPair;
-    let vault_to_liquidate: KeyringPair;
 
     let collateralCurrency: CollateralCurrencyExt;
 
@@ -88,7 +84,7 @@ describe("Initialize parachain state", () => {
     }
 
     async function waitForRegister(api: VaultsAPI, accountId: AccountId, collateralCurrency: CollateralCurrencyExt) {
-        for (;;) {
+        for (; ;) {
             try {
                 await api.get(accountId, collateralCurrency);
                 return;
@@ -108,8 +104,6 @@ describe("Initialize parachain state", () => {
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-        vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -128,8 +122,6 @@ describe("Initialize parachain state", () => {
             [vault_1, collateralCurrency],
             [vault_2, collateralCurrency],
             [vault_3, collateralCurrency],
-            [vault_to_ban, collateralCurrency],
-            [vault_to_liquidate, collateralCurrency],
         ];
         // wait for all vaults to register
         await Promise.all(

@@ -9,13 +9,20 @@ import {
     ESPLORA_BASE_PATH,
     PARACHAIN_ENDPOINT,
     SUDO_URI,
-    VAULT_3_URI,
-    VAULT_TO_BAN_URI,
-    VAULT_TO_LIQUIDATE_URI,
 } from "../../../../config";
-import { DefaultInterBtcApi, GovernanceCurrency, newAccountId, newMonetaryAmount } from "../../../../../src";
+import { DefaultInterBtcApi, GovernanceCurrency, InterBtcApi, newAccountId, newCurrencyId, newMonetaryAmount } from "../../../../../src";
 import { setNumericStorage } from "../../../../../src/utils/storage";
-import { sudo } from "../../../../utils/helpers";
+import { sudo, makeRandomPolkadotKeyPair } from "../../../../utils/helpers";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
+
+function fundAccountCall(api: InterBtcApi, address: string): SubmittableExtrinsic<"promise"> {
+    return api.api.tx.tokens.setBalance(
+        address,
+        newCurrencyId(api.api, api.getGovernanceCurrency()),
+        1 << 60,
+        0
+    );
+}
 
 describe("escrow", () => {
     let api: ApiPromise;
@@ -30,16 +37,21 @@ describe("escrow", () => {
 
     before(async function () {
         const keyring = new Keyring({ type: "sr25519" });
-        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-
-        // Use vault accounts as they are not involved in other tests but are prefunded with governance tokens
-        userAccount_1 = keyring.addFromUri(VAULT_3_URI);
-        userAccount_2 = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
-        userAccount_3 = keyring.addFromUri(VAULT_TO_BAN_URI);
         sudoAccount = keyring.addFromUri(SUDO_URI);
 
-        interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount_1, ESPLORA_BASE_PATH);
+        api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
+        interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
+
+        userAccount_1 = makeRandomPolkadotKeyPair(keyring);
+        userAccount_2 = makeRandomPolkadotKeyPair(keyring);
+        userAccount_3 = makeRandomPolkadotKeyPair(keyring);
+
+        await api.tx.sudo.sudo(api.tx.utility.batchAll([
+            fundAccountCall(interBtcAPI, userAccount_1.address),
+            fundAccountCall(interBtcAPI, userAccount_1.address),
+            fundAccountCall(interBtcAPI, userAccount_1.address),
+        ])).signAndSend(sudoAccount);
     });
 
     after(async () => {
@@ -130,7 +142,7 @@ describe("escrow", () => {
 
         assert.isTrue(
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).lt(1.1) &&
-                expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
+            expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
             "The estimate should be within 10% of the actual first year rewards"
         );
         assert.isTrue(

@@ -46,7 +46,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export async function wait_success<R>(call: () => Promise<R>): Promise<R> {
-    for (;;) {
+    for (; ;) {
         try {
             const res = await call();
             return res;
@@ -348,8 +348,8 @@ export const waitForEvent = async <T extends AnyTuple>(
     const timeoutPromise =
         timeoutMs !== undefined
             ? new Promise<void>((_, reject) => {
-                  timeoutHandle = setTimeout(() => reject(), timeoutMs);
-              })
+                timeoutHandle = setTimeout(() => reject(), timeoutMs);
+            })
             : Promise.resolve();
 
     const waitForEventPromise = finalized
