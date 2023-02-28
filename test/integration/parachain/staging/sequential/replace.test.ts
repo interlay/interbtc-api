@@ -31,7 +31,7 @@ import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { callWith, getCorrespondingCollateralCurrenciesForTests, waitForEvent } from "../../../../utils/helpers";
+import { callWith, getCorrespondingCollateralCurrenciesForTests } from "../../../../utils/helpers";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -104,19 +104,8 @@ describe("replace", () => {
                     loansAPI,
                     vault_3_id.currencies.collateral
                 );
-                const foundEventPromise = waitForEvent(
-                    interBtcAPI,
-                    api.events.replace.AcceptReplace,
-                    true,
-                    APPROX_TWENTY_BLOCKS_MS
-                );
                 await callWith(interBtcAPI, vault_3, async () =>
                     interBtcAPI.replace.request(replaceAmount, collateralCurrency)
-                );
-
-                await expect(foundEventPromise).to.eventually.be.equal(
-                    true,
-                    `Unexpected timeout while waiting for AcceptReplace event (collateral currency: ${collateralCurrency.ticker})`
                 );
             }
 

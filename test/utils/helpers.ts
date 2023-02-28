@@ -1,6 +1,6 @@
 import { Transaction } from "@interlay/esplora-btc-api";
 import { Bitcoin, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
-import { Keyring } from "@polkadot/api";
+import { ApiPromise, Keyring } from "@polkadot/api";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { FrameSystemEventRecord } from "@polkadot/types/lookup";
@@ -22,6 +22,7 @@ import {
     storageKeyToNthInner,
     createExchangeRateOracleKey,
     setStorageAtKey,
+    DefaultTransactionAPI,
 } from "../../src";
 import { SUDO_URI } from "../config";
 import { expect } from "chai";
@@ -33,9 +34,6 @@ export const BITCOIN_BLOCK_TIME_IN_MS = 10 * 1000;
 
 // used to create, and find foreign asset aUSD for tests
 export const AUSD_TICKER = "aUSD";
-
-// approximate time per block in ms
-export const APPROX_BLOCK_TIME_MS = 12 * 1000;
 
 // oracle max delay value (set during setup and checked in test later)
 export const ORACLE_MAX_DELAY = 16772736;
@@ -87,7 +85,6 @@ export async function callWithExchangeRateOverwritten(
     fn: () => Promise<void>
 ): Promise<void> {
     const { account: sudoAccount, api } = sudoInterBtcAPI;
-    const approx10Blocks = APPROX_BLOCK_TIME_MS * 10;
     if (!sudoAccount) {
         throw new Error("callWithExchangeRate: sudo account is not set.");
     }
@@ -97,13 +94,15 @@ export async function callWithExchangeRateOverwritten(
     const removeAllOraclesExtrinsic = api.tx.utility.batchAll(
         authorizedOraclesAccountIds.map((accountId) => api.tx.oracle.removeAuthorizedOracle(accountId))
     );
-    const [removeOraclesEventFound] = await Promise.all([
-        waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
-        api.tx.sudo.sudo(removeAllOraclesExtrinsic).signAndSend(sudoAccount),
-    ]);
+    const txResult1 = await DefaultTransactionAPI.sendLogged(
+        api,
+        sudoAccount,
+        api.tx.sudo.sudo(removeAllOraclesExtrinsic),
+        api.events.sudo.Sudid,
+    )
     expect(
-        removeOraclesEventFound,
-        `Sudo event to remove authorized oracles not found - timed out after ${approx10Blocks} ms`
+        txResult1.isCompleted,
+        `Sudo event to remove authorized oracles not found`
     ).to.be.true;
 
     // Change Exchange rate storage for currency.
@@ -122,20 +121,22 @@ export async function callWithExchangeRateOverwritten(
         result = Promise.reject(error);
     } finally {
         // Restore exchange rate
-        await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, initialExchangeRate, sudoAccount);
+        await setStorageAtKey(api, exchangeRateStorageKey, initialExchangeRate, sudoAccount);
         // Restore authorized oracles
         const restoreAllOraclesExtrinsic = api.tx.utility.batchAll(
             authorizedOracles.map(([key, value]) =>
                 api.tx.oracle.insertAuthorizedOracle(storageKeyToNthInner(key), value)
             )
         );
-        const [restoreOraclesEventFound] = await Promise.all([
-            waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
-            api.tx.sudo.sudo(restoreAllOraclesExtrinsic).signAndSend(sudoAccount),
-        ]);
+        const txResult2 = await DefaultTransactionAPI.sendLogged(
+            api,
+            sudoAccount,
+            api.tx.sudo.sudo(restoreAllOraclesExtrinsic),
+            api.events.sudo.Sudid,
+        )
         expect(
-            restoreOraclesEventFound,
-            `Sudo event to remove authorized oracles not found - timed out after ${approx10Blocks} ms`
+            txResult2.isCompleted,
+            `Sudo event to remove authorized oracles not found`
         ).to.be.true;
     }
 
@@ -262,105 +263,6 @@ export const bumpFeesForBtcTx = async (
     txId: string,
     options: RbfOptions = { conf_target: 72, estimate_mode: RbfEstimateMode.economical }
 ): Promise<RbfResponse> => bitcoinCoreClient.client.command("bumpfee", txId, options);
-
-/**
- * Wait for an event to show up as finalized.
- *
- * This method will only subscribe to new blocks once called and then look for a specific event.
- * Contrary to @see {@link DefaultTransactionAPI.waitForEvent} which looks at all past events
- * and may return due to older events using the same name.
- *
- * Note: This method checks the parent blocks in case the event we are looking for
- * was finalized in a block just before this method was called.
- *
- * @param interBtcApi the api to use for querying
- * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
- */
-export const waitForFinalizedEvent = async <T extends AnyTuple>(
-    interBtcApi: InterBtcApi,
-    event: AugmentedEvent<ApiTypes, T>
-): Promise<void> => {
-    return new Promise<void>((resolve, _) =>
-        interBtcApi.system.subscribeToFinalizedBlockHeads(async (header) => {
-            const events = await interBtcApi.api.query.system.events.at(header.parentHash);
-            if (eventRecordVectorContains(events, event)) {
-                resolve();
-            }
-        })
-    );
-};
-
-/**
- * Wait for an event to show up on chain (unfinalized).
- *
- * This method will only subscribe to new blocks once called and then look for a specific event.
- * Contrary to @see {@link DefaultTransactionAPI.waitForEvent} which looks at all past events
- * and may return due to older events using the same name.
- *
- * Note: This method checks the parent blocks in case the event we are looking for
- * was finalized in a block just before this method was called.
- *
- * @param interBtcApi the api to use for querying
- * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
- */
-export const waitForIncludedEvent = async <T extends AnyTuple>(
-    interBtcApi: InterBtcApi,
-    event: AugmentedEvent<ApiTypes, T>
-): Promise<void> => {
-    return new Promise<void>((resolve, _) =>
-        interBtcApi.system.subscribeToCurrentBlockHeads(async (header) => {
-            const events = await interBtcApi.api.query.system.events.at(header.parentHash);
-            if (eventRecordVectorContains(events, event)) {
-                resolve();
-            }
-        })
-    );
-};
-
-const eventRecordVectorContains = <T extends AnyTuple>(
-    eventRecords: Vec<FrameSystemEventRecord>,
-    event: AugmentedEvent<ApiTypes, T>
-): boolean => {
-    return eventRecords.find((record) => event.is(record.event)) !== undefined;
-};
-
-/**
- * Wait for an event to show up on chain.
- *
- * This method will only subscribe to new blocks once called and then look for a specific event.
- *
- * Note: This method checks the parent blocks in case the event we are looking for
- * was finalized/included in a block just before this method was called.
- * @param interBtcApi the api to use for querying
- * @param event the event to wait for, eg. `api.events.assetRegistry.RegisteredAsset`
- * @param finalized [optional] true to wait for finalized event, false (default) to only wait for included event
- * @param timeoutMs [optional] a timeout in milliseconds to wait for the event. Rejects if not found before timeout. Default: no timeout
- * @returns a promise that resolves when the event is found, and if a timeout is provided, rejects if not found before timeout.
- */
-export const waitForEvent = async <T extends AnyTuple>(
-    interBtcApi: InterBtcApi,
-    event: AugmentedEvent<ApiTypes, T>,
-    finalized: boolean = false,
-    timeoutMs?: number
-): Promise<boolean> => {
-    let timeoutHandle: NodeJS.Timeout;
-    const timeoutPromise =
-        timeoutMs !== undefined
-            ? new Promise<void>((_, reject) => {
-                timeoutHandle = setTimeout(() => reject(), timeoutMs);
-            })
-            : Promise.resolve();
-
-    const waitForEventPromise = finalized
-        ? waitForFinalizedEvent(interBtcApi, event)
-        : waitForIncludedEvent(interBtcApi, event);
-
-    await Promise.race([waitForEventPromise, timeoutPromise]).then((_) => {
-        clearTimeout(timeoutHandle);
-    });
-
-    return true;
-};
 
 export const getAUSDForeignAsset = async (assetRegistryApi: AssetRegistryAPI): Promise<ForeignAsset | undefined> => {
     const foreignAssets = await assetRegistryApi.getForeignAssets();

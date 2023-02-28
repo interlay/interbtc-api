@@ -14,7 +14,7 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { APPROX_BLOCK_TIME_MS, callWithExchangeRateOverwritten, waitForEvent, includesStringified } from "../../../../utils/helpers";
+import { callWithExchangeRateOverwritten, includesStringified } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
@@ -23,7 +23,6 @@ import { InterBtc, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 
 describe("Loans", () => {
-    const approx10Blocks = 10 * APPROX_BLOCK_TIME_MS;
 
     let api: ApiPromise;
     let keyring: Keyring;
@@ -47,8 +46,6 @@ describe("Loans", () => {
     let underlyingCurrency2: CurrencyExt;
 
     before(async function () {
-        this.timeout(approx10Blocks);
-
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
@@ -118,13 +115,10 @@ describe("Loans", () => {
             activateMarket2Extrinsic,
         ]);
 
-        const [eventFound] = await Promise.all([
-            waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
-            api.tx.sudo.sudo(addMarkets).signAndSend(sudoAccount),
-        ]);
+        const result = await DefaultTransactionAPI.sendLogged(api, sudoAccount, api.tx.sudo.sudo(addMarkets), api.events.sudo.Sudid);
         expect(
-            eventFound,
-            `Sudo event to create new market not found - timed out after ${approx10Blocks} ms`
+            result.isCompleted,
+            `Sudo event to create new market not found`
         ).to.be.true;
     });
 
@@ -181,7 +175,6 @@ describe("Loans", () => {
     describe("getLendPositionsOfAccount", () => {
         let lendAmount: MonetaryAmount<CurrencyExt>;
         before(async function () {
-            this.timeout(approx10Blocks);
             lendAmount = newMonetaryAmount(1, underlyingCurrency, true);
             await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
         });
@@ -194,14 +187,14 @@ describe("Loans", () => {
             expect(lendPosition.isCollateral).to.be.false;
             // TODO: add tests for more markets
         });
-        it("should get correct data after position is enabled as collateral", async function () {
-            this.timeout(approx10Blocks);
 
+        it("should get correct data after position is enabled as collateral", async function () {
             await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
 
             const [lendPosition] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
             expect(lendPosition.isCollateral).to.be.true;
         });
+
         it("should get empty array when no lend position exists for account", async () => {
             const lendPositions = await user2InterBtcAPI.loans.getLendPositionsOfAccount(user2AccountId);
 
@@ -209,8 +202,6 @@ describe("Loans", () => {
         });
 
         it.skip("should get correct interest amount", async function () {
-            this.timeout(approx10Blocks);
-
             // Borrows underlying currency with 2nd user account
             const user2LendAmount = newMonetaryAmount(100, underlyingCurrency, true);
             const user2BorrowAmount = newMonetaryAmount(20, underlyingCurrency, true);
@@ -224,15 +215,17 @@ describe("Loans", () => {
                 user2BorrowAmount.toString(true)
             );
 
-            const [eventFound] = await Promise.all([
-                waitForEvent(user2InterBtcAPI, user2InterBtcAPI.api.events.loans.Borrowed),
-                user2InterBtcAPI.api.tx.utility.batchAll([
+            const result1 = await DefaultTransactionAPI.sendLogged(
+                api,
+                user2Account,
+                api.tx.utility.batchAll([
                     user2LendExtrinsic,
                     user2CollateralExtrinsic,
                     user2BorrowExtrinsic,
                 ]),
-            ]);
-            expect(eventFound, "No event found for depositing collateral");
+                api.events.loans.Borrowed
+            );
+            expect(result1.isCompleted, "No event found for depositing collateral");
 
             // TODO: cannot submit timestamp.set - gettin error
             //   'RpcError: 1010: Invalid Transaction: Transaction dispatch is mandatory; transactions may not have mandatory dispatches.'
@@ -243,12 +236,14 @@ describe("Loans", () => {
             const timestamp1MonthInFuture = Date.now() + 1000 * 60 * 60 * 24 * 30;
             const setTimeToFutureExtrinsic = sudoInterBtcAPI.api.tx.timestamp.set(timestamp1MonthInFuture);
 
-            const [sudoEventFound] = await Promise.all([
-                waitForEvent(sudoInterBtcAPI, sudoInterBtcAPI.api.events.sudo.Sudid, false, approx10Blocks),
-                api.tx.sudo.sudo(setTimeToFutureExtrinsic).signAndSend(sudoAccount),
-            ]);
-            expect(sudoEventFound, `Sudo event to manipulate time not found - timed out after ${approx10Blocks} ms`).to
-                .be.true;
+            const result2 = await DefaultTransactionAPI.sendLogged(
+                api,
+                sudoAccount,
+                api.tx.sudo.sudo(setTimeToFutureExtrinsic),
+                api.events.sudo.Sudid
+            );
+            expect(result2.isCompleted, `Sudo event to manipulate time not found`)
+                .to.be.true;
         });
     });
 
@@ -271,7 +266,6 @@ describe("Loans", () => {
 
     describe("lend", () => {
         it("should lend expected amount of currency to protocol", async function () {
-            this.timeout(approx10Blocks);
             const [{ amount: lendAmountBefore }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
@@ -298,18 +292,16 @@ describe("Loans", () => {
 
     describe("withdraw", () => {
         before(async function () {
-            this.timeout(approx10Blocks);
-
-            const [eventFound] = await Promise.all([
-                waitForEvent(userInterBtcAPI, api.events.loans.WithdrawCollateral, false, approx10Blocks),
-                userInterBtcAPI.api.tx.loans.withdrawAllCollateral(underlyingCurrencyId).signAndSend(userAccount),
-            ]);
-
-            expect(eventFound, "No event found for withdrawing all collateral").to.be.true;
+            const result = await DefaultTransactionAPI.sendLogged(
+                api,
+                userAccount,
+                api.tx.loans.withdrawAllCollateral(underlyingCurrencyId),
+                api.events.loans.WithdrawCollateral
+            );
+            expect(result.isCompleted, "No event found for withdrawing all collateral").to.be.true;
         });
 
         it("should withdraw part of lent amount", async function () {
-            this.timeout(approx10Blocks);
             const [{ amount: lendAmountBefore }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             const amountToWithdraw = newMonetaryAmount(1, underlyingCurrency, true);
@@ -328,8 +320,6 @@ describe("Loans", () => {
 
     describe("withdrawAll", () => {
         it("should withdraw full amount from lending protocol", async function () {
-            this.timeout(approx10Blocks);
-
             await userInterBtcAPI.loans.withdrawAll(underlyingCurrency);
 
             const lendPositions = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
@@ -340,8 +330,6 @@ describe("Loans", () => {
 
     describe("enableAsCollateral", () => {
         it("should enable lend position as collateral", async function () {
-            this.timeout(approx10Blocks);
-
             const lendAmount = newMonetaryAmount(1, underlyingCurrency, true);
             await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
             await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
@@ -353,8 +341,6 @@ describe("Loans", () => {
 
     describe("disableAsCollateral", () => {
         it("should disable enabled collateral position if there are no borrows", async function () {
-            this.timeout(approx10Blocks);
-
             await userInterBtcAPI.loans.disableAsCollateral(underlyingCurrency);
             const [{ isCollateral }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
@@ -399,7 +385,6 @@ describe("Loans", () => {
 
     describe("borrow", () => {
         it("should borrow specified amount", async function () {
-            this.timeout(approx10Blocks);
             const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
             const borrowAmount = newMonetaryAmount(1, underlyingCurrency, true);
             await user2InterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
@@ -427,7 +412,6 @@ describe("Loans", () => {
 
     describe("repay", () => {
         it("should repay specified amount", async function () {
-            this.timeout(approx10Blocks);
             const repayAmount = newMonetaryAmount(0.5, underlyingCurrency, true);
             const [{ amount: borrowAmountBefore }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(
                 user2AccountId
@@ -449,7 +433,6 @@ describe("Loans", () => {
 
     describe("repayAll", () => {
         it("should repay whole loan", async function () {
-            this.timeout(approx10Blocks);
             await user2InterBtcAPI.loans.repayAll(underlyingCurrency);
             const borrowPositions = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(user2AccountId);
 
@@ -462,7 +445,6 @@ describe("Loans", () => {
 
     describe("getBorrowPositionsOfAccount", () => {
         before(async function () {
-            this.timeout(approx10Blocks);
             // TODO:borrow
         });
 
@@ -475,7 +457,6 @@ describe("Loans", () => {
     // deposited funds and enabled them as collateral, so that they can successfully borrow.
     describe("liquidateBorrowPosition", () => {
         it("should liquidate position when possible", async function () {
-            this.timeout(approx10Blocks * 2);
             // Supply asset by account1, borrow by account2
             const borrowAmount = newMonetaryAmount(10, underlyingCurrency2, true);
             await userInterBtcAPI.loans.lend(underlyingCurrency2, borrowAmount);
@@ -505,7 +486,6 @@ describe("Loans", () => {
             await callWithExchangeRateOverwritten(sudoInterBtcAPI, underlyingCurrency2, newExchangeRate, wrappedCall);
         });
         it("should throw when no position can be liquidated", async function () {
-            this.timeout(approx10Blocks);
             const repayAmount = newMonetaryAmount(1, underlyingCurrency2, true); // repay smallest amount
 
             await expect(

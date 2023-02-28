@@ -113,4 +113,17 @@ export class BitcoinCoreClient {
     loadWallet(name: string): Promise<void> {
         return this.client.command("loadwallet", name);
     }
+
+    async createOrLoadWallet(): Promise<void> {
+        try {
+            await this.createWallet(this.client.wallet);
+        } catch (error) {
+            console.log(`Could not create wallet: ${error}`);
+            try {
+                await this.loadWallet(this.client.wallet);
+            } catch (error) {
+                console.log(`Could not load wallet: ${error}`);
+            }
+        }
+    }
 }
