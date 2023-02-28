@@ -23,8 +23,6 @@ import {
     VAULT_2_URI,
     PARACHAIN_ENDPOINT,
     VAULT_3_URI,
-    VAULT_TO_LIQUIDATE_URI,
-    VAULT_TO_BAN_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
 import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
@@ -37,8 +35,6 @@ import {
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
-    let vault_to_liquidate: KeyringPair;
-    let vault_to_ban: KeyringPair;
     let vault_1: KeyringPair;
     let vault_1_ids: Array<InterbtcPrimitivesVaultId>;
     let vault_2: KeyringPair;
@@ -78,11 +74,7 @@ describe("vaultsAPI", () => {
         );
 
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-
-        vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
     });
 
     after(() => {
@@ -98,9 +90,7 @@ describe("vaultsAPI", () => {
         return (
             vaultAddress === vault_2.address ||
             vaultAddress === vault_1.address ||
-            vaultAddress === vault_3.address ||
-            vaultAddress === vault_to_ban.address ||
-            vaultAddress === vault_to_liquidate.address
+            vaultAddress === vault_3.address
         );
     }
 
