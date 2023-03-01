@@ -129,7 +129,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.loans
         );
         this.faucet = new FaucetClient(api, "");
-        this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
+        this.btcRelay = new DefaultBTCRelayAPI(api);
 
         this.replace = new DefaultReplaceAPI(
             api,

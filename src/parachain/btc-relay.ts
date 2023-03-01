@@ -1,5 +1,4 @@
 import { ApiPromise } from "@polkadot/api";
-import { ElectrsAPI } from "../external/electrs";
 import { BitcoinH256Le, BtcRelayRichBlockHeader } from "@polkadot/types/lookup";
 
 import { addHexPrefix } from "../utils";
@@ -29,20 +28,13 @@ export interface BTCRelayAPI {
      */
     getLatestBlockHeight(): Promise<number>;
     /**
-     * Verifies the inclusion of a transaction with `txid` in the Bitcoin blockchain
-     *
-     * @param txid The ID of a Bitcoin transaction
-     * @param confirmations The number of block confirmations needed to accept the inclusion proof.
-     */
-    verifyTransactionInclusion(txid: string, confirmations?: number): Promise<void>;
-    /**
      * @returns True if the block is in the relay, false otherwise.
      */
     isBlockInRelay(blockHash: string): Promise<boolean>;
 }
 
 export class DefaultBTCRelayAPI implements BTCRelayAPI {
-    constructor(private api: ApiPromise, private electrsAPI: ElectrsAPI) {}
+    constructor(private api: ApiPromise) { }
 
     async getStableBitcoinConfirmations(): Promise<number> {
         return this.api.query.btcRelay.stableBitcoinConfirmations().then((param) => param.toNumber());
@@ -58,16 +50,6 @@ export class DefaultBTCRelayAPI implements BTCRelayAPI {
 
     async getLatestBlockHeight(): Promise<number> {
         return (await this.api.query.btcRelay.bestBlockHeight()).toNumber();
-    }
-
-    async verifyTransactionInclusion(
-        txid: string,
-        confirmations: number = DEFAULT_STABLE_CONFIRMATIONS
-    ): Promise<void> {
-        const merkleProof = await this.electrsAPI.getMerkleProof(txid);
-        const confirmationsU32 = this.api.createType("u32", confirmations);
-        // TODO: change this to RPC call
-        this.api.tx.btcRelay.verifyTransactionInclusion(txid, merkleProof, confirmationsU32);
     }
 
     async isBlockInRelay(blockHash: string): Promise<boolean> {
