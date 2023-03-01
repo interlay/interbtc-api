@@ -194,13 +194,13 @@ export class DefaultInterBtcApi implements InterBtcApi {
     }
 
     public getGovernanceCurrency(): GovernanceCurrency {
-        const currencyId = this.api.consts.escrowRewards.getNativeCurrencyId;
+        const currencyId = this.api.consts.currency.getNativeCurrencyId;
         // beware: this call will throw if the native currency is not a token!
         return tokenSymbolToCurrency(currencyId.asToken);
     }
 
     public getWrappedCurrency(): WrappedCurrency {
-        const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
+        const currencyId = this.api.consts.currency.getWrappedCurrencyId;
         // beware: this call will throw if the wrapped currency is not a token!
         return tokenSymbolToCurrency(currencyId.asToken);
     }
