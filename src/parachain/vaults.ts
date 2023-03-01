@@ -419,7 +419,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private transactionAPI: TransactionAPI,
         private assetRegistryAPI: AssetRegistryAPI,
         private loansAPI: LoansAPI
-    ) {}
+    ) { }
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
@@ -642,7 +642,13 @@ export class DefaultVaultsAPI implements VaultsAPI {
         collateralCurrency: CollateralCurrencyExt,
         rewardCurrency: Currency
     ): Promise<MonetaryAmount<Currency>> {
-        return this.rewardsAPI.computeRewardInRewardsPool(rewardCurrency, collateralCurrency, vaultAccountId);
+        const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
+        const params = {
+            account_id: vaultAccountId,
+            currencies: vaultCurrencyPair,
+        };
+        const reward = await this.api.rpc.reward.computeVaultReward(params, newCurrencyId(this.api, rewardCurrency));
+        return newMonetaryAmount(reward.amount.toString(), rewardCurrency);
     }
 
     async getWrappedReward(
