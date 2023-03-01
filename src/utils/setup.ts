@@ -1,7 +1,6 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
 import { ExchangeRate, Bitcoin } from "@interlay/monetary-js";
 import { Big } from "big.js";
-import BN from "bn.js";
 import { ApiPromise } from "@polkadot/api";
 import { setNumericStorage } from "./storage";
 import { NominationAPI, OracleAPI } from "../parachain";
@@ -21,16 +20,14 @@ export async function initializeStableConfirmations(
     console.log("Initializing stable block confirmations...");
     await setNumericStorage(
         api,
-        "BTCRelay",
-        "StableBitcoinConfirmations",
-        new BN(stableConfirmationsToSet.bitcoinConfirmations),
+        api.query.btcRelay.stableBitcoinConfirmations.key(),
+        api.createType("u32", stableConfirmationsToSet.bitcoinConfirmations),
         account
     );
     await setNumericStorage(
         api,
-        "BTCRelay",
-        "StableParachainConfirmations",
-        new BN(stableConfirmationsToSet.parachainConfirmations),
+        api.query.btcRelay.stableParachainConfirmations.key(),
+        api.createType("u32", stableConfirmationsToSet.parachainConfirmations),
         account
     );
     await bitcoinCoreClient.mineBlocks(3);

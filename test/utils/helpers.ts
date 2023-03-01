@@ -21,7 +21,6 @@ import {
     CollateralCurrencyExt,
     storageKeyToNthInner,
     createExchangeRateOracleKey,
-    getStorageMapItemKey,
     setStorageAtKey,
 } from "../../src";
 import { SUDO_URI } from "../config";
@@ -111,7 +110,7 @@ export async function callWithExchangeRateOverwritten(
     const exchangeRateOracleKey = createExchangeRateOracleKey(api, currency);
     const initialExchangeRate = (await api.query.oracle.aggregate(exchangeRateOracleKey)).toHex();
 
-    const exchangeRateStorageKey = getStorageMapItemKey("Oracle", "Aggregate", exchangeRateOracleKey.toHex());
+    const exchangeRateStorageKey = api.query.oracle.aggregate.key(exchangeRateOracleKey);
     await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, newExchangeRateHex, sudoAccount);
 
     let result: Promise<void>;

@@ -127,11 +127,9 @@ describe("escrow", () => {
 
         await setNumericStorage(
             api,
-            "EscrowAnnuity",
-            "RewardPerBlock",
-            new BN(firstYearRewards / blocksPerYear),
+            api.query.escrowAnnuity.rewardPerBlock.key(),
+            api.createType("Balance", new BN(firstYearRewards / blocksPerYear)),
             sudoAccount,
-            128
         );
 
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));

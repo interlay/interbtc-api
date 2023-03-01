@@ -4,7 +4,6 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
 import { DefaultAssetRegistryAPI, DefaultInterBtcApi, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
-import { getStorageKey } from "../../../../../src/utils/storage";
 
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
@@ -29,7 +28,7 @@ describe("AssetRegistry", () => {
         sudoAccount = keyring.addFromUri(SUDO_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
-        assetRegistryMetadataHash = getStorageKey("AssetRegistry", "Metadata");
+        assetRegistryMetadataHash = api.query.assetRegistry.metadata.key();
         // check which keys exist before the tests
         const keys = await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash);
         registeredKeysBefore = keys.toArray();
