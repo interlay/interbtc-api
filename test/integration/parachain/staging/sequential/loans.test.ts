@@ -65,7 +65,7 @@ describe("Loans", () => {
         LoansAPI = new DefaultLoansAPI(api, wrappedCurrency, userInterBtcAPI.assetRegistry, TransactionAPI);
 
         // Add market for governance currency.
-        underlyingCurrencyId = sudoInterBtcAPI.api.consts.escrowRewards.getNativeCurrencyId;
+        underlyingCurrencyId = sudoInterBtcAPI.api.consts.currency.getNativeCurrencyId;
         underlyingCurrency = sudoInterBtcAPI.getGovernanceCurrency();
 
         underlyingCurrencyId2 = sudoInterBtcAPI.api.consts.currency.getRelayChainCurrencyId;
@@ -489,10 +489,10 @@ describe("Loans", () => {
                 expect(
                     undercollateralizedBorrowers.length,
                     `Expected one undercollateralized borrower, found ${undercollateralizedBorrowers.length}`
-                    ).to.be.eq(1);
-                    expect(
-                        undercollateralizedBorrowers[0].accountId.toString(),
-                        `Expected undercollateralized borrower to be ${user2AccountId.toString()}, found ${undercollateralizedBorrowers[0].accountId.toString()}`
+                ).to.be.eq(1);
+                expect(
+                    undercollateralizedBorrowers[0].accountId.toString(),
+                    `Expected undercollateralized borrower to be ${user2AccountId.toString()}, found ${undercollateralizedBorrowers[0].accountId.toString()}`
                 ).to.be.eq(user2AccountId.toString());
                 await userInterBtcAPI.loans.liquidateBorrowPosition(
                     user2AccountId,
