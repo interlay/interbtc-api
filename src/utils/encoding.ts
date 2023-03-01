@@ -1,5 +1,5 @@
 import { AccountId, H256, Permill } from "@polkadot/types/interfaces";
-import Big, { BigSource } from "big.js";
+import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { isKeyringPair } from "@polkadot/api/util";
 import type { Struct } from "@polkadot/types";
@@ -32,7 +32,7 @@ import {
 } from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
-import { BalanceWrapper, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
+import { SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, LoansAPI, VaultsAPI } from "../parachain";
@@ -219,12 +219,6 @@ export function newForeignAssetId(api: ApiPromise, id: number): u32 {
     return api.createType("u32", id);
 }
 
-export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): BalanceWrapper {
-    return api.createType("BalanceWrapper", {
-        amount: api.createType("Text", Big(atomicAmount).toString()),
-    });
-}
-
 export function addressOrPairAsAccountId(api: ApiPromise, addyOrpair: AddressOrPair): AccountId {
     const addressString: string = isKeyringPair(addyOrpair) ? addyOrpair.address : addyOrpair.toString();
     return newAccountId(api, addressString);
@@ -269,8 +263,8 @@ export async function parseIssueRequest(
     const status = req.status.isCompleted
         ? IssueStatus.Completed
         : req.status.isCancelled
-        ? IssueStatus.Cancelled
-        : IssueStatus.PendingWithBtcTxNotFound;
+            ? IssueStatus.Cancelled
+            : IssueStatus.PendingWithBtcTxNotFound;
     const collateralCurrency = await currencyIdToMonetaryCurrency(
         assetRegistry,
         loansAPI,
@@ -373,13 +367,13 @@ export async function encodeVaultId(
     const wrappedId = isForeignAsset(wrappedCurrency)
         ? wrappedCurrency.foreignAsset.id.toString()
         : isLendToken(wrappedCurrency)
-        ? wrappedCurrency.lendToken.id
-        : wrappedCurrency.ticker;
+            ? wrappedCurrency.lendToken.id
+            : wrappedCurrency.ticker;
     const collateralId = isForeignAsset(collateralCurrency)
         ? collateralCurrency.foreignAsset.id.toString()
         : isLendToken(collateralCurrency)
-        ? collateralCurrency.lendToken.id.toString()
-        : collateralCurrency.ticker;
+            ? collateralCurrency.lendToken.id.toString()
+            : collateralCurrency.ticker;
     return `${id.accountId.toString()}-${wrappedId}-${collateralId}`;
 }
 

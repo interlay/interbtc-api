@@ -13,8 +13,7 @@ import { Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../ty
 import { waitForBlockFinalization } from "./bitcoin";
 import { atomicToBaseAmount, currencyIdToMonetaryCurrency, newMonetaryAmount } from "./currency";
 import { InterBtcApi } from "../interbtc-api";
-
-export const SLEEP_TIME_MS = 1000;
+import { sleep, SLEEP_TIME_MS } from "../utils";
 
 export interface IssueResult {
     request: Issue;
@@ -178,10 +177,6 @@ export async function issueSingle(
             interBtcApi.setAccount(prevAccount);
         }
     }
-}
-
-export function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function redeem(
