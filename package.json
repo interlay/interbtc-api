@@ -18,7 +18,7 @@
     "build:tsc": "tsc -p tsconfig.json",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
-    "fix:lint": "eslint --fix . --ext .ts",
+    "fix:lint": "eslint --fix src --ext .ts",
     "ci:test": "run-s build test:lint test:unit test:integration",
     "ci:test:staging": "run-s build test:lint test:unit test:integration:staging",
     "ci:test:release": "run-s build test:integration:release",
