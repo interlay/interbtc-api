@@ -33,7 +33,6 @@ describe("InterBtcApi", () => {
             assert.isDefined(interBTC.account);
         });
 
-
         it("should fail to set address without signer", () => {
             assert.throw(() => interBTC.setAccount(keyringPair.address));
         });

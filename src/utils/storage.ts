@@ -3,7 +3,7 @@ import { bnToHex } from "@polkadot/util";
 import { StorageKey, Bytes } from "@polkadot/types/primitive";
 import { ApiPromise } from "@polkadot/api";
 import BN from "bn.js";
-import { ITuple, Codec } from "@polkadot/types/types";
+import { ITuple } from "@polkadot/types/types";
 import { AddressOrPair } from "@polkadot/api/types";
 
 import { stripHexPrefix } from "./encoding";
@@ -40,18 +40,6 @@ export async function setNumericStorage(
     isLittleEndian = true
 ): Promise<void> {
     const data = bnToHex(value, { bitLength: bits, isLe: isLittleEndian });
-    await setStorage(api, moduleName, storageItemName, data, account);
-}
-
-export async function setCodecStorage(
-    api: ApiPromise,
-    moduleName: string,
-    storageItemName: string,
-    value: Codec,
-    account: AddressOrPair,
-    isLittleEndian = true
-): Promise<void> {
-    const data = value.toHex(isLittleEndian);
     await setStorage(api, moduleName, storageItemName, data, account);
 }
 
