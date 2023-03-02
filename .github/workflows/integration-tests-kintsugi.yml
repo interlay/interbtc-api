@@ -1,16 +1,16 @@
-name: integration tests (INTR)
+name: integration tests (Kintsugi)
 
 on:
-    push:
+    pull_request:
         branches:
             - master
 
 concurrency:
-    group: ${{ github.ref }}_intr
+    group: ${{ github.ref }}_kintsugi
     cancel-in-progress: true
 
 jobs:
-    test_intr:
+    test_kintsugi:
         uses: ./.github/workflows/reusable-wf-integration-tests.yml
         with:
-            parachain: INTR
+            parachain: kintsugi

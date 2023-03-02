@@ -1,16 +1,16 @@
-name: integration tests (KINT)
+name: integration tests (Interlay)
 
 on:
-    pull_request:
+    push:
         branches:
             - master
 
 concurrency:
-    group: ${{ github.ref }}_kint
+    group: ${{ github.ref }}_interlay
     cancel-in-progress: true
 
 jobs:
-    test_kint:
+    test_interlay:
         uses: ./.github/workflows/reusable-wf-integration-tests.yml
         with:
-            parachain: KINT
+            parachain: interlay

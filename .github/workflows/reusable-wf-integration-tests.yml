@@ -1,42 +1,40 @@
 name: reusable workflow for integration tests
 
 on:
-    workflow_call:
-        inputs:
-            parachain:
-                description: The parachain to spin up for testing. INTR or KINT.
-                default: "KINT"
-                required: false
-                type: string
+  workflow_call:
+    inputs:
+      parachain:
+        description: The parachain runtime to use for testing (kintsugi or interlay).
+        default: kintsugi
+        required: false
+        type: string
 
 jobs:
-    build:
-        runs-on: [self-hosted, linux]
-        timeout-minutes: 90
-        steps:
-            - uses: actions/checkout@v3
-            - name: setup node
-              uses: actions/setup-node@v3
-              with:
-                  node-version: "16"
-            - run: corepack enable
-            - run: yarn install
-            - name: Check versions
-              run: |
-                  yarn --version
-                  npx node --version
-                  npx ts-node --version
-            - name: Run and set up the parachain, oracle, staked relayer and vault
-              run: yarn docker-parachain-start -d --chain=${{ inputs.parachain }}
-            - run: yarn ci:test
-
-            - name: Archive Docker logs
-              if: always()
-              run: docker-compose -f local-setup/docker-compose.yml logs > logs.txt
-
-            - name: Upload logs
-              if: always()
-              uses: actions/upload-artifact@v3
-              with:
-                  name: docker-compose-logs
-                  path: logs.txt
+  build:
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+      - run: corepack enable
+      - run: yarn install
+      - name: Check versions
+        run: |
+          yarn --version
+          npx node --version
+          npx ts-node --version
+      - name: Run required services
+        run: docker-compose up --detach
+      - run: yarn ci:test
+      - name: Archive Docker logs
+        if: always()
+        run: docker-compose logs > logs.txt
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-compose-logs
+          path: logs.txt
