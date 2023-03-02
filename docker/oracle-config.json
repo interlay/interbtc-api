@@ -19,28 +19,14 @@
                 "BTC",
                 "KINT"
             ],
-            "feeds": {
-                "coingecko": [
-                    [
-                        "KINT",
-                        "BTC"
-                    ]
-                ]
-            }
+            "value": 230
         },
         {
             "pair": [
                 "BTC",
                 "KSM"
             ],
-            "feeds": {
-                "coingecko": [
-                    [
-                        "KSM",
-                        "BTC"
-                    ]
-                ]
-            }
+            "value": 230
         }
     ]
 }

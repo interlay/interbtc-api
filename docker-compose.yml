@@ -59,7 +59,6 @@ services:
             - oracle-parachain-metadata-kintsugi-testnet
             - --keyring=bob
             - --btc-parachain-url=ws://interbtc:9944
-            - --coingecko-url=https://api.coingecko.com/api/v3/
         environment:
             RUST_LOG: info
         volumes:

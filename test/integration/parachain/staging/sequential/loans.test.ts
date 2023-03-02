@@ -492,6 +492,7 @@ describe("Loans", () => {
                 wrappedCall
             );
         });
+
         it("should throw when no position can be liquidated", async function () {
             const repayAmount = newMonetaryAmount(1, underlyingCurrency2, true); // repay smallest amount
 
