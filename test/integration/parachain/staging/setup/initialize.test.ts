@@ -239,7 +239,12 @@ describe("Initialize parachain state", () => {
         const timeoutMs = 5 * APPROX_BLOCK_TIME_MS; // aproximately 5 blocks
         const [sudidEventFound] = await Promise.all([
             waitForEvent(sudoInterBtcAPI, api.events.sudo.Sudid, false, timeoutMs),
-            setNumericStorage(sudoInterBtcAPI.api, "Oracle", "MaxDelay", new BN(ORACLE_MAX_DELAY), sudoAccount, 64),
+            setNumericStorage(
+                sudoInterBtcAPI.api,
+                api.query.oracle.maxDelay.key(),
+                api.createType("Moment", new BN(ORACLE_MAX_DELAY)),
+                sudoAccount,
+            ),
         ]);
 
         assert.isTrue(

@@ -114,7 +114,12 @@ describe.skip("NominationAPI", () => {
     }).timeout(2 * 60000);
 
     async function setIssueFee(x: BN) {
-        await setNumericStorage(api, "Fee", "IssueFee", x, sudoAccount, 128);
+        await setNumericStorage(
+            api,
+            api.query.fee.issueFee.key(),
+            api.createType("UnsignedFixedPoint", x),
+            sudoAccount,
+        );
     }
 
     it("Should nominate to and withdraw from a vault", async () => {
