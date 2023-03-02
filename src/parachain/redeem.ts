@@ -1,5 +1,4 @@
 import { ApiPromise } from "@polkadot/api";
-import { SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Hash, H256 } from "@polkadot/types/interfaces";
 import { EventRecord } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types";
@@ -8,7 +7,6 @@ import Big from "big.js";
 import { Bitcoin, BitcoinAmount, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
-import { ISubmittableResult } from "@polkadot/types/types";
 import {
     BitcoinAddress,
     InterbtcPrimitivesVaultId,
@@ -43,20 +41,6 @@ export interface RedeemAPI {
      * @returns An array containing the redeem requests
      */
     list(): Promise<Redeem[]>;
-
-    /**
-     * Build a request redeem extrinsic (transaction) without sending it.
-     *
-     * @param vaultId ID of the vault to redeem with.
-     * @param amount Wrapped token amount to redeem
-     * @param btcAddress Bitcoin transaction ID
-     * @returns A request redeem submittable extrinsic.
-     */
-    buildRequestRedeemExtrinsic(
-        vaultId: InterbtcPrimitivesVaultId,
-        amount: MonetaryAmount<WrappedCurrency>,
-        btcAddress: string
-    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
     /**
      * Send a redeem request transaction
      * @param amount Wrapped token amount to redeem
@@ -76,7 +60,6 @@ export interface RedeemAPI {
         retries?: number,
         availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
     ): Promise<Redeem[]>;
-
     /**
      * Send a batch of aggregated redeem transactions (to one or more vaults)
      * @param amountsPerVault A mapping of vaults to redeem from, and wrapped token amounts to redeem using each vault
@@ -91,19 +74,6 @@ export interface RedeemAPI {
         btcAddressEnc: string,
         atomic: boolean
     ): Promise<Redeem[]>;
-
-    /**
-     * Build a redeem execution extrinsic (transaction) without sending it.
-     *
-     * @param redeemId The ID returned by the issue request transaction
-     * @param btcTxId Bitcoin transaction ID
-     * @returns An execute redeem submittable extrinsic.
-     */
-    buildExecuteRedeemExtrinsic(
-        redeemId: string,
-        btcTxId: string
-    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>>;
-
     /**
      * Send a redeem execution transaction
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
@@ -112,21 +82,6 @@ export interface RedeemAPI {
      * @param btcTxId Bitcoin transaction ID
      */
     execute(requestId: string, btcTxId: string): Promise<void>;
-
-    /**
-     * Build a cancel redeem extrinsic (transaction) without sending it.
-     *
-     * @param redeemId The ID returned by the redeem request transaction
-     * @param reimburse In case of redeem failure:
-     *  - `false` = retry redeeming, with a different Vault
-     *  - `true` = accept reimbursement in wrapped token
-     * @returns A cancel redeem submittable extrinsic.
-     */
-    buildCancelRedeemExtrinsic(
-        redeemId: string,
-        reimburse: boolean
-    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
-
     /**
      * Send a redeem cancellation transaction. After the redeem period has elapsed,
      * the redeemal request can be cancelled. As a result, the griefing collateral
@@ -179,18 +134,6 @@ export interface RedeemAPI {
      * This value is a percentage of the redeemed amount.
      */
     getPremiumRedeemFeeRate(): Promise<Big>;
-
-    /**
-     * Build liquidation redeem extrinsic (without sending it) to burn wrapped tokens for a premium
-     * @param amount The amount of wrapped tokens to burn
-     * @param collateralCurrency Liquidated collateral currency to use when burning wrapped tokens
-     * @returns A liquidation redeem submittable extrinsic.
-     */
-    buildLiquidationRedeemExtrinsic(
-        amount: MonetaryAmount<WrappedCurrency>,
-        collateralCurrency: CollateralCurrencyExt
-    ): SubmittableExtrinsic<"promise", ISubmittableResult>;
-
     /**
      * Burn wrapped tokens for a premium
      * @param amount The amount of wrapped tokens to burn
@@ -229,7 +172,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
         private assetRgistryAPI: AssetRegistryAPI,
         private systemAPI: SystemAPI,
         private loansAPI: LoansAPI
-    ) {}
+    ) { }
 
     private getRedeemIdsFromEvents(events: EventRecord[], event: AugmentedEvent<ApiTypes, AnyTuple>): Hash[] {
         return getRequestIdsFromEvents(events, event, this.api);
@@ -271,26 +214,19 @@ export class DefaultRedeemAPI implements RedeemAPI {
         }
     }
 
-    buildRequestRedeemExtrinsic(
-        vaultId: InterbtcPrimitivesVaultId,
-        amount: MonetaryAmount<WrappedCurrency>,
-        btcAddressEnc: string
-    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
-        const btcAddress = this.api.createType<BitcoinAddress>(
-            "BitcoinAddress",
-            decodeBtcAddress(btcAddressEnc, this.btcNetwork)
-        );
-        const amountInAtomicUnits = amount.toString(true);
-        return this.api.tx.redeem.requestRedeem(amountInAtomicUnits, btcAddress, vaultId);
-    }
-
     async requestAdvanced(
         amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
         btcAddressEnc: string,
         atomic: boolean
     ): Promise<Redeem[]> {
-        const txes = Array.from(amountsPerVault).map(([vaultId, amount]) =>
-            this.buildRequestRedeemExtrinsic(vaultId, amount, btcAddressEnc)
+        const txes = Array.from(amountsPerVault).map(([vaultId, amount]) => {
+            const btcAddress = this.api.createType<BitcoinAddress>(
+                "BitcoinAddress",
+                decodeBtcAddress(btcAddressEnc, this.btcNetwork)
+            );
+            const amountInAtomicUnits = amount.toString(true);
+            return this.api.tx.redeem.requestRedeem(amountInAtomicUnits, btcAddress, vaultId);
+        }
         );
         const batch = this.transactionAPI.buildBatchExtrinsic(txes, atomic);
         try {
@@ -305,48 +241,28 @@ export class DefaultRedeemAPI implements RedeemAPI {
         }
     }
 
-    async buildExecuteRedeemExtrinsic(
-        redeemId: string,
-        btcTxId: string
-    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
-        const parsedRequestId = ensureHashEncoded(this.api, redeemId);
+    async execute(requestId: string, btcTxId: string): Promise<void> {
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
         const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        return this.api.tx.redeem.executeRedeem(
+        const tx = this.api.tx.redeem.executeRedeem(
             parsedRequestId,
             txInclusionDetails.merkleProof,
             txInclusionDetails.rawTx
         );
-    }
 
-    async execute(requestId: string, btcTxId: string): Promise<void> {
-        const tx = await this.buildExecuteRedeemExtrinsic(requestId, btcTxId);
         await this.transactionAPI.sendLogged(tx, this.api.events.redeem.ExecuteRedeem, true);
     }
 
-    buildCancelRedeemExtrinsic(
-        redeemId: string,
-        reimburse: boolean
-    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
-        const parsedRequestId = ensureHashEncoded(this.api, redeemId);
-        return this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
-    }
-
     async cancel(requestId: string, reimburse = false): Promise<void> {
-        const cancelRedeemTx = this.buildCancelRedeemExtrinsic(requestId, reimburse);
+        const parsedRequestId = ensureHashEncoded(this.api, requestId);
+        const cancelRedeemTx = this.api.tx.redeem.cancelRedeem(parsedRequestId, reimburse);
         await this.transactionAPI.sendLogged(cancelRedeemTx, this.api.events.redeem.CancelRedeem, true);
     }
 
-    buildLiquidationRedeemExtrinsic(
-        amount: MonetaryAmount<WrappedCurrency>,
-        collateralCurrency: CollateralCurrencyExt
-    ): SubmittableExtrinsic<"promise", ISubmittableResult> {
+    async burn(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<void> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
-        return this.api.tx.redeem.liquidationRedeem(vaultCurrencyPair, amountAtomicUnit);
-    }
-
-    async burn(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<void> {
-        const burnRedeemTx = this.buildLiquidationRedeemExtrinsic(amount, collateralCurrency);
+        const burnRedeemTx = this.api.tx.redeem.liquidationRedeem(vaultCurrencyPair, amountAtomicUnit);
         await this.transactionAPI.sendLogged(burnRedeemTx, this.api.events.redeem.LiquidationRedeem, true);
     }
 
