@@ -18,7 +18,7 @@ describe("AssetRegistry", () => {
 
     let sudoAccount: KeyringPair;
 
-    let assetRegistryMetadataHash: string;
+    let assetRegistryMetadataPrefix: string;
     let registeredKeysBefore: StorageKey<AnyTuple>[] = [];
 
     before(async () => {
@@ -28,15 +28,15 @@ describe("AssetRegistry", () => {
         sudoAccount = keyring.addFromUri(SUDO_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
-        assetRegistryMetadataHash = api.query.assetRegistry.metadata.key();
+        assetRegistryMetadataPrefix = api.query.assetRegistry.metadata.keyPrefix();
         // check which keys exist before the tests
-        const keys = await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash);
+        const keys = await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataPrefix);
         registeredKeysBefore = keys.toArray();
     });
 
     after(async () => {
         // clean up keys created in tests if necessary
-        const registeredKeysAfter = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+        const registeredKeysAfter = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataPrefix)).toArray();
 
         const previousKeyHashes = registeredKeysBefore.map((key) => stripHexPrefix(key.toHex()));
         // need to use string comparison since the raw StorageKeys don't play nicely with .filter()
@@ -66,7 +66,7 @@ describe("AssetRegistry", () => {
      */
     it("should get expected shape of AssetRegistry metadata", async () => {
         // check if any assets have been registered
-        const existingKeys = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+        const existingKeys = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataPrefix)).toArray();
 
         if (existingKeys.length === 0) {
             // no existing foreign assets; register a new foreign asset for the test

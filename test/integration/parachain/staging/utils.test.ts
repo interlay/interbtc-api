@@ -32,6 +32,10 @@ describe("Utils", () => {
             getStorageKey("Oracle", "MaxDelay"),
             api.query.oracle.maxDelay.key(),
         );
+        assert.equal(
+            getStorageKey("AssetRegistry", "Metadata"),
+            api.query.assetRegistry.metadata.keyPrefix(),
+        )
     });
 
     it("should encode storage value", async () => {
