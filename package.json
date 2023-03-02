@@ -1,16 +1,18 @@
 {
   "name": "@interlay/interbtc-api",
   "version": "1.21.0",
-  "description": "JavaScript library to interact with interBTC and kBTC",
+  "description": "JavaScript library to interact with interBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
   "repository": "https://github.com/interlay/interbtc-api",
   "license": "Apache-2.0",
   "keywords": [
     "Polkadot",
-    "Bitcoin",
-    "interBTC",
     "Kusama",
+    "Bitcoin",
+    "Interlay",
+    "iBTC",
+    "Kintsugi",
     "kBTC"
   ],
   "scripts": {
@@ -26,7 +28,6 @@
     "docs": "./generate_docs",
     "generate:defs": "ts-node --skip-project node_modules/.bin/polkadot-types-from-defs --package @interlay/interbtc-api/interfaces --input ./src/interfaces --endpoint ./src/json/parachain.json",
     "generate:meta": "ts-node --skip-project node_modules/.bin/polkadot-types-from-chain --package @interlay/interbtc-api/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
-    "initialize": "run-s build && ts-node src/utils/setup --initialize",
     "hrmp-setup": "ts-node scripts/hrmp-setup",
     "runtime-upgrade": "ts-node scripts/runtime-upgrade",
     "xcm-cross-chain-transfer": "ts-node scripts/xcm-cross-chain-transfer",
@@ -44,10 +45,7 @@
     "test:integration:sequential": "mocha test/integration/**/staging/sequential/*.test.ts --timeout 10000000",
     "watch:build": "tsc -p tsconfig.json -w",
     "watch:test": "mocha --watch test/**/*.test.ts",
-    "local-meta": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json",
-    "docker-parachain-start": "ts-node scripts/setup-parachain-docker.ts",
-    "docker-parachain-stop": "docker-compose -f local-setup/docker-compose.yml down -v",
-    "set": "npx ts-node src/utils/set-state/set-state.ts"
+    "local-meta": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json"
   },
   "engines": {
     "node": ">=11"

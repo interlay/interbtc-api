@@ -2,7 +2,7 @@
 
 ## About
 
-The interBTC TypeScript library connects the Polkadot and Kusama ecosystems with Bitcoin. It allows the creation of interBTC on Polkadot and kBTC on Kusama, fungible "wrapped" tokens that represent Bitcoin. Wrapped tokens are backed by Bitcoin 1:1 and allow redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
+The interBTC TypeScript library connects the Polkadot and Kusama ecosystems with Bitcoin. It allows the creation of iBTC on Polkadot and kBTC on Kusama, fungible "wrapped" tokens that represent Bitcoin. Wrapped tokens are backed by Bitcoin 1:1 and allow redeeming of the equivalent amount of Bitcoins by relying on a collateralized third-party (Vaults).
 In comparison to other bridge constructions (like tBTC, wBTC, or RenVM) _anyone_ can become an intermediary by depositing collateral making interBTC the only truly open system.
 
 The bridge itself follows the detailed specification: <a href="https://spec.interlay.io/" target="_blank"><strong>Explore the specification »</strong></a>
@@ -59,9 +59,9 @@ interBTC.setAccount(keypair);
 
 The different functionalities are then exposed through the `InterBtcApi` instance.
 
-### Issuing interBTC
+### Issuing
 
-From the account you set, you can then start requesting to issue interBTC.
+From the account you set, you can then request to issue (mint) interBTC.
 
 ```ts
 import { BitcoinAmount } from "@interlay/monetary-js";
@@ -75,9 +75,11 @@ const requestResults = await interBTC.issue.request(amount);
 // Most of the time, a single Vault will be able to fulfill the request.
 ```
 
-At this point, you will need to send BTC using your favorite BTC wallet.
+Send BTC using the wallet of your choice or the regtest node (see below).
 
-### Redeeming interBTC
+### Redeeming
+
+To exchange interBTC back for physical BTC, you can then request to redeem (burn) interBTC.
 
 ```ts
 import { BitcoinAmount } from "@interlay/monetary-js";
@@ -92,47 +94,44 @@ const btcAddress = "tb123....";
 const requestResults = await interBTC.redeem.request(amount, btcAddress);
 ```
 
-At this point, one more more Vaults will send BTC to the address specified within 24 hours.
+One or more Vaults will send BTC to the address specified within the expiry period.
 
 ### Creating an AccountId Instance
 
 Certain API calls require a parameter of type `AccountId`, which represents the Polkadot/Kusama account and can be instantiated as follows
 
 ```ts
-import { AccountId } from "@polkadot/types/interfaces/runtime";
-
-const activeStakedRelayerId = await interBTC.api.createType(
+const accountId = await interBTC.api.createType(
     "AccountId",
     "5Ck5SLSHYac6WFt5UZRSsdJjwmpSZq85fd5TRNAdZQVzEAPT"
 );
-const feesEarnedByActiveStakedRelayer = await interBTC.stakedRelayer.getFeesEarned(
-    activeStakedRelayerId
-);
 ```
 
-### More Examples
+### More examples
 
 There are many examples in the integration tests, showing how to use this library. Take a look at them here: https://github.com/interlay/interbtc-api/tree/master/test/integration
 
 ## Development
 
-### Fork this Repository
+### Fork this repository
+
 Follow Github's instructions on [how to fork a repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo) to create your own fork.
 
-### Clone Your Repository
+### Clone your repository
 
 ```bash
 git@github.com:<your_github_profile>/interbtc-api.git
 cd interbtc-api
 ```
 
-### Setting up a Local Development Environment
+### Setting up a local development environment
 
 Start by setting your Node version via `nvm`
 
 ```bash
 nvm use
 ```
+
 (If necessary, `nvm` will guide you on how to install the version.)
 
 Next, install the dependencies
@@ -155,81 +154,59 @@ To run unit tests only, use
 yarn test:unit
 ```
 
-#### Start the Parachain Locally for Integration/All Tests
+#### Start the parachain locally for integration tests
 
 Note that the parachain needs to be running for all tests to run.
 
 ```bash
-yarn docker-parachain-start
+docker-compose up
 ```
 
-The default parachain started is an image of Kintsugi (KINT). To choose a specific chain's image, use the optional `--chain` parameter.
-e.g. to start Kintsugi explicitly
+The default parachain runtime is Kintsugi.
 
-```bash
-yarn docker-parachain-start --chain=KINT
-```
+#### Run all tests
 
-Or, to start Interlay locally use
-
-```bash
-yarn docker-parachain-start --chain=INTR
-```
-
-#### Rebuild Generated Docker Files
-
-`yarn docker-parachain-start` saves docker compose files locally in `local-setup` directory to avoid rebuilding all data just to restart the development environment. In most cases, you don't need to rebuild those unless there have been changes to the related docker images in our fork of the [parachain-launch project](https://github.com/interlay/parachain-launch).
-
-In order to force a fresh rebuild of all configuration files used for the local test environment, delete the existing `local-setup` folder and run `yarn docker-parachain-start`. This will automatically regenerate all configuration files and start the parachain.
-
-```bash
-rm -r local-setup && yarn docker-parachain-start
-```
-
-#### Run All Tests
 Then, to run all tests:
 
 ```bash
 yarn test
 ```
 
-#### Run Integration Tests Only
+#### Run integration tests only
 
 ```bash
 yarn test:integration
 ```
 
-Note: While the parachain is starting up, there will be warnings from the integration tests until it can locate the locally running test vaults. Expect the startup to take around 2-3 minutes (after `yarn docker-parachain-start`), and only start the integration tests after that time frame.
+NOTE: While the parachain is starting up, there will be warnings from the integration tests until it can locate the locally running test vaults. Expect the startup to take around 2-3 minutes, and only start the integration tests after that time frame.
 
-Another option is to switch to the `local-setup` directory and there check for the vaults to start - for example, to see the logs for vault 1, use this:
+Another option is to check the logs, i.e. for `vault_1` you can use this:
+
 ```bash
-# in <project_folder>/local-setup
 docker-compose logs -f vault_1
 ```
 
-(Note: The optional `-f` flag attaches the terminal to the log output, you will need to <kbd>Ctrl</kbd> + <kbd>C</kbd> to exit. Alternatively, omit the flag to just get the current latest log entries.)
+NOTE: The optional `-f` flag attaches the terminal to the log output, you will need to <kbd>Ctrl</kbd> + <kbd>C</kbd> to exit. Alternatively, omit the flag to just get the current latest log entries.
 
-#### Stop the Local Parachain
+#### Stop the local parachain
 
 To stop the locally running parachain, run:
 
 ```bash
-yarn docker-parachain-stop
+docker-compose down -v
 ```
 
-Note: This will remove the volumes attached to the images. So your chain will start next time in a clean/wiped state. 
+NOTE: This will remove the volumes attached to the images. So your chain will start next time in a clean/wiped state. 
 
-### Updating Types
+### Updating types
 
 We only need to update types when we have changed to newer docker images for the parachain / clients.
 
-Run the parachain (via `yarn docker-parachain-start` as shown above, or indeed any Substrate node) and download the metadata:
+Run the parachain (as shown above) and download the metadata:
 
 ```bash
 curl -H "Content-Type: application/json" -d '{"id":"1", "jsonrpc":"2.0", "method": "state_getMetadata", "params":[]}' http://localhost:9933 > src/json/parachain.json
 ```
-
-(Remember to remove `local-setup` if you want to generate types for a new version of the parachain.)
 
 Then, update the metadata by building the library:
 
@@ -239,7 +216,7 @@ yarn build
 
 ### Usage as script
 
-This library can be used as a script for various use cases. Check `package.json` for all the available scripts. 
+This repository contains a number of scripts for various use cases. Check `package.json` for all of the available scripts. 
 
 **Query Undercollateralized borrowers**
 
@@ -247,20 +224,6 @@ Given a `PARACHAIN_ENDPOINT` (e.g. `wss://api-dev-kintsugi.interlay.io/parachain
 ```bash
 yarn install
 yarn undercollateralized-borrowers --parachain-endpoint PARACHAIN_ENDPOINT
-```
-
-**Initialize Local Parachain**
-
-To initialize a local interBTC setup (the services that run using docker-compose):
-```bash
-yarn install
-yarn initialize
-```
-
-By default, every flag is enabled. To get more information about the flags and disable some of them, run
-
-```bash
-yarn initialize --help
 ```
 
 ## Help
