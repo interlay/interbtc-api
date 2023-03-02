@@ -39,7 +39,7 @@ const adjustToThreshold = (amount: MonetaryAmount<CurrencyExt>, threshold: Big):
 const calculateBorrowLimit = (
     totalBorrowedAmount: MonetaryAmount<CurrencyExt>,
     totalCollateralThresholdAdjustedAmount: MonetaryAmount<CurrencyExt>
-): MonetaryAmount<CurrencyExt> => totalCollateralThresholdAdjustedAmount.sub(totalBorrowedAmount);
+): MonetaryAmount<CurrencyExt> => totalCollateralThresholdAdjustedAmount.sub(totalBorrowedAmount).max(0);
 
 const getTotalAmountBtc = (
     positions: Array<LoanPosition>,

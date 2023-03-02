@@ -544,7 +544,7 @@ export class DefaultLoansAPI implements LoansAPI {
         const wrappedCurrencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
         const wrappedCurrency = tokenSymbolToCurrency(wrappedCurrencyId.asToken);
         if (isCurrencyEqual(fromCurrency, wrappedCurrency)) {
-            const wrappedCurrencyToBitcoinRate = Big(1); // Use exchange rate of 1 between wrapped BTC and real BTC.
+            const wrappedCurrencyToBitcoinRate = Big(1);
             return new ExchangeRate(wrappedCurrency, wrappedCurrency, wrappedCurrencyToBitcoinRate);
         }
         return this.oracleAPI.getExchangeRate(fromCurrency);
