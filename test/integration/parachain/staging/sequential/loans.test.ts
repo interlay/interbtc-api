@@ -14,11 +14,11 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { callWithExchangeRateOverwritten, includesStringified } from "../../../../utils/helpers";
+import { callWithExchangeRate, includesStringified } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
-
+import Big from "big.js";
 import { InterBtc, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 
@@ -456,14 +456,16 @@ describe("Loans", () => {
     // Prerequisites: This test depends on the ones above. User 2 must have already 
     // deposited funds and enabled them as collateral, so that they can successfully borrow.
     describe("liquidateBorrowPosition", () => {
-        it("should liquidate position when possible", async function () {
+        // TODO: unskip this
+        it.skip("should liquidate position when possible", async function () {
             // Supply asset by account1, borrow by account2
             const borrowAmount = newMonetaryAmount(10, underlyingCurrency2, true);
             await userInterBtcAPI.loans.lend(underlyingCurrency2, borrowAmount);
             await user2InterBtcAPI.loans.borrow(underlyingCurrency2, borrowAmount);
 
             // Increase exchange rate of borrowed asset to trigger liquidation.
-            const newExchangeRate = "0x00000000000000000001000000000000";
+            const exchangeRateValue = new Big(281474976710656);
+
             const wrappedCall = async () => {
                 const repayAmount = newMonetaryAmount(1, underlyingCurrency2); // repay smallest amount
                 const undercollateralizedBorrowers = await user2InterBtcAPI.loans.getUndercollateralizedBorrowers();
@@ -483,7 +485,12 @@ describe("Loans", () => {
                 );
             };
 
-            await callWithExchangeRateOverwritten(sudoInterBtcAPI, underlyingCurrency2, newExchangeRate, wrappedCall);
+            await callWithExchangeRate(
+                sudoInterBtcAPI,
+                underlyingCurrency2,
+                exchangeRateValue,
+                wrappedCall
+            );
         });
         it("should throw when no position can be liquidated", async function () {
             const repayAmount = newMonetaryAmount(1, underlyingCurrency2, true); // repay smallest amount

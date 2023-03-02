@@ -14,7 +14,7 @@ import {
 } from "../../../config";
 import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { BitcoinAmount } from "@interlay/monetary-js";
-import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, wait_success as waitSuccess } from "../../../utils/helpers";
+import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, waitSuccess } from "../../../utils/helpers";
 
 describe("ElectrsAPI regtest", function () {
     this.timeout(100000);

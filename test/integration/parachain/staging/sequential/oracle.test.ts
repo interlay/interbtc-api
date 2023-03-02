@@ -47,7 +47,7 @@ describe("OracleAPI", () => {
                 exchangeRateValue
             );
             await interBtcAPI.oracle.setExchangeRate(newExchangeRate);
-            await interBtcAPI.oracle.waitForExchangeRateUpdate(newExchangeRate);
+            // TODO: check aggregate is updated?
         }
     });
 

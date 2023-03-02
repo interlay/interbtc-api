@@ -1,10 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { Bitcoin, ExchangeRate } from "@interlay/monetary-js";
 import { assert } from "chai";
 import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
+import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../config";
 import {
     CollateralCurrencyExt,
     DefaultInterBtcApi,
@@ -18,6 +17,8 @@ import { callWithExchangeRate, getCorrespondingCollateralCurrenciesForTests } fr
 describe("fee", () => {
     let api: ApiPromise;
     let oracleInterBtcAPI: InterBtcApi;
+    let sudoInterBtcAPI: InterBtcApi;
+
     let collateralCurrencies: Array<CollateralCurrencyExt>;
     let wrappedCurrency: WrappedCurrency;
 
@@ -25,7 +26,11 @@ describe("fee", () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
+        const sudoAccount = keyring.addFromUri(SUDO_URI);
+
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
+        sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
+
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(oracleInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = oracleInterBtcAPI.getWrappedCurrency();
     });
@@ -43,12 +48,7 @@ describe("fee", () => {
     it.skip("should getGriefingCollateral for issue", async () => {
         for (const collateralCurrency of collateralCurrencies) {
             const exchangeRateValue = new Big("3855.23187");
-            const exchangeRate = new ExchangeRate<Bitcoin, typeof collateralCurrency>(
-                Bitcoin,
-                collateralCurrency,
-                exchangeRateValue
-            );
-            await callWithExchangeRate(oracleInterBtcAPI.oracle, exchangeRate, async () => {
+            await callWithExchangeRate(sudoInterBtcAPI, collateralCurrency, exchangeRateValue, async () => {
                 const amountBtc = newMonetaryAmount(0.001, wrappedCurrency, true);
                 const griefingCollateral = await oracleInterBtcAPI.fee.getGriefingCollateral(
                     amountBtc,
@@ -63,12 +63,7 @@ describe("fee", () => {
     it.skip("should getGriefingCollateral for replace", async () => {
         for (const collateralCurrency of collateralCurrencies) {
             const exchangeRateValue = new Big("3855.23187");
-            const exchangeRate = new ExchangeRate<Bitcoin, typeof collateralCurrency>(
-                Bitcoin,
-                collateralCurrency,
-                exchangeRateValue
-            );
-            await callWithExchangeRate(oracleInterBtcAPI.oracle, exchangeRate, async () => {
+            await callWithExchangeRate(sudoInterBtcAPI, collateralCurrency, exchangeRateValue, async () => {
                 const amountToReplace = newMonetaryAmount(0.728, wrappedCurrency, true);
                 const griefingCollateral = await oracleInterBtcAPI.fee.getGriefingCollateral(
                     amountToReplace,

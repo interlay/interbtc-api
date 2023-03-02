@@ -1,18 +1,13 @@
 import { Transaction } from "@interlay/esplora-btc-api";
-import { Bitcoin, ExchangeRate, Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
-import { ApiPromise, Keyring } from "@polkadot/api";
-import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
+import { Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { FrameSystemEventRecord } from "@polkadot/types/lookup";
-import { AnyTuple } from "@polkadot/types/types";
-import { Vec } from "@polkadot/types-codec";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import Big, { RoundingMode } from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import {
     BitcoinCoreClient,
     InterBtcApi,
-    OracleAPI,
     VaultStatusExt,
     CurrencyExt,
     AssetRegistryAPI,
@@ -23,6 +18,8 @@ import {
     createExchangeRateOracleKey,
     setStorageAtKey,
     DefaultTransactionAPI,
+    encodeUnsignedFixedPoint,
+    setNumericStorage,
 } from "../../src";
 import { SUDO_URI } from "../config";
 import { expect } from "chai";
@@ -42,7 +39,7 @@ export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function wait_success<R>(call: () => Promise<R>): Promise<R> {
+export async function waitSuccess<R>(call: () => Promise<R>): Promise<R> {
     for (; ;) {
         try {
             const res = await call();
@@ -53,35 +50,12 @@ export async function wait_success<R>(call: () => Promise<R>): Promise<R> {
     }
 }
 
-export async function callWithExchangeRate(
-    oracleAPI: OracleAPI,
-    exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>,
-    fn: () => Promise<void>
-): Promise<void> {
-    const initialExchangeRate = await oracleAPI.getExchangeRate(exchangeRate.counter);
-    await oracleAPI.setExchangeRate(exchangeRate);
-    await oracleAPI.waitForExchangeRateUpdate(exchangeRate);
-    let result: Promise<void>;
-    try {
-        await fn();
-        result = Promise.resolve();
-    } catch (error) {
-        console.log(`Error: ${(error as Error).toString()}`);
-        result = Promise.reject(error);
-    } finally {
-        await oracleAPI.setExchangeRate(initialExchangeRate);
-        await oracleAPI.waitForExchangeRateUpdate(initialExchangeRate);
-    }
-
-    return result;
-}
-
 // Calls fn wrapped in custom exchange rate with oracles removed, so that
 // exchange rate can not be overwritten during the test execution
-export async function callWithExchangeRateOverwritten(
+export async function callWithExchangeRate(
     sudoInterBtcAPI: InterBtcApi,
     currency: CurrencyExt,
-    newExchangeRateHex: `0x${string}`,
+    exchangeRate: Big,
     fn: () => Promise<void>
 ): Promise<void> {
     const { account: sudoAccount, api } = sudoInterBtcAPI;
@@ -110,7 +84,12 @@ export async function callWithExchangeRateOverwritten(
     const initialExchangeRate = (await api.query.oracle.aggregate(exchangeRateOracleKey)).toHex();
 
     const exchangeRateStorageKey = api.query.oracle.aggregate.key(exchangeRateOracleKey);
-    await setStorageAtKey(sudoInterBtcAPI.api, exchangeRateStorageKey, newExchangeRateHex, sudoAccount);
+    await setNumericStorage(
+        sudoInterBtcAPI.api,
+        exchangeRateStorageKey,
+        encodeUnsignedFixedPoint(api, exchangeRate),
+        sudoAccount
+    );
 
     let result: Promise<void>;
     try {
