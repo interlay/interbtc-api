@@ -456,40 +456,35 @@ describe("Loans", () => {
     // Prerequisites: This test depends on the ones above. User 2 must have already 
     // deposited funds and enabled them as collateral, so that they can successfully borrow.
     describe("liquidateBorrowPosition", () => {
-        // TODO: unskip this
-        it.skip("should liquidate position when possible", async function () {
+        it("should liquidate position when possible", async function () {
             // Supply asset by account1, borrow by account2
             const borrowAmount = newMonetaryAmount(10, underlyingCurrency2, true);
             await userInterBtcAPI.loans.lend(underlyingCurrency2, borrowAmount);
             await user2InterBtcAPI.loans.borrow(underlyingCurrency2, borrowAmount);
 
-            // Increase exchange rate of borrowed asset to trigger liquidation.
-            const exchangeRateValue = new Big(281474976710656);
-
-            const wrappedCall = async () => {
-                const repayAmount = newMonetaryAmount(1, underlyingCurrency2); // repay smallest amount
-                const undercollateralizedBorrowers = await user2InterBtcAPI.loans.getUndercollateralizedBorrowers();
-                expect(
-                    undercollateralizedBorrowers.length,
-                    `Expected one undercollateralized borrower, found ${undercollateralizedBorrowers.length}`
-                ).to.be.eq(1);
-                expect(
-                    undercollateralizedBorrowers[0].accountId.toString(),
-                    `Expected undercollateralized borrower to be ${user2AccountId.toString()}, found ${undercollateralizedBorrowers[0].accountId.toString()}`
-                ).to.be.eq(user2AccountId.toString());
-                await userInterBtcAPI.loans.liquidateBorrowPosition(
-                    user2AccountId,
-                    underlyingCurrency2,
-                    repayAmount,
-                    underlyingCurrency
-                );
-            };
-
+            const exchangeRateValue = new Big(1);
             await callWithExchangeRate(
                 sudoInterBtcAPI,
                 underlyingCurrency2,
                 exchangeRateValue,
-                wrappedCall
+                async () => {
+                    const repayAmount = newMonetaryAmount(1, underlyingCurrency2); // repay smallest amount
+                    const undercollateralizedBorrowers = await user2InterBtcAPI.loans.getUndercollateralizedBorrowers();
+                    expect(
+                        undercollateralizedBorrowers.length,
+                        `Expected one undercollateralized borrower, found ${undercollateralizedBorrowers.length}`
+                    ).to.be.eq(1);
+                    expect(
+                        undercollateralizedBorrowers[0].accountId.toString(),
+                        `Expected undercollateralized borrower to be ${user2AccountId.toString()}, found ${undercollateralizedBorrowers[0].accountId.toString()}`
+                    ).to.be.eq(user2AccountId.toString());
+                    await userInterBtcAPI.loans.liquidateBorrowPosition(
+                        user2AccountId,
+                        underlyingCurrency2,
+                        repayAmount,
+                        underlyingCurrency
+                    );
+                }
             );
         });
 
