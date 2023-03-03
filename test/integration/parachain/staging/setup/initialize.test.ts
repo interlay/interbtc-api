@@ -17,7 +17,7 @@ import {
     newVaultCurrencyPair,
     ForeignAsset,
     encodeUnsignedFixedPoint,
-    setNumericStorage,
+    setRawStorage,
     getSS58Prefix,
     getCollateralCurrencies,
     DefaultTransactionAPI,
@@ -231,7 +231,7 @@ describe("Initialize parachain state", () => {
 
     it("should set oracle value expiry to a longer period", async () => {
         // set the oracle value expiry to be approximately 4.5 hours
-        await setNumericStorage(
+        await setRawStorage(
             sudoInterBtcAPI.api,
             api.query.oracle.maxDelay.key(),
             api.createType("Moment", new BN(ORACLE_MAX_DELAY)),

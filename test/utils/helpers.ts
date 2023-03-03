@@ -19,7 +19,7 @@ import {
     setStorageAtKey,
     DefaultTransactionAPI,
     encodeUnsignedFixedPoint,
-    setNumericStorage,
+    setRawStorage,
 } from "../../src";
 import { SUDO_URI } from "../config";
 import { expect } from "chai";
@@ -84,7 +84,7 @@ export async function callWithExchangeRate(
     const initialExchangeRate = (await api.query.oracle.aggregate(exchangeRateOracleKey)).toHex();
 
     const exchangeRateStorageKey = api.query.oracle.aggregate.key(exchangeRateOracleKey);
-    await setNumericStorage(
+    await setRawStorage(
         sudoInterBtcAPI.api,
         exchangeRateStorageKey,
         encodeUnsignedFixedPoint(api, exchangeRate),

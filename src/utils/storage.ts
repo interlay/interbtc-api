@@ -4,7 +4,7 @@ import { AddressOrPair } from "@polkadot/api/types";
 
 import { DefaultTransactionAPI } from "../parachain";
 
-export async function setNumericStorage(
+export async function setRawStorage(
     api: ApiPromise,
     key: string,
     value: Codec,

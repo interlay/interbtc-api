@@ -21,7 +21,7 @@ import {
     newVaultId,
     WrappedCurrency,
 } from "../../../../../src";
-import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
+import { setRawStorage, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import {
@@ -114,7 +114,7 @@ describe.skip("NominationAPI", () => {
     }).timeout(2 * 60000);
 
     async function setIssueFee(x: BN) {
-        await setNumericStorage(
+        await setRawStorage(
             api,
             api.query.fee.issueFee.key(),
             api.createType("UnsignedFixedPoint", x),

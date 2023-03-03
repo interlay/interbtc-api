@@ -2,7 +2,7 @@
 import { ExchangeRate, Bitcoin } from "@interlay/monetary-js";
 import { Big } from "big.js";
 import { ApiPromise } from "@polkadot/api";
-import { setNumericStorage } from "./storage";
+import { setRawStorage } from "./storage";
 import { NominationAPI, OracleAPI } from "../parachain";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { CurrencyExt } from "../types";
@@ -18,13 +18,13 @@ export async function initializeStableConfirmations(
     bitcoinCoreClient: BitcoinCoreClient
 ): Promise<void> {
     console.log("Initializing stable block confirmations...");
-    await setNumericStorage(
+    await setRawStorage(
         api,
         api.query.btcRelay.stableBitcoinConfirmations.key(),
         api.createType("u32", stableConfirmationsToSet.bitcoinConfirmations),
         account
     );
-    await setNumericStorage(
+    await setRawStorage(
         api,
         api.query.btcRelay.stableParachainConfirmations.key(),
         api.createType("u32", stableConfirmationsToSet.parachainConfirmations),

@@ -13,7 +13,7 @@ import {
     SUDO_URI,
 } from "../../../../config";
 import { decodeFixedPointType, DefaultInterBtcApi, GovernanceCurrency, InterBtcApi, newAccountId, newCurrencyId, newMonetaryAmount } from "../../../../../src";
-import { setNumericStorage } from "../../../../../src/utils/storage";
+import { setRawStorage } from "../../../../../src/utils/storage";
 import { makeRandomPolkadotKeyPair } from "../../../../utils/helpers";
 
 function fundAccountCall(api: InterBtcApi, address: string): SubmittableExtrinsic<"promise"> {
@@ -124,7 +124,7 @@ describe("escrow", () => {
         const blocksPerYear = 2628000;
         const rewardPerBlock = new BN(firstYearRewards).divn(blocksPerYear).abs();
 
-        await setNumericStorage(
+        await setRawStorage(
             api,
             api.query.escrowAnnuity.rewardPerBlock.key(),
             api.createType("Balance", rewardPerBlock),
