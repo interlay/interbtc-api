@@ -101,7 +101,7 @@ describe("vaultsAPI", () => {
         const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
         assert.isTrue(
             issuableInterBTC.toBig().sub(totalIssuable.toBig()).abs().lte(1),
-            `Issuable ${issuableInterBTC.toHuman()}`
+            `${issuableInterBTC.toHuman()} != ${totalIssuable.toHuman()}`
         );
     });
 
