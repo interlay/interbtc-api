@@ -35,7 +35,6 @@ import {
     CollateralCurrencyExt,
     WrappedCurrency,
     GovernanceCurrency,
-    CurrencyExt,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
@@ -628,15 +627,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return annualRewardRate.mul(100);
     }
 
-    async getLockedCollateral(
-        vaultAccountId: AccountId,
-        collateralCurrency: CollateralCurrencyExt
-    ): Promise<MonetaryAmount<CurrencyExt>> {
-        // TODO: This might be inaccurate if the "reserved" value is incremented by other protocols
-        // See comment: https://github.com/interlay/interbtc-api/pull/464#discussion_r954909315
-        return (await this.tokensAPI.balance(collateralCurrency, vaultAccountId)).reserved;
-    }
-
     async computeReward(
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt,
@@ -970,7 +960,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
     async getAPY(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<Big> {
         const [feesWrapped, lockedCollateral, blockRewardsAPY] = await Promise.all([
             this.getWrappedReward(vaultAccountId, collateralCurrency),
-            this.getLockedCollateral(vaultAccountId, collateralCurrency),
+            this.getCollateral(vaultAccountId, collateralCurrency),
             this.getBlockRewardAPY(vaultAccountId, collateralCurrency),
         ]);
         return (await this.feeAPI.calculateAPY(feesWrapped, lockedCollateral)).add(blockRewardsAPY);
@@ -1060,7 +1050,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const [vaultExt, liquidationRateThreshold, lockedCollateral] = await Promise.all([
             this.get(vaultAccountId, collateralCurrency),
             this.getLiquidationCollateralThreshold(collateralCurrency),
-            this.getLockedCollateral(vaultAccountId, collateralCurrency),
+            this.getCollateral(vaultAccountId, collateralCurrency),
         ]);
 
         if (liquidationRateThreshold.eq(0)) {

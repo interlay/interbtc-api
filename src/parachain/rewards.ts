@@ -14,6 +14,7 @@ import {
 import { AssetRegistryAPI, InterbtcPrimitivesVaultId, LoansAPI } from "../parachain";
 import { TransactionAPI } from "../parachain/transaction";
 import { WrappedCurrency, CollateralCurrencyExt, CurrencyExt } from "../types";
+import { SignedFixedPoint } from "..";
 
 export interface RewardsAPI {
     /**
@@ -161,11 +162,40 @@ export class DefaultRewardsAPI implements RewardsAPI {
             this.loansAPI,
             vaultId.currencies.collateral
         );
-        const [stake, slashPerToken, slashTally] = await Promise.all([
-            this.getStakingPoolStake(collateralCurrency, vaultId.accountId, nominatorId),
-            this.getStakingPoolSlashPerToken(collateralCurrency, vaultId.accountId),
-            this.getStakingPoolSlashTally(collateralCurrency, vaultId.accountId, nominatorId),
-        ]);
+        const nonce = await this.getStakingPoolNonce(collateralCurrency, vaultId.accountId);
+        const [stake, slashPerToken, slashTally] = await this.api.queryMulti<[
+            SignedFixedPoint,
+            SignedFixedPoint,
+            SignedFixedPoint,
+        ]>([
+            [
+                this.api.query.vaultStaking.stake,
+                [
+                    nonce,
+                    [
+                        vaultId,
+                        nominatorId
+                    ]
+                ]
+            ],
+            [
+                this.api.query.vaultStaking.slashPerToken,
+                [
+                    nonce,
+                    vaultId
+                ]
+            ],
+            [
+                this.api.query.vaultStaking.slashTally,
+                [
+                    nonce,
+                    [
+                        vaultId,
+                        nominatorId
+                    ]
+                ]
+            ],
+        ]).then((data) => data.map((value) => decodeFixedPointType(value)));
         const toSlash = computeLazyDistribution(stake, slashPerToken, slashTally);
         return newMonetaryAmount(
             stake.sub(toSlash),
