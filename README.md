@@ -202,10 +202,10 @@ NOTE: This will remove the volumes attached to the images. So your chain will st
 
 We only need to update types when we have changed to newer docker images for the parachain / clients.
 
-Run the parachain (as shown above) and download the metadata:
+Run the parachain (as shown above) and update the metadata:
 
 ```bash
-curl -H "Content-Type: application/json" -d '{"id":"1", "jsonrpc":"2.0", "method": "state_getMetadata", "params":[]}' http://localhost:9933 > src/json/parachain.json
+yarn update-metadata
 ```
 
 Then, update the metadata by building the library:

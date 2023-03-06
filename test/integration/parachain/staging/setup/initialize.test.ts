@@ -270,7 +270,7 @@ describe("Initialize parachain state", () => {
         let getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees().catch((_) => undefined);
         if (!getFeeEstimate) {
             await sudoInterBtcAPI.oracle.setBitcoinFees(setFeeEstimate);
-            // TODO: check this will work with non instant-seal
+            // NOTE: this will fail if the chain does not support instant-seal
             await api.rpc.engine.createBlock(true, true);
             // just check that this is set since we medianize results
             getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees();
@@ -419,7 +419,6 @@ describe("Initialize parachain state", () => {
             // register the aUSD vault
             const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultKeyringPair, ESPLORA_BASE_PATH);
             const collateralAmount = new MonetaryAmount(aUsd, 10000);
-            // TODO: catch error if already registered?
             await vaultInterBtcApi.vaults.registerNewCollateralVault(collateralAmount);
         }
     });
