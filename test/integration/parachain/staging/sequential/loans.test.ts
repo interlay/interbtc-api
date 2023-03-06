@@ -373,13 +373,13 @@ describe("Loans", () => {
 
     describe("getAccruedRewardsOfAccount", () => {
         it("should return correct amount of reward", () => {
-            //TODO
+            // TODO
         });
     });
 
     describe("claimAllSubsidyRewards", () => {
         it("should claim all subsidy rewards", () => {
-            //TODO
+            // TODO
         });
     });
 
@@ -445,11 +445,11 @@ describe("Loans", () => {
 
     describe("getBorrowPositionsOfAccount", () => {
         before(async function () {
-            // TODO:borrow
+            // TODO
         });
 
         it("should get borrow positions in correct format", async function () {
-            //TODO
+            // TODO
         });
     });
 

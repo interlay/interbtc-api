@@ -29,7 +29,7 @@ import {
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
-import { getCorrespondingCollateralCurrenciesForTests, runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
+import { getCorrespondingCollateralCurrenciesForTests, getIssuableAmounts, runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -156,7 +156,6 @@ describe("issue", () => {
         }
     }).timeout(1000000);
 
-    // TODO: maybe add this to issue API
     it("should get issueBtcDustValue", async () => {
         const dust = await userInterBtcAPI.api.query.issue.issueBtcDustValue();
         assert.equal(dust.toString(), "1000");
@@ -182,19 +181,25 @@ describe("issue", () => {
         assert.equal(feePercentage.toString(), "0.0015");
     });
 
-    // FIXME: don't use magic numbers for these tests
     it("should getRequestLimits", async () => {
         const requestLimits = await userInterBtcAPI.issue.getRequestLimits();
         const singleMaxIssuable = requestLimits.singleVaultMaxIssuable;
-        const totalMaxIssuable = requestLimits.singleVaultMaxIssuable;
-        const expected = newMonetaryAmount(0.0005, wrappedCurrency, true);
+        const totalMaxIssuable = requestLimits.totalMaxIssuable;
+
+        const issuableAmounts = await getIssuableAmounts(userInterBtcAPI);
+        const singleIssueable = issuableAmounts.reduce(
+            (prev, curr) => (prev > curr) ? prev : curr,
+            newMonetaryAmount(0, wrappedCurrency)
+        );
+        const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
+
         assert.isTrue(
-            singleMaxIssuable.gt(expected),
-            `singleVaultMaxIssuable is ${singleMaxIssuable.toHuman()}, expected greater than ${expected.toHuman()}`
+            singleMaxIssuable.toBig().sub(singleIssueable.toBig()).abs().lte(1),
+            `${singleMaxIssuable.toHuman()} != ${singleIssueable.toHuman()}`
         );
         assert.isTrue(
-            totalMaxIssuable.gte(singleMaxIssuable),
-            `totalMaxIssuable is ${totalMaxIssuable.toHuman()}, expected greater than or equal to ${singleMaxIssuable.toHuman()}`
+            totalMaxIssuable.toBig().sub(totalIssuable.toBig()).abs().lte(1),
+            `${totalMaxIssuable.toHuman()} != ${totalIssuable.toHuman()}`
         );
     });
 

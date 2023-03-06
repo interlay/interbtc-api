@@ -63,7 +63,6 @@ describe.skip("NominationAPI", () => {
         const transactionAPI = new DefaultTransactionAPI(api);
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
-        // TODO: remove all uses of config currencies and query the chain instead
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         assetRegistry = new DefaultAssetRegistryAPI(api);

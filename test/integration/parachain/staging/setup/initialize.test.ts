@@ -22,6 +22,7 @@ import {
     getCollateralCurrencies,
     DefaultTransactionAPI,
     newCurrencyId,
+    intoAccountTruncating,
 } from "../../../../../src";
 import {
     initializeVaultNomination,
@@ -56,12 +57,6 @@ import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-regi
 import { BN } from "bn.js";
 
 describe("Initialize parachain state", () => {
-    // TODO: compute from constants
-    const vaultAnnuityAddress = Buffer.concat([
-        Buffer.from("modl"), // 4 bytes
-        Buffer.from("vlt/annu"), // 8 bytes
-    ], 32);
-
     let api: ApiPromise;
     let userInterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
@@ -75,6 +70,8 @@ describe("Initialize parachain state", () => {
     let vault_1: KeyringPair;
     let vault_2: KeyringPair;
     let vault_3: KeyringPair;
+
+    let vaultAnnuityAddress: AccountId;
 
     let collateralCurrency: CollateralCurrencyExt;
 
@@ -105,6 +102,11 @@ describe("Initialize parachain state", () => {
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_2 = keyring.addFromUri(VAULT_2_URI);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
+
+        vaultAnnuityAddress = intoAccountTruncating(
+            api,
+            api.consts.vaultAnnuity.annuityPalletId
+        );
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,

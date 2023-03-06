@@ -160,9 +160,6 @@ describe("redeem", () => {
             // get the actual values on the BTC transaction
             const btcTx = await interBtcAPI.electrsAPI.getTx(txId);
 
-            // TODO: remove at later stage. print debug info while we seem to have occasional failures
-            console.log(`BTC transaction details:\n${JSON.stringify(btcTx)} `);
-
             const actualTxFeeSatoshi = new Big(btcTx.fee || 0);
             const actualTxVsize = calculateBtcTxVsize(btcTx);
             if (actualTxVsize.eq(0)) {
@@ -249,7 +246,6 @@ describe("redeem", () => {
         );
     }).timeout(10 * 60000);
 
-    // TODO: maybe add this to redeem API
     it("should get redeemBtcDustValue", async () => {
         const dust = await interBtcAPI.api.query.redeem.redeemBtcDustValue();
         assert.equal(dust.toString(), "1000");
