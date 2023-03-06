@@ -12,8 +12,6 @@ import {
     createFeeEstimationOracleKey,
     decodeFixedPointType,
     encodeUnsignedFixedPoint,
-    sleep,
-    SLEEP_TIME_MS,
     storageKeyToNthInner,
     unwrapRawExchangeRate,
 } from "../utils";
@@ -85,16 +83,6 @@ export interface OracleAPI {
      * @returns Whether the oracle entr for the given key has been updated
      */
     getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean>;
-    /**
-     * @remark Awaits an oracle update to the BTC inclusion fee
-     */
-    waitForFeeEstimateUpdate(): Promise<void>;
-    /**
-     * @param exchangeRate The exchange rate whose counter currency to await an update for
-     * (with respect to BTC)
-     * @remark Awaits an oracle update to the exchange rate
-     */
-    waitForExchangeRateUpdate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): Promise<void>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -197,20 +185,6 @@ export class DefaultOracleAPI implements OracleAPI {
     async getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean> {
         const isSet = await this.api.query.oracle.rawValuesUpdated<Option<Bool>>(key);
         return isSet.unwrap().isTrue;
-    }
-
-    async waitForFeeEstimateUpdate(): Promise<void> {
-        const key = createFeeEstimationOracleKey(this.api);
-        while (await this.getRawValuesUpdated(key)) {
-            sleep(SLEEP_TIME_MS);
-        }
-    }
-
-    async waitForExchangeRateUpdate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): Promise<void> {
-        const key = createExchangeRateOracleKey(this.api, exchangeRate.counter);
-        while (await this.getRawValuesUpdated(key)) {
-            sleep(SLEEP_TIME_MS);
-        }
     }
 
     private hasOracleError(errors: SecurityErrorCode[]): boolean {

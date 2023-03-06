@@ -3,16 +3,14 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
-import { DefaultAssetRegistryAPI, DefaultInterBtcApi, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
+import { DefaultAssetRegistryAPI, DefaultInterBtcApi, DefaultTransactionAPI, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
 
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { APPROX_BLOCK_TIME_MS, waitForEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
-    const approx10Blocks = 10 * APPROX_BLOCK_TIME_MS;
     let api: ApiPromise;
     let interBtcAPI: DefaultInterBtcApi;
 
@@ -47,11 +45,13 @@ describe("AssetRegistry", () => {
 
         if (newKeys.length > 0) {
             // clean up assets registered in test(s)
-            const deleteKeysInstruction = interBtcAPI.api.tx.system.killStorage(newKeys);
-            await Promise.all([
-                waitForEvent(interBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
-                interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction).signAndSend(sudoAccount),
-            ]);
+            const deleteKeysCall = api.tx.system.killStorage(newKeys);
+            await DefaultTransactionAPI.sendLogged(
+                api,
+                sudoAccount,
+                api.tx.sudo.sudo(deleteKeysCall),
+                api.events.sudo.Sudid
+            );
         }
 
         return api.disconnect();
@@ -82,14 +82,16 @@ describe("AssetRegistry", () => {
             );
 
             // need sudo to add new foreign asset
-            const [eventFound] = await Promise.all([
-                waitForEvent(interBtcAPI, api.events.sudo.RegisteredAsset, false, approx10Blocks),
-                interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
-            ]);
+            const result = await DefaultTransactionAPI.sendLogged(
+                api,
+                sudoAccount,
+                api.tx.sudo.sudo(callToRegister),
+                api.events.sudo.RegisteredAsset
+            );
 
             assert.isTrue(
-                eventFound,
-                `Sudo event to create new foreign asset not found - timed out after ${approx10Blocks} ms`
+                result.isCompleted,
+                `Sudo event to create new foreign asset not found`
             );
         }
 

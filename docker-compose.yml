@@ -12,7 +12,7 @@ services:
             - "9933:9933"
             - "9944:9944"
     bitcoind:
-        image: "ruimarinho/bitcoin-core:0.20"
+        image: "ruimarinho/bitcoin-core:22"
         command:
             - -regtest
             - -server
@@ -24,14 +24,15 @@ services:
         ports:
             - "18443:18443"
     bitcoin-cli:
-        image: "ruimarinho/bitcoin-core:0.20"
+        image: "ruimarinho/bitcoin-core:22"
         command:
             - /bin/sh
             - -c
             - |
-                ADDRESS=$$(bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword getnewaddress)
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Alice
+                ALICE_ADDRESS=$$(bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword -rpcwallet=Alice getnewaddress)
                 # coins need 100 confirmations to be spendable
-                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword generatetoaddress 101 $${ADDRESS}
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword generatetoaddress 101 $${ALICE_ADDRESS}
     electrs:
         image: "interlayhq/electrs:latest"
         command:
@@ -58,7 +59,6 @@ services:
             - oracle-parachain-metadata-kintsugi-testnet
             - --keyring=bob
             - --btc-parachain-url=ws://interbtc:9944
-            - --coingecko-url=https://api.coingecko.com/api/v3/
         environment:
             RUST_LOG: info
         volumes:
@@ -69,8 +69,10 @@ services:
             - vault-parachain-metadata-kintsugi-testnet
             - --keyfile=/keyfile.json
             - --keyname=vault_1
-            - --auto-register=KSM=3000000000000
+            - --auto-register=KSM=10000000000000
+            - --auto-register=KINT=180000000000000
             - --btc-parachain-url=ws://interbtc:9944
+            - --bitcoin-relay-start-height=1
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443
             BITCOIN_RPC_USER: rpcuser
@@ -84,8 +86,10 @@ services:
             - vault-parachain-metadata-kintsugi-testnet
             - --keyfile=/keyfile.json
             - --keyname=vault_2
-            - --auto-register=KSM=3000000000000
+            - --auto-register=KSM=10000000000000
+            - --auto-register=KINT=180000000000000
             - --btc-parachain-url=ws://interbtc:9944
+            - --bitcoin-relay-start-height=1
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443
             BITCOIN_RPC_USER: rpcuser
@@ -99,8 +103,10 @@ services:
             - vault-parachain-metadata-kintsugi-testnet
             - --keyfile=/keyfile.json
             - --keyname=vault_3
-            - --auto-register=KSM=3000000000000
+            - --auto-register=KSM=10000000000000
+            - --auto-register=KINT=180000000000000
             - --btc-parachain-url=ws://interbtc:9944
+            - --bitcoin-relay-start-height=1
         environment: &client-env
             BITCOIN_RPC_URL: http://bitcoind:18443
             BITCOIN_RPC_USER: rpcuser

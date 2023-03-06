@@ -3,6 +3,8 @@ import { assert } from "chai";
 import { KeyringPair } from "@polkadot/keyring/types";
 import BN from "bn.js";
 import Big, { RoundingMode } from "big.js";
+import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { AccountId } from "@polkadot/types/interfaces";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
 import {
@@ -10,47 +12,64 @@ import {
     PARACHAIN_ENDPOINT,
     SUDO_URI,
 } from "../../../../config";
-import { DefaultInterBtcApi, GovernanceCurrency, InterBtcApi, newAccountId, newCurrencyId, newMonetaryAmount } from "../../../../../src";
-import { setNumericStorage } from "../../../../../src/utils/storage";
-import { sudo, makeRandomPolkadotKeyPair } from "../../../../utils/helpers";
-import { SubmittableExtrinsic } from "@polkadot/api/types";
+import { decodeFixedPointType, DefaultInterBtcApi, GovernanceCurrency, InterBtcApi, newAccountId, newCurrencyId, newMonetaryAmount } from "../../../../../src";
+import { setRawStorage } from "../../../../../src/utils/storage";
+import { makeRandomPolkadotKeyPair } from "../../../../utils/helpers";
 
 function fundAccountCall(api: InterBtcApi, address: string): SubmittableExtrinsic<"promise"> {
     return api.api.tx.tokens.setBalance(
         address,
         newCurrencyId(api.api, api.getGovernanceCurrency()),
-        1 << 60,
+        "1152921504606846976",
         0
     );
 }
 
+async function getEscrowStake(api: ApiPromise, accountId: AccountId): Promise<Big> {
+    const rawStake = await api.query.escrowRewards.stake([null, accountId]);
+    return decodeFixedPointType(rawStake);
+}
+
+async function getEscrowTotalStake(api: ApiPromise): Promise<Big> {
+    const rawTotalStake = await api.query.escrowRewards.totalStake(null);
+    return decodeFixedPointType(rawTotalStake);
+}
+
+async function getEscrowRewardPerToken(api: InterBtcApi): Promise<Big> {
+    const governanceCurrencyId = newCurrencyId(api.api, api.getGovernanceCurrency());
+    const rawRewardPerToken = await api.api.query.escrowRewards.rewardPerToken(governanceCurrencyId, null);
+    return decodeFixedPointType(rawRewardPerToken);
+}
+
+// NOTE: we don't test withdraw here because even with instant-seal
+// it is significantly slow to produce many blocks
 describe("escrow", () => {
     let api: ApiPromise;
     let interBtcAPI: DefaultInterBtcApi;
 
-    let userAccount_1: KeyringPair;
-    let userAccount_2: KeyringPair;
-    let userAccount_3: KeyringPair;
+    let userAccount1: KeyringPair;
+    let userAccount2: KeyringPair;
+    let userAccount3: KeyringPair;
     let sudoAccount: KeyringPair;
 
     let governanceCurrency: GovernanceCurrency;
 
     before(async function () {
-        const keyring = new Keyring({ type: "sr25519" });
-        sudoAccount = keyring.addFromUri(SUDO_URI);
-
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         governanceCurrency = interBtcAPI.getGovernanceCurrency();
 
-        userAccount_1 = makeRandomPolkadotKeyPair(keyring);
-        userAccount_2 = makeRandomPolkadotKeyPair(keyring);
-        userAccount_3 = makeRandomPolkadotKeyPair(keyring);
+        const keyring = new Keyring({ type: "sr25519" });
+        sudoAccount = keyring.addFromUri(SUDO_URI);
+
+        userAccount1 = makeRandomPolkadotKeyPair(keyring);
+        userAccount2 = makeRandomPolkadotKeyPair(keyring);
+        userAccount3 = makeRandomPolkadotKeyPair(keyring);
 
         await api.tx.sudo.sudo(api.tx.utility.batchAll([
-            fundAccountCall(interBtcAPI, userAccount_1.address),
-            fundAccountCall(interBtcAPI, userAccount_1.address),
-            fundAccountCall(interBtcAPI, userAccount_1.address),
+            fundAccountCall(interBtcAPI, userAccount1.address),
+            fundAccountCall(interBtcAPI, userAccount2.address),
+            fundAccountCall(interBtcAPI, userAccount3.address),
         ])).signAndSend(sudoAccount);
     });
 
@@ -70,7 +89,7 @@ describe("escrow", () => {
 
     // PRECONDITION: This test must run second, so no tokens are locked.
     it("should return 0 reward and apy estimate", async () => {
-        const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
+        const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount1.address));
 
         const expected = new Big(0);
         assert.isTrue(expected.eq(rewardsEstimate.apy), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
@@ -80,41 +99,19 @@ describe("escrow", () => {
         );
     });
 
-    // TODO: investigate why this test started failing with rpc changes
-    it.skip("should compute voting balance, total supply, and total staked balance", async () => {
-        const user1_intrAmount = newMonetaryAmount(100, governanceCurrency, true);
-        const user2_intrAmount = newMonetaryAmount(60, governanceCurrency, true);
-        const chargedFees = newMonetaryAmount(2, governanceCurrency, true);
+    it("should compute voting balance, total supply, and total staked balance", async () => {
+        const user1Amount = newMonetaryAmount(100, governanceCurrency, true);
+        const user2Amount = newMonetaryAmount(60, governanceCurrency, true);
 
         const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
         const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
-
-        const userIntrPairs: [KeyringPair, typeof user2_intrAmount][] = [
-            [userAccount_1, user1_intrAmount],
-            [userAccount_2, user2_intrAmount],
-        ];
-
         const stakedTotalBefore = await interBtcAPI.escrow.getTotalStakedBalance();
 
-        // FIXME: remove magic multiplier
-        for (const [userKeyring, amount] of userIntrPairs) {
-            const userAccount = newAccountId(api, userKeyring.address);
-            const existingBalance = await interBtcAPI.tokens.balance(governanceCurrency, userAccount);
-
-            await sudo(interBtcAPI, () =>
-                interBtcAPI.tokens.setBalance(
-                    userAccount,
-                    amount.mul(2).add(chargedFees.mul(3)).add(existingBalance.free),
-                    existingBalance.reserved
-                )
-            );
-        }
-
-        interBtcAPI.setAccount(userAccount_1);
-        await interBtcAPI.escrow.createLock(user1_intrAmount, currentBlockNumber + unlockHeightDiff);
+        interBtcAPI.setAccount(userAccount1);
+        await interBtcAPI.escrow.createLock(user1Amount, currentBlockNumber + unlockHeightDiff);
 
         const votingBalance = await interBtcAPI.escrow.votingBalance(
-            newAccountId(api, userAccount_1.address),
+            newAccountId(api, userAccount1.address),
             currentBlockNumber + 0.4 * unlockHeightDiff
         );
         const votingSupply = await interBtcAPI.escrow.totalVotingSupply(currentBlockNumber + 0.4 * unlockHeightDiff);
@@ -122,21 +119,34 @@ describe("escrow", () => {
 
         // Hardcoded value here to match the parachain
         assert.equal(votingSupply.toBig().round(2, RoundingMode.RoundDown).toString(), "0.62");
-        const firstYearRewards = 125000000000000000;
-        const blocksPerYear = 5256000;
 
-        await setNumericStorage(
+        const firstYearRewards = "125000000000000000";
+        const blocksPerYear = 2628000;
+        const rewardPerBlock = new BN(firstYearRewards).divn(blocksPerYear).abs();
+
+        await setRawStorage(
             api,
             api.query.escrowAnnuity.rewardPerBlock.key(),
-            api.createType("Balance", new BN(firstYearRewards / blocksPerYear)),
+            api.createType("Balance", rewardPerBlock),
             sudoAccount,
         );
 
-        const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(newAccountId(api, userAccount_1.address));
+        const account1 = newAccountId(api, userAccount1.address);
+        const stake = await getEscrowStake(api, account1);
+        const totalStake = await getEscrowTotalStake(api);
+        let rewardPerToken = await getEscrowRewardPerToken(interBtcAPI);
+        // estimate RPC withdraws rewards first
+        const rewardTally = stake.mul(rewardPerToken);
+        // update with previous rewards
+        rewardPerToken = rewardPerToken.add(new Big(firstYearRewards).div(totalStake));
+
         const expectedRewards = newMonetaryAmount(
-            (firstYearRewards / blocksPerYear) * unlockHeightDiff,
+            // rewardPerToken = rewardPerToken + reward / totalStake
+            // stake * rewardPerToken - rewardTally
+            stake.mul(rewardPerToken).sub(rewardTally),
             interBtcAPI.getGovernanceCurrency()
         );
+        const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(account1);
 
         assert.isTrue(
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).lt(1.1) &&
@@ -149,15 +159,15 @@ describe("escrow", () => {
         );
 
         // Lock the tokens of a second user, to ensure total voting supply is still correct
-        interBtcAPI.setAccount(userAccount_2);
-        await interBtcAPI.escrow.createLock(user2_intrAmount, currentBlockNumber + unlockHeightDiff);
+        interBtcAPI.setAccount(userAccount2);
+        await interBtcAPI.escrow.createLock(user2Amount, currentBlockNumber + unlockHeightDiff);
         const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(
             currentBlockNumber + 0.4 * unlockHeightDiff
         );
         assert.equal(votingSupplyAfterSecondUser.toBig().round(2, RoundingMode.RoundDown).toString(), "0.99");
 
         const stakedTotalAfter = await interBtcAPI.escrow.getTotalStakedBalance();
-        const lockedBalanceTotal = user1_intrAmount.add(user2_intrAmount);
+        const lockedBalanceTotal = user1Amount.add(user2Amount);
         const expectedNewBalance = stakedTotalBefore.add(lockedBalanceTotal);
 
         assert.isTrue(
@@ -167,25 +177,14 @@ describe("escrow", () => {
         );
     }).timeout(15 * 60000);
 
-    // TODO: Unskip and implement once instant-seal is added to interbtc-standalone. Otherwise this test would take a week.
-    // it.skip("should withdraw locked funds", async () => {}).timeout(100000);
-
     it("should increase amount and unlock height", async () => {
-        const user_intrAmount = newMonetaryAmount(1000, governanceCurrency, true);
-        const userAccount = newAccountId(api, userAccount_3.address);
-        const chargedFees = newMonetaryAmount(2, governanceCurrency, true);
-
+        const userAmount = newMonetaryAmount(1000, governanceCurrency, true);
         const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
         const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
 
-        // FIXME: remove magic multiplier
-        await sudo(interBtcAPI, () =>
-            interBtcAPI.tokens.setBalance(userAccount, user_intrAmount.mul(2).add(chargedFees.mul(3)))
-        );
-
-        interBtcAPI.setAccount(userAccount_3);
-        await interBtcAPI.escrow.createLock(user_intrAmount, currentBlockNumber + unlockHeightDiff);
-        await interBtcAPI.escrow.increaseAmount(user_intrAmount);
+        interBtcAPI.setAccount(userAccount3);
+        await interBtcAPI.escrow.createLock(userAmount, currentBlockNumber + unlockHeightDiff);
+        await interBtcAPI.escrow.increaseAmount(userAmount);
         await interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff);
     }).timeout(200000);
 });

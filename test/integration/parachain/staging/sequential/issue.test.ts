@@ -198,13 +198,12 @@ describe("issue", () => {
         );
     });
 
-    // TODO: Unskip after `subscribeToIssueExpiry` is reimplemented
     // This test should be kept at the end of the file as it will ban the vault used for issuing
-    it.skip("should cancel an issue request", async () => {
+    it("should cancel an issue request", async () => {
         for (const vault_2_id of vault_2_ids) {
             await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
                 const initialIssuePeriod = await userInterBtcAPI.issue.getIssuePeriod();
-                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(0));
+                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(1));
                 try {
                     // request issue
                     const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
@@ -220,15 +219,6 @@ describe("issue", () => {
                     );
                     assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                     const requestResult = requestResults[0];
-
-                    // Wait for issue expiry callback
-                    // await new Promise<void>((resolve, _) => {
-                    //     userInterBtcAPI.issue.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
-                    //         if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
-                    //             resolve();
-                    //         }
-                    //     });
-                    // });
 
                     await userInterBtcAPI.issue.cancel(requestResult.id);
 

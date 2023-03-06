@@ -153,6 +153,13 @@ export async function issueSingle(
         if (autoExecute === false) {
             console.log("Manually executing, waiting for relay to catchup");
             await waitForBlockFinalization(bitcoinCoreClient, interBtcApi.btcRelay);
+            console.log("Block successfully relayed");
+            await interBtcApi.electrsAPI.waitForTxInclusion(
+                txData.txid,
+                SLEEP_TIME_MS * 10,
+                SLEEP_TIME_MS
+            );
+            console.log("Transaction included in electrs");
             // execute issue, assuming the selected vault has the `--no-issue-execution` flag enabled
             await interBtcApi.issue.execute(issueRequest.id, txData.txid);
         } else {

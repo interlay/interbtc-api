@@ -27,6 +27,14 @@ describe("Utils", () => {
         return api.disconnect();
     });
 
+    it("should encode and decode exchange rate", async () => {
+        const value = api.createType("UnsignedFixedPoint", "0x00000000000000000001000000000000");
+        assert.equal(
+            api.createType("UnsignedFixedPoint", value.toString()).toHex(true),
+            value.toHex(true),
+        );
+    });
+
     it("should encode storage key", async () => {
         assert.equal(
             getStorageKey("Oracle", "MaxDelay"),
