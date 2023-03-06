@@ -1,5 +1,5 @@
 import { Transaction } from "@interlay/esplora-btc-api";
-import { Kintsugi, Kusama, Polkadot } from "@interlay/monetary-js";
+import { Kintsugi, Kusama, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
@@ -276,4 +276,21 @@ export function includesStringified<T extends ImplementsToString>(arr: Array<T>,
         return false;
     }
     return arr.map((x) => x.toString() == element.toString()).reduce((acc, value) => acc || value);
+}
+
+export async function getIssuableAmounts(interBtcApi: InterBtcApi): Promise<Array<MonetaryAmount<CurrencyExt>>> {
+    const allVaults = await interBtcApi.vaults.list();
+    const activeVaults = await Promise.all(allVaults.filter(vault => vault.isBanned()));
+    return Promise.all(activeVaults.map(async (vault): Promise<MonetaryAmount<CurrencyExt>> => {
+        const [usedCollateral, secureThreshold] = await Promise.all([
+            interBtcApi.oracle.convertWrappedToCurrency(
+                vault.issuedTokens.add(vault.toBeIssuedTokens),
+                vault.backingCollateral.currency
+            ),
+            interBtcApi.vaults.getSecureCollateralThreshold(vault.backingCollateral.currency),
+        ]);
+        const freeCollateral = vault.backingCollateral.sub(usedCollateral.mul(secureThreshold));
+        const wrappedAmount = (await interBtcApi.oracle.convertCollateralToWrapped(freeCollateral)).div(secureThreshold);
+        return wrappedAmount;
+    }));
 }

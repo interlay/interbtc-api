@@ -30,6 +30,7 @@ import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
 import {
     getAUSDForeignAsset,
     getCorrespondingCollateralCurrenciesForTests,
+    getIssuableAmounts,
     vaultStatusToLabel,
 } from "../../../../utils/helpers";
 import sinon from "sinon";
@@ -94,11 +95,14 @@ describe("vaultsAPI", () => {
         );
     }
 
-    // FIXME: this should be tested in a way that in doesn't use magic numbers
     it("should get issuable", async () => {
         const issuableInterBTC = await interBtcAPI.vaults.getTotalIssuableAmount();
-        const minExpectedIssuableInterBTC = newMonetaryAmount(0.002, wrappedCurrency, true);
-        assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC), `Issuable ${issuableInterBTC.toHuman()}`);
+        const issuableAmounts = await getIssuableAmounts(interBtcAPI);
+        const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
+        assert.isTrue(
+            issuableInterBTC.toBig().sub(totalIssuable.toBig()).abs().lte(1),
+            `${issuableInterBTC.toHuman()} != ${totalIssuable.toHuman()}`
+        );
     });
 
     it("should get the required collateral for the vault", async () => {

@@ -37,6 +37,14 @@ import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { AssetRegistryAPI, LoansAPI, VaultsAPI } from "../parachain";
 import { AddressOrPair } from "@polkadot/api/types";
+import { stringToU8a, u8aConcat } from "@polkadot/util";
+
+const EMPTY_H256 = new Uint8Array(32);
+const MOD_PREFIX = stringToU8a("modl");
+
+export function intoAccountTruncating(api: ApiPromise, palletId: Uint8Array): AccountId {
+    return api.createType("AccountId", u8aConcat(MOD_PREFIX, palletId, EMPTY_H256));
+}
 
 /**
  * Converts endianness of a Uint8Array
