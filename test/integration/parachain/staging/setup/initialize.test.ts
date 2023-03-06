@@ -420,6 +420,12 @@ describe("Initialize parachain state", () => {
             const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultKeyringPair, ESPLORA_BASE_PATH);
             const collateralAmount = new MonetaryAmount(aUsd, 10000);
             await vaultInterBtcApi.vaults.registerNewCollateralVault(collateralAmount);
+            // sanity check the collateral computation
+            const actualCollateralAmount = await vaultInterBtcApi.vaults.getCollateral(vaultAccountId, aUsd);
+            assert.equal(
+                actualCollateralAmount.toString(),
+                collateralAmount.toString(),
+            );
         }
     });
 
