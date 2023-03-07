@@ -12,7 +12,7 @@ import {
     TickerToData,
 } from "../../../src/";
 import { getAPITypes } from "../../../src/factory";
-import Big, { BigSource } from "big.js";
+import Big from "big.js";
 import { expect } from "chai";
 import { Bitcoin, ExchangeRate, InterBtc, Interlay, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
@@ -135,20 +135,16 @@ describe("DefaultLoansAPI", () => {
         });
     });
 
-    describe("getLoanCollateralInfo", () => {
-        const mockLendPosition = (
-            currency: CurrencyExt,
-            amount: BigSource,
-            isCollateral: boolean = true
-        ): LendPosition => ({
-            amount: newMonetaryAmount(amount, currency),
-            currency,
+    describe("getLendingStats", () => {
+        const mockLendPosition = (amount: MonetaryAmount<CurrencyExt>, isCollateral: boolean = true): LendPosition => ({
+            amount,
+            currency: amount.currency,
             isCollateral,
         });
-        const mockBorrowPosition = (currency: CurrencyExt, amount: BigSource): BorrowPosition => ({
-            amount: newMonetaryAmount(amount, currency),
-            currency,
-            accumulatedDebt: newMonetaryAmount(0, currency),
+        const mockBorrowPosition = (amount: MonetaryAmount<CurrencyExt>): BorrowPosition => ({
+            amount,
+            currency: amount.currency,
+            accumulatedDebt: newMonetaryAmount(0, amount.currency),
         });
         const mockLoanAsset = (
             currency: CurrencyExt,
@@ -159,17 +155,17 @@ describe("DefaultLoansAPI", () => {
             currency: currency,
             lendApy: Big(0),
             borrowApy: Big(0),
-            lendReward: newMonetaryAmount(0, currency),
-            borrowReward: newMonetaryAmount(0, currency),
-            totalLiquidity: newMonetaryAmount(100, currency),
-            availableCapacity: newMonetaryAmount(0, currency),
-            totalBorrows: newMonetaryAmount(0, currency),
+            lendReward: new MonetaryAmount(currency, 0),
+            borrowReward: new MonetaryAmount(currency, 0),
+            totalLiquidity: new MonetaryAmount(currency, 100),
+            availableCapacity: new MonetaryAmount(currency, 0),
+            totalBorrows: new MonetaryAmount(currency, 0),
             liquidationThreshold,
             collateralThreshold,
             isActive: true,
-            supplyCap: newMonetaryAmount(100000, currency),
-            borrowCap: newMonetaryAmount(100000, currency),
-            exchangeRate: new ExchangeRate(Bitcoin, currency, exchangeRate.div(10 ** Bitcoin.decimals), 0, 0),
+            supplyCap: new MonetaryAmount(currency, 100000),
+            borrowCap: new MonetaryAmount(currency, 100000),
+            exchangeRate: new ExchangeRate(Bitcoin, currency, exchangeRate, Bitcoin.decimals, currency.decimals),
         });
         const liquidationThresholdGovernanceCurrency = Big(0.5);
         const liquidationThresholdRelayCurrency = Big(0.25);
@@ -205,20 +201,22 @@ describe("DefaultLoansAPI", () => {
         };
 
         it("should return correct amounts in BTC", () => {
-            const governanceCurrencyLentAmount = Big(100);
-            const relayCurrencyBorrowedAmount = Big(1);
-            const lendPositions = [mockLendPosition(testGovernanceCurrency, governanceCurrencyLentAmount)];
-            const borrowPositions = [mockBorrowPosition(testRelayCurrency, relayCurrencyBorrowedAmount)];
+            const governanceCurrencyLentAmount = new MonetaryAmount(testGovernanceCurrency, Big(100));
+            const relayCurrencyBorrowedAmount = new MonetaryAmount(testRelayCurrency, Big(1));
+            const lendPositions = [mockLendPosition(governanceCurrencyLentAmount)];
+            const borrowPositions = [mockBorrowPosition(relayCurrencyBorrowedAmount)];
 
-            const expectedTotalLentBtc = governanceCurrencyLentAmount.div(exchangeRateGovernanceCurrency);
-            const expectedTotalBorrowedBtc = relayCurrencyBorrowedAmount.div(exchangeRateRelayCurrency);
-            const expectedTotalCollateralBtc = expectedTotalLentBtc;
-            const expectedBorrowLimitBtc = expectedTotalCollateralBtc
+            const expectedTotalLentBtc = governanceCurrencyLentAmount.toBig().div(exchangeRateGovernanceCurrency);
+            const expectedTotalBorrowedBtc = relayCurrencyBorrowedAmount.toBig().div(exchangeRateRelayCurrency);
+            const expectedBorrowLimitBtc = expectedTotalLentBtc
                 .mul(collateralThresholdGovernanceCurrency)
                 .sub(expectedTotalBorrowedBtc);
 
-            const { totalLentBtc, totalBorrowedBtc, totalCollateralBtc, borrowLimitBtc } =
-                loansApi.getLoanCollateralInfo(lendPositions, borrowPositions, loanAssets);
+            const { totalLentBtc, totalBorrowedBtc, totalCollateralBtc, borrowLimitBtc } = loansApi.getLendingStats(
+                lendPositions,
+                borrowPositions,
+                loanAssets
+            );
 
             expect(
                 totalLentBtc.toBig().eq(expectedTotalLentBtc),
@@ -231,8 +229,8 @@ describe("DefaultLoansAPI", () => {
                 `Total borrowed amount: ${totalBorrowedBtc.toString()} doesn't match expected amount ${expectedTotalBorrowedBtc.toString()}`
             ).to.be.true;
             expect(
-                totalCollateralBtc.toBig().eq(expectedTotalCollateralBtc),
-                `Collateral amount: ${totalCollateralBtc.toString()} doesn't match expected amount ${expectedTotalCollateralBtc.toString()}`
+                totalCollateralBtc.toBig().eq(expectedTotalLentBtc),
+                `Collateral amount: ${totalCollateralBtc.toString()} doesn't match expected amount ${expectedTotalLentBtc.toString()}`
             ).to.be.true;
             expect(
                 borrowLimitBtc.toBig().eq(expectedBorrowLimitBtc),
@@ -241,19 +239,23 @@ describe("DefaultLoansAPI", () => {
         });
 
         it("should compute correct LTV and average thresholds", () => {
-            const governanceCurrencyLentAmount = Big(100);
-            const wrappedCurrencyLentAmount = Big(2);
-            const relayCurrencyLentAmount = Big(1000); // Should not affect the computation since it won't be enabled as collateral.
+            const governanceCurrencyLentAmount = new MonetaryAmount(testGovernanceCurrency, Big(100));
+            const wrappedCurrencyLentAmount = new MonetaryAmount(wrappedCurrency, Big(2));
+            const relayCurrencyLentAmount = new MonetaryAmount(testRelayCurrency, Big(1000)); // Should not affect the computation since it won't be enabled as collateral.
 
-            const governanceCurrencyBorrowedAmount = Big(10);
-            const relayCurrencyBorrowedAmount = Big(10);
+            const governanceCurrencyBorrowedAmount = new MonetaryAmount(testGovernanceCurrency, Big(10));
+            const relayCurrencyBorrowedAmount = new MonetaryAmount(testRelayCurrency, Big(10));
 
-            const governanceCurrencyCollateralBtc = governanceCurrencyLentAmount.div(exchangeRateGovernanceCurrency);
-            const wrappedCurrencyCollateralBtc = wrappedCurrencyLentAmount.div(exchangeRateWrappedCurrency);
+            const governanceCurrencyCollateralBtc = governanceCurrencyLentAmount
+                .toBig()
+                .div(exchangeRateGovernanceCurrency);
+            const wrappedCurrencyCollateralBtc = wrappedCurrencyLentAmount.toBig().div(exchangeRateWrappedCurrency);
             const totalCollateralAmountBtc = governanceCurrencyCollateralBtc.add(wrappedCurrencyCollateralBtc);
 
-            const governanceCurrencyBorrowedBtc = governanceCurrencyBorrowedAmount.div(exchangeRateGovernanceCurrency);
-            const relayCurrencyBorrowedBtc = relayCurrencyBorrowedAmount.div(exchangeRateRelayCurrency);
+            const governanceCurrencyBorrowedBtc = governanceCurrencyBorrowedAmount
+                .toBig()
+                .div(exchangeRateGovernanceCurrency);
+            const relayCurrencyBorrowedBtc = relayCurrencyBorrowedAmount.toBig().div(exchangeRateRelayCurrency);
             const totalBorrowedAmountBtc = governanceCurrencyBorrowedBtc.add(relayCurrencyBorrowedBtc);
 
             const totalCollateralThresholdAdjustedCollateralAmountBtc = governanceCurrencyCollateralBtc
@@ -264,17 +266,17 @@ describe("DefaultLoansAPI", () => {
                 .add(wrappedCurrencyCollateralBtc.mul(liquidationThresholdWrappedCurrency));
 
             const lendPositions = [
-                mockLendPosition(testGovernanceCurrency, governanceCurrencyLentAmount),
-                mockLendPosition(testRelayCurrency, relayCurrencyLentAmount, false),
-                mockLendPosition(wrappedCurrency, wrappedCurrencyLentAmount),
+                mockLendPosition(governanceCurrencyLentAmount),
+                mockLendPosition(relayCurrencyLentAmount, false),
+                mockLendPosition(wrappedCurrencyLentAmount),
             ];
             const borrowPositions = [
-                mockBorrowPosition(testRelayCurrency, relayCurrencyBorrowedAmount),
-                mockBorrowPosition(testGovernanceCurrency, governanceCurrencyBorrowedAmount),
+                mockBorrowPosition(relayCurrencyBorrowedAmount),
+                mockBorrowPosition(governanceCurrencyBorrowedAmount),
             ];
 
             const { ltv, collateralThresholdWeightedAverage, liquidationThresholdWeightedAverage } =
-                loansApi.getLoanCollateralInfo(lendPositions, borrowPositions, loanAssets);
+                loansApi.getLendingStats(lendPositions, borrowPositions, loanAssets);
 
             const expectedLtv = totalBorrowedAmountBtc.div(totalCollateralAmountBtc);
             const expectedAverageCollateralThreshold =
@@ -295,12 +297,18 @@ describe("DefaultLoansAPI", () => {
         });
 
         it("should not throw when there are no positions", () => {
-            expect(loansApi.getLoanCollateralInfo([], [], loanAssets)).to.not.throw;
+            expect(() => loansApi.getLendingStats([], [], loanAssets)).to.not.throw;
         });
 
         it("should not throw when there are no borrow positions", () => {
-            const lendPositions = [mockLendPosition(testGovernanceCurrency, 1)];
-            expect(loansApi.getLoanCollateralInfo(lendPositions, [], loanAssets)).to.not.throw;
+            const lendPositions = [mockLendPosition(new MonetaryAmount(testGovernanceCurrency, 1))];
+            expect(() => loansApi.getLendingStats(lendPositions, [], loanAssets)).to.not.throw;
+        });
+
+        it("should throw when loan assets are empty", () => {
+            const lendPositions = [mockLendPosition(new MonetaryAmount(testGovernanceCurrency, 1))];
+            const borrowPositions = [mockBorrowPosition(new MonetaryAmount(testGovernanceCurrency, 0.1))];
+            expect(() => loansApi.getLendingStats(lendPositions, borrowPositions, {})).to.throw;
         });
     });
 });

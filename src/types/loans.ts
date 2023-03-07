@@ -16,9 +16,9 @@ interface BorrowPosition extends LoanPosition {
 }
 
 type LoanAction = "lend" | "withdraw" | "borrow" | "repay";
-interface LoanCollateralInfo {
-    totalLentBtc: MonetaryAmount<Bitcoin>;
-    totalBorrowedBtc: MonetaryAmount<Bitcoin>;
+interface LendingStats {
+    totalLentBtc: MonetaryAmount<Bitcoin>; // Includes earned amount.
+    totalBorrowedBtc: MonetaryAmount<Bitcoin>; // Includes debt.
     totalCollateralBtc: MonetaryAmount<Bitcoin>;
     borrowLimitBtc: MonetaryAmount<Bitcoin>;
     ltv: Big;
@@ -64,6 +64,6 @@ export type {
     LoanAsset,
     TickerToData,
     LoanMarket,
-    LoanCollateralInfo,
+    LendingStats,
     LoanAction,
 };

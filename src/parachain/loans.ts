@@ -8,7 +8,7 @@ import {
     TickerToData,
     LendToken,
     LoanPosition,
-    LoanCollateralInfo,
+    LendingStats,
     WrappedCurrency,
 } from "../types";
 import { ApiPromise } from "@polkadot/api";
@@ -64,12 +64,13 @@ export interface LoansAPI {
      * @param borrowPositions Borrow positions of account.
      * @param loanAssets All loan assets data in TickerToData structure.
      * @return Collateral information about account based on passed positions.
+     * @throws When `loanAssets` does not contain all of the loan positions currencies.
      */
-    getLoanCollateralInfo(
+    getLendingStats(
         lendPositions: Array<LendPosition>,
         borrowPositions: Array<BorrowPosition>,
         loanAssets: TickerToData<LoanAsset>
-    ): LoanCollateralInfo;
+    ): LendingStats | undefined;
 
     /**
      * Get all loan assets.
@@ -369,11 +370,21 @@ export class DefaultLoansAPI implements LoansAPI {
         return this._getPositionsOfAccount(accountId, this._getBorrowPosition.bind(this));
     }
 
-    getLoanCollateralInfo(
+    private _checkLoanAssetDataAvailability(positions: Array<LoanPosition>, loanAssets: TickerToData<LoanAsset>): void {
+        for (const position of positions) {
+            if (loanAssets[position.currency.ticker] === undefined) {
+                throw new Error(`No loan asset data found for currency ${position.currency.name}.`);
+            }
+        }
+    }
+
+    getLendingStats(
         lendPositions: Array<LendPosition>,
         borrowPositions: Array<BorrowPosition>,
         loanAssets: TickerToData<LoanAsset>
-    ): LoanCollateralInfo {
+    ): LendingStats {
+        this._checkLoanAssetDataAvailability([...lendPositions, ...borrowPositions], loanAssets);
+
         const lendCollateralPositions = lendPositions.filter(({ isCollateral }) => isCollateral);
         const lendCollateralThresholdAdjustedPositions = lendCollateralPositions.map((position) => {
             const collateralTheshold = loanAssets[position.currency.ticker].collateralThreshold;
@@ -390,8 +401,14 @@ export class DefaultLoansAPI implements LoansAPI {
             };
         });
 
+        const borrowPositionsWithDebt = borrowPositions.map(({ amount, accumulatedDebt, ...rest }) => ({
+            ...rest,
+            accumulatedDebt,
+            amount: amount.add(accumulatedDebt),
+        }));
+
         const totalLentBtc = getTotalAmountBtc(lendPositions, loanAssets);
-        const totalBorrowedBtc = getTotalAmountBtc(borrowPositions, loanAssets);
+        const totalBorrowedBtc = getTotalAmountBtc(borrowPositionsWithDebt, loanAssets);
         const totalCollateralBtc = getTotalAmountBtc(lendCollateralPositions, loanAssets);
         const totalCollateralThresholdAdjustedCollateralBtc = getTotalAmountBtc(
             lendCollateralThresholdAdjustedPositions,

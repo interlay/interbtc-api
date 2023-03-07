@@ -39,7 +39,8 @@ const adjustToThreshold = (amount: MonetaryAmount<CurrencyExt>, threshold: Big):
 const calculateBorrowLimit = (
     totalBorrowedAmount: MonetaryAmount<CurrencyExt>,
     totalCollateralThresholdAdjustedAmount: MonetaryAmount<CurrencyExt>
-): MonetaryAmount<CurrencyExt> => totalCollateralThresholdAdjustedAmount.sub(totalBorrowedAmount).max(0);
+): MonetaryAmount<CurrencyExt> =>
+    totalCollateralThresholdAdjustedAmount.sub(totalBorrowedAmount).max(newMonetaryAmount(0, Bitcoin));
 
 const getTotalAmountBtc = (
     positions: Array<LoanPosition>,
@@ -81,7 +82,7 @@ const calculateBorrowLimitBtcChangeFactory =
         const { collateralThreshold, exchangeRate } = loanAssets[amount.currency.ticker];
 
         const amountBtc = exchangeRate.toBase(amount);
-        const collateralThresholdAdjustedAmountBtc = adjustToThreshold(amount, collateralThreshold);
+        const collateralThresholdAdjustedAmountBtc = adjustToThreshold(amountBtc, collateralThreshold);
 
         const newTotalBorrowedBtc = calculateTotalBorrowedBtcChange(action, totalBorrowedBtc, amountBtc);
         const newTotalCollateralThresholdAdjustedCollateralBtc = calculateCollateralAmountBtc(
@@ -101,12 +102,19 @@ const calculateLtvAndThresholdsChangeFactory =
         totalCollateralThresholdAdjustedCollateralBtc: MonetaryAmount<Bitcoin>,
         totalLiquidationThresholdAdjustedCollateralBtc: MonetaryAmount<Bitcoin>
     ) =>
-    (action: LoanAction, amount: MonetaryAmount<CurrencyExt>) => {
+    (
+        action: LoanAction,
+        amount: MonetaryAmount<CurrencyExt>
+    ): {
+        ltv: Big;
+        collateralThresholdWeightedAverage: Big;
+        liquidationThresholdWeightedAverage: Big;
+    } => {
         const { collateralThreshold, liquidationThreshold, exchangeRate } = loanAssets[amount.currency.ticker];
 
         const amountBtc = exchangeRate.toBase(amount);
-        const collateralThresholdAdjustedAmountBtc = adjustToThreshold(amount, collateralThreshold);
-        const liquidationThresholdAdjustedAmountBtc = adjustToThreshold(amount, liquidationThreshold);
+        const collateralThresholdAdjustedAmountBtc = adjustToThreshold(amountBtc, collateralThreshold);
+        const liquidationThresholdAdjustedAmountBtc = adjustToThreshold(amountBtc, liquidationThreshold);
 
         const newTotalBorrowedBtc = calculateTotalBorrowedBtcChange(action, totalBorrowedBtc, amountBtc);
         const newTotalCollateralBtc = calculateCollateralAmountBtc(action, totalCollateralBtc, amountBtc);
