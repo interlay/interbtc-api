@@ -101,9 +101,9 @@ describe("issue", () => {
         assert.isAtLeast(issueRequests.length, 1, "Should have at least 1 issue request");
     });
 
-    // FIXME: not used at the moment. Fix in a more elegant way, i.e., check what is issuable
+    // FIXME: can we make this test more elegant? i.e. check what is issuable
     // by two vaults can request exactly that amount instead of multiplying by 1.1
-    it.skip("should batch request across several vaults", async () => {
+    it("should batch request across several vaults", async () => {
         const requestLimits = await userInterBtcAPI.issue.getRequestLimits();
         const amount = requestLimits.singleVaultMaxIssuable.mul(1.1);
         const issueRequests = await userInterBtcAPI.issue.request(amount);
