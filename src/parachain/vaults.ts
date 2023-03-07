@@ -515,7 +515,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async list(atBlock?: BlockHash): Promise<VaultExt[]> {
         const vaultsMap = await (atBlock
-            ? this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
+            ? (await this.api.at(atBlock)).query.vaultRegistry.vaults.entries()
             : this.api.query.vaultRegistry.vaults.entries());
         return Promise.all(vaultsMap.filter((v) => v[1].isSome).map((v) => this.parseVault(v[1].value)));
     }
