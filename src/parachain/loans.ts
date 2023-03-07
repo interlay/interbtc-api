@@ -1,6 +1,16 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { MonetaryAmount } from "@interlay/monetary-js";
-import { BorrowPosition, CurrencyExt, LoanAsset, LendPosition, TickerToData, LendToken, LoanPosition } from "../types";
+import { ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import {
+    BorrowPosition,
+    CurrencyExt,
+    LoanAsset,
+    LendPosition,
+    TickerToData,
+    LendToken,
+    LoanPosition,
+    LendingStats,
+    WrappedCurrency,
+} from "../types";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
 import {
@@ -11,10 +21,20 @@ import {
     newMonetaryAmount,
     storageKeyToNthInner,
     calculateAnnualizedRewardAmount,
+    adjustToThreshold,
+    calculateBorrowLimit,
+    getTotalAmountBtc,
+    calculateLtv,
+    calculateThreshold,
+    calculateBorrowLimitBtcChangeFactory,
+    calculateLtvAndThresholdsChangeFactory,
+    isCurrencyEqual,
+    tokenSymbolToCurrency,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
+import { OracleAPI } from "./oracle";
 
 /**
  * @category Lending protocol
@@ -36,6 +56,21 @@ export interface LoansAPI {
      * @returns Array of borrow positions of account.
      */
     getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>>;
+
+    /**
+     * Get collateralization information about account's loans.
+     *
+     * @param lendPositions Lend positions of account.
+     * @param borrowPositions Borrow positions of account.
+     * @param loanAssets All loan assets data in TickerToData structure.
+     * @return Collateral information about account based on passed positions.
+     * @throws When `loanAssets` does not contain all of the loan positions currencies.
+     */
+    getLendingStats(
+        lendPositions: Array<LendPosition>,
+        borrowPositions: Array<BorrowPosition>,
+        loanAssets: TickerToData<LoanAsset>
+    ): LendingStats | undefined;
 
     /**
      * Get all loan assets.
@@ -164,7 +199,7 @@ export interface LoansAPI {
 }
 
 export class DefaultLoansAPI implements LoansAPI {
-    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
+    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI, private oracleAPI: OracleAPI) {}
 
     // Wrapped call to make mocks in tests simple.
     async getLoansMarketsEntries(): Promise<[StorageKey<[InterbtcPrimitivesCurrencyId]>, Option<LoansMarket>][]> {
@@ -254,14 +289,14 @@ export class DefaultLoansAPI implements LoansAPI {
         if (underlyingCurrencyAmount.eq(0)) {
             return null;
         }
-
+        const amount = newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency);
         const accountDeposits = await this.api.query.loans.accountDeposits(lendTokenId, accountId);
 
         const isCollateral = !accountDeposits.isZero();
 
         return {
             currency: underlyingCurrency,
-            amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
+            amount,
             isCollateral,
         };
     }
@@ -290,13 +325,13 @@ export class DefaultLoansAPI implements LoansAPI {
         if (borrowedAmount.eq(0)) {
             return null;
         }
-
+        const amount = newMonetaryAmount(borrowedAmount, underlyingCurrency);
         const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
         const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
         const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);
 
         return {
-            amount: newMonetaryAmount(borrowedAmount, underlyingCurrency),
+            amount,
             currency: underlyingCurrency,
             accumulatedDebt: newMonetaryAmount(accumulatedDebt, underlyingCurrency),
         };
@@ -333,6 +368,93 @@ export class DefaultLoansAPI implements LoansAPI {
 
     async getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
         return this._getPositionsOfAccount(accountId, this._getBorrowPosition.bind(this));
+    }
+
+    private _checkLoanAssetDataAvailability(positions: Array<LoanPosition>, loanAssets: TickerToData<LoanAsset>): void {
+        for (const position of positions) {
+            if (loanAssets[position.currency.ticker] === undefined) {
+                throw new Error(`No loan asset data found for currency ${position.currency.name}.`);
+            }
+        }
+    }
+
+    getLendingStats(
+        lendPositions: Array<LendPosition>,
+        borrowPositions: Array<BorrowPosition>,
+        loanAssets: TickerToData<LoanAsset>
+    ): LendingStats {
+        this._checkLoanAssetDataAvailability([...lendPositions, ...borrowPositions], loanAssets);
+
+        const lendCollateralPositions = lendPositions.filter(({ isCollateral }) => isCollateral);
+        const lendCollateralThresholdAdjustedPositions = lendCollateralPositions.map((position) => {
+            const collateralTheshold = loanAssets[position.currency.ticker].collateralThreshold;
+            return {
+                ...position,
+                amount: adjustToThreshold(position.amount, collateralTheshold),
+            };
+        });
+        const lendLiquidationThresholdAdjustedPositions = lendCollateralPositions.map((position) => {
+            const liquidationThreshold = loanAssets[position.currency.ticker].liquidationThreshold;
+            return {
+                ...position,
+                amount: adjustToThreshold(position.amount, liquidationThreshold),
+            };
+        });
+
+        const borrowPositionsWithDebt = borrowPositions.map(({ amount, accumulatedDebt, ...rest }) => ({
+            ...rest,
+            accumulatedDebt,
+            amount: amount.add(accumulatedDebt),
+        }));
+
+        const totalLentBtc = getTotalAmountBtc(lendPositions, loanAssets);
+        const totalBorrowedBtc = getTotalAmountBtc(borrowPositionsWithDebt, loanAssets);
+        const totalCollateralBtc = getTotalAmountBtc(lendCollateralPositions, loanAssets);
+        const totalCollateralThresholdAdjustedCollateralBtc = getTotalAmountBtc(
+            lendCollateralThresholdAdjustedPositions,
+            loanAssets
+        );
+        const totalLiquidationThresholdAdjustedCollateralBtc = getTotalAmountBtc(
+            lendLiquidationThresholdAdjustedPositions,
+            loanAssets
+        );
+
+        const borrowLimitBtc = calculateBorrowLimit(totalBorrowedBtc, totalCollateralThresholdAdjustedCollateralBtc);
+        const ltv = calculateLtv(totalCollateralBtc, totalBorrowedBtc);
+        const collateralThresholdWeightedAverage = calculateThreshold(
+            totalCollateralBtc,
+            totalCollateralThresholdAdjustedCollateralBtc
+        );
+        const liquidationThresholdWeightedAverage = calculateThreshold(
+            totalCollateralBtc,
+            totalLiquidationThresholdAdjustedCollateralBtc
+        );
+
+        const calculateBorrowLimitBtcChange = calculateBorrowLimitBtcChangeFactory(
+            loanAssets,
+            totalBorrowedBtc,
+            totalCollateralThresholdAdjustedCollateralBtc
+        );
+
+        const calculateLtvAndThresholdsChange = calculateLtvAndThresholdsChangeFactory(
+            loanAssets,
+            totalBorrowedBtc,
+            totalCollateralBtc,
+            totalCollateralThresholdAdjustedCollateralBtc,
+            totalLiquidationThresholdAdjustedCollateralBtc
+        );
+
+        return {
+            totalBorrowedBtc,
+            totalCollateralBtc,
+            totalLentBtc,
+            borrowLimitBtc,
+            ltv,
+            liquidationThresholdWeightedAverage,
+            collateralThresholdWeightedAverage,
+            calculateBorrowLimitBtcChange,
+            calculateLtvAndThresholdsChange,
+        };
     }
 
     async _getLendApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
@@ -435,18 +557,29 @@ export class DefaultLoansAPI implements LoansAPI {
         return newMonetaryAmount(amount, rewardCurrency);
     }
 
+    async _getExchangeRate(fromCurrency: CurrencyExt): Promise<ExchangeRate<WrappedCurrency, CurrencyExt>> {
+        const wrappedCurrencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
+        const wrappedCurrency = tokenSymbolToCurrency(wrappedCurrencyId.asToken);
+        if (isCurrencyEqual(fromCurrency, wrappedCurrency)) {
+            const wrappedCurrencyToBitcoinRate = Big(1);
+            return new ExchangeRate(wrappedCurrency, wrappedCurrency, wrappedCurrencyToBitcoinRate);
+        }
+        return this.oracleAPI.getExchangeRate(fromCurrency);
+    }
+
     async _getLoanAsset(
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         marketData: LoansMarket
     ): Promise<[CurrencyExt, LoanAsset]> {
         const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
 
-        const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows], rewardCurrency] =
+        const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows], rewardCurrency, exchangeRate] =
             await Promise.all([
                 this._getLendApy(underlyingCurrencyId),
                 this._getBorrowApy(underlyingCurrencyId),
                 this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
                 this._getRewardCurrency(),
+                this._getExchangeRate(underlyingCurrency),
             ]);
 
         // Format data.
@@ -479,6 +612,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 borrowReward,
                 supplyCap,
                 borrowCap,
+                exchangeRate,
             },
         ];
     }
