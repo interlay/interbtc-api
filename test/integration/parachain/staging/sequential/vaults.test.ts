@@ -408,4 +408,10 @@ describe("vaultsAPI", () => {
             await assertVaultStatus(vault_1_id, VaultStatusExt.Active);
         }
     });
+
+    it("should get system collateralization", async () => {
+        const value = await interBtcAPI.vaults.getSystemCollateralization();
+        assert.isDefined(value, "System collateralization is not defined")
+        assert.isTrue(value!.gt(0), "Invalid collateralization")
+    });
 });
