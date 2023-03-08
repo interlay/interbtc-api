@@ -6,7 +6,7 @@ import {
     DefaultLoansAPI,
     DefaultOracleAPI,
     DefaultTransactionAPI,
-    LendPosition,
+    CollateralPosition,
     LoanAsset,
     newMonetaryAmount,
     TickerToData,
@@ -14,7 +14,7 @@ import {
 import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { expect } from "chai";
-import { Bitcoin, ExchangeRate, InterBtc, Interlay, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, InterBtc, Interlay, KBtc, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("DefaultLoansAPI", () => {
     let api: ApiPromise;
@@ -34,7 +34,7 @@ describe("DefaultLoansAPI", () => {
     beforeEach(() => {
         const transactionAPI = new DefaultTransactionAPI(api);
         const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, transactionAPI);
-        loansApi = new DefaultLoansAPI(api, transactionAPI, oracleAPI);
+        loansApi = new DefaultLoansAPI(api, KBtc, transactionAPI, oracleAPI);
     });
 
     describe("getLendPositionsOfAccount", () => {
@@ -136,14 +136,15 @@ describe("DefaultLoansAPI", () => {
     });
 
     describe("getLendingStats", () => {
-        const mockLendPosition = (amount: MonetaryAmount<CurrencyExt>, isCollateral: boolean = true): LendPosition => ({
+        const mockLendPosition = (
+            amount: MonetaryAmount<CurrencyExt>,
+            isCollateral: boolean = true
+        ): CollateralPosition => ({
             amount,
-            currency: amount.currency,
             isCollateral,
         });
         const mockBorrowPosition = (amount: MonetaryAmount<CurrencyExt>): BorrowPosition => ({
             amount,
-            currency: amount.currency,
             accumulatedDebt: newMonetaryAmount(0, amount.currency),
         });
         const mockLoanAsset = (

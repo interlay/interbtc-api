@@ -186,7 +186,7 @@ export const prepareLiquidationRateMocks = (
     // if we have less than 2x collateral (in BTC) compared to BTC, we need to liquidate
     sinon.stub(vaultsApi, "getLiquidationCollateralThreshold").returns(Promise.resolve(Big(mockLiquidationThreshold)));
 
-    // mock this.getLockedCollateral return value
-    const mockLockedCollateral = new MonetaryAmount(collateralCurrency, mockCollateralTokensNumber);
-    sinon.stub(vaultsApi, "getLockedCollateral").returns(Promise.resolve(mockLockedCollateral));
+    // mock this.getCollateral return value
+    const mockCollateral = new MonetaryAmount(collateralCurrency, mockCollateralTokensNumber);
+    sinon.stub(vaultsApi, "getCollateral").returns(Promise.resolve(mockCollateral));
 };

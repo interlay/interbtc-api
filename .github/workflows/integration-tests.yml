@@ -1,16 +1,19 @@
-name: reusable workflow for integration tests
+name: integration tests (Kintsugi)
 
 on:
-    workflow_call:
-        inputs:
-            parachain:
-                description: The parachain to spin up for testing. INTR or KINT.
-                default: "KINT"
-                required: false
-                type: string
+    pull_request:
+        branches:
+            - master
 
+concurrency:
+    group: ${{ github.ref }}_kintsugi
+    cancel-in-progress: true
+
+# NOTE: instant-seal is only compatible with the testnet-kintsugi runtime
+# SEE: https://github.com/interlay/interbtc/issues/955
+# TODO: run tests using testnet-interlay runtime
 jobs:
-    build:
+    test:
         runs-on: [self-hosted, linux]
         timeout-minutes: 90
         steps:
@@ -26,14 +29,12 @@ jobs:
                   yarn --version
                   npx node --version
                   npx ts-node --version
-            - name: Run and set up the parachain, oracle, staked relayer and vault
-              run: yarn docker-parachain-start -d --chain=${{ inputs.parachain }}
+            - name: Run required services
+              run: docker-compose up --detach
             - run: yarn ci:test
-
             - name: Archive Docker logs
               if: always()
-              run: docker-compose -f local-setup/docker-compose.yml logs > logs.txt
-
+              run: docker-compose logs > logs.txt
             - name: Upload logs
               if: always()
               uses: actions/upload-artifact@v3

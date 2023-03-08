@@ -1,5 +1,5 @@
 import { AccountId, H256, Permill } from "@polkadot/types/interfaces";
-import Big, { BigSource } from "big.js";
+import Big from "big.js";
 import { ApiPromise } from "@polkadot/api";
 import { isKeyringPair } from "@polkadot/api/util";
 import type { Struct } from "@polkadot/types";
@@ -32,12 +32,20 @@ import {
 } from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
-import { BalanceWrapper, NumberOrHex, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
+import { NumberOrHex, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { VaultsAPI } from "../parachain";
 import { AddressOrPair } from "@polkadot/api/types";
 import { MonetaryAmount } from "@interlay/monetary-js";
+import { stringToU8a, u8aConcat } from "@polkadot/util";
+
+const EMPTY_H256 = new Uint8Array(32);
+const MOD_PREFIX = stringToU8a("modl");
+
+export function intoAccountTruncating(api: ApiPromise, palletId: Uint8Array): AccountId {
+    return api.createType("AccountId", u8aConcat(MOD_PREFIX, palletId, EMPTY_H256));
+}
 
 /**
  * Converts endianness of a Uint8Array
@@ -208,12 +216,6 @@ export function newCurrencyId(api: ApiPromise, currency: CurrencyExt): InterbtcP
 
 export function newForeignAssetId(api: ApiPromise, id: number): u32 {
     return api.createType("u32", id);
-}
-
-export function newBalanceWrapper(api: ApiPromise, atomicAmount: BigSource): BalanceWrapper {
-    return api.createType("BalanceWrapper", {
-        amount: api.createType("Text", Big(atomicAmount).toString()),
-    });
 }
 
 export function addressOrPairAsAccountId(api: ApiPromise, addyOrpair: AddressOrPair): AccountId {

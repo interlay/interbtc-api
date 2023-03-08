@@ -1,12 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import * as fs from "fs";
-import * as path from "path";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { SUDO_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
-import { sudo } from "../../../utils/helpers";
 import { BLOCK_TIME_SECONDS, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
 describe("systemAPI", () => {
@@ -34,12 +31,6 @@ describe("systemAPI", () => {
     it("should getStatusCode", async () => {
         const statusCode = await interBtcAPI.system.getStatusCode();
         assert.isDefined(statusCode);
-    });
-
-    // TODO: Unskip once differences between rococo-local and standalone are fixed
-    it.skip("should setCode", async () => {
-        const code = fs.readFileSync(path.join(__dirname, "../../../mock/rococo_runtime.compact.wasm")).toString("hex");
-        await sudo(interBtcAPI, () => interBtcAPI.system.setCode(code));
     });
 
     it("should getFutureBlockNumber", async () => {

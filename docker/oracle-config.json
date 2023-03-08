@@ -1,0 +1,32 @@
+{
+    "currencies": {
+        "BTC": {
+            "name": "Bitcoin",
+            "decimals": 8
+        },
+        "KINT": {
+            "name": "Kintsugi",
+            "decimals": 12
+        },
+        "KSM": {
+            "name": "Kusama",
+            "decimals": 12
+        }
+    },
+    "prices": [
+        {
+            "pair": [
+                "BTC",
+                "KINT"
+            ],
+            "value": 230
+        },
+        {
+            "pair": [
+                "BTC",
+                "KSM"
+            ],
+            "value": 230
+        }
+    ]
+}

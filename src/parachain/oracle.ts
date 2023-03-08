@@ -9,21 +9,15 @@ import {
     ATOMIC_UNIT,
     convertMoment,
     createExchangeRateOracleKey,
-    createInclusionOracleKey,
+    createFeeEstimationOracleKey,
     decodeFixedPointType,
     encodeUnsignedFixedPoint,
-    sleep,
-    SLEEP_TIME_MS,
     storageKeyToNthInner,
     unwrapRawExchangeRate,
 } from "../utils";
 import { UnsignedFixedPoint } from "../interfaces/default";
 import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types/currency";
-import { FeeEstimationType } from "../types/oracleTypes";
-
-export const DEFAULT_FEED_NAME = "DOT/BTC";
-export const DEFAULT_INCLUSION_TIME: FeeEstimationType = "Fast";
 
 /**
  * @category BTC Bridge
@@ -89,17 +83,6 @@ export interface OracleAPI {
      * @returns Whether the oracle entr for the given key has been updated
      */
     getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean>;
-    /**
-     * @param type The fee estimate type whose update is awaited
-     * @remark Awaits an oracle update to the BTC inclusion fee
-     */
-    waitForFeeEstimateUpdate(type?: FeeEstimationType): Promise<void>;
-    /**
-     * @param exchangeRate The exchange rate whose counter currency to await an update for
-     * (with respect to BTC)
-     * @remark Awaits an oracle update to the exchange rate
-     */
-    waitForExchangeRateUpdate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): Promise<void>;
 }
 
 export class DefaultOracleAPI implements OracleAPI {
@@ -107,7 +90,7 @@ export class DefaultOracleAPI implements OracleAPI {
         private api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
         private transactionAPI: TransactionAPI
-    ) {}
+    ) { }
 
     async getExchangeRate(currency: CurrencyExt): Promise<ExchangeRate<Bitcoin, CurrencyExt>> {
         const oracleKey = createExchangeRateOracleKey(this.api, currency);
@@ -154,8 +137,8 @@ export class DefaultOracleAPI implements OracleAPI {
     }
 
     async getBitcoinFees(): Promise<Big> {
-        const fast = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
-        const fees = await this.api.query.oracle.aggregate(fast);
+        const oracleKey = createFeeEstimationOracleKey(this.api);
+        const fees = await this.api.query.oracle.aggregate(oracleKey);
 
         const parseFees = (fee: Option<UnsignedFixedPoint>): Big => {
             const inner = unwrapRawExchangeRate(fee);
@@ -175,7 +158,7 @@ export class DefaultOracleAPI implements OracleAPI {
             throw new Error("tx fees must be a positive amount of satoshi");
         }
 
-        const oracleKey = createInclusionOracleKey(this.api, DEFAULT_INCLUSION_TIME);
+        const oracleKey = createFeeEstimationOracleKey(this.api);
         const encodedFee = encodeUnsignedFixedPoint(this.api, fees);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedFee]]);
         await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
@@ -202,20 +185,6 @@ export class DefaultOracleAPI implements OracleAPI {
     async getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean> {
         const isSet = await this.api.query.oracle.rawValuesUpdated<Option<Bool>>(key);
         return isSet.unwrap().isTrue;
-    }
-
-    async waitForFeeEstimateUpdate(type: FeeEstimationType = DEFAULT_INCLUSION_TIME): Promise<void> {
-        const key = createInclusionOracleKey(this.api, type);
-        while (await this.getRawValuesUpdated(key)) {
-            sleep(SLEEP_TIME_MS);
-        }
-    }
-
-    async waitForExchangeRateUpdate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): Promise<void> {
-        const key = createExchangeRateOracleKey(this.api, exchangeRate.counter);
-        while (await this.getRawValuesUpdated(key)) {
-            sleep(SLEEP_TIME_MS);
-        }
     }
 
     private hasOracleError(errors: SecurityErrorCode[]): boolean {

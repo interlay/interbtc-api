@@ -268,7 +268,6 @@ export class DefaultNominationAPI implements NominationAPI {
             rawList.map(async (rawNomination): Promise<NominationReward> => {
                 const reward = await this.vaultsAPI.computeReward(
                     rawNomination.vaultId.accountId,
-                    rawNomination.nominatorId,
                     await currencyIdToMonetaryCurrency(this.api, rawNomination.vaultId.currencies.collateral),
                     await currencyIdToMonetaryCurrency(this.api, rawNomination.vaultId.currencies.wrapped)
                 );
@@ -292,10 +291,9 @@ export class DefaultNominationAPI implements NominationAPI {
     async getNominatorReward(
         vaultId: AccountId,
         collateralCurrency: CollateralCurrencyExt,
-        rewardCurrency: Currency,
-        nominatorId: AccountId
+        rewardCurrency: Currency
     ): Promise<MonetaryAmount<Currency>> {
-        return await this.vaultsAPI.computeReward(vaultId, nominatorId, collateralCurrency, rewardCurrency);
+        return await this.vaultsAPI.computeReward(vaultId, collateralCurrency, rewardCurrency);
     }
 
     async list(): Promise<Nomination[]> {

@@ -10,15 +10,13 @@ const DEFAULT_BITCOIN_CORE_PASSWORD = "rpcpassword";
 const DEFAULT_BITCOIN_CORE_PORT = "18443";
 const DEFAULT_BITCOIN_CORE_WALLET = "Alice";
 const DEFAULT_REDEEM_ADDRESS = "bcrt1qed0qljupsmqhxul67r7358s60reqa2qtte0kay";
-const DEFAULT_USER_1_URI="//Dave";
-const DEFAULT_USER_2_URI="//Eve";
-const DEFAULT_ORACLE_URI="//Bob";
-const DEFAULT_VAULT_1_URI="//Charlie//stash";
-const DEFAULT_VAULT_2_URI="//Dave//stash";
-const DEFAULT_VAULT_3_URI="//Eve//stash";
-const DEFAULT_VAULT_TO_LIQUIDATE_URI="//Ferdie//stash";
-const DEFAULT_VAULT_TO_BAN_URI="//Ferdie";
-const DEFAULT_SUDO_URI="//Alice";
+const DEFAULT_USER_1_URI = "//Dave";
+const DEFAULT_USER_2_URI = "//Eve";
+const DEFAULT_ORACLE_URI = "//Bob";
+const DEFAULT_VAULT_1_URI = "//Charlie//stash";
+const DEFAULT_VAULT_2_URI = "//Dave//stash";
+const DEFAULT_VAULT_3_URI = "//Eve//stash";
+const DEFAULT_SUDO_URI = "//Alice";
 
 // Use the config set in the environment, or fallback to the config for local testing
 export const PARACHAIN_ENDPOINT = process.env.PARACHAIN_ENDPOINT || DEFAULT_PARACHAIN_ENDPOINT;
@@ -39,8 +37,6 @@ export const ORACLE_URI = process.env.ORACLE_URI || DEFAULT_ORACLE_URI;
 export const VAULT_1_URI = process.env.VAULT_1_URI || DEFAULT_VAULT_1_URI;
 export const VAULT_2_URI = process.env.VAULT_2_URI || DEFAULT_VAULT_2_URI;
 export const VAULT_3_URI = process.env.VAULT_3_URI || DEFAULT_VAULT_3_URI;
-export const VAULT_TO_LIQUIDATE_URI = process.env.VAULT_TO_LIQUIDATE_URI || DEFAULT_VAULT_TO_LIQUIDATE_URI;
-export const VAULT_TO_BAN_URI = process.env.VAULT_TO_BAN_URI || DEFAULT_VAULT_TO_BAN_URI;
 
 export const SUDO_URI = process.env.SUDO_URI || DEFAULT_SUDO_URI;
 

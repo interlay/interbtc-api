@@ -73,6 +73,33 @@ async function printDiscordProposal(
     console.log("");
 }
 
+async function setAllClientReleases(api: ApiPromise, baseUrl: String, runtimeName: String) {
+    const checksumFile = await fetch(baseUrl + 'sha256sums.txt')
+        .then(res => {
+            if (res.status >= 400) {
+                throw new Error("Bad response from server");
+            }
+            return res.text();
+        });
+
+    const regex = new RegExp("([a-f0-9]+)\\\s*[.]\/((oracle|vault)-parachain-metadata-" + runtimeName + ")\n", "g");
+    let matches = [];
+    let match;
+    while ((match = regex.exec(checksumFile)) !== null) {
+        matches.push([match[1], match[2], match[3]]);
+    }
+
+    return matches.map(([checksum, fullFileName, clientName]) => {
+        return api.tx.clientsInfo.setPendingClientRelease(
+            clientName,
+            {
+                uri: baseUrl + fullFileName,
+                checksum: "0x" + checksum,
+            }
+        )
+    });
+}
+
 async function main(): Promise<void> {
     await cryptoWaitReady();
 
@@ -112,20 +139,13 @@ async function main(): Promise<void> {
 
     const clientsRepo = "https://github.com/interlay/interbtc-clients";
     const clientsVersion = args['clients-version'];
-    console.log(`Downloading vault binary (${clientsVersion})...`);
-    const vaultFileName = `vault-parachain-metadata-${args['runtime-name']}`;
-    const vaultBinaryUri = `${clientsRepo}/releases/download/${clientsVersion}/${vaultFileName}`;
-    const vaultBinary = await fetch(vaultBinaryUri);
-    const vaultBinaryRaw = await vaultBinary.arrayBuffer();
-    const vaultChecksum = sha256AsU8a(Buffer.from(vaultBinaryRaw));
-    const vaultRelease = { uri: vaultBinaryUri, checksum: vaultChecksum };
+    const clientsBaseUrl = `${clientsRepo}/releases/download/${clientsVersion}/`;
 
     const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
 
     const batched = paraApi.tx.utility.batchAll([
         paraApi.tx.parachainSystem.authorizeUpgrade(codeHash),
-        paraApi.tx.clientsInfo.setPendingClientRelease("vault", vaultRelease),
-    ]);
+    ].concat(await setAllClientReleases(paraApi, clientsBaseUrl, args['runtime-name'])));
 
     const title = `Runtime Upgrade ${parachainVersion}`;
     printDiscordProposal(title, batched, args["parachain-endpoint"], paraApi);

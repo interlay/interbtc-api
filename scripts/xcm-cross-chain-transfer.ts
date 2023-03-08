@@ -21,7 +21,7 @@ function construct_kint_transfer(api: ApiPromise, dest: XcmVersionedMultiLocatio
         }),
     });
 
-    return api.tx.xTokens.transfer(kint, 100000000000, dest, "400000000000");
+    return api.tx.xTokens.transfer(kint, 100000000000, dest, "Unlimited");
 }
 
 function construct_kbtc_transfer(api: ApiPromise, dest: XcmVersionedMultiLocation) {
@@ -43,7 +43,7 @@ function construct_kbtc_transfer(api: ApiPromise, dest: XcmVersionedMultiLocatio
         ],
         1,
         dest,
-        "400000000000"
+        "Unlimited"
     );
 }
 

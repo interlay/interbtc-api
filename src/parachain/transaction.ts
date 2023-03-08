@@ -32,7 +32,7 @@ export interface TransactionAPI {
 }
 
 export class DefaultTransactionAPI implements TransactionAPI {
-    constructor(public api: ApiPromise, private account?: AddressOrPair) {}
+    constructor(public api: ApiPromise, private account?: AddressOrPair) { }
 
     public setAccount(account: AddressOrPair): void {
         this.account = account;
@@ -116,9 +116,9 @@ export class DefaultTransactionAPI implements TransactionAPI {
             }
         });
 
-        if (onlyInBlock) {
+        if (result.status.isInBlock) {
             console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-        } else {
+        } else if (result.status.isFinalized) {
             console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         }
         unsubscribe(result);
@@ -179,35 +179,6 @@ export class DefaultTransactionAPI implements TransactionAPI {
         } else if (!IGNORED_ERROR_MESSAGES.includes(errorMessage)) {
             throw new Error(errorMessage);
         }
-    }
-
-    static async waitForEvent<T extends AnyTuple>(
-        api: ApiPromise,
-        event: AugmentedEvent<ApiTypes, T>,
-        timeoutMs: number
-    ): Promise<boolean> {
-        // Use this function with a timeout.
-        // Unless the awaited event occurs, this Promise will never resolve.
-        let timeoutHandle: NodeJS.Timeout;
-        const timeoutPromise = new Promise((_, reject) => {
-            timeoutHandle = setTimeout(() => reject(), timeoutMs);
-        });
-
-        await Promise.race([
-            new Promise<void>((resolve, _reject) => {
-                api.query.system.events((eventsVec) => {
-                    const events = eventsVec.toArray();
-                    if (this.doesArrayContainEvent(events, event)) {
-                        resolve();
-                    }
-                });
-            }),
-            timeoutPromise,
-        ]).then((_) => {
-            clearTimeout(timeoutHandle);
-        });
-
-        return true;
     }
 
     static isDispatchError(eventData: unknown): eventData is DispatchError {

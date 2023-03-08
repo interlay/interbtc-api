@@ -394,16 +394,18 @@ export class DefaultRedeemAPI implements RedeemAPI {
 
     async list(): Promise<Redeem[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
+        const api = await this.api.at(head);
 
         const [redeemRequests, redeemPeriod, activeBlockNumber] = await Promise.all([
-            this.api.query.redeem.redeemRequests.entriesAt(head),
+            api.query.redeem.redeemRequests.entries(),
             this.getRedeemPeriod(),
             this.systemAPI.getCurrentActiveBlockNumber(head),
         ]);
-        return await Promise.all(
+        // TODO: pass head to parseRedeemRequest since it queries chain state
+        return Promise.all(
             redeemRequests
                 .filter(([_, req]) => req.isSome.valueOf())
-                // Can be unwrapped because the filter removes `None` values
+                // can be unwrapped because the filter removes `None` values
                 .map(([id, req]) => {
                     return parseRedeemRequest(
                         this.api,

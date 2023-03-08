@@ -20,12 +20,16 @@ export function createProvider(endpoint: string, autoConnect?: number | false | 
     throw new Error(`unknown scheme for ${endpoint}`);
 }
 
-export function createSubstrateAPI(endpoint: string, autoConnect?: number | false | undefined): Promise<ApiPromise> {
+export function createSubstrateAPI(
+    endpoint: string,
+    autoConnect?: number | false | undefined,
+    noInitWarn?: boolean
+): Promise<ApiPromise> {
     const provider = createProvider(endpoint, autoConnect);
 
     const types = getAPITypes();
     const rpc = getRPCTypes();
-    return ApiPromise.create({ provider, types, rpc });
+    return ApiPromise.create({ provider, types, rpc, noInitWarn: noInitWarn || true });
 }
 
 export async function createInterBtcApi(

@@ -348,7 +348,7 @@ export class DefaultIssueAPI implements IssueAPI {
         return await Promise.all(
             issueRequests
                 .filter(([_, req]) => req.isSome.valueOf())
-                // Can be unwrapped because the filter removes `None` values
+                // can be unwrapped because the filter removes `None` values
                 .map(([id, req]) =>
                     parseIssueRequest(this.api, this.vaultsAPI, req.unwrap(), this.btcNetwork, storageKeyToNthInner(id))
                 )
@@ -376,17 +376,19 @@ export class DefaultIssueAPI implements IssueAPI {
 
     async getRequestsByIds(issueIds: (H256 | string)[]): Promise<Issue[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
+        const api = await this.api.at(head);
         const issueRequestData = await Promise.all(
             issueIds.map(
                 async (issueId): Promise<[Option<InterbtcPrimitivesIssueIssueRequest>, H256 | string]> =>
                     new Promise((resolve, reject) => {
-                        this.api.query.issue.issueRequests
-                            .at(head, ensureHashEncoded(this.api, issueId))
+                        api.query.issue
+                            .issueRequests(ensureHashEncoded(this.api, issueId))
                             .then((request) => resolve([request, issueId]))
                             .catch(reject);
                     })
             )
         );
+        // TODO: pass head to parseIssueRequest since it queries chain state
         return Promise.all(
             issueRequestData
                 .filter(([option, _]) => option.isSome)

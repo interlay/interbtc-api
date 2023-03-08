@@ -247,11 +247,12 @@ export class DefaultReplaceAPI implements ReplaceAPI {
 
     async list(): Promise<ReplaceRequestExt[]> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const replaceRequests = await this.api.query.replace.replaceRequests.entriesAt(head);
-        return await Promise.all(
+        const api = await this.api.at(head);
+        const replaceRequests = await api.query.replace.replaceRequests.entries();
+        return Promise.all(
             replaceRequests
                 .filter((v) => v[1].isSome.valueOf)
-                // Can be unwrapped because the filter removes `None` values
+                // can be unwrapped because the filter removes `None` values
                 .map(([id, req]) =>
                     parseReplaceRequest(
                         this.api,
@@ -266,12 +267,14 @@ export class DefaultReplaceAPI implements ReplaceAPI {
 
     async map(): Promise<Map<H256, ReplaceRequestExt>> {
         const head = await this.api.rpc.chain.getFinalizedHead();
-        const replaceRequests = await this.api.query.replace.replaceRequests.entriesAt(head);
+        const api = await this.api.at(head);
+        const replaceRequests = await api.query.replace.replaceRequests.entries();
         const replaceRequestMap = new Map<H256, ReplaceRequestExt>();
+        // TODO: pass head to parseReplaceRequest since it queries chain state
         await Promise.all(
             replaceRequests
                 .filter((v) => v[1].isSome.valueOf)
-                // Can be unwrapped because the filter removes `None` values
+                // can be unwrapped because the filter removes `None` values
                 .map(
                     ([id, req]) =>
                         new Promise<void>((resolve) => {
@@ -293,9 +296,15 @@ export class DefaultReplaceAPI implements ReplaceAPI {
 
     async getRequestById(replaceId: H256 | string): Promise<ReplaceRequestExt> {
         const head = await this.api.rpc.chain.getFinalizedHead();
+        const api = await this.api.at(head);
+        const replaceRequest = await api.query.replace.replaceRequests(ensureHashEncoded(this.api, replaceId));
+        if (replaceRequest.isNone) {
+            throw new Error("Replace request not found");
+        }
         return parseReplaceRequest(
             this.api,
-            await this.api.query.replace.replaceRequests.at(head, ensureHashEncoded(this.api, replaceId)),
+            // can be unwrapped because we check `None` above
+            replaceRequest.unwrap(),
             this.btcNetwork,
             this.wrappedCurrency,
             replaceId

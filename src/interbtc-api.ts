@@ -69,6 +69,7 @@ export interface InterBtcApi {
     readonly account: AddressOrPair | undefined;
     getGovernanceCurrency(): GovernanceCurrency;
     getWrappedCurrency(): WrappedCurrency;
+    disconnect(): Promise<void>;
 }
 
 /**
@@ -109,7 +110,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
 
         this.assetRegistry = new DefaultAssetRegistryAPI(api);
         this.oracle = new DefaultOracleAPI(api, wrappedCurrency, this.transactionAPI);
-        this.loans = new DefaultLoansAPI(api, this.transactionAPI, this.oracle);
+        this.loans = new DefaultLoansAPI(api, wrappedCurrency, this.transactionAPI, this.oracle);
         this.tokens = new DefaultTokensAPI(api, this.transactionAPI);
         this.system = new DefaultSystemAPI(api, this.transactionAPI);
         this.fee = new DefaultFeeAPI(api, this.oracle);
@@ -129,7 +130,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.transactionAPI
         );
         this.faucet = new FaucetClient(api, "");
-        this.btcRelay = new DefaultBTCRelayAPI(api, this.electrsAPI);
+        this.btcRelay = new DefaultBTCRelayAPI(api);
 
         this.replace = new DefaultReplaceAPI(
             api,
@@ -187,14 +188,18 @@ export class DefaultInterBtcApi implements InterBtcApi {
     }
 
     public getGovernanceCurrency(): GovernanceCurrency {
-        const currencyId = this.api.consts.escrowRewards.getNativeCurrencyId;
+        const currencyId = this.api.consts.currency.getNativeCurrencyId;
         // beware: this call will throw if the native currency is not a token!
         return tokenSymbolToCurrency(currencyId.asToken);
     }
 
     public getWrappedCurrency(): WrappedCurrency {
-        const currencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
+        const currencyId = this.api.consts.currency.getWrappedCurrencyId;
         // beware: this call will throw if the wrapped currency is not a token!
         return tokenSymbolToCurrency(currencyId.asToken);
+    }
+
+    public disconnect(): Promise<void> {
+        return this.api.disconnect();
     }
 }

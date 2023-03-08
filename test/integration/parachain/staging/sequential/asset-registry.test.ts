@@ -3,23 +3,20 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
-import { DefaultAssetRegistryAPI, DefaultInterBtcApi, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
-import { getStorageKey } from "../../../../../src/utils/storage";
+import { DefaultAssetRegistryAPI, DefaultInterBtcApi, DefaultTransactionAPI, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
 
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { APPROX_BLOCK_TIME_MS, waitForEvent } from "../../../../utils/helpers";
 
 describe("AssetRegistry", () => {
-    const approx10Blocks = 10 * APPROX_BLOCK_TIME_MS;
     let api: ApiPromise;
     let interBtcAPI: DefaultInterBtcApi;
 
     let sudoAccount: KeyringPair;
 
-    let assetRegistryMetadataHash: string;
+    let assetRegistryMetadataPrefix: string;
     let registeredKeysBefore: StorageKey<AnyTuple>[] = [];
 
     before(async () => {
@@ -29,15 +26,15 @@ describe("AssetRegistry", () => {
         sudoAccount = keyring.addFromUri(SUDO_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
-        assetRegistryMetadataHash = getStorageKey("AssetRegistry", "Metadata");
+        assetRegistryMetadataPrefix = api.query.assetRegistry.metadata.keyPrefix();
         // check which keys exist before the tests
-        const keys = await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash);
+        const keys = await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataPrefix);
         registeredKeysBefore = keys.toArray();
     });
 
     after(async () => {
         // clean up keys created in tests if necessary
-        const registeredKeysAfter = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+        const registeredKeysAfter = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataPrefix)).toArray();
 
         const previousKeyHashes = registeredKeysBefore.map((key) => stripHexPrefix(key.toHex()));
         // need to use string comparison since the raw StorageKeys don't play nicely with .filter()
@@ -48,11 +45,13 @@ describe("AssetRegistry", () => {
 
         if (newKeys.length > 0) {
             // clean up assets registered in test(s)
-            const deleteKeysInstruction = interBtcAPI.api.tx.system.killStorage(newKeys);
-            await Promise.all([
-                waitForEvent(interBtcAPI, api.events.sudo.Sudid, false, approx10Blocks),
-                interBtcAPI.api.tx.sudo.sudo(deleteKeysInstruction).signAndSend(sudoAccount),
-            ]);
+            const deleteKeysCall = api.tx.system.killStorage(newKeys);
+            await DefaultTransactionAPI.sendLogged(
+                api,
+                sudoAccount,
+                api.tx.sudo.sudo(deleteKeysCall),
+                api.events.sudo.Sudid
+            );
         }
 
         return api.disconnect();
@@ -67,7 +66,7 @@ describe("AssetRegistry", () => {
      */
     it("should get expected shape of AssetRegistry metadata", async () => {
         // check if any assets have been registered
-        const existingKeys = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataHash)).toArray();
+        const existingKeys = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataPrefix)).toArray();
 
         if (existingKeys.length === 0) {
             // no existing foreign assets; register a new foreign asset for the test
@@ -83,14 +82,16 @@ describe("AssetRegistry", () => {
             );
 
             // need sudo to add new foreign asset
-            const [eventFound] = await Promise.all([
-                waitForEvent(interBtcAPI, api.events.sudo.RegisteredAsset, false, approx10Blocks),
-                interBtcAPI.api.tx.sudo.sudo(callToRegister).signAndSend(sudoAccount),
-            ]);
+            const result = await DefaultTransactionAPI.sendLogged(
+                api,
+                sudoAccount,
+                api.tx.sudo.sudo(callToRegister),
+                api.events.sudo.RegisteredAsset
+            );
 
             assert.isTrue(
-                eventFound,
-                `Sudo event to create new foreign asset not found - timed out after ${approx10Blocks} ms`
+                result.isCompleted,
+                `Sudo event to create new foreign asset not found`
             );
         }
 

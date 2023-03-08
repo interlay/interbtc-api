@@ -59,15 +59,16 @@ export interface SystemAPI {
 }
 
 export class DefaultSystemAPI implements SystemAPI {
-    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
+    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) { }
 
     async getCurrentBlockNumber(): Promise<number> {
         return (await this.api.query.system.number()).toNumber();
     }
 
     async getCurrentActiveBlockNumber(atBlock?: BlockHash): Promise<number> {
-        const block = atBlock || (await this.api.rpc.chain.getFinalizedHead());
-        return (await this.api.query.security.activeBlockCount.at(block)).toNumber();
+        const blockHash = atBlock || (await this.api.rpc.chain.getFinalizedHead());
+        const api = await this.api.at(blockHash);
+        return (await api.query.security.activeBlockCount()).toNumber();
     }
 
     async subscribeToFinalizedBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void> {

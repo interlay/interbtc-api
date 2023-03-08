@@ -73,7 +73,7 @@ async function main(): Promise<void> {
     });
 
     const setupTx = api.tx.sudo.sudo(api.tx.polkadotXcm.forceXcmVersion(sibling, 2));
-    const xcmTx = api.tx.xTokens.transferMultiasset(asset, dest, "1000000001");
+    const xcmTx = api.tx.xTokens.transferMultiasset(asset, dest, "Unlimited");
 
     console.log("Constructed the tx, broadcasting first...");
     await transactionAPI.sendLogged(setupTx, undefined);

@@ -12,7 +12,7 @@ import {
     newVaultId,
     WrappedCurrency,
 } from "../../../../../src";
-import { setNumericStorage, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
+import { setRawStorage, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import {
@@ -51,11 +51,10 @@ describe.skip("NominationAPI", () => {
         const keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         userAccount = keyring.addFromUri(USER_1_URI);
-        // TODO: remove all uses of config currencies and query the chain instead
         userInterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
-        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = userInterBtcAPI.getWrappedCurrency();
+        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(userInterBtcAPI.getGovernanceCurrency());
         vault_1 = keyring.addFromUri(VAULT_1_URI);
         vault_1_ids = collateralCurrencies.map((collateralCurrency) =>
             newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency)
@@ -94,7 +93,7 @@ describe.skip("NominationAPI", () => {
     }).timeout(2 * 60000);
 
     async function setIssueFee(x: BN) {
-        await setNumericStorage(api, "Fee", "IssueFee", x, sudoAccount, 128);
+        await setRawStorage(api, api.query.fee.issueFee.key(), api.createType("UnsignedFixedPoint", x), sudoAccount);
     }
 
     it("Should nominate to and withdraw from a vault", async () => {

@@ -1,0 +1,116 @@
+version: "3.8"
+services:
+    interbtc:
+        image: "interlayhq/interbtc:1.21.10"
+        command:
+            - --rpc-external
+            - --ws-external
+            - --rpc-methods=unsafe
+            - --dev
+            - --instant-seal
+        ports:
+            - "9933:9933"
+            - "9944:9944"
+    bitcoind:
+        image: "ruimarinho/bitcoin-core:22"
+        command:
+            - -regtest
+            - -server
+            - -rpcbind=0.0.0.0
+            - -rpcallowip=0.0.0.0/0
+            - -rpcuser=rpcuser
+            - -rpcpassword=rpcpassword
+            - -fallbackfee=0.0002
+        ports:
+            - "18443:18443"
+    bitcoin-cli:
+        image: "ruimarinho/bitcoin-core:22"
+        command:
+            - /bin/sh
+            - -c
+            - |
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword createwallet Alice
+                ALICE_ADDRESS=$$(bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword -rpcwallet=Alice getnewaddress)
+                # coins need 100 confirmations to be spendable
+                bitcoin-cli -regtest -rpcconnect=bitcoind -rpcwait -rpcuser=rpcuser -rpcpassword=rpcpassword generatetoaddress 101 $${ALICE_ADDRESS}
+    electrs:
+        image: "interlayhq/electrs:latest"
+        command:
+            - electrs
+            - -vvvv
+            - --network
+            - regtest
+            - --jsonrpc-import
+            - --cors
+            - "*"
+            - --cookie
+            - "rpcuser:rpcpassword"
+            - --daemon-rpc-addr
+            - "bitcoind:18443"
+            - --http-addr
+            - "[::0]:3002"
+            - --index-unspendables
+        ports:
+            - "3002:3002"
+        restart: always
+    oracle:
+        image: "interlayhq/interbtc-clients:oracle-parachain-metadata-kintsugi-testnet-1.19.7"
+        command:
+            - oracle-parachain-metadata-kintsugi-testnet
+            - --keyring=bob
+            - --btc-parachain-url=ws://interbtc:9944
+        environment:
+            RUST_LOG: info
+        volumes:
+            - ./docker/oracle-config.json:/oracle-config.json
+    vault_1:
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-testnet-1.19.7"
+        command:
+            - vault-parachain-metadata-kintsugi-testnet
+            - --keyfile=/keyfile.json
+            - --keyname=vault_1
+            - --auto-register=KSM=10000000000000
+            - --auto-register=KINT=180000000000000
+            - --btc-parachain-url=ws://interbtc:9944
+            - --bitcoin-relay-start-height=1
+        environment: &client-env
+            BITCOIN_RPC_URL: http://bitcoind:18443
+            BITCOIN_RPC_USER: rpcuser
+            BITCOIN_RPC_PASS: rpcpassword
+            RUST_LOG: info
+        volumes:
+            - ./docker/vault_1-keyfile.json:/keyfile.json
+    vault_2:
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-testnet-1.19.7"
+        command:
+            - vault-parachain-metadata-kintsugi-testnet
+            - --keyfile=/keyfile.json
+            - --keyname=vault_2
+            - --auto-register=KSM=10000000000000
+            - --auto-register=KINT=180000000000000
+            - --btc-parachain-url=ws://interbtc:9944
+            - --bitcoin-relay-start-height=1
+        environment: &client-env
+            BITCOIN_RPC_URL: http://bitcoind:18443
+            BITCOIN_RPC_USER: rpcuser
+            BITCOIN_RPC_PASS: rpcpassword
+            RUST_LOG: info
+        volumes:
+            - ./docker/vault_2-keyfile.json:/keyfile.json
+    vault_3:
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-testnet-1.19.7"
+        command:
+            - vault-parachain-metadata-kintsugi-testnet
+            - --keyfile=/keyfile.json
+            - --keyname=vault_3
+            - --auto-register=KSM=10000000000000
+            - --auto-register=KINT=180000000000000
+            - --btc-parachain-url=ws://interbtc:9944
+            - --bitcoin-relay-start-height=1
+        environment: &client-env
+            BITCOIN_RPC_URL: http://bitcoind:18443
+            BITCOIN_RPC_USER: rpcuser
+            BITCOIN_RPC_PASS: rpcpassword
+            RUST_LOG: info
+        volumes:
+            - ./docker/vault_3-keyfile.json:/keyfile.json

@@ -1,4 +1,4 @@
-import { Bitcoin, ExchangeRate, Polkadot } from "@interlay/monetary-js";
+import { ExchangeRate } from "@interlay/monetary-js";
 import { CurrencyExt } from "./currency";
 
 export interface OracleStatus<B extends CurrencyExt, C extends CurrencyExt> {
@@ -9,7 +9,3 @@ export interface OracleStatus<B extends CurrencyExt, C extends CurrencyExt> {
     exchangeRate: ExchangeRate<B, C>;
     online: boolean;
 }
-
-export type DOTBTCOracleStatus = OracleStatus<Bitcoin, Polkadot>;
-
-export type FeeEstimationType = "Fast" | "Half" | "Hour";

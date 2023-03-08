@@ -29,7 +29,7 @@ import {
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
-import { getCorrespondingCollateralCurrenciesForTests, runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
+import { getCorrespondingCollateralCurrenciesForTests, getIssuableAmounts, runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -101,9 +101,9 @@ describe("issue", () => {
         assert.isAtLeast(issueRequests.length, 1, "Should have at least 1 issue request");
     });
 
-    // FIXME: not used at the moment. Fix in a more elegant way, i.e., check what is issuable
+    // FIXME: can we make this test more elegant? i.e. check what is issuable
     // by two vaults can request exactly that amount instead of multiplying by 1.1
-    it.skip("should batch request across several vaults", async () => {
+    it("should batch request across several vaults", async () => {
         const requestLimits = await userInterBtcAPI.issue.getRequestLimits();
         const amount = requestLimits.singleVaultMaxIssuable.mul(1.1);
         const issueRequests = await userInterBtcAPI.issue.request(amount);
@@ -118,31 +118,6 @@ describe("issue", () => {
             "Issued amount is not equal to requested amount"
         );
     });
-
-    // auto-execution tests may stall indefinitely, due to vault client inaction.
-    // This will cause the testing pipeline to time out.
-    // TODO: Discuss if we want to test this in the lib. Should rather be tested in the clients
-    it.skip("should request and auto-execute issue", async () => {
-        for (const vault_1_id of vault_1_ids) {
-            const amount = newMonetaryAmount(0.00121, wrappedCurrency, true);
-
-            const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
-            const issueResult = await issueSingle(
-                userInterBtcAPI,
-                bitcoinCoreClient,
-                userAccount,
-                amount,
-                vault_1_id,
-                true,
-                false
-            );
-            assert.equal(
-                issueResult.finalWrappedTokenBalance.sub(issueResult.initialWrappedTokenBalance).toString(),
-                amount.sub(feesToPay).toString(),
-                "Final balance was not increased by the exact amount specified"
-            );
-        }
-    }).timeout(1000000);
 
     it("should request and manually execute issue", async () => {
         for (const vault_2_id of vault_2_ids) {
@@ -179,7 +154,6 @@ describe("issue", () => {
         }
     }).timeout(1000000);
 
-    // TODO: maybe add this to issue API
     it("should get issueBtcDustValue", async () => {
         const dust = await userInterBtcAPI.api.query.issue.issueBtcDustValue();
         assert.equal(dust.toString(), "1000");
@@ -205,29 +179,34 @@ describe("issue", () => {
         assert.equal(feePercentage.toString(), "0.0015");
     });
 
-    // FIXME: don't use magic numbers for these tests
     it("should getRequestLimits", async () => {
         const requestLimits = await userInterBtcAPI.issue.getRequestLimits();
         const singleMaxIssuable = requestLimits.singleVaultMaxIssuable;
-        const totalMaxIssuable = requestLimits.singleVaultMaxIssuable;
-        const expected = newMonetaryAmount(0.0005, wrappedCurrency, true);
+        const totalMaxIssuable = requestLimits.totalMaxIssuable;
+
+        const issuableAmounts = await getIssuableAmounts(userInterBtcAPI);
+        const singleIssueable = issuableAmounts.reduce(
+            (prev, curr) => (prev > curr) ? prev : curr,
+            newMonetaryAmount(0, wrappedCurrency)
+        );
+        const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
+
         assert.isTrue(
-            singleMaxIssuable.gt(expected),
-            `singleVaultMaxIssuable is ${singleMaxIssuable.toHuman()}, expected greater than ${expected.toHuman()}`
+            singleMaxIssuable.toBig().sub(singleIssueable.toBig()).abs().lte(1),
+            `${singleMaxIssuable.toHuman()} != ${singleIssueable.toHuman()}`
         );
         assert.isTrue(
-            totalMaxIssuable.gte(singleMaxIssuable),
-            `totalMaxIssuable is ${totalMaxIssuable.toHuman()}, expected greater than or equal to ${singleMaxIssuable.toHuman()}`
+            totalMaxIssuable.toBig().sub(totalIssuable.toBig()).abs().lte(1),
+            `${totalMaxIssuable.toHuman()} != ${totalIssuable.toHuman()}`
         );
     });
 
-    // TODO: Unskip after `subscribeToIssueExpiry` is reimplemented
     // This test should be kept at the end of the file as it will ban the vault used for issuing
-    it.skip("should cancel an issue request", async () => {
+    it("should cancel an issue request", async () => {
         for (const vault_2_id of vault_2_ids) {
             await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
                 const initialIssuePeriod = await userInterBtcAPI.issue.getIssuePeriod();
-                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(0));
+                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(1));
                 try {
                     // request issue
                     const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
@@ -239,15 +218,6 @@ describe("issue", () => {
                     );
                     assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                     const requestResult = requestResults[0];
-
-                    // Wait for issue expiry callback
-                    // await new Promise<void>((resolve, _) => {
-                    //     userInterBtcAPI.issue.subscribeToIssueExpiry(newAccountId(api, userAccount.address), (requestId) => {
-                    //         if (stripHexPrefix(requestResult.id.toString()) === stripHexPrefix(requestId.toString())) {
-                    //             resolve();
-                    //         }
-                    //     });
-                    // });
 
                     await userInterBtcAPI.issue.cancel(requestResult.id);
 

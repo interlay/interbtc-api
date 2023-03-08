@@ -35,7 +35,6 @@ import {
     CollateralCurrencyExt,
     WrappedCurrency,
     GovernanceCurrency,
-    CurrencyExt,
 } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
@@ -200,17 +199,10 @@ export interface VaultsAPI {
     /**
      * Gets the estimated APY for just the block rewards (in governance tokens).
      * @param vaultAccountId: the vault account ID
-     * @param nominatorId: an account nominating this vault
      * @param collateralCurrency: the vault's collateral currency
-     * @param governanceCurrency: the governance token that block rewards are paid in
      * @returns the APY as a percentage
      */
-    getBlockRewardAPY(
-        vaultAccountId: AccountId,
-        nominatorId: AccountId,
-        collateralCurrency: CollateralCurrencyExt,
-        governanceCurrency: GovernanceCurrency
-    ): Promise<Big>;
+    getBlockRewardAPY(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<Big>;
     /**
      * @returns Fee that a Vault has to pay, as a percentage, if it fails to execute
      * redeem or replace requests (for redeem, on top of the slashed wrapped-token-to-collateral
@@ -312,7 +304,6 @@ export interface VaultsAPI {
     /**
      * Compute the total reward, including the staking (local) pool and the rewards (global) pool
      * @param vaultAccountId The vault ID whose reward pool to check
-     * @param nominatorId The account ID of the staking pool nominator
      * @param vaultCollateral Collateral used by the vault. This is the currency used as
      * stake in the `staking` and `rewards` pools.
      * @param rewardCurrency The reward currency, e.g. kBTC, KINT, interBTC, INTR
@@ -320,10 +311,8 @@ export interface VaultsAPI {
      */
     computeReward(
         vaultAccountId: AccountId,
-        nominatorId: AccountId,
         collateralCurrency: CollateralCurrencyExt,
-        rewardCurrency: Currency,
-        nonce?: number
+        rewardCurrency: Currency
     ): Promise<MonetaryAmount<Currency>>;
     /**
      * @param vaultAccountId The vault ID whose reward pool to check
@@ -524,7 +513,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
 
     async list(atBlock?: BlockHash): Promise<VaultExt[]> {
         const vaultsMap = await (atBlock
-            ? this.api.query.vaultRegistry.vaults.entriesAt(atBlock)
+            ? (await this.api.at(atBlock)).query.vaultRegistry.vaults.entries()
             : this.api.query.vaultRegistry.vaults.entries());
         return Promise.all(vaultsMap.filter((v) => v[1].isSome).map((v) => this.parseVault(v[1].value)));
     }
@@ -619,13 +608,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return nominatorCollateral.toBig().div(backingCollateral);
     }
 
-    async getBlockRewardAPY(
-        vaultAccountId: AccountId,
-        nominatorId: AccountId,
-        collateralCurrency: CollateralCurrencyExt,
-        // TODO: remove unused variable, to be bundled with other future breaking changes
-        governanceCurrency: GovernanceCurrency
-    ): Promise<Big> {
+    async getBlockRewardAPY(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<Big> {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const vaultIdParam = {
             account_id: vaultAccountId,
@@ -638,30 +621,25 @@ export class DefaultVaultsAPI implements VaultsAPI {
         return annualRewardRate.mul(100);
     }
 
-    async getLockedCollateral(
-        vaultAccountId: AccountId,
-        collateralCurrency: CollateralCurrencyExt
-    ): Promise<MonetaryAmount<CurrencyExt>> {
-        // TODO: This might be inaccurate if the "reserved" value is incremented by other protocols
-        // See comment: https://github.com/interlay/interbtc-api/pull/464#discussion_r954909315
-        return (await this.tokensAPI.balance(collateralCurrency, vaultAccountId)).reserved;
-    }
-
     async computeReward(
         vaultAccountId: AccountId,
-        nominatorId: AccountId,
         collateralCurrency: CollateralCurrencyExt,
-        rewardCurrency: Currency,
-        nonce?: number
+        rewardCurrency: Currency
     ): Promise<MonetaryAmount<Currency>> {
-        return this.rewardsAPI.computeRewardInRewardsPool(rewardCurrency, collateralCurrency, vaultAccountId);
+        const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
+        const params = {
+            account_id: vaultAccountId,
+            currencies: vaultCurrencyPair,
+        };
+        const reward = await this.api.rpc.reward.computeVaultReward(params, newCurrencyId(this.api, rewardCurrency));
+        return newMonetaryAmount(reward.amount.toString(), rewardCurrency);
     }
 
     async getWrappedReward(
         vaultAccountId: AccountId,
         collateralCurrency: CollateralCurrencyExt
     ): Promise<MonetaryAmount<WrappedCurrency>> {
-        return await this.computeReward(vaultAccountId, vaultAccountId, collateralCurrency, this.wrappedCurrency);
+        return await this.computeReward(vaultAccountId, collateralCurrency, this.wrappedCurrency);
     }
 
     async getGovernanceReward(
@@ -669,7 +647,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         vaultCollateral: CollateralCurrencyExt,
         governanceCurrency: GovernanceCurrency
     ): Promise<MonetaryAmount<GovernanceCurrency>> {
-        return await this.computeReward(vaultAccountId, vaultAccountId, vaultCollateral, governanceCurrency);
+        return await this.computeReward(vaultAccountId, vaultCollateral, governanceCurrency);
     }
 
     async getStakingCapacity(
@@ -957,8 +935,8 @@ export class DefaultVaultsAPI implements VaultsAPI {
     async getAPY(vaultAccountId: AccountId, collateralCurrency: CollateralCurrencyExt): Promise<Big> {
         const [feesWrapped, lockedCollateral, blockRewardsAPY] = await Promise.all([
             this.getWrappedReward(vaultAccountId, collateralCurrency),
-            this.getLockedCollateral(vaultAccountId, collateralCurrency),
-            this.getBlockRewardAPY(vaultAccountId, vaultAccountId, collateralCurrency, this.governanceCurrency),
+            this.getCollateral(vaultAccountId, collateralCurrency),
+            this.getBlockRewardAPY(vaultAccountId, collateralCurrency),
         ]);
         return (await this.feeAPI.calculateAPY(feesWrapped, lockedCollateral)).add(blockRewardsAPY);
     }
@@ -1037,7 +1015,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const [vaultExt, liquidationRateThreshold, lockedCollateral] = await Promise.all([
             this.get(vaultAccountId, collateralCurrency),
             this.getLiquidationCollateralThreshold(collateralCurrency),
-            this.getLockedCollateral(vaultAccountId, collateralCurrency),
+            this.getCollateral(vaultAccountId, collateralCurrency),
         ]);
 
         if (liquidationRateThreshold.eq(0)) {

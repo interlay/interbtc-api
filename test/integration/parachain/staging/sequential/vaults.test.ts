@@ -15,27 +15,18 @@ import {
 
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
-import {
-    VAULT_1_URI,
-    VAULT_2_URI,
-    PARACHAIN_ENDPOINT,
-    VAULT_3_URI,
-    VAULT_TO_LIQUIDATE_URI,
-    VAULT_TO_BAN_URI,
-    ESPLORA_BASE_PATH,
-} from "../../../../config";
+import { VAULT_1_URI, VAULT_2_URI, PARACHAIN_ENDPOINT, VAULT_3_URI, ESPLORA_BASE_PATH } from "../../../../config";
 import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
 import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
 import {
     getAUSDForeignAsset,
     getCorrespondingCollateralCurrenciesForTests,
+    getIssuableAmounts,
     vaultStatusToLabel,
 } from "../../../../utils/helpers";
 import sinon from "sinon";
 
 describe("vaultsAPI", () => {
-    let vault_to_liquidate: KeyringPair;
-    let vault_to_ban: KeyringPair;
     let vault_1: KeyringPair;
     let vault_1_ids: Array<InterbtcPrimitivesVaultId>;
     let vault_2: KeyringPair;
@@ -72,11 +63,7 @@ describe("vaultsAPI", () => {
         );
 
         vault_2 = keyring.addFromUri(VAULT_2_URI);
-
         vault_3 = keyring.addFromUri(VAULT_3_URI);
-
-        vault_to_ban = keyring.addFromUri(VAULT_TO_BAN_URI);
-        vault_to_liquidate = keyring.addFromUri(VAULT_TO_LIQUIDATE_URI);
     });
 
     after(() => {
@@ -89,20 +76,17 @@ describe("vaultsAPI", () => {
     });
 
     function vaultIsATestVault(vaultAddress: string): boolean {
-        return (
-            vaultAddress === vault_2.address ||
-            vaultAddress === vault_1.address ||
-            vaultAddress === vault_3.address ||
-            vaultAddress === vault_to_ban.address ||
-            vaultAddress === vault_to_liquidate.address
-        );
+        return vaultAddress === vault_2.address || vaultAddress === vault_1.address || vaultAddress === vault_3.address;
     }
 
-    // FIXME: this should be tested in a way that in doesn't use magic numbers
     it("should get issuable", async () => {
         const issuableInterBTC = await interBtcAPI.vaults.getTotalIssuableAmount();
-        const minExpectedIssuableInterBTC = newMonetaryAmount(0.002, wrappedCurrency, true);
-        assert.isTrue(issuableInterBTC.gte(minExpectedIssuableInterBTC), `Issuable ${issuableInterBTC.toHuman()}`);
+        const issuableAmounts = await getIssuableAmounts(interBtcAPI);
+        const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
+        assert.isTrue(
+            issuableInterBTC.toBig().sub(totalIssuable.toBig()).abs().lte(1),
+            `${issuableInterBTC.toHuman()} != ${totalIssuable.toHuman()}`
+        );
     });
 
     it("should get the required collateral for the vault", async () => {
