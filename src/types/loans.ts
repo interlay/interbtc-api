@@ -55,7 +55,7 @@ type AccountLiquidity = {
 type UndercollateralizedPosition = {
     accountId: AccountId;
     shortfall: MonetaryAmount<WrappedCurrency>;
-    collateralPositions: Array<LoanPosition>;
+    collateralPositions: Array<CollateralPosition>;
     borrowPositions: Array<BorrowPosition>;
 };
 
