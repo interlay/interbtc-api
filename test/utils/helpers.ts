@@ -220,7 +220,7 @@ export function getCorrespondingCollateralCurrenciesForTests(
 }
 
 export function getWrappedCurrencyForTest(api: ApiPromise): WrappedCurrency {
-    const currencyId = api.consts.escrowRewards.getWrappedCurrencyId;
+    const currencyId = api.consts.currency.getWrappedCurrencyId;
     return tokenSymbolToCurrency(currencyId.asToken);
 }
 type ImplementsToString = { toString: () => string };
