@@ -1,6 +1,6 @@
 import { Bitcoin, MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { newMonetaryAmount } from "..";
+import { newMonetaryAmount } from ".";
 import { LoanAction, CurrencyExt, LoanAsset, LoanPosition, TickerToData } from "../types";
 
 const calculateTotalBorrowedBtcChange = (

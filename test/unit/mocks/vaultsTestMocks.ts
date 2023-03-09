@@ -7,10 +7,10 @@ import {
     DefaultTransactionAPI,
     DefaultVaultsAPI,
     InterbtcPrimitivesVaultId,
-    newMonetaryAmount,
     VaultExt,
     WrappedCurrency,
 } from "../../../src";
+import { newMonetaryAmount } from "../../../src/utils";
 import * as allThingsEncoding from "../../../src/utils/encoding";
 import { AccountId } from "@polkadot/types/interfaces";
 import { SubmittableExtrinsic, AugmentedEvent, ApiTypes } from "@polkadot/api/types";

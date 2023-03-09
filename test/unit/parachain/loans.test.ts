@@ -8,9 +8,9 @@ import {
     DefaultTransactionAPI,
     CollateralPosition,
     LoanAsset,
-    newMonetaryAmount,
     TickerToData,
 } from "../../../src/";
+import { newMonetaryAmount } from "../../../src/utils";
 import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { expect } from "chai";
