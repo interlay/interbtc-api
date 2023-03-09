@@ -201,7 +201,7 @@ export interface LoansAPI {
     /**
      * @returns An array of tuples denoting the underlying currency of a market, and the configuration of that market
      */    
-    getLoansMarketsEntries(): Promise<[CurrencyExt, LoansMarket][]>;
+    getLoansMarkets(): Promise<[CurrencyExt, LoansMarket][]>;
 }
 
 export class DefaultLoansAPI implements LoansAPI {
@@ -212,11 +212,10 @@ export class DefaultLoansAPI implements LoansAPI {
         private transactionAPI: TransactionAPI
     ) {}
 
-    // Wrapped call to make mocks in tests simple.
-    async getLoansMarketsEntries(): Promise<[CurrencyExt, LoansMarket][]> {
-        const entries = await this.api.query.loans.markets.entries();
+    async getLoansMarkets(): Promise<[CurrencyExt, LoansMarket][]> {
+        const entries = (await this.api.query.loans.markets.entries()).filter((entry) => entry[1].isSome);
         const parsedMarkets = await Promise.all(
-                entries.filter((entry) => entry[1].isSome).map(async ([key, market]): Promise<[CurrencyExt, LoansMarket]> => {
+                entries.map(async ([key, market]): Promise<[CurrencyExt, LoansMarket]> => {
                     const underlyingCurrencyId = storageKeyToNthInner(key);
                     const underlyingCurrency = await currencyIdToMonetaryCurrency(
                         this.assetRegistryAPI,
@@ -296,7 +295,7 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     async getLendTokens(): Promise<LendToken[]> {
-        const marketEntries = await this.getLoansMarketsEntries();
+        const marketEntries = await this.getLoansMarkets();
         return marketEntries
             .map(([currency, loansMarket]) => DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(currency, loansMarket.lendTokenId));
     }
@@ -375,11 +374,10 @@ export class DefaultLoansAPI implements LoansAPI {
     async _getBorrowPosition(
         accountId: AccountId,
         underlyingCurrency: CurrencyExt,
-        lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<BorrowPosition | null> {
         const [borrowSnapshot, marketStatus] = await Promise.all([
-            this.api.query.loans.accountBorrows(lendTokenId, accountId),
-            this.api.rpc.loans.getMarketStatus(lendTokenId),
+            this.api.query.loans.accountBorrows(newCurrencyId(this.api, underlyingCurrency), accountId),
+            this.api.rpc.loans.getMarketStatus(newCurrencyId(this.api, underlyingCurrency)),
         ]);
 
         const borrowedAmount = Big(borrowSnapshot.principal.toString());
@@ -405,7 +403,7 @@ export class DefaultLoansAPI implements LoansAPI {
             lendTokenId: InterbtcPrimitivesCurrencyId
         ) => Promise<Position | null>
     ): Promise<Array<Position>> {
-        const marketsEntries = await this.getLoansMarketsEntries();
+        const marketsEntries = await this.getLoansMarkets();
         return (await Promise.all(marketsEntries.map(([currency, loansMarket]) => {
             return getSinglePosition(accountId, currency, loansMarket.lendTokenId)  
         }))).filter((position) => position !== null) as Array<Position>;
@@ -574,9 +572,10 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     async getLoanAssets(): Promise<TickerToData<LoanAsset>> {
-        const marketsEntries = await this.getLoansMarketsEntries();
+        const marketsEntries = await this.getLoansMarkets();
         const loanAssetsArray = await Promise.all(
-            marketsEntries.map(([currency, loansMarket]) => this._getLoanAsset(newCurrencyId(this.api, currency), loansMarket));
+            marketsEntries.map(([currency, loansMarket]) => this._getLoanAsset(newCurrencyId(this.api, currency), loansMarket))
+        );
 
         const loanAssets = loanAssetsArray.reduce(
             (result, [currency, loanAsset]) => ({ ...result, [currency.ticker]: loanAsset }),

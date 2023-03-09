@@ -16,4 +16,4 @@ export { LoansAPI, DefaultLoansAPI } from "./loans";
 export * from "./transaction";
 
 // Hacky way of forcing the resolution of these types in test files
-export { InterbtcPrimitivesVaultId, VaultRegistryVault, SecurityStatusCode } from "@polkadot/types/lookup";
+export { InterbtcPrimitivesVaultId, VaultRegistryVault, SecurityStatusCode, LoansMarket } from "@polkadot/types/lookup";
