@@ -99,6 +99,7 @@ describe("replace", () => {
         // TODO: update test once replace protocol changes
         // https://github.com/interlay/interbtc/issues/823
         it("should request vault replacement", async () => {
+            interBtcAPI.setAccount(vault_3);
             for (const vault_3_id of vault_3_ids) {
                 // try to set value above dust + estimated fees
                 const issueAmount = dustValue.add(feesEstimate).mul(1.2);
@@ -112,7 +113,6 @@ describe("replace", () => {
                 );
 
                 console.log(`Requesting vault replacement for ${replaceAmount.toString()}`);
-                interBtcAPI.setAccount(vault_3);
                 const blockHash = await interBtcAPI.replace.request(replaceAmount, collateralCurrency);
 
                 // query at included block since it may be accepted after
@@ -163,6 +163,7 @@ describe("replace", () => {
         }).timeout(2000000);
 
         it("should fail vault replace request if not having enough tokens", async () => {
+            interBtcAPI.setAccount(vault_2);
             for (const vault_2_id of vault_2_ids) {
                 const collateralCurrency = await currencyIdToMonetaryCurrency(
                     assetRegistry,
@@ -180,9 +181,7 @@ describe("replace", () => {
                 // make sure vault does not hold enough issued tokens to request a replace
                 const replaceAmount = dustValue.add(tokensInVault);
 
-                interBtcAPI.setAccount(vault_2);
                 const replacePromise = interBtcAPI.replace.request(replaceAmount, collateralCurrency);
-
                 expect(replacePromise).to.be.rejectedWith(
                     Error,
                     `Expected replace request to fail with Error (${currencyTicker} vault)`
