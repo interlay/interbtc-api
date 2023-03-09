@@ -1,13 +1,10 @@
 import { CurrencyExt, StableLpToken } from "../../../types";
-import { isCurrencyEqual } from "../../../utils";
+import { isCurrencyEqual, STABLE_POOLS_APPROXIMATION_PRECISION } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { PoolType, PooledCurrencies } from "../types";
 import { LiquidityPoolBase } from "./types";
 import { LiquidityPoolCalculator } from "./calculator";
-
-// Maximum decimal precision.
-const DECIMAL_PRECISION = Big(10).pow(18);
 
 // SOURCE: @zenlink-dex/sdk-core
 class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> implements LiquidityPoolBase {
@@ -32,7 +29,7 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
     }
 
     private _distance(x: Big, y: Big): Big {
-        return x.sub(y).abs().mul(DECIMAL_PRECISION);
+        return x.sub(y).abs().mul(STABLE_POOLS_APPROXIMATION_PRECISION);
     }
 
     private get _feePerToken(): Big {

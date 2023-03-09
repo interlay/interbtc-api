@@ -18,7 +18,7 @@ const calculateTotalBorrowedBtcChange = (
     }
 };
 
-const calculateCollateralAmountBtc = (
+const calculateCollateralAmountBtcChange = (
     action: LoanAction,
     currentCollateralAmountBtc: MonetaryAmount<Bitcoin>,
     actionAmountBtc: MonetaryAmount<Bitcoin>
@@ -85,7 +85,7 @@ const calculateBorrowLimitBtcChangeFactory =
         const collateralThresholdAdjustedAmountBtc = adjustToThreshold(amountBtc, collateralThreshold);
 
         const newTotalBorrowedBtc = calculateTotalBorrowedBtcChange(action, totalBorrowedBtc, amountBtc);
-        const newTotalCollateralThresholdAdjustedCollateralBtc = calculateCollateralAmountBtc(
+        const newTotalCollateralThresholdAdjustedCollateralBtc = calculateCollateralAmountBtcChange(
             action,
             totalCollateralThresholdAdjustedCollateralBtc,
             collateralThresholdAdjustedAmountBtc
@@ -117,13 +117,13 @@ const calculateLtvAndThresholdsChangeFactory =
         const liquidationThresholdAdjustedAmountBtc = adjustToThreshold(amountBtc, liquidationThreshold);
 
         const newTotalBorrowedBtc = calculateTotalBorrowedBtcChange(action, totalBorrowedBtc, amountBtc);
-        const newTotalCollateralBtc = calculateCollateralAmountBtc(action, totalCollateralBtc, amountBtc);
-        const newTotalCollateralThresholdAdjustedCollateralBtc = calculateCollateralAmountBtc(
+        const newTotalCollateralBtc = calculateCollateralAmountBtcChange(action, totalCollateralBtc, amountBtc);
+        const newTotalCollateralThresholdAdjustedCollateralBtc = calculateCollateralAmountBtcChange(
             action,
             totalCollateralThresholdAdjustedCollateralBtc,
             collateralThresholdAdjustedAmountBtc
         );
-        const newTotalLiquidationThresholdAdjustedCollateralBtc = calculateCollateralAmountBtc(
+        const newTotalLiquidationThresholdAdjustedCollateralBtc = calculateCollateralAmountBtcChange(
             action,
             totalLiquidationThresholdAdjustedCollateralBtc,
             liquidationThresholdAdjustedAmountBtc
@@ -149,7 +149,7 @@ const calculateLtvAndThresholdsChangeFactory =
 export {
     calculateBorrowLimit,
     adjustToThreshold,
-    calculateCollateralAmountBtc,
+    calculateCollateralAmountBtcChange as calculateCollateralAmountBtc,
     calculateTotalBorrowedBtcChange,
     getTotalAmountBtc,
     calculateLtv,

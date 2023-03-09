@@ -349,7 +349,6 @@ export class DefaultLoansAPI implements LoansAPI {
         if (underlyingCurrencyAmount.eq(0)) {
             return null;
         }
-        const amount = newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency);
         const accountDeposits = await this.api.query.loans.accountDeposits(lendTokenId, accountId);
 
         const isCollateral = !accountDeposits.isZero();
@@ -384,7 +383,6 @@ export class DefaultLoansAPI implements LoansAPI {
         if (borrowedAmount.eq(0)) {
             return null;
         }
-        const amount = newMonetaryAmount(borrowedAmount, underlyingCurrency);
         const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
         const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
         const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);

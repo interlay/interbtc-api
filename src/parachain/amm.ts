@@ -831,9 +831,6 @@ export class DefaultAMMAPI implements AMMAPI {
                         ) || new MonetaryAmount(actuallyPooledCurrency.currency, 0)
                 )
                 .map(monetaryAmountToRawString);
-            // const minAmountsMeta = minAmounts
-            //     .filter((amount) => pool.involvesToken(amount.currency))
-            //     .map(monetaryAmountToRawString);
             const minAmountsBase = minAmounts
                 .filter((amount) => pool.basePool.involvesToken(amount.currency))
                 .map(monetaryAmountToRawString);
