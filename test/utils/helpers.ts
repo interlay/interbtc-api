@@ -191,19 +191,6 @@ export const vaultStatusToLabel = (status: VaultStatusExt): string => {
 // note: currently the same for all collateral currencies - might change in future
 export const getExchangeRateValueToSetForTesting = (_collateralCurrency: CurrencyExt): Big => new Big("230.0");
 
-/**
- * Returns the vsize (virtual size) of the given transaction.
- *
- * The vsize is calculated by dividing the weight by 4 and rounding up to the next integer.
- * See also https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#Transaction_size_calculations
- * @param transaction the transaction to calculate the vsize of
- * @returns the vsize of the transaction
- */
-export const calculateBtcTxVsize = (transaction: Transaction): Big => {
-    const txWeight = new Big(transaction.weight || 0);
-    return txWeight.div(4).round(0, RoundingMode.RoundUp);
-};
-
 export const getAUSDForeignAsset = async (assetRegistryApi: AssetRegistryAPI): Promise<ForeignAsset | undefined> => {
     const foreignAssets = await assetRegistryApi.getForeignAssets();
     return foreignAssets.find((asset) => asset.ticker === AUSD_TICKER);
@@ -224,6 +211,7 @@ export function getCorrespondingCollateralCurrenciesForTests(
 }
 
 type ImplementsToString = { toString: () => string };
+
 /**
  * Alternative to `arr.includes(element)` that check stringified version of the items for equality.
  * Useful for types such as `AccountId`.
