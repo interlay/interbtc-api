@@ -1,5 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
-import { H256, AccountId } from "@polkadot/types/interfaces";
+import { H256, AccountId, BlockHash } from "@polkadot/types/interfaces";
 import { BlockNumber } from "@polkadot/types/interfaces/runtime";
 import { Network } from "bitcoinjs-lib";
 import { MonetaryAmount } from "@interlay/monetary-js";
@@ -48,7 +48,7 @@ export interface ReplaceAPI {
      * @param replaceId The ID of the replace request to fetch
      * @returns A replace request object
      */
-    getRequestById(replaceId: H256 | string): Promise<ReplaceRequestExt>;
+    getRequestById(replaceId: H256 | string, atBlock?: BlockHash): Promise<ReplaceRequestExt>;
 
     /**
      * Build a request replace extrinsic (transaction) without sending it.
@@ -66,7 +66,7 @@ export interface ReplaceAPI {
      * @param amount Amount issued, denoted in Bitcoin, to have replaced by another vault
      * @param collateralCurrency Collateral currency to have replaced
      */
-    request(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<void>;
+    request(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<BlockHash>;
 
     /**
      * Build a withdraw replace extrinsic (transaction) without sending it.
@@ -171,11 +171,12 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         return this.api.tx.replace.requestReplace(vaultCurrencyPair, amountAtomicBalance);
     }
 
-    async request(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<void> {
+    async request(amount: MonetaryAmount<WrappedCurrency>, collateralCurrency: CollateralCurrencyExt): Promise<BlockHash> {
         const requestTx = this.buildRequestReplaceExtrinsic(amount, collateralCurrency);
         // When requesting a replace, wait for the finalized event because we cannot revert BTC transactions.
         // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000
-        await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.RequestReplace);
+        const result = await this.transactionAPI.sendLogged(requestTx, this.api.events.replace.RequestReplace);
+        return result.status.asFinalized;
     }
 
     buildWithdrawReplaceExtrinsic(
@@ -299,8 +300,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         return replaceRequestMap;
     }
 
-    async getRequestById(replaceId: H256 | string): Promise<ReplaceRequestExt> {
-        const head = await this.api.rpc.chain.getFinalizedHead();
+    async getRequestById(replaceId: H256 | string, atBlock?: BlockHash): Promise<ReplaceRequestExt> {
+        const head = atBlock ? atBlock : await this.api.rpc.chain.getFinalizedHead();
         const api = await this.api.at(head);
         const replaceRequest = await api.query.replace.replaceRequests(ensureHashEncoded(this.api, replaceId));
         if (replaceRequest.isNone) {

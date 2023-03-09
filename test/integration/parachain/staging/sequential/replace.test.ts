@@ -10,6 +10,8 @@ import {
     InterbtcPrimitivesVaultId,
     LoansAPI,
     newMonetaryAmount,
+    sleep,
+    SLEEP_TIME_MS,
 } from "../../../../../src/index";
 
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
@@ -32,6 +34,10 @@ import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { callWith, getCorrespondingCollateralCurrenciesForTests } from "../../../../utils/helpers";
+import { BlockHash, Hash } from "@polkadot/types/interfaces";
+import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
+import { BN } from "bn.js";
+import { FrameSystemEventRecord } from "@polkadot/types/lookup";
 
 describe("replace", () => {
     let api: ApiPromise;
@@ -90,8 +96,10 @@ describe("replace", () => {
             feesEstimate = newMonetaryAmount(await interBtcAPI.oracle.getBitcoinFees(), wrappedCurrency, false);
         });
 
-        // TODO: investigate why this is flaky sometimes timing out / returning falsy
-        it.skip("should request vault replacement", async () => {
+        // TODO: update test once replace protocol changes
+        // https://github.com/interlay/interbtc/issues/823
+        it("should request vault replacement", async () => {
+            interBtcAPI.setAccount(vault_3);
             for (const vault_3_id of vault_3_ids) {
                 // try to set value above dust + estimated fees
                 const issueAmount = dustValue.add(feesEstimate).mul(1.2);
@@ -103,41 +111,59 @@ describe("replace", () => {
                     loansAPI,
                     vault_3_id.currencies.collateral
                 );
-                await callWith(interBtcAPI, vault_3, async () =>
-                    interBtcAPI.replace.request(replaceAmount, collateralCurrency)
+
+                console.log(`Requesting vault replacement for ${replaceAmount.toString()}`);
+                const blockHash = await interBtcAPI.replace.request(replaceAmount, collateralCurrency);
+
+                // query at included block since it may be accepted after
+                const apiAt = await api.at(blockHash);
+                const vault = await apiAt.query.vaultRegistry.vaults(vault_3_id);
+                const toBeReplaced = vault.unwrap().toBeReplacedTokens.toBn();
+
+                assert.equal(
+                    toBeReplaced.toString(),
+                    replaceAmount.toString(true)
+                );
+
+                // hacky way to subscribe to events from a previous height
+                // we can remove this once the request / accept flow is removed
+                async function waitForEvent(
+                    blockHash: BlockHash,
+                    expectedEvent: AugmentedEvent<ApiTypes>
+                ): Promise<[FrameSystemEventRecord, BlockHash]> {
+                    let hash = blockHash;
+                    while (true) {
+                        const header = await api.rpc.chain.getHeader(hash);
+                        try {
+                            hash = await api.rpc.chain.getBlockHash(header.number.toNumber() + 1);
+                        } catch (_) {
+                            sleep(SLEEP_TIME_MS)
+                            continue;
+                        }
+
+                        const apiAt = await api.at(hash);
+                        const events = await apiAt.query.system.events();
+                        const foundEvent = events
+                            .find(({ event }) => expectedEvent.is(event));
+                        if (foundEvent) {
+                            return [foundEvent, hash];
+                        }
+                    }
+                }
+
+                const [acceptReplaceEvent, foundBlockHash] = await waitForEvent(blockHash, api.events.replace.AcceptReplace);
+                const requestId = api.createType("Hash", acceptReplaceEvent.event.data[0]);
+
+                const replaceRequest = await interBtcAPI.replace.getRequestById(requestId, foundBlockHash);
+                assert.equal(
+                    replaceRequest.oldVault.accountId.toString(),
+                    vault_3_id.accountId.toString(),
                 );
             }
-
-            const requestsList = await interBtcAPI.replace.list();
-            const requestsMap = await interBtcAPI.replace.map();
-            assert.equal(
-                requestsList.length,
-                vault_3_ids.length,
-                `Expected ${vault_3_ids.length} requests in list, got ${requestsList.length}`
-            );
-            assert.equal(
-                requestsMap.size,
-                vault_3_ids.length,
-                `Expected ${vault_3_ids.length} requests in map, got ${requestsMap.size}`
-            );
-
-            // Need to manually compare some fields
-            const membersFromListToExpect = requestsList.map((req) => ({
-                btcAddress: req.btcAddress,
-                btcHeight: req.btcHeight,
-                amount: req.amount.toString(),
-            }));
-
-            const membersFromMapToCheck = Array.from(requestsMap.values()).map((req) => ({
-                btcAddress: req.btcAddress,
-                btcHeight: req.btcHeight,
-                amount: req.amount.toString(),
-            }));
-
-            expect(membersFromMapToCheck).to.deep.include.members(membersFromListToExpect);
         }).timeout(2000000);
 
         it("should fail vault replace request if not having enough tokens", async () => {
+            interBtcAPI.setAccount(vault_2);
             for (const vault_2_id of vault_2_ids) {
                 const collateralCurrency = await currencyIdToMonetaryCurrency(
                     assetRegistry,
@@ -155,10 +181,7 @@ describe("replace", () => {
                 // make sure vault does not hold enough issued tokens to request a replace
                 const replaceAmount = dustValue.add(tokensInVault);
 
-                const replacePromise = callWith(interBtcAPI, vault_2, () =>
-                    interBtcAPI.replace.request(replaceAmount, collateralCurrency)
-                );
-
+                const replacePromise = interBtcAPI.replace.request(replaceAmount, collateralCurrency);
                 expect(replacePromise).to.be.rejectedWith(
                     Error,
                     `Expected replace request to fail with Error (${currencyTicker} vault)`
