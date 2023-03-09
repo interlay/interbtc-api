@@ -6,9 +6,11 @@ import { WrappedCurrency } from "../types";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");
-interface RecipientsToUTXOAmounts {
+
+interface RecipientsToUtxoAmounts {
     [key: string]: string;
 }
+
 export class BitcoinCoreClient {
     client: typeof Client;
 
@@ -47,8 +49,8 @@ export class BitcoinCoreClient {
         return tx;
     }
 
-    formatRawTxInput(recipient: string, amount: Big, data?: string): RecipientsToUTXOAmounts[] {
-        const paidOutput: RecipientsToUTXOAmounts = {};
+    formatRawTxInput(recipient: string, amount: Big, data?: string): RecipientsToUtxoAmounts[] {
+        const paidOutput: RecipientsToUtxoAmounts = {};
         paidOutput[recipient] = amount.toString();
         if (data !== undefined) {
             return [{ data }, paidOutput];
@@ -87,19 +89,6 @@ export class BitcoinCoreClient {
         console.log(`Mining ${n} Bitcoin block(s)`);
         const newWalletAddress = await this.client.command("getnewaddress");
         await this.client.command("generatetoaddress", n, newWalletAddress);
-    }
-
-    async getBalance(): Promise<string> {
-        return await this.client.command("getbalance");
-    }
-
-    async sendToAddress(address: string, amount: MonetaryAmount<WrappedCurrency>): Promise<string> {
-        return await this.client.command("sendtoaddress", address, amount.toString());
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    getMempoolInfo(): Promise<any> {
-        return this.client.command("getmempoolinfo");
     }
 
     getBestBlockHash(): Promise<string> {
