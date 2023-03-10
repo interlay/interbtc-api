@@ -5,8 +5,6 @@ import { PARACHAIN_ENDPOINT } from "../../../config";
 import { DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
 describe("BTCRelay", function () {
-    this.timeout(10000); // API can be slightly slow
-
     let api: ApiPromise;
     let interBtcAPI: InterBtcApi;
 

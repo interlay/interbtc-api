@@ -86,7 +86,7 @@ describe("escrow", () => {
             "0",
             "Voting supply balance should be zero before any tokens are locked"
         );
-    }).timeout(100000);
+    });
 
     // PRECONDITION: This test must run second, so no tokens are locked.
     it("should return 0 reward and apy estimate", async () => {
@@ -176,7 +176,7 @@ describe("escrow", () => {
             `Expected total staked balance to have increased by locked amounts: ${lockedBalanceTotal.toHuman()},
             but old balance was ${stakedTotalBefore.toHuman()} and new balance is ${stakedTotalAfter.toHuman()}`
         );
-    }).timeout(15 * 60000);
+    });
 
     it("should increase amount and unlock height", async () => {
         const userAmount = newMonetaryAmount(1000, governanceCurrency, true);
@@ -187,5 +187,5 @@ describe("escrow", () => {
         await interBtcAPI.escrow.createLock(userAmount, currentBlockNumber + unlockHeightDiff);
         await interBtcAPI.escrow.increaseAmount(userAmount);
         await interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff);
-    }).timeout(200000);
+    });
 });

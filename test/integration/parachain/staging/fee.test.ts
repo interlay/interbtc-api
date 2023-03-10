@@ -44,7 +44,7 @@ describe("fee", () => {
     it("should check getReplaceGriefingCollateralRate", async () => {
         const replaceGriefingCollateralRate = await oracleInterBtcAPI.fee.getReplaceGriefingCollateralRate();
         assert.equal(replaceGriefingCollateralRate.toString(), "0.1");
-    }).timeout(2000000);
+    });
 
     it("should getGriefingCollateral for issue", async () => {
         const exchangeRateValue = new Big("280269058");
@@ -59,7 +59,7 @@ describe("fee", () => {
             console.log(griefingCollateral.toString());
             assert.equal(griefingCollateral.toBig().round(5, 0).toString(), "0.0014");
         });
-    }).timeout(2 * 200000);
+    });
 
     it("should getGriefingCollateral for replace", async () => {
         const exchangeRateValue = new Big("280269058");
@@ -73,5 +73,5 @@ describe("fee", () => {
             );
             assert.equal(griefingCollateral.toString(), "2040.35874224");
         });
-    }).timeout(2 * 200000);
+    });
 });

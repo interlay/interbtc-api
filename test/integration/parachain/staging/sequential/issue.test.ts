@@ -152,7 +152,7 @@ describe("issue", () => {
                 `Final balance was not increased by the exact amount specified (collateral: ${currencyTicker})`
             );
         }
-    }).timeout(1000000);
+    }).timeout(1000 * 60);
 
     it("should get issueBtcDustValue", async () => {
         const dust = await userInterBtcAPI.api.query.issue.issueBtcDustValue();
@@ -233,5 +233,5 @@ describe("issue", () => {
                 }
             });
         }
-    }).timeout(10 * 60000);
+    });
 });
