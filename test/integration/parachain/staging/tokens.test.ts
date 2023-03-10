@@ -11,9 +11,11 @@ import {
     CurrencyExt,
     DefaultInterBtcApi,
     InterBtcApi,
-    newAccountId,
-    newMonetaryAmount,
 } from "../../../../src";
+import {
+    newAccountId,
+    newMonetaryAmount
+} from "../../../../src/utils";
 import { getCorrespondingCollateralCurrenciesForTests } from "../../../utils/helpers";
 
 describe("TokensAPI", () => {

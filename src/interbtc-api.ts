@@ -26,8 +26,10 @@ import {
     DefaultLoansAPI,
     EscrowAPI,
     LoansAPI,
-    tokenSymbolToCurrency,
 } from ".";
+import { 
+    tokenSymbolToCurrency
+} from "./utils";
 import { AssetRegistryAPI } from "./parachain/asset-registry";
 import { AMMAPI, DefaultAMMAPI } from "./parachain/amm";
 

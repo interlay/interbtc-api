@@ -1,14 +1,18 @@
 import { assert } from "../../../../chai";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
-import { createSubstrateAPI } from "../../../../../src/factory";
-import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
-import { DefaultAssetRegistryAPI, DefaultInterBtcApi, DefaultTransactionAPI, storageKeyToNthInner, stripHexPrefix } from "../../../../../src";
-
 import { StorageKey } from "@polkadot/types";
 import { AnyTuple } from "@polkadot/types/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
+
+import { createSubstrateAPI } from "../../../../../src/factory";
+import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
+import { DefaultAssetRegistryAPI, DefaultInterBtcApi, DefaultTransactionAPI } from "../../../../../src";
+import {
+    storageKeyToNthInner,
+    stripHexPrefix
+} from "../../../../../src/utils";
 
 describe("AssetRegistry", () => {
     let api: ApiPromise;
