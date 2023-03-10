@@ -160,7 +160,7 @@ describe("replace", () => {
                     vault_3_id.accountId.toString(),
                 );
             }
-        }).timeout(2000000);
+        }).timeout(1000 * 30);
 
         it("should fail vault replace request if not having enough tokens", async () => {
             interBtcAPI.setAccount(vault_2);
@@ -187,7 +187,7 @@ describe("replace", () => {
                     `Expected replace request to fail with Error (${currencyTicker} vault)`
                 );
             }
-        }).timeout(600000);
+        });
     });
 
     it("should getDustValue", async () => {

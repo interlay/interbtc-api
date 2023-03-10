@@ -5,8 +5,6 @@ import { createSubstrateAPI } from "../../../../src/factory";
 import { PARACHAIN_ENDPOINT } from "../../../config";
 
 describe("Constants", function () {
-    this.timeout(10000); // API can be slightly slow
-
     let api: ApiPromise;
     let constantAPI: ConstantsAPI;
 

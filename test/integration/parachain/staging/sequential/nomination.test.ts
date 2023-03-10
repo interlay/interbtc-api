@@ -110,7 +110,7 @@ describe.skip("NominationAPI", () => {
             );
             assert.equal(0, (await userInterBtcAPI.nomination.listVaults()).length);
         }
-    }).timeout(2 * 60000);
+    });
 
     async function setIssueFee(x: BN) {
         await setRawStorage(
@@ -202,7 +202,7 @@ describe.skip("NominationAPI", () => {
                 );
             }
         }
-    }).timeout(10 * 60000);
+    });
 
     async function optInWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrencyExt) {
         // will fail if vault is already opted in
