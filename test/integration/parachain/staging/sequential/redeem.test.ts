@@ -114,7 +114,7 @@ describe("redeem", () => {
                 ExecuteRedeem.False
             );
         }
-    }).timeout(12 * 60000);
+    }).timeout(1000 * 90);
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();

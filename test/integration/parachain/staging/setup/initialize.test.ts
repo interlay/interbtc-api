@@ -25,11 +25,6 @@ import {
     intoAccountTruncating,
 } from "../../../../../src";
 import {
-    initializeVaultNomination,
-    initializeExchangeRate,
-    initializeStableConfirmations,
-} from "../../../../../src/utils/setup";
-import {
     SUDO_URI,
     VAULT_1_URI,
     VAULT_2_URI,
@@ -152,15 +147,21 @@ describe("Initialize parachain state", () => {
         ]);
 
         if (stableBitcoinConfirmations != 0 || stableParachainConfirmations != 0) {
-            await initializeStableConfirmations(
+            console.log("Initializing stable block confirmations...");
+            await setRawStorage(
                 api,
-                {
-                    bitcoinConfirmations: stableBitcoinConfirmationsToSet,
-                    parachainConfirmations: stableParachainConfirmationsToSet,
-                },
-                sudoAccount,
-                bitcoinCoreClient
+                api.query.btcRelay.stableBitcoinConfirmations.key(),
+                api.createType("u32", stableBitcoinConfirmationsToSet),
+                sudoAccount
             );
+            await setRawStorage(
+                api,
+                api.query.btcRelay.stableParachainConfirmations.key(),
+                api.createType("u32", stableParachainConfirmationsToSet),
+                sudoAccount
+            );
+            await bitcoinCoreClient.mineBlocks(3);
+
             [stableBitcoinConfirmations, stableParachainConfirmations] = await Promise.all([
                 userInterBtcAPI.btcRelay.getStableBitcoinConfirmations(),
                 userInterBtcAPI.btcRelay.getStableParachainConfirmations(),
@@ -252,7 +253,7 @@ describe("Initialize parachain state", () => {
                 foreignAsset,
                 getExchangeRateValueToSetForTesting(foreignAsset)
             );
-            await initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
+            await sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate);
         }
     });
 
@@ -260,7 +261,7 @@ describe("Initialize parachain state", () => {
         async function setCollateralExchangeRate(value: Big, currency: CurrencyExt) {
             const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
             // result will be medianized
-            return initializeExchangeRate(exchangeRate, sudoInterBtcAPI.oracle);
+            await sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate);
         }
         await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot);
         await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama);
@@ -291,7 +292,7 @@ describe("Initialize parachain state", () => {
     it("should enable vault nomination", async () => {
         let isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         if (!isNominationEnabled) {
-            await initializeVaultNomination(true, sudoInterBtcAPI.nomination);
+            await sudoInterBtcAPI.nomination.setNominationEnabled(true);
             isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         }
         assert.isTrue(isNominationEnabled);

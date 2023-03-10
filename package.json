@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "1.21.1",
+  "version": "1.22.0",
   "description": "JavaScript library to interact with interBTC",
   "main": "build/src/index.js",
   "typings": "build/src/index.d.ts",
@@ -40,9 +40,9 @@
     "test:unit": "mocha test/unit/*.test.ts test/unit/**/*.test.ts",
     "test:integration": "run-s test:integration:staging",
     "test:integration:staging": "run-s test:integration:setup test:integration:parallel test:integration:sequential",
-    "test:integration:setup": "mocha test/integration/**/staging/setup/initialize.test.ts --timeout 10000000",
-    "test:integration:parallel": "mocha test/integration/**/staging/*.test.ts --timeout 10000000 --parallel",
-    "test:integration:sequential": "mocha test/integration/**/staging/sequential/*.test.ts --timeout 10000000",
+    "test:integration:setup": "mocha test/integration/**/staging/setup/initialize.test.ts",
+    "test:integration:parallel": "mocha test/integration/**/staging/*.test.ts --parallel",
+    "test:integration:sequential": "mocha test/integration/**/staging/sequential/*.test.ts",
     "watch:build": "tsc -p tsconfig.json -w",
     "watch:test": "mocha --watch test/**/*.test.ts",
     "update-metadata": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json"

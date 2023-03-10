@@ -129,7 +129,7 @@ describe("AssetRegistry", () => {
                 );
             }
         }
-    }).timeout(3 * 60000);
+    });
 
     // PRECONDITION: This test requires at least one foreign asset set up as collateral currency.
     //   This should have happened as part of preparations in initialize.test.ts
