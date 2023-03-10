@@ -90,7 +90,7 @@ describe.skip("NominationAPI", () => {
             await optOutWithAccount(vault_1, await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral));
             assert.equal(0, (await userInterBtcAPI.nomination.listVaults()).length);
         }
-    }).timeout(2 * 60000);
+    });
 
     async function setIssueFee(x: BN) {
         await setRawStorage(api, api.query.fee.issueFee.key(), api.createType("UnsignedFixedPoint", x), sudoAccount);
@@ -170,7 +170,7 @@ describe.skip("NominationAPI", () => {
                 );
             }
         }
-    }).timeout(10 * 60000);
+    });
 
     async function optInWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrencyExt) {
         // will fail if vault is already opted in

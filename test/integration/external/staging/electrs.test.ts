@@ -17,8 +17,6 @@ import { BitcoinAmount } from "@interlay/monetary-js";
 import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, waitSuccess } from "../../../utils/helpers";
 
 describe("ElectrsAPI regtest", function () {
-    this.timeout(100000);
-
     let api: ApiPromise;
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
@@ -49,7 +47,7 @@ describe("ElectrsAPI regtest", function () {
             const txid = await waitSuccess(() => electrsAPI.getLargestPaymentToRecipientAddressTxId(recipientAddress));
             assert.strictEqual(txid, txData.txid);
         });
-    });
+    }).timeout(1000 * 10);
 
     it("should getTxByOpreturn", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
@@ -61,7 +59,7 @@ describe("ElectrsAPI regtest", function () {
             const txid = await waitSuccess(() => electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount));
             assert.strictEqual(txid, txData.txid);
         });
-    });
+    }).timeout(1000 * 10);
 
     it("should use getTxStatus to return correct confirmations", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
@@ -86,5 +84,5 @@ describe("ElectrsAPI regtest", function () {
                 assert.strictEqual(status.confirmations, 2);
             });
         });
-    });
+    }).timeout(1000 * 60);
 });
