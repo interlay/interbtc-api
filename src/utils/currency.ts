@@ -14,15 +14,26 @@ import {
     VoteInterlay,
     VoteKintsugi,
 } from "@interlay/monetary-js";
+import { u32, u128 } from "@polkadot/types";
 import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
-import { GovernanceCurrency, CurrencyExt, ForeignAsset, CollateralCurrencyExt, LendToken, CurrencyIdentifier } from "../types/currency";
+import {
+    GovernanceCurrency,
+    CurrencyExt,
+    ForeignAsset,
+    CollateralCurrencyExt,
+    LendToken,
+    CurrencyIdentifier,
+    StandardLpToken,
+    StableLpToken,
+    StandardPooledTokenIdentifier,
+} from "../types/currency";
+import { decodeBytesAsString, newForeignAssetId, newCurrencyId, storageKeyToNthInner } from "./encoding";
 import { ApiPromise } from "@polkadot/api";
-import { newCurrencyId, storageKeyToNthInner } from "./encoding";
 import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../interfaces";
-import { AssetRegistryAPI } from "../parachain/asset-registry";
+import { DefaultAssetRegistryAPI } from "../parachain/asset-registry";
 import { Option } from "@polkadot/types/codec";
-import { u128 } from "@polkadot/types";
-import { DefaultLoansAPI, LoansAPI } from "../parachain";
+import { DefaultLoansAPI } from "../parachain";
+import { DefaultAMMAPI } from "../parachain/amm";
 
 // set maximum exponents
 Big.PE = 21;
@@ -38,9 +49,13 @@ export function atomicToBaseAmount(atomicAmount: BigSource, currency: Currency):
     return new Big(atomicAmount).div(new Big(10).pow(currency.decimals));
 }
 
-export function newMonetaryAmount(amount: BigSource, currency: CurrencyExt, base = false): MonetaryAmount<CurrencyExt> {
+export function newMonetaryAmount<CurrencyT extends CurrencyExt>(
+    amount: BigSource,
+    currency: CurrencyT,
+    base = false
+): MonetaryAmount<CurrencyT> {
     const finalAmount = base ? new Big(amount) : atomicToBaseAmount(amount, currency);
-    return new MonetaryAmount<CurrencyExt>(currency, finalAmount);
+    return new MonetaryAmount<CurrencyT>(currency, finalAmount);
 }
 
 export function newCollateralBTCExchangeRate(
@@ -83,15 +98,9 @@ export function toVoting(governanceCurrency: GovernanceCurrency): Currency {
  * Will return all collateral currencies for which the parachain has a system collateral ceiling value
  * greater than zero.
  * @param api ApiPromise instance to query the parachain
- * @param assetRegistry AssetRegistryAPI instance to fetch foreign asset data (if needed)
- * @param loansAPI LoansAPI to fetch Lend Tokens if needed.
  * @returns An array of collateral currencies.
  */
-export async function getCollateralCurrencies(
-    api: ApiPromise,
-    assetRegistry: AssetRegistryAPI,
-    loansAPI: LoansAPI
-): Promise<Array<CollateralCurrencyExt>> {
+export async function getCollateralCurrencies(api: ApiPromise): Promise<Array<CollateralCurrencyExt>> {
     const collatCeilEntries = await api.query.vaultRegistry.systemCollateralCeiling.entries();
 
     const isOptionGreaterThanZero = (value: Option<u128>) =>
@@ -102,9 +111,7 @@ export async function getCollateralCurrencies(
         .map(([storageKey, _]) => storageKeyToNthInner(storageKey));
 
     return Promise.all(
-        collateralCurrencyPrimitives.map((currencyPair) =>
-            currencyIdToMonetaryCurrency(assetRegistry, loansAPI, currencyPair.collateral)
-        )
+        collateralCurrencyPrimitives.map((currencyPair) => currencyIdToMonetaryCurrency(api, currencyPair.collateral))
     );
 }
 
@@ -120,8 +127,21 @@ export function isLendToken(currencyExt: CurrencyExt): currencyExt is LendToken 
     return (currencyExt as any).lendToken !== undefined;
 }
 
+export function isStandardLpToken(currencyExt: CurrencyExt): currencyExt is StandardLpToken {
+    return (currencyExt as StandardLpToken).lpToken !== undefined;
+}
+
+export function isStableLpToken(currencyExt: CurrencyExt): currencyExt is StableLpToken {
+    return (currencyExt as StableLpToken).stableLpToken !== undefined;
+}
+
 export function isCurrency(currencyExt: CurrencyExt): currencyExt is Currency {
-    return !isForeignAsset(currencyExt) && !isLendToken(currencyExt);
+    return (
+        !isForeignAsset(currencyExt) &&
+        !isLendToken(currencyExt) &&
+        !isStandardLpToken(currencyExt) &&
+        !isStableLpToken(currencyExt)
+    );
 }
 
 export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyExt): boolean {
@@ -131,6 +151,13 @@ export function isCurrencyEqual(currency: CurrencyExt, otherCurrency: CurrencyEx
         return currency.foreignAsset.id === otherCurrency.foreignAsset.id;
     } else if (isLendToken(currency) && isLendToken(otherCurrency)) {
         return currency.lendToken.id === otherCurrency.lendToken.id;
+    } else if (isStandardLpToken(currency) && isStandardLpToken(otherCurrency)) {
+        return (
+            isCurrencyEqual(currency.lpToken.token0, otherCurrency.lpToken.token0) &&
+            isCurrencyEqual(currency.lpToken.token1, otherCurrency.lpToken.token1)
+        );
+    } else if (isStableLpToken(currency) && isStableLpToken(otherCurrency)) {
+        return currency.stableLpToken.poolId === otherCurrency.stableLpToken.poolId;
     }
 
     return false;
@@ -143,22 +170,34 @@ export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier
     if (isLendToken(currency)) {
         return { lendToken: currency.lendToken.id };
     }
+    if (isStableLpToken(currency)) {
+        return { stableLpToken: currency.stableLpToken.poolId };
+    }
+    if (isStandardLpToken(currency)) {
+        const token0 = getCurrencyIdentifier(currency.lpToken.token0) as StandardPooledTokenIdentifier;
+        const token1 = getCurrencyIdentifier(currency.lpToken.token1) as StandardPooledTokenIdentifier;
+        return { lpToken: [token0, token1] };
+    }
+
     return { token: currency.ticker };
 }
 
 export async function currencyIdToMonetaryCurrency(
-    assetRegistryApi: AssetRegistryAPI,
-    loansApi: LoansAPI,
+    api: ApiPromise,
     currencyId: InterbtcPrimitivesCurrencyId
 ): Promise<CurrencyExt> {
     if (currencyId.isToken) {
         return tokenSymbolToCurrency(currencyId.asToken);
     } else if (currencyId.isForeignAsset) {
         const foreignAssetId = currencyId.asForeignAsset;
-        return assetRegistryApi.getForeignAsset(foreignAssetId);
+        return getForeignAssetFromId(api, foreignAssetId);
     } else if (currencyId.isLendToken) {
-        const underlyingCurrency = await loansApi.getUnderlyingCurrencyFromLendTokenId(currencyId);
+        const underlyingCurrency = await getUnderlyingCurrencyFromLendTokenId(api, currencyId);
         return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, currencyId);
+    } else if (currencyId.isLpToken) {
+        return getStandardLpTokenFromCurrencyId(api, currencyId);
+    } else if (currencyId.isStableLpToken) {
+        return getStableLpTokenFromCurrencyId(api, currencyId);
     }
 
     throw new Error(`No handling implemented for currencyId type of ${currencyId.type}`);
@@ -184,4 +223,108 @@ export function tokenSymbolToCurrency(tokenSymbol: InterbtcPrimitivesTokenSymbol
         return Interlay;
     }
     throw new Error(`No entry provided for token symbol of type '${tokenSymbol?.type}'`);
+}
+
+/**
+ * Get foreign asset by its id.
+ * @param id The id of the foreign asset.
+ * @returns The foreign asset.
+ */
+export async function getForeignAssetFromId(api: ApiPromise, id: number | u32): Promise<ForeignAsset> {
+    const u32Id = id instanceof u32 ? id : newForeignAssetId(api, id);
+    const optionMetadata = await api.query.assetRegistry.metadata(u32Id);
+
+    if (!optionMetadata.isSome) {
+        return Promise.reject(new Error("Foreign asset not found"));
+    }
+    const currencyPart = DefaultAssetRegistryAPI.metadataToCurrency(optionMetadata.unwrap());
+    const coingeckoId = decodeBytesAsString(optionMetadata.unwrap().additional.coingeckoId);
+
+    const numberId = id instanceof u32 ? id.toNumber() : id;
+
+    return {
+        foreignAsset: {
+            id: numberId,
+            coingeckoId,
+        },
+        ...currencyPart,
+    };
+}
+
+/**
+ * Get underlying currency of lend token id,
+ *
+ * @param lendTokenId Currency id of the lend token to get currency from
+ * @returns Underlying CurrencyExt for provided lend token
+ */
+export async function getUnderlyingCurrencyFromLendTokenId(
+    api: ApiPromise,
+    lendTokenId: InterbtcPrimitivesCurrencyId
+): Promise<CurrencyExt> {
+    const underlyingCurrencyId = await api.query.loans.underlyingAssetId(lendTokenId);
+
+    const underlyingCurrency = await currencyIdToMonetaryCurrency(api, underlyingCurrencyId.unwrap());
+
+    return underlyingCurrency;
+}
+
+/**
+ * Get standard LP token currency lib type from currencyId primitive.
+ *
+ * @param currencyId Id of standard LP token.
+ * @returns {StandardLpToken} Lib type currency object for standard LP token.
+ */
+export async function getStandardLpTokenFromCurrencyId(
+    api: ApiPromise,
+    currencyId: InterbtcPrimitivesCurrencyId
+): Promise<StandardLpToken> {
+    if (!currencyId.isLpToken) {
+        throw new Error("Provided currencyId is not standard LP token.");
+    }
+    const standardLpTokenCurrencyId = currencyId.asLpToken;
+    const [token0, token1] = await Promise.all(
+        standardLpTokenCurrencyId.map((currencyId) =>
+            currencyIdToMonetaryCurrency(api, currencyId as InterbtcPrimitivesCurrencyId)
+        )
+    );
+
+    return {
+        name: `LP ${token0.ticker}-${token1.ticker}`,
+        ticker: `LP ${token0.ticker}-${token1.ticker}`,
+        decimals: 18,
+        lpToken: {
+            token0,
+            token1,
+        },
+    };
+}
+
+/**
+ * Get stable LP token currency lib type from currencyId primitive.
+ *
+ * @param currencyId Id of stable LP token.
+ * @returns {StableLpToken} Lib type currency object for stable LP token.
+ */
+export async function getStableLpTokenFromCurrencyId(
+    api: ApiPromise,
+    currencyId: InterbtcPrimitivesCurrencyId
+): Promise<StableLpToken> {
+    if (!currencyId.isStableLpToken) {
+        throw new Error("Provided currencyId is not stable LP token.");
+    }
+
+    const poolId = currencyId.asStableLpToken.toNumber();
+    const poolData = await api.query.dexStable.pools(poolId);
+
+    if (!poolData.isSome) {
+        throw new Error(`getStableLpToken: Invalid pool data for currencyId ${currencyId.toString()}`);
+    }
+
+    const basePoolData = DefaultAMMAPI.getStablePoolInfo(poolData.unwrap());
+
+    if (basePoolData === null) {
+        throw new Error("Provided currencyId is not active LP token.");
+    }
+
+    return DefaultAMMAPI.getStableLpTokenFromPoolData(poolId, basePoolData);
 }

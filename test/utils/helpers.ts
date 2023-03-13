@@ -1,9 +1,8 @@
-import { Transaction } from "@interlay/esplora-btc-api";
-import { Kintsugi, Kusama, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
+import { Kintsugi, Kusama, Polkadot, MonetaryAmount } from "@interlay/monetary-js";
 import { Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
-import Big, { RoundingMode } from "big.js";
+import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import {
     BitcoinCoreClient,
@@ -14,13 +13,15 @@ import {
     ForeignAsset,
     GovernanceCurrency,
     CollateralCurrencyExt,
-    storageKeyToNthInner,
-    createExchangeRateOracleKey,
-    setStorageAtKey,
     DefaultTransactionAPI,
-    encodeUnsignedFixedPoint,
-    setRawStorage,
 } from "../../src";
+import {
+    setStorageAtKey,
+    setRawStorage,
+    encodeUnsignedFixedPoint,
+    createExchangeRateOracleKey,
+    storageKeyToNthInner,
+} from "../../src/utils";
 import { SUDO_URI } from "../config";
 import { expect } from "chai";
 
@@ -40,7 +41,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export async function waitSuccess<R>(call: () => Promise<R>): Promise<R> {
-    for (; ;) {
+    for (;;) {
         try {
             const res = await call();
             return res;
@@ -72,12 +73,9 @@ export async function callWithExchangeRate(
         api,
         sudoAccount,
         api.tx.sudo.sudo(removeAllOraclesExtrinsic),
-        api.events.sudo.Sudid,
-    )
-    expect(
-        txResult1.isCompleted,
-        `Sudo event to remove authorized oracles not found`
-    ).to.be.true;
+        api.events.sudo.Sudid
+    );
+    expect(txResult1.isCompleted, "Sudo event to remove authorized oracles not found").to.be.true;
 
     // Change Exchange rate storage for currency.
     const exchangeRateOracleKey = createExchangeRateOracleKey(api, currency);
@@ -111,12 +109,9 @@ export async function callWithExchangeRate(
             api,
             sudoAccount,
             api.tx.sudo.sudo(restoreAllOraclesExtrinsic),
-            api.events.sudo.Sudid,
-        )
-        expect(
-            txResult2.isCompleted,
-            `Sudo event to remove authorized oracles not found`
-        ).to.be.true;
+            api.events.sudo.Sudid
+        );
+        expect(txResult2.isCompleted, "Sudo event to remove authorized oracles not found").to.be.true;
     }
 
     return result;
@@ -229,17 +224,21 @@ export function includesStringified<T extends ImplementsToString>(arr: Array<T>,
 
 export async function getIssuableAmounts(interBtcApi: InterBtcApi): Promise<Array<MonetaryAmount<CurrencyExt>>> {
     const allVaults = await interBtcApi.vaults.list();
-    const activeVaults = await Promise.all(allVaults.filter(vault => vault.isBanned()));
-    return Promise.all(activeVaults.map(async (vault): Promise<MonetaryAmount<CurrencyExt>> => {
-        const [usedCollateral, secureThreshold] = await Promise.all([
-            interBtcApi.oracle.convertWrappedToCurrency(
-                vault.issuedTokens.add(vault.toBeIssuedTokens),
-                vault.backingCollateral.currency
-            ),
-            interBtcApi.vaults.getSecureCollateralThreshold(vault.backingCollateral.currency),
-        ]);
-        const freeCollateral = vault.backingCollateral.sub(usedCollateral.mul(secureThreshold));
-        const wrappedAmount = (await interBtcApi.oracle.convertCollateralToWrapped(freeCollateral)).div(secureThreshold);
-        return wrappedAmount;
-    }));
+    const activeVaults = await Promise.all(allVaults.filter((vault) => vault.isBanned()));
+    return Promise.all(
+        activeVaults.map(async (vault): Promise<MonetaryAmount<CurrencyExt>> => {
+            const [usedCollateral, secureThreshold] = await Promise.all([
+                interBtcApi.oracle.convertWrappedToCurrency(
+                    vault.issuedTokens.add(vault.toBeIssuedTokens),
+                    vault.backingCollateral.currency
+                ),
+                interBtcApi.vaults.getSecureCollateralThreshold(vault.backingCollateral.currency),
+            ]);
+            const freeCollateral = vault.backingCollateral.sub(usedCollateral.mul(secureThreshold));
+            const wrappedAmount = (await interBtcApi.oracle.convertCollateralToWrapped(freeCollateral)).div(
+                secureThreshold
+            );
+            return wrappedAmount;
+        })
+    );
 }

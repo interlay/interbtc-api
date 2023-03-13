@@ -1,6 +1,7 @@
 import { expect } from "../../chai";
 import sinon from "sinon";
-import { DefaultRedeemAPI, DefaultVaultsAPI, newMonetaryAmount, VaultsAPI } from "../../../src";
+import { DefaultRedeemAPI, DefaultVaultsAPI, VaultsAPI } from "../../../src";
+import { newMonetaryAmount } from "../../../src/utils";
 import { ExchangeRate, KBtc, Kintsugi } from "@interlay/monetary-js";
 import Big from "big.js";
 
@@ -19,8 +20,6 @@ describe("DefaultRedeemAPI", () => {
             null as any,
             null as any,
             stubbedVaultsApi as VaultsAPI,
-            null as any,
-            null as any,
             null as any,
             null as any,
             null as any

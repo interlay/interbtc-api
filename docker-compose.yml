@@ -90,11 +90,7 @@ services:
             - --auto-register=KINT=180000000000000
             - --btc-parachain-url=ws://interbtc:9944
             - --bitcoin-relay-start-height=1
-        environment: &client-env
-            BITCOIN_RPC_URL: http://bitcoind:18443
-            BITCOIN_RPC_USER: rpcuser
-            BITCOIN_RPC_PASS: rpcpassword
-            RUST_LOG: info
+        environment: *client-env
         volumes:
             - ./docker/vault_2-keyfile.json:/keyfile.json
     vault_3:
@@ -107,10 +103,6 @@ services:
             - --auto-register=KINT=180000000000000
             - --btc-parachain-url=ws://interbtc:9944
             - --bitcoin-relay-start-height=1
-        environment: &client-env
-            BITCOIN_RPC_URL: http://bitcoind:18443
-            BITCOIN_RPC_USER: rpcuser
-            BITCOIN_RPC_PASS: rpcpassword
-            RUST_LOG: info
+        environment: *client-env
         volumes:
             - ./docker/vault_3-keyfile.json:/keyfile.json

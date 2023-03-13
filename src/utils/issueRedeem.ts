@@ -117,7 +117,7 @@ export async function issueSingle(
         const blocksToMine = 3;
 
         const collateralCurrency = vaultId
-            ? await currencyIdToMonetaryCurrency(interBtcApi.assetRegistry, interBtcApi.loans, vaultId.currencies.collateral)
+            ? await currencyIdToMonetaryCurrency(interBtcApi.api, vaultId.currencies.collateral)
             : undefined;
         const rawRequestResult = await interBtcApi.issue.request(
             amount,

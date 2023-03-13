@@ -1,9 +1,10 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { MonetaryAmount } from "@interlay/monetary-js";
+import { ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import {
     BorrowPosition,
     CurrencyExt,
     LoanAsset,
+    LendingStats,
     TickerToData,
     LendToken,
     LoanPosition,
@@ -12,22 +13,31 @@ import {
     CollateralPosition,
     UndercollateralizedPosition,
 } from "../types";
-import { AssetRegistryAPI } from "./asset-registry";
 import { ApiPromise } from "@polkadot/api";
 import Big from "big.js";
 import {
     currencyIdToMonetaryCurrency,
     decodeFixedPointType,
-    MS_PER_YEAR,
     decodePermill,
     newCurrencyId,
     newMonetaryAmount,
     storageKeyToNthInner,
+    calculateAnnualizedRewardAmount,
+    adjustToThreshold,
+    calculateBorrowLimit,
+    getTotalAmountBtc,
+    calculateLtv,
+    calculateThreshold,
+    calculateBorrowLimitBtcChangeFactory,
+    calculateLtvAndThresholdsChangeFactory,
+    isCurrencyEqual,
+    tokenSymbolToCurrency,
     newAccountId,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { StorageKey, Option } from "@polkadot/types";
 import { TransactionAPI } from "./transaction";
+import { OracleAPI } from "./oracle";
 
 /**
  * @category Lending protocol
@@ -51,6 +61,21 @@ export interface LoansAPI {
     getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>>;
 
     /**
+     * Get collateralization information about account's loans.
+     *
+     * @param lendPositions Lend positions of account.
+     * @param borrowPositions Borrow positions of account.
+     * @param loanAssets All loan assets data in TickerToData structure.
+     * @return Collateral information about account based on passed positions.
+     * @throws When `loanAssets` does not contain all of the loan positions currencies.
+     */
+    getLendingStats(
+        lendPositions: Array<CollateralPosition>,
+        borrowPositions: Array<BorrowPosition>,
+        loanAssets: TickerToData<LoanAsset>
+    ): LendingStats | undefined;
+
+    /**
      * Get all loan assets.
      *
      * @returns Array of all assets that can be lent and borrowed.
@@ -59,14 +84,6 @@ export interface LoansAPI {
      * always fed to the oracle and available?
      */
     getLoanAssets(): Promise<TickerToData<LoanAsset>>;
-
-    /**
-     * Get underlying currency of lend token id,
-     *
-     * @param lendTokenId Currency id of the lend token to get currency from
-     * @returns Underlying CurrencyExt for provided lend token
-     */
-    getUnderlyingCurrencyFromLendTokenId(lendTokenId: InterbtcPrimitivesCurrencyId): Promise<CurrencyExt>;
 
     /**
      * Get all lend token currencies.
@@ -204,8 +221,8 @@ export class DefaultLoansAPI implements LoansAPI {
     constructor(
         private api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
-        private assetRegistryAPI: AssetRegistryAPI,
-        private transactionAPI: TransactionAPI
+        private transactionAPI: TransactionAPI,
+        private oracleAPI: OracleAPI
     ) {}
 
     // Wrapped call to make mocks in tests simple.
@@ -226,18 +243,6 @@ export class DefaultLoansAPI implements LoansAPI {
                 id: lendTokenId.asLendToken.toNumber(),
             },
         };
-    }
-
-    async getUnderlyingCurrencyFromLendTokenId(lendTokenId: InterbtcPrimitivesCurrencyId): Promise<CurrencyExt> {
-        const underlyingCurrencyId = await this.api.query.loans.underlyingAssetId(lendTokenId);
-
-        const underlyingCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistryAPI,
-            this,
-            underlyingCurrencyId.unwrap()
-        );
-
-        return underlyingCurrency;
     }
 
     async getLendTokenIdFromUnderlyingCurrency(currency: CurrencyExt): Promise<InterbtcPrimitivesCurrencyId> {
@@ -287,11 +292,7 @@ export class DefaultLoansAPI implements LoansAPI {
             marketEntries.map(async ([key, market]) => {
                 const lendTokenId = market.unwrap().lendTokenId;
                 const underlyingCurrencyId = storageKeyToNthInner(key);
-                const underlyingCurrency = await currencyIdToMonetaryCurrency(
-                    this.assetRegistryAPI,
-                    this,
-                    underlyingCurrencyId
-                );
+                const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
                 return DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(underlyingCurrency, lendTokenId);
             })
         );
@@ -348,7 +349,6 @@ export class DefaultLoansAPI implements LoansAPI {
         if (underlyingCurrencyAmount.eq(0)) {
             return null;
         }
-
         const accountDeposits = await this.api.query.loans.accountDeposits(lendTokenId, accountId);
 
         const isCollateral = !accountDeposits.isZero();
@@ -383,7 +383,6 @@ export class DefaultLoansAPI implements LoansAPI {
         if (borrowedAmount.eq(0)) {
             return null;
         }
-
         const snapshotBorrowIndex = Big(decodeFixedPointType(borrowSnapshot.borrowIndex));
         const currentBorrowIndex = Big(decodeFixedPointType(marketStatus[6]));
         const accumulatedDebt = this._calculateAccumulatedDebt(borrowedAmount, snapshotBorrowIndex, currentBorrowIndex);
@@ -411,11 +410,7 @@ export class DefaultLoansAPI implements LoansAPI {
 
         const allMarketsPositions = await Promise.all(
             marketsCurrencies.map(async ([underlyingCurrencyId, lendTokenId]) => {
-                const underlyingCurrency = await currencyIdToMonetaryCurrency(
-                    this.assetRegistryAPI,
-                    this,
-                    underlyingCurrencyId
-                );
+                const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
                 return getSinglePosition(accountId, underlyingCurrency, underlyingCurrencyId, lendTokenId);
             })
         );
@@ -429,6 +424,93 @@ export class DefaultLoansAPI implements LoansAPI {
 
     async getBorrowPositionsOfAccount(accountId: AccountId): Promise<Array<BorrowPosition>> {
         return this._getPositionsOfAccount(accountId, this._getBorrowPosition.bind(this));
+    }
+
+    private _checkLoanAssetDataAvailability(positions: Array<LoanPosition>, loanAssets: TickerToData<LoanAsset>): void {
+        for (const position of positions) {
+            if (loanAssets[position.amount.currency.ticker] === undefined) {
+                throw new Error(`No loan asset data found for currency ${position.amount.currency.name}.`);
+            }
+        }
+    }
+
+    getLendingStats(
+        lendPositions: Array<CollateralPosition>,
+        borrowPositions: Array<BorrowPosition>,
+        loanAssets: TickerToData<LoanAsset>
+    ): LendingStats {
+        this._checkLoanAssetDataAvailability([...lendPositions, ...borrowPositions], loanAssets);
+
+        const lendCollateralPositions = lendPositions.filter(({ isCollateral }) => isCollateral);
+        const lendCollateralThresholdAdjustedPositions = lendCollateralPositions.map((position) => {
+            const collateralTheshold = loanAssets[position.amount.currency.ticker].collateralThreshold;
+            return {
+                ...position,
+                amount: adjustToThreshold(position.amount, collateralTheshold),
+            };
+        });
+        const lendLiquidationThresholdAdjustedPositions = lendCollateralPositions.map((position) => {
+            const liquidationThreshold = loanAssets[position.amount.currency.ticker].liquidationThreshold;
+            return {
+                ...position,
+                amount: adjustToThreshold(position.amount, liquidationThreshold),
+            };
+        });
+
+        const borrowPositionsWithDebt = borrowPositions.map(({ amount, accumulatedDebt, ...rest }) => ({
+            ...rest,
+            accumulatedDebt,
+            amount: amount.add(accumulatedDebt),
+        }));
+
+        const totalLentBtc = getTotalAmountBtc(lendPositions, loanAssets);
+        const totalBorrowedBtc = getTotalAmountBtc(borrowPositionsWithDebt, loanAssets);
+        const totalCollateralBtc = getTotalAmountBtc(lendCollateralPositions, loanAssets);
+        const totalCollateralThresholdAdjustedCollateralBtc = getTotalAmountBtc(
+            lendCollateralThresholdAdjustedPositions,
+            loanAssets
+        );
+        const totalLiquidationThresholdAdjustedCollateralBtc = getTotalAmountBtc(
+            lendLiquidationThresholdAdjustedPositions,
+            loanAssets
+        );
+
+        const borrowLimitBtc = calculateBorrowLimit(totalBorrowedBtc, totalCollateralThresholdAdjustedCollateralBtc);
+        const ltv = calculateLtv(totalCollateralBtc, totalBorrowedBtc);
+        const collateralThresholdWeightedAverage = calculateThreshold(
+            totalCollateralBtc,
+            totalCollateralThresholdAdjustedCollateralBtc
+        );
+        const liquidationThresholdWeightedAverage = calculateThreshold(
+            totalCollateralBtc,
+            totalLiquidationThresholdAdjustedCollateralBtc
+        );
+
+        const calculateBorrowLimitBtcChange = calculateBorrowLimitBtcChangeFactory(
+            loanAssets,
+            totalBorrowedBtc,
+            totalCollateralThresholdAdjustedCollateralBtc
+        );
+
+        const calculateLtvAndThresholdsChange = calculateLtvAndThresholdsChangeFactory(
+            loanAssets,
+            totalBorrowedBtc,
+            totalCollateralBtc,
+            totalCollateralThresholdAdjustedCollateralBtc,
+            totalLiquidationThresholdAdjustedCollateralBtc
+        );
+
+        return {
+            totalBorrowedBtc,
+            totalCollateralBtc,
+            totalLentBtc,
+            borrowLimitBtc,
+            ltv,
+            liquidationThresholdWeightedAverage,
+            collateralThresholdWeightedAverage,
+            calculateBorrowLimitBtcChange,
+            calculateLtvAndThresholdsChange,
+        };
     }
 
     async _getLendApy(underlyingCurrencyId: InterbtcPrimitivesCurrencyId): Promise<Big> {
@@ -504,7 +586,7 @@ export class DefaultLoansAPI implements LoansAPI {
             ])
         )
             .map((rewardSpeedRaw) => Big(rewardSpeedRaw.toString()))
-            .map((rewardSpeed) => this._calculateAnnualizedRewardAmount(rewardSpeed, blockTimeMs));
+            .map((rewardSpeed) => calculateAnnualizedRewardAmount(rewardSpeed, blockTimeMs));
         // @note could be refactored to compute APR in lib if we can get underlyingCurrency/rewardCurrency exchange rate,
         // but is it safe to assume that exchange rate for btc/underlyingCurrency will be
         // always fed to the oracle and available?
@@ -517,15 +599,10 @@ export class DefaultLoansAPI implements LoansAPI {
         return [lendRewardPerUnit, borrowRewardPerUnit];
     }
 
-    _calculateAnnualizedRewardAmount(amountPerBlock: Big, blockTimeMs: number): Big {
-        const blocksPerYear = MS_PER_YEAR.div(blockTimeMs);
-        return amountPerBlock.mul(blocksPerYear);
-    }
-
     async _getRewardCurrency(): Promise<CurrencyExt> {
         const rewardCurrencyId = this.api.consts.loans.rewardAssetId;
 
-        return currencyIdToMonetaryCurrency(this.assetRegistryAPI, this, rewardCurrencyId);
+        return currencyIdToMonetaryCurrency(this.api, rewardCurrencyId);
     }
 
     _getSubsidyReward(amount: Big, rewardCurrency: CurrencyExt): MonetaryAmount<CurrencyExt> | null {
@@ -537,27 +614,36 @@ export class DefaultLoansAPI implements LoansAPI {
         return newMonetaryAmount(amount, rewardCurrency);
     }
 
+    async _getExchangeRate(fromCurrency: CurrencyExt): Promise<ExchangeRate<WrappedCurrency, CurrencyExt>> {
+        const wrappedCurrencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
+        const wrappedCurrency = tokenSymbolToCurrency(wrappedCurrencyId.asToken);
+        if (isCurrencyEqual(fromCurrency, wrappedCurrency)) {
+            const wrappedCurrencyToBitcoinRate = Big(1);
+            return new ExchangeRate(wrappedCurrency, wrappedCurrency, wrappedCurrencyToBitcoinRate);
+        }
+        return this.oracleAPI.getExchangeRate(fromCurrency);
+    }
+
     async _getLoanAsset(
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         marketData: LoansMarket
     ): Promise<[CurrencyExt, LoanAsset]> {
-        const underlyingCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistryAPI,
-            this,
-            underlyingCurrencyId
-        );
+        const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
 
-        const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows], rewardCurrency] =
+        const [lendApy, borrowApy, [totalLiquidity, availableCapacity, totalBorrows], rewardCurrency, exchangeRate] =
             await Promise.all([
                 this._getLendApy(underlyingCurrencyId),
                 this._getBorrowApy(underlyingCurrencyId),
                 this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
                 this._getRewardCurrency(),
+                this._getExchangeRate(underlyingCurrency),
             ]);
 
         // Format data.
         const liquidationThreshold = decodePermill(marketData.liquidationThreshold);
         const collateralThreshold = decodePermill(marketData.collateralFactor);
+        const supplyCap = newMonetaryAmount(marketData.supplyCap.toString(), underlyingCurrency);
+        const borrowCap = newMonetaryAmount(marketData.borrowCap.toString(), underlyingCurrency);
 
         const [lendRewardAmountYearly, borrowRewardAmountYearly] = await this._getLendAndBorrowYearlyRewardAmount(
             underlyingCurrencyId,
@@ -581,6 +667,9 @@ export class DefaultLoansAPI implements LoansAPI {
                 collateralThreshold,
                 lendReward,
                 borrowReward,
+                supplyCap,
+                borrowCap,
+                exchangeRate,
             },
         ];
     }

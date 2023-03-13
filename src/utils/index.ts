@@ -5,3 +5,5 @@ export * from "./constants";
 export * from "./bitcoin-core-client";
 export * from "./issueRedeem";
 export * from "./storage";
+export * from "./loans";
+export * from "./rewards";

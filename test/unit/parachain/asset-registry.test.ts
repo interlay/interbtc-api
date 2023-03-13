@@ -8,7 +8,7 @@ import {
     OrmlTraitsAssetRegistryAssetMetadata,
 } from "@polkadot/types/lookup";
 import { DefaultAssetRegistryAPI, ForeignAsset } from "../../../src/";
-import { AssetRegistryMetadataTuple } from "@interlay/interbtc-api/parachain/asset-registry";
+import { AssetRegistryMetadataTuple } from "../../../src/parachain/asset-registry";
 import * as allThingsEncoding from "../../../src/utils/encoding";
 
 describe("DefaultAssetRegistryAPI", () => {

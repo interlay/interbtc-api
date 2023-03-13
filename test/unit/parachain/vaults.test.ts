@@ -1,7 +1,8 @@
 import { assert, expect } from "../../chai";
 import Big from "big.js";
 import sinon from "sinon";
-import { DefaultRewardsAPI, DefaultTransactionAPI, DefaultVaultsAPI, newMonetaryAmount } from "../../../src";
+import { DefaultRewardsAPI, DefaultTransactionAPI, DefaultVaultsAPI } from "../../../src";
+import { newMonetaryAmount } from "../../../src/utils";
 import { KBtc, Kusama } from "@interlay/monetary-js";
 import {
     prepareBackingCollateralProportionMocks,
@@ -31,9 +32,7 @@ describe("DefaultVaultsAPI", () => {
             null as any,
             stubbedRewardsApi,
             null as any,
-            stubbedTransactionApi,
-            null as any,
-            null as any
+            stubbedTransactionApi
         );
     });
 
