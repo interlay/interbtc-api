@@ -16,7 +16,7 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { callWithExchangeRate, getWrappedCurrencyForTest, includesStringified } from "../../../../utils/helpers";
+import { callWithExchangeRate, includesStringified } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
@@ -59,7 +59,7 @@ describe("Loans", () => {
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
         TransactionAPI = new DefaultTransactionAPI(api, userAccount);
-        const wrappedCurrency = getWrappedCurrencyForTest(api);
+        const wrappedCurrency = sudoInterBtcAPI.getWrappedCurrency();
         const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, TransactionAPI);
 
         LoansAPI = new DefaultLoansAPI(api, wrappedCurrency, TransactionAPI, oracleAPI);

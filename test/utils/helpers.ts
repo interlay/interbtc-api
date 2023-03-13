@@ -1,9 +1,8 @@
-import { Transaction } from "@interlay/esplora-btc-api";
 import { Kintsugi, Kusama, Polkadot, MonetaryAmount } from "@interlay/monetary-js";
-import { ApiPromise, Keyring } from "@polkadot/api";
+import { Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
-import Big, { RoundingMode } from "big.js";
+import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import {
     BitcoinCoreClient,
@@ -14,12 +13,10 @@ import {
     ForeignAsset,
     GovernanceCurrency,
     CollateralCurrencyExt,
-    WrappedCurrency,
     DefaultTransactionAPI,
 } from "../../src";
 import {
     setStorageAtKey,
-    tokenSymbolToCurrency,
     setRawStorage,
     encodeUnsignedFixedPoint,
     createExchangeRateOracleKey,
@@ -208,10 +205,6 @@ export function getCorrespondingCollateralCurrenciesForTests(
     }
 }
 
-export function getWrappedCurrencyForTest(api: ApiPromise): WrappedCurrency {
-    const currencyId = api.consts.currency.getWrappedCurrencyId;
-    return tokenSymbolToCurrency(currencyId.asToken);
-}
 type ImplementsToString = { toString: () => string };
 
 /**
