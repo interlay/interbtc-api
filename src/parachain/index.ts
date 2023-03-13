@@ -13,8 +13,9 @@ export { NominationAPI, DefaultNominationAPI } from "./nomination";
 export { EscrowAPI, DefaultEscrowAPI } from "./escrow";
 export { AssetRegistryAPI, DefaultAssetRegistryAPI } from "./asset-registry";
 export { LoansAPI, DefaultLoansAPI } from "./loans";
+export { AMMAPI, DefaultAMMAPI } from "./amm";
 export * from "./transaction";
-export * from "./amm";
+export * from "./amm/";
 
 // Hacky way of forcing the resolution of these types in test files
 export { InterbtcPrimitivesVaultId, VaultRegistryVault, SecurityStatusCode } from "@polkadot/types/lookup";
