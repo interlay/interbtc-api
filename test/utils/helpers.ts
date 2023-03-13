@@ -14,15 +14,17 @@ import {
     ForeignAsset,
     GovernanceCurrency,
     CollateralCurrencyExt,
-    storageKeyToNthInner,
-    createExchangeRateOracleKey,
-    setStorageAtKey,
-    tokenSymbolToCurrency,
     WrappedCurrency,
     DefaultTransactionAPI,
-    encodeUnsignedFixedPoint,
-    setRawStorage,
 } from "../../src";
+import {
+    setStorageAtKey,
+    tokenSymbolToCurrency,
+    setRawStorage,
+    encodeUnsignedFixedPoint,
+    createExchangeRateOracleKey,
+    storageKeyToNthInner,
+} from "../../src/utils";
 import { SUDO_URI } from "../config";
 import { expect } from "chai";
 

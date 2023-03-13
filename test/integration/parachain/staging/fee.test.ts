@@ -8,9 +8,11 @@ import {
     CollateralCurrencyExt,
     DefaultInterBtcApi,
     InterBtcApi,
-    newMonetaryAmount,
     WrappedCurrency,
 } from "../../../../src";
+import {
+    newMonetaryAmount
+} from "../../../../src/utils";
 import { GriefingCollateralType } from "../../../../src/parachain/fee";
 import { callWithExchangeRate, getCorrespondingCollateralCurrenciesForTests } from "../../../utils/helpers";
 

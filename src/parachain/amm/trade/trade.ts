@@ -1,6 +1,7 @@
+import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { CurrencyExt, isCurrencyEqual } from "../../..";
+import { CurrencyExt } from "../../../types";
 import { MultiPath } from "./types";
 import { computePriceImpact } from "./utils";
 

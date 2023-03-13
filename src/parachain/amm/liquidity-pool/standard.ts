@@ -3,11 +3,10 @@ import { isCurrencyEqual } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
 import { MultiPathElementStandard, MultiPathElementType } from "../trade/types";
-import { PoolType, PooledCurrencies } from "../types";
-import { LiquidityPoolBase, TradingPair } from "./types";
+import { PoolType, PooledCurrencies, LiquidityPoolBase } from "../types";
 import { LiquidityPoolCalculator } from "./calculator";
 
-class StandardLiquidityPool extends LiquidityPoolCalculator<StandardLpToken> implements LiquidityPoolBase, TradingPair {
+class StandardLiquidityPool extends LiquidityPoolCalculator<StandardLpToken> implements LiquidityPoolBase {
     public type = PoolType.STANDARD;
     public token0: CurrencyExt;
     public token1: CurrencyExt;

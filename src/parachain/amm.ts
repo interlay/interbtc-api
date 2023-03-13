@@ -1,6 +1,7 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { u128 } from "@polkadot/types";
+import { ISubmittableResult } from "@polkadot/types/types";
 import { AddressOrPair, ApiTypes, AugmentedEvent, SubmittableExtrinsic } from "@polkadot/api/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import {
@@ -14,7 +15,20 @@ import {
 import { TokensAPI } from "./tokens";
 import { InterbtcPrimitivesCurrencyId } from "../interfaces";
 import { CurrencyExt, LpCurrency, StableLpToken, StandardLpToken } from "../types";
-import { currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
+import {
+    addressOrPairAsAccountId,
+    calculateAnnualizedRewardAmount,
+    currencyIdToMonetaryCurrency,
+    decodeBytesAsString,
+    decodeFixedPointType,
+    getStandardLpTokenFromCurrencyId,
+    isCurrencyEqual,
+    isStableLpToken,
+    monetaryAmountToRawString,
+    newCurrencyId,
+    newMonetaryAmount,
+    storageKeyToNthInner,
+} from "../utils";
 import { TransactionAPI } from "./transaction";
 import Big from "big.js";
 import {
@@ -25,25 +39,14 @@ import {
     findBestTradeRecursively,
     StandardLiquidityPool,
     StableLiquidityPool,
-    getStandardLpTokenFromCurrencyId,
-    storageKeyToNthInner,
-    isStableMultiPathElement,
+    PoolType,
     encodeSwapParamsForStandardPoolsOnly,
     encodeSwapParamsForStandardAndStablePools,
-    addressOrPairAsAccountId,
-    decodeFixedPointType,
-    isStandardPool,
-    newCurrencyId,
-    isCurrencyEqual,
-    PoolType,
+    isStableMultiPathElement,
     isStableMetaPool,
-    isStableLpToken,
-    monetaryAmountToRawString,
-    decodeBytesAsString,
-    calculateAnnualizedRewardAmount,
-} from "..";
-import { StableLiquidityMetaPool } from "./amm/liquidity-pool/stable-meta";
-import { ISubmittableResult } from "@polkadot/types/types";
+    isStandardPool,
+    StableLiquidityMetaPool,
+} from "./amm/";
 
 const HOP_LIMIT = 4;
 const FEE_MULTIPLIER_STANDARD = 10000;

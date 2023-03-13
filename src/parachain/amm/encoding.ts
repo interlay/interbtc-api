@@ -1,13 +1,9 @@
+import { InterbtcPrimitivesCurrencyId } from "../../interfaces";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
-import {
-    Trade,
-    CurrencyExt,
-    InterbtcPrimitivesCurrencyId,
-    isStableMultiPathElement,
-    isStableMetaMultiPathElement,
-    newCurrencyId,
-} from "../..";
+import { CurrencyExt } from "../../types";
+import { newCurrencyId } from "../../utils";
+import { Trade, isStableMultiPathElement, isStableMetaMultiPathElement } from "./trade";
 
 function encodeSwapParamsForStandardPoolsOnly(
     api: ApiPromise,
