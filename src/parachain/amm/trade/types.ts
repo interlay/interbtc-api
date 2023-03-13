@@ -1,7 +1,16 @@
+import { MonetaryAmount } from "@interlay/monetary-js";
 import { CurrencyExt } from "../../../types";
 import { StandardLiquidityPool } from "../liquidity-pool";
 import { StableLiquidityPool } from "../liquidity-pool/stable";
-import { TradingPair } from "../liquidity-pool/types";
+
+interface TradingPair {
+    token0: CurrencyExt;
+    token1: CurrencyExt;
+    reserve0: MonetaryAmount<CurrencyExt>;
+    reserve1: MonetaryAmount<CurrencyExt>;
+    getOutputAmount: (inputAmount: MonetaryAmount<CurrencyExt>) => MonetaryAmount<CurrencyExt>;
+    pathOf: (inputCurrency: CurrencyExt) => MultiPathElement;
+}
 
 interface MultiPathElementBase {
     type: MultiPathElementType;
@@ -61,4 +70,5 @@ export type {
     MultiPathElementStableMeta,
     MultiPathElementStablePlain,
     MultiPathElementStandard,
+    TradingPair,
 };

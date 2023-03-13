@@ -1,8 +1,8 @@
+import { CurrencyExt } from "../../types";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { CurrencyExt, isCurrencyEqual } from "../..";
-import { TradingPair } from "./liquidity-pool/types";
 import { Trade } from "./trade/trade";
-import { MultiPath } from "./trade/types";
+import { MultiPath, TradingPair } from "./trade/types";
+import { isCurrencyEqual } from "../../utils";
 
 /**
  * Recursive function to find best trade path for provided trading pairs,

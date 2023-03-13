@@ -2,8 +2,7 @@ import { CurrencyExt, StableLpToken } from "../../../types";
 import { isCurrencyEqual, STABLE_POOLS_APPROXIMATION_PRECISION } from "../../../utils";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { PoolType, PooledCurrencies } from "../types";
-import { LiquidityPoolBase } from "./types";
+import { PoolType, PooledCurrencies, LiquidityPoolBase } from "../types";
 import { LiquidityPoolCalculator } from "./calculator";
 
 // SOURCE: @zenlink-dex/sdk-core

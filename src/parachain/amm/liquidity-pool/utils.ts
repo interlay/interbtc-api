@@ -7,9 +7,10 @@ import {
     MultiPathElementStableMeta,
     MultiPathElementStablePlain,
     MultiPathElementType,
+    TradingPair,
 } from "../trade/types";
 import { StableLiquidityPool } from "./stable";
-import { isStablePool, isStandardPool, LiquidityPool, TradingPair } from "./types";
+import { isStablePool, isStandardPool, LiquidityPool } from "./types";
 import { StableLiquidityMetaPool } from "./stable-meta";
 
 /**
