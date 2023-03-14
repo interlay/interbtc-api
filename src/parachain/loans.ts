@@ -1,5 +1,5 @@
 import { AccountId } from "@polkadot/types/interfaces";
-import { ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
+import { MonetaryAmount } from "@interlay/monetary-js";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -30,8 +30,6 @@ import {
     calculateThreshold,
     calculateBorrowLimitBtcChangeFactory,
     calculateLtvAndThresholdsChangeFactory,
-    isCurrencyEqual,
-    tokenSymbolToCurrency,
     newAccountId,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
@@ -375,9 +373,10 @@ export class DefaultLoansAPI implements LoansAPI {
     }
 
     async _getBorrowPosition(accountId: AccountId, underlyingCurrency: CurrencyExt): Promise<BorrowPosition | null> {
+        const underlyingCurrencyPrimitive = newCurrencyId(this.api, underlyingCurrency);
         const [borrowSnapshot, marketStatus] = await Promise.all([
-            this.api.query.loans.accountBorrows(newCurrencyId(this.api, underlyingCurrency), accountId),
-            this.api.rpc.loans.getMarketStatus(newCurrencyId(this.api, underlyingCurrency)),
+            this.api.query.loans.accountBorrows(underlyingCurrencyPrimitive, accountId),
+            this.api.rpc.loans.getMarketStatus(underlyingCurrencyPrimitive),
         ]);
 
         const borrowedAmount = Big(borrowSnapshot.principal.toString());
@@ -608,16 +607,6 @@ export class DefaultLoansAPI implements LoansAPI {
         return newMonetaryAmount(amount, rewardCurrency);
     }
 
-    async _getExchangeRate(fromCurrency: CurrencyExt): Promise<ExchangeRate<WrappedCurrency, CurrencyExt>> {
-        const wrappedCurrencyId = this.api.consts.escrowRewards.getWrappedCurrencyId;
-        const wrappedCurrency = tokenSymbolToCurrency(wrappedCurrencyId.asToken);
-        if (isCurrencyEqual(fromCurrency, wrappedCurrency)) {
-            const wrappedCurrencyToBitcoinRate = Big(1);
-            return new ExchangeRate(wrappedCurrency, wrappedCurrency, wrappedCurrencyToBitcoinRate);
-        }
-        return this.oracleAPI.getExchangeRate(fromCurrency);
-    }
-
     async _getLoanAsset(
         underlyingCurrencyId: InterbtcPrimitivesCurrencyId,
         marketData: LoansMarket
@@ -630,7 +619,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 this._getBorrowApy(underlyingCurrencyId),
                 this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
                 this._getRewardCurrency(),
-                this._getExchangeRate(underlyingCurrency),
+                this.oracleAPI.getExchangeRate(underlyingCurrency)
             ]);
 
         // Format data.
