@@ -14,7 +14,7 @@ import {
     UndercollateralizedPosition,
 } from "../types";
 import { ApiPromise } from "@polkadot/api";
-import Big from "big.js";
+import Big, { RoundingMode } from "big.js";
 import {
     currencyIdToMonetaryCurrency,
     decodeFixedPointType,
@@ -366,7 +366,7 @@ export class DefaultLoansAPI implements LoansAPI {
         // @note Formula for computing total debt: https://docs.parallel.fi/parallel-finance/#2.6-interest-rate-index
         // To compute only earned debt, subtract 1 from factor
         const factor = currentBorrowIndex.div(snapshotBorrowIndex).sub(1);
-        return borrowedAmount.mul(factor);
+        return borrowedAmount.mul(factor).round(0, RoundingMode.RoundUp);
     }
 
     async _getBorrowPosition(
