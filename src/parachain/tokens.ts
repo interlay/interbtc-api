@@ -17,7 +17,7 @@ export interface TokensAPI {
      * @param currency The currency specification, a `Monetary.js` object or `ForeignAsset`
      * @returns The total amount in the system
      */
-    total(currency: CurrencyExt): Promise<MonetaryAmount<CurrencyExt>>;
+    total<CurrencyT extends CurrencyExt>(currency: CurrencyT): Promise<MonetaryAmount<CurrencyT>>;
     /**
      * @param currency The currency specification, `Monetary.js` object or `ForeignAsset`
      * @param id The AccountId of a user
@@ -68,7 +68,7 @@ export interface TokensAPI {
 export class DefaultTokensAPI implements TokensAPI {
     constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
 
-    async total(currency: CurrencyExt): Promise<MonetaryAmount<CurrencyExt>> {
+    async total<CurrencyT extends CurrencyExt>(currency: CurrencyT): Promise<MonetaryAmount<CurrencyT>> {
         const currencyId = newCurrencyId(this.api, currency);
         const rawAmount = await this.api.query.tokens.totalIssuance(currencyId);
         return newMonetaryAmount(rawAmount.toString(), currency);

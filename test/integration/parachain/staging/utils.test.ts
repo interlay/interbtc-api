@@ -6,7 +6,7 @@ import BN from "bn.js";
 import { createSubstrateAPI } from "../../../../src/factory";
 import { assert } from "../../../chai";
 import { PARACHAIN_ENDPOINT } from "../../../config";
-import { stripHexPrefix } from "../../../../src";
+import { stripHexPrefix } from "../../../../src/utils";
 
 export function getStorageKey(moduleName: string, storageItemName: string): string {
     return xxhashAsHex(moduleName, 128) + stripHexPrefix(xxhashAsHex(storageItemName, 128));

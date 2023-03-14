@@ -1,14 +1,9 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import {
-    AssetRegistryAPI,
-    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
-    DefaultLoansAPI,
-    DefaultTransactionAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
-    LoansAPI,
     newMonetaryAmount,
     sleep,
     SLEEP_TIME_MS,
@@ -33,10 +28,9 @@ import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { callWith, getCorrespondingCollateralCurrenciesForTests } from "../../../../utils/helpers";
-import { BlockHash, Hash } from "@polkadot/types/interfaces";
+import { getCorrespondingCollateralCurrenciesForTests } from "../../../../utils/helpers";
+import { BlockHash } from "@polkadot/types/interfaces";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
-import { BN } from "bn.js";
 import { FrameSystemEventRecord } from "@polkadot/types/lookup";
 
 describe("replace", () => {
@@ -49,14 +43,11 @@ describe("replace", () => {
     let vault_2: KeyringPair;
     let vault_2_ids: Array<InterbtcPrimitivesVaultId>;
     let interBtcAPI: InterBtcApi;
-    let assetRegistry: AssetRegistryAPI;
-    let loansAPI: LoansAPI;
 
     let wrappedCurrency: WrappedCurrency;
 
     before(async function () {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        const transactionAPI = new DefaultTransactionAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -68,10 +59,8 @@ describe("replace", () => {
         );
 
         userAccount = keyring.addFromUri(USER_1_URI);
-        assetRegistry = new DefaultAssetRegistryAPI(api);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
-        loansAPI = new DefaultLoansAPI(api, wrappedCurrency, assetRegistry, transactionAPI);
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         vault_3 = keyring.addFromUri(VAULT_3_URI);
         vault_3_ids = collateralCurrencies.map((collateralCurrency) =>
@@ -106,11 +95,7 @@ describe("replace", () => {
                 const replaceAmount = dustValue;
                 await issueSingle(interBtcAPI, bitcoinCoreClient, userAccount, issueAmount, vault_3_id);
 
-                const collateralCurrency = await currencyIdToMonetaryCurrency(
-                    assetRegistry,
-                    loansAPI,
-                    vault_3_id.currencies.collateral
-                );
+                const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_3_id.currencies.collateral);
 
                 console.log(`Requesting vault replacement for ${replaceAmount.toString()}`);
                 const blockHash = await interBtcAPI.replace.request(replaceAmount, collateralCurrency);
@@ -120,56 +105,50 @@ describe("replace", () => {
                 const vault = await apiAt.query.vaultRegistry.vaults(vault_3_id);
                 const toBeReplaced = vault.unwrap().toBeReplacedTokens.toBn();
 
-                assert.equal(
-                    toBeReplaced.toString(),
-                    replaceAmount.toString(true)
-                );
+                assert.equal(toBeReplaced.toString(), replaceAmount.toString(true));
 
                 // hacky way to subscribe to events from a previous height
                 // we can remove this once the request / accept flow is removed
+                // eslint-disable-next-line no-inner-declarations
                 async function waitForEvent(
                     blockHash: BlockHash,
                     expectedEvent: AugmentedEvent<ApiTypes>
                 ): Promise<[FrameSystemEventRecord, BlockHash]> {
                     let hash = blockHash;
+                    // eslint-disable-next-line no-constant-condition
                     while (true) {
                         const header = await api.rpc.chain.getHeader(hash);
                         try {
                             hash = await api.rpc.chain.getBlockHash(header.number.toNumber() + 1);
                         } catch (_) {
-                            sleep(SLEEP_TIME_MS)
+                            sleep(SLEEP_TIME_MS);
                             continue;
                         }
 
                         const apiAt = await api.at(hash);
                         const events = await apiAt.query.system.events();
-                        const foundEvent = events
-                            .find(({ event }) => expectedEvent.is(event));
+                        const foundEvent = events.find(({ event }) => expectedEvent.is(event));
                         if (foundEvent) {
                             return [foundEvent, hash];
                         }
                     }
                 }
 
-                const [acceptReplaceEvent, foundBlockHash] = await waitForEvent(blockHash, api.events.replace.AcceptReplace);
+                const [acceptReplaceEvent, foundBlockHash] = await waitForEvent(
+                    blockHash,
+                    api.events.replace.AcceptReplace
+                );
                 const requestId = api.createType("Hash", acceptReplaceEvent.event.data[0]);
 
                 const replaceRequest = await interBtcAPI.replace.getRequestById(requestId, foundBlockHash);
-                assert.equal(
-                    replaceRequest.oldVault.accountId.toString(),
-                    vault_3_id.accountId.toString(),
-                );
+                assert.equal(replaceRequest.oldVault.accountId.toString(), vault_3_id.accountId.toString());
             }
         }).timeout(1000 * 30);
 
         it("should fail vault replace request if not having enough tokens", async () => {
             interBtcAPI.setAccount(vault_2);
             for (const vault_2_id of vault_2_ids) {
-                const collateralCurrency = await currencyIdToMonetaryCurrency(
-                    assetRegistry,
-                    loansAPI,
-                    vault_2_id.currencies.collateral
-                );
+                const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_2_id.currencies.collateral);
                 const currencyTicker = collateralCurrency.ticker;
 
                 // fetch tokens held by vault

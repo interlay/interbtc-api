@@ -21,3 +21,6 @@ export const SLEEP_TIME_MS = 1000;
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// Decimal precision of Newton's approximations that are computed in this class.
+export const STABLE_POOLS_APPROXIMATION_PRECISION = Big(10).pow(9);

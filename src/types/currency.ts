@@ -36,10 +36,21 @@ export type CollateralIdLiteral =
 const CollateralCurrency = [Polkadot, Kusama, Interlay, Kintsugi] as const;
 type CollateralCurrency = typeof CollateralCurrency[number];
 
-export type ForeignAsset = Currency & {foreignAsset: { id: number; coingeckoId: string }};
-export type LendToken = Currency & {lendToken: { id: number }}; 
+export type ForeignAsset = Currency & { foreignAsset: { id: number; coingeckoId: string } };
+export type LendToken = Currency & { lendToken: { id: number } };
+
+type StandardLpUnderlyingToken = Currency | ForeignAsset | StableLpToken;
+
+export type StandardLpToken = Currency & {
+    lpToken: { token0: StandardLpUnderlyingToken; token1: StandardLpUnderlyingToken };
+};
+
+export type StableLpToken = Currency & { stableLpToken: { poolId: number } };
+
+// Needs to be called currency in order to avoid having same name as runtime type `LpToken`
+export type LpCurrency = StandardLpToken | StableLpToken;
 export type CollateralCurrencyExt = CollateralCurrency | ForeignAsset | LendToken;
-export type CurrencyExt = Currency | ForeignAsset | LendToken;
+export type CurrencyExt = Currency | ForeignAsset | LendToken | LpCurrency;
 
 export const WrappedCurrency = [InterBtc, KBtc];
 export type WrappedCurrency = typeof WrappedCurrency[number];
@@ -59,18 +70,33 @@ export type StakedBalance = {
 };
 
 type NativeCurrencyIdentifier = {
-    token: string
-}
+    token: string;
+};
 
 type ForeignAssetIdentifier = {
-    foreignAsset: number
-}
+    foreignAsset: number;
+};
 
 type LendTokenIdentifier = {
-    lendToken: number
-}
+    lendToken: number;
+};
 
-export type CurrencyIdentifier = NativeCurrencyIdentifier | ForeignAssetIdentifier | LendTokenIdentifier;
+type StableLpTokenIdentifier = {
+    stableLpToken: number;
+};
+
+export type StandardPooledTokenIdentifier = NativeCurrencyIdentifier | ForeignAssetIdentifier | StableLpTokenIdentifier;
+
+type StandardLpTokenIdentifier = {
+    lpToken: [StandardPooledTokenIdentifier, StandardPooledTokenIdentifier];
+};
+
+export type CurrencyIdentifier =
+    | NativeCurrencyIdentifier
+    | ForeignAssetIdentifier
+    | LendTokenIdentifier
+    | StableLpTokenIdentifier
+    | StandardLpTokenIdentifier;
 
 export class ChainBalance {
     free: MonetaryAmount<CurrencyExt>;

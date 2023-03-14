@@ -2,14 +2,9 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Hash } from "@polkadot/types/interfaces";
 import {
-    AssetRegistryAPI,
-    DefaultAssetRegistryAPI,
     DefaultInterBtcApi,
-    DefaultLoansAPI,
-    DefaultTransactionAPI,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
-    LoansAPI,
     VaultRegistryVault,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
@@ -27,14 +22,11 @@ import {
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { issueAndRedeem, newMonetaryAmount, stripHexPrefix } from "../../../../../src/utils";
+import { issueAndRedeem, newMonetaryAmount } from "../../../../../src/utils";
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
 import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
-import {
-    getAUSDForeignAsset,
-    getCorrespondingCollateralCurrenciesForTests,
-} from "../../../../utils/helpers";
+import { getAUSDForeignAsset, getCorrespondingCollateralCurrenciesForTests } from "../../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };
 
@@ -50,18 +42,13 @@ describe("redeem", () => {
     let wrappedCurrency: WrappedCurrency;
 
     let interBtcAPI: InterBtcApi;
-    let assetRegistry: AssetRegistryAPI;
-    let loansAPI: LoansAPI;
 
     before(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
-        const transactionAPI = new DefaultTransactionAPI(api);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount, ESPLORA_BASE_PATH);
-        assetRegistry = new DefaultAssetRegistryAPI(api);
         wrappedCurrency = interBtcAPI.getWrappedCurrency();
-        loansAPI = new DefaultLoansAPI(api, wrappedCurrency, assetRegistry, transactionAPI);
 
         const collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
         vault_1 = keyring.addFromUri(VAULT_1_URI);

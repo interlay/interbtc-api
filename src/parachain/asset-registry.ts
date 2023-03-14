@@ -3,7 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32, u128 } from "@polkadot/types";
 import { AssetId } from "@polkadot/types/interfaces/runtime";
 import { InterbtcPrimitivesVaultCurrencyPair, OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
-import { decodeBytesAsString, newForeignAssetId, storageKeyToNthInner } from "../utils";
+import { decodeBytesAsString, getForeignAssetFromId, storageKeyToNthInner } from "../utils";
 import { Option } from "@polkadot/types-codec";
 import { ForeignAsset } from "../types";
 
@@ -92,24 +92,7 @@ export class DefaultAssetRegistryAPI implements AssetRegistryAPI {
     }
 
     async getForeignAsset(id: number | u32): Promise<ForeignAsset> {
-        const u32Id = id instanceof u32 ? id : newForeignAssetId(this.api, id);
-        const optionMetadata = await this.api.query.assetRegistry.metadata(u32Id);
-
-        if (!optionMetadata.isSome) {
-            return Promise.reject(new Error("Foreign asset not found"));
-        }
-        const currencyPart = DefaultAssetRegistryAPI.metadataToCurrency(optionMetadata.unwrap());
-        const coingeckoId = decodeBytesAsString(optionMetadata.unwrap().additional.coingeckoId);
-
-        const numberId = id instanceof u32 ? id.toNumber() : id;
-
-        return {
-            foreignAsset: {
-                id: numberId,
-                coingeckoId,
-            },
-            ...currencyPart,
-        };
+        return getForeignAssetFromId(this.api, id);
     }
 
     // wrapped call for easier mocking in tests

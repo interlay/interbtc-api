@@ -28,3 +28,10 @@ jobs:
                   yarn publish --access public --new-version ${RELEASE_VERSION}
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+            - name: Generate changelog
+              run: |
+                  git-chglog --output CHANGELOG.md $GITHUB_REF_NAME
+            - name: Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  body_path: CHANGELOG.md

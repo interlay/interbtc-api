@@ -1,4 +1,4 @@
-import { MonetaryAmount } from "@interlay/monetary-js";
+import { Bitcoin, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
 import { AccountId } from "@polkadot/types/interfaces";
 import Big from "big.js";
 import { CurrencyExt, WrappedCurrency } from "./currency";
@@ -15,6 +15,22 @@ interface BorrowPosition extends LoanPosition {
     accumulatedDebt: MonetaryAmount<CurrencyExt>;
 }
 
+type LoanAction = "lend" | "withdraw" | "borrow" | "repay";
+interface LendingStats {
+    totalLentBtc: MonetaryAmount<Bitcoin>; // Includes earned amount.
+    totalBorrowedBtc: MonetaryAmount<Bitcoin>; // Includes debt.
+    totalCollateralBtc: MonetaryAmount<Bitcoin>;
+    borrowLimitBtc: MonetaryAmount<Bitcoin>;
+    ltv: Big;
+    collateralThresholdWeightedAverage: Big; // Decimal.
+    liquidationThresholdWeightedAverage: Big; // Decimal.
+    calculateBorrowLimitBtcChange: (action: LoanAction, amount: MonetaryAmount<CurrencyExt>) => MonetaryAmount<Bitcoin>;
+    calculateLtvAndThresholdsChange: (
+        action: LoanAction,
+        amount: MonetaryAmount<CurrencyExt>
+    ) => { ltv: Big; collateralThresholdWeightedAverage: Big; liquidationThresholdWeightedAverage: Big };
+}
+
 interface LoanAsset {
     currency: CurrencyExt;
     lendApy: Big; // percentage
@@ -27,6 +43,9 @@ interface LoanAsset {
     liquidationThreshold: Big; // decimal
     collateralThreshold: Big; // decimal
     isActive: boolean;
+    supplyCap: MonetaryAmount<CurrencyExt>;
+    borrowCap: MonetaryAmount<CurrencyExt>;
+    exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>;
 }
 
 // Enables easier access to data by asset ticker key.
@@ -66,6 +85,8 @@ export type {
     LoanAsset,
     TickerToData,
     LoanMarket,
+    LendingStats,
+    LoanAction,
     AccountLiquidity,
     UndercollateralizedPosition,
 };

@@ -3,7 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
 import Big from "big.js";
 
-import { AssetRegistryAPI, LoansAPI, OracleAPI, SystemAPI } from "../parachain";
+import { OracleAPI, SystemAPI } from "../parachain";
 import { decodeFixedPointType, currencyIdToMonetaryCurrency, newMonetaryAmount } from "../utils";
 import { CollateralCurrencyExt, WrappedCurrency } from "./currency";
 
@@ -30,8 +30,6 @@ export class VaultExt {
         private api: ApiPromise,
         private oracleAPI: OracleAPI,
         private systemAPI: SystemAPI,
-        private assetRegistryAPI: AssetRegistryAPI,
-        private loansAPI: LoansAPI,
         backingCollateral: MonetaryAmount<CollateralCurrencyExt>,
         id: InterbtcPrimitivesVaultId,
         status: VaultStatusExt,
@@ -66,7 +64,7 @@ export class VaultExt {
             account_id: this.id.accountId,
             currencies: this.id.currencies,
         });
-        const wrapped = await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, this.id.currencies.wrapped);
+        const wrapped = await currencyIdToMonetaryCurrency(this.api, this.id.currencies.wrapped);
         return newMonetaryAmount(balance.amount.toString(), wrapped);
     }
 
@@ -93,7 +91,7 @@ export class VaultExt {
         const backedTokensInCollateral = await this.oracleAPI.convertWrappedToCurrency(
             // Force type-assert here as the oracle API only uses wrapped Bitcoin
             backedTokens,
-            await currencyIdToMonetaryCurrency(this.assetRegistryAPI, this.loansAPI, this.id.currencies.collateral)
+            await currencyIdToMonetaryCurrency(this.api, this.id.currencies.collateral)
         );
         const secureCollateralThreshold = this.getSecureCollateralThreshold();
         const usedCollateral = backedTokensInCollateral.mul(secureCollateralThreshold);
@@ -112,11 +110,7 @@ export class VaultExt {
             nonce = await this.getStakingPoolNonce();
         }
         const rawBackingCollateral = await this.api.query.vaultStaking.totalCurrentStake(nonce, this.id);
-        const collateralCurrency = await currencyIdToMonetaryCurrency(
-            this.assetRegistryAPI,
-            this.loansAPI,
-            this.id.currencies.collateral
-        );
+        const collateralCurrency = await currencyIdToMonetaryCurrency(this.api, this.id.currencies.collateral);
         return newMonetaryAmount(decodeFixedPointType(rawBackingCollateral), collateralCurrency);
     }
 
