@@ -12,6 +12,7 @@ import {
     createFeeEstimationOracleKey,
     decodeFixedPointType,
     encodeUnsignedFixedPoint,
+    isCurrencyEqual,
     storageKeyToNthInner,
     unwrapRawExchangeRate,
 } from "../utils";
@@ -93,6 +94,14 @@ export class DefaultOracleAPI implements OracleAPI {
     ) { }
 
     async getExchangeRate(currency: CurrencyExt): Promise<ExchangeRate<Bitcoin, CurrencyExt>> {
+        // KBTC / IBTC have an exchange rate of one
+        if (isCurrencyEqual(currency, this.wrappedCurrency)) {
+            return new ExchangeRate<WrappedCurrency, CurrencyExt>(
+                currency,
+                currency,
+                new Big(1),
+            );
+        }
         const oracleKey = createExchangeRateOracleKey(this.api, currency);
 
         const encodedRawRate = unwrapRawExchangeRate(await this.api.query.oracle.aggregate(oracleKey));

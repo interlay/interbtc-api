@@ -163,7 +163,7 @@ describe("Loans", () => {
 
         it("should return empty array if no market exists", async () => {
             // Mock empty list returned from chain.
-            sinon.stub(LoansAPI, "getLoansMarketsEntries").returns(Promise.resolve([]));
+            sinon.stub(LoansAPI, "getLoansMarkets").returns(Promise.resolve([]));
 
             const lendTokens = await LoansAPI.getLendTokens();
             expect(lendTokens).to.be.empty;
@@ -355,7 +355,7 @@ describe("Loans", () => {
 
         it("should return empty object if there are no added markets", async () => {
             // Mock empty list returned from chain.
-            sinon.stub(LoansAPI, "getLoansMarketsEntries").returns(Promise.resolve([]));
+            sinon.stub(LoansAPI, "getLoansMarkets").returns(Promise.resolve([]));
 
             const loanAssets = await LoansAPI.getLoanAssets();
             expect(loanAssets).to.be.empty;

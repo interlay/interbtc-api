@@ -31,6 +31,7 @@ import {
     tokenSymbolToCurrency
 } from "./utils";
 import { AssetRegistryAPI } from "./parachain/asset-registry";
+import { Currency } from "@interlay/monetary-js";
 import { AMMAPI, DefaultAMMAPI } from "./parachain/amm";
 
 export * from "./factory";
@@ -71,6 +72,7 @@ export interface InterBtcApi {
     readonly account: AddressOrPair | undefined;
     getGovernanceCurrency(): GovernanceCurrency;
     getWrappedCurrency(): WrappedCurrency;
+    getRelayChainCurrency(): Currency;
     disconnect(): Promise<void>;
 }
 
@@ -198,6 +200,12 @@ export class DefaultInterBtcApi implements InterBtcApi {
     public getWrappedCurrency(): WrappedCurrency {
         const currencyId = this.api.consts.currency.getWrappedCurrencyId;
         // beware: this call will throw if the wrapped currency is not a token!
+        return tokenSymbolToCurrency(currencyId.asToken);
+    }
+
+    public getRelayChainCurrency(): Currency {
+        const currencyId = this.api.consts.currency.getRelayChainCurrencyId;
+        // beware: this call will throw if the currency is not a token!
         return tokenSymbolToCurrency(currencyId.asToken);
     }
 
