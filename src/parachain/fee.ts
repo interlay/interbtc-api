@@ -102,7 +102,8 @@ export class DefaultFeeAPI implements FeeAPI {
         lockedCollateral: MonetaryAmount<CollateralCurrencyExt>,
         exchangeRate?: ExchangeRate<Bitcoin, CollateralCurrencyExt>
     ): Promise<Big> {
-        if (lockedCollateral.isZero()) {
+        // TODO: change back to isZero once monetary fix is released.
+        if (lockedCollateral.toBig().eq(0)) {
             return new Big(0);
         }
         if (exchangeRate === undefined) {
