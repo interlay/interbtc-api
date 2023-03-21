@@ -3,6 +3,7 @@ import { createSubstrateAPI } from "../src/factory";
 import { ApiPromise } from "@polkadot/api";
 import { cryptoWaitReady, blake2AsHex, sha256AsU8a } from "@polkadot/util-crypto";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
+import fetch from "cross-fetch";
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
