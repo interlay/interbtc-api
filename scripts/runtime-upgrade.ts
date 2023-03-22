@@ -10,7 +10,6 @@ const args = yargs(hideBin(process.argv))
     .option("clients-version", {
         description: "The version of the clients",
         type: "string",
-        demandOption: true,
     })
     .option("parachain-endpoint", {
         description: "The wss url of the parachain",
@@ -45,10 +44,21 @@ function toUrl(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
 
 function constructProposal(api: ApiPromise, extrinsic: SubmittableExtrinsic<"promise">) {
     const deposit = api.consts.democracy.minimumDeposit.toNumber();
-    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
-    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
-    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
-    return batched
+    // https://github.com/paritytech/substrate/blob/5b29f150365cc6eacb1f618e8797d81f0aada46a/frame/support/src/traits/preimages.rs#L27
+    if (extrinsic.method.encodedLength <= 128) {
+        const bounded = { Inline: extrinsic.method.toHex() };
+        return api.tx.democracy.propose(bounded, deposit);
+    } else {
+        const preImageSubmission = api.tx.preimage.notePreimage(extrinsic.method.toHex());
+        const bounded = {
+            Lookup: {
+                "hash": extrinsic.method.hash.toHex(),
+                "len": extrinsic.method.encodedLength
+            }
+        };
+        const proposal = api.tx.democracy.propose(bounded, deposit);
+        return api.tx.utility.batchAll([preImageSubmission, proposal])
+    }
 }
 
 async function printDiscordProposal(
@@ -137,15 +147,18 @@ async function main(): Promise<void> {
     const codeHash = blake2AsHex(Buffer.from(wasmRuntimeRaw));
     console.log(`Blake2-256 hash: ${codeHash}`);
 
-    const clientsRepo = "https://github.com/interlay/interbtc-clients";
-    const clientsVersion = args['clients-version'];
-    const clientsBaseUrl = `${clientsRepo}/releases/download/${clientsVersion}/`;
-
     const paraApi = await createSubstrateAPI(args['parachain-endpoint']);
+    let batch = [paraApi.tx.parachainSystem.authorizeUpgrade(codeHash)];
 
-    const batched = paraApi.tx.utility.batchAll([
-        paraApi.tx.parachainSystem.authorizeUpgrade(codeHash),
-    ].concat(await setAllClientReleases(paraApi, clientsBaseUrl, args['runtime-name'])));
+    if (args['clients-version']) {
+        const clientsRepo = "https://github.com/interlay/interbtc-clients";
+        const clientsVersion = args['clients-version'];
+        const clientsBaseUrl = `${clientsRepo}/releases/download/${clientsVersion}/`;
+        const clientReleases = await setAllClientReleases(paraApi, clientsBaseUrl, args['runtime-name']);
+        batch.push(...clientReleases);
+    }
+
+    const batched = paraApi.tx.utility.batchAll(batch);
 
     const title = `Runtime Upgrade ${parachainVersion}`;
     printDiscordProposal(title, batched, args["parachain-endpoint"], paraApi);
