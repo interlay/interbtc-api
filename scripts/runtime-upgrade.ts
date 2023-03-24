@@ -83,7 +83,7 @@ async function setAllClientReleases(api: ApiPromise, baseUrl: String, runtimeNam
             return res.text();
         });
 
-    const regex = new RegExp("([a-f0-9]+)\\\s*[.]\/((oracle|vault)-parachain-metadata-" + runtimeName + ")\n", "g");
+    const regex = new RegExp("([a-f0-9]+)\\\s*[.]\/((oracle|vault|faucet)-parachain-metadata-" + runtimeName + ")\n", "g");
     let matches = [];
     let match;
     while ((match = regex.exec(checksumFile)) !== null) {
