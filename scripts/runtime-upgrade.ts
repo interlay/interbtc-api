@@ -3,6 +3,7 @@ import { createSubstrateAPI } from "../src/factory";
 import { ApiPromise } from "@polkadot/api";
 import { cryptoWaitReady, blake2AsHex, sha256AsU8a } from "@polkadot/util-crypto";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
+import fetch from "cross-fetch";
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -82,7 +83,7 @@ async function setAllClientReleases(api: ApiPromise, baseUrl: String, runtimeNam
             return res.text();
         });
 
-    const regex = new RegExp("([a-f0-9]+)\\\s*[.]\/((oracle|vault)-parachain-metadata-" + runtimeName + ")\n", "g");
+    const regex = new RegExp("([a-f0-9]+)\\\s*[.]\/((oracle|vault|faucet)-parachain-metadata-" + runtimeName + ")\n", "g");
     let matches = [];
     let match;
     while ((match = regex.exec(checksumFile)) !== null) {
