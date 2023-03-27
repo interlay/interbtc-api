@@ -1,5 +1,6 @@
-import { BlockNumber, Moment, RuntimeDbWeight } from "@polkadot/types/interfaces/runtime";
+import { BlockNumber, Moment } from "@polkadot/types/interfaces/runtime";
 import { ApiPromise } from "@polkadot/api";
+import { SpWeightsRuntimeDbWeight } from "@polkadot/types/lookup";
 
 /**
  * @category BTC Bridge
@@ -14,7 +15,7 @@ export interface ConstantsAPI {
     /**
      * @returns The weight of database operations that the runtime can invoke.
      */
-    getSystemDbWeight(): RuntimeDbWeight;
+    getSystemDbWeight(): SpWeightsRuntimeDbWeight;
     /**
      * @returns The minimum period between blocks. Beware that this is different to the *expected* period
      * that the block production apparatus provides. Your chosen consensus system will generally
@@ -31,7 +32,7 @@ export class DefaultConstantsAPI implements ConstantsAPI {
         return this.api.consts.system.blockHashCount;
     }
 
-    getSystemDbWeight(): RuntimeDbWeight {
+    getSystemDbWeight(): SpWeightsRuntimeDbWeight {
         return this.api.consts.system.dbWeight;
     }
 
