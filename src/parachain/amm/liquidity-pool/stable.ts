@@ -18,7 +18,8 @@ class StableLiquidityPool extends LiquidityPoolCalculator<StableLpToken> impleme
         public tradingFee: Big, // Decimal point
         public poolId: number,
         public amplificationCoefficient: Big,
-        public totalSupply: MonetaryAmount<StableLpToken>
+        public totalSupply: MonetaryAmount<StableLpToken>,
+        public isEmpty: boolean
     ) {
         super(pooledCurrencies, totalSupply);
     }

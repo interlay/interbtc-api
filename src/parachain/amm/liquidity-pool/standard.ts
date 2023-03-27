@@ -18,7 +18,8 @@ class StandardLiquidityPool extends LiquidityPoolCalculator<StandardLpToken> imp
         public rewardAmountsYearly: Array<MonetaryAmount<CurrencyExt>>,
         public tradingFee: Big,
         public isTradingActive: boolean, // True if in `Trading` state, false if in `Bootstrap` state
-        public totalSupply: MonetaryAmount<StandardLpToken>
+        public totalSupply: MonetaryAmount<StandardLpToken>,
+        public isEmpty: boolean
     ) {
         super(pooledCurrencies, totalSupply);
 
