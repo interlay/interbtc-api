@@ -8,6 +8,7 @@ import type { AnyTuple } from "@polkadot/types/types";
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
 
 export interface TransactionAPI {
+    api: ApiPromise;
     setAccount(account: AddressOrPair): void;
     removeAccount(): void;
     getAccount(): AddressOrPair | undefined;
@@ -32,7 +33,7 @@ export interface TransactionAPI {
 }
 
 export class DefaultTransactionAPI implements TransactionAPI {
-    constructor(public api: ApiPromise, private account?: AddressOrPair) { }
+    constructor(public api: ApiPromise, private account?: AddressOrPair) {}
 
     public setAccount(account: AddressOrPair): void {
         this.account = account;
