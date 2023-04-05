@@ -25,7 +25,7 @@ import {
 import { FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
-import { CollateralCurrencyExt, Issue, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, ExtrinsicData, Issue, WrappedCurrency } from "../types";
 import { currencyIdToMonetaryCurrency } from "../utils";
 
 export type IssueLimits = {
@@ -65,31 +65,28 @@ export interface IssueAPI {
      * @param collateralCurrency (optional) Collateral currency for backing wrapped tokens
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
-     * @param retries (optional) Number of times to retry issuing, if some of the requests fail. Defaults to 0.
      * @param availableVaults (optional) A list of all vaults usable for issue. If not provided, will fetch from the parachain.
-     * @returns An array of type {issueId, issueRequest} if the requests succeeded. The function throws an error otherwise.
+     * @returns {Promise<ExtrinsicData>} An extrinsic with event.
      */
     request(
         amount: MonetaryAmount<WrappedCurrency>,
         vaultAccountId?: AccountId,
         collateralCurrency?: CollateralCurrencyExt,
         atomic?: boolean,
-        retries?: number,
         availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
-    ): Promise<Issue[]>;
+    ): Promise<ExtrinsicData>;
 
     /**
-     * Send a batch of aggregated issue transactions (to one or more vaults)
+     * Create a batch of aggregated issue transactions (to one or more vaults).
      * @param amountsPerVault A mapping of vaults to issue from, and wrapped token amounts to issue using each vault
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
-     * @returns An array of `Issue` objects, if the requests succeeded.
-     * @throws Rejects the promise if none of the requests succeeded (or if at least one failed, when atomic=true).
+     * @returns {ExtrinsicData} A submittable extrinsic and event.
      */
     requestAdvanced(
         amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
         atomic: boolean
-    ): Promise<Issue[]>;
+    ): ExtrinsicData;
 
     /**
      * Build an issue execution extrinsic (transaction) without sending it.
@@ -104,13 +101,14 @@ export interface IssueAPI {
     ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>>;
 
     /**
-     * Send an issue execution transaction
+     * Create an issue execution transaction
      * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
      *
      * @param issueId The ID returned by the issue request transaction
      * @param btcTxId Bitcoin transaction ID
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      */
-    execute(requestId: string, btcTxId: string): Promise<void>;
+    execute(requestId: string, btcTxId: string): Promise<ExtrinsicData>;
 
     /**
      * Build a cancel issue extrinsic (transaction) without sending it.
@@ -121,19 +119,21 @@ export interface IssueAPI {
     buildCancelIssueExtrinsic(issueId: string): SubmittableExtrinsic<"promise", ISubmittableResult>;
 
     /**
-     * Send an issue cancellation transaction. After the issue period has elapsed,
+     * Create an issue cancellation transaction. After the issue period has elapsed,
      * the issuance request can be cancelled. As a result, the griefing collateral
      * of the requester will be slashed and sent to the vault that had prepared to issue.
      * @param issueId The ID returned by the issue request transaction
+     * @returns {ExtrinsicData} A submittable extrinsic and event.
      */
-    cancel(issueId: string): Promise<void>;
+    cancel(issueId: string): ExtrinsicData;
     /**
      * @remarks Testnet utility function
      * @param blocks The time difference in number of blocks between an issue request is created
      * and required completion time by a user. The issue period has an upper limit
      * to prevent griefing of vault collateral.
+     * @returns {ExtrinsicData} A submittable extrinsic and event.
      */
-    setIssuePeriod(blocks: number): Promise<void>;
+    setIssuePeriod(blocks: number): ExtrinsicData;
     /**
      *
      * @returns The time difference in number of blocks between an issue request is created
@@ -218,7 +218,7 @@ export class DefaultIssueAPI implements IssueAPI {
      * @returns The issueId associated with the request. If the EventRecord array does not
      * contain issue request events, the function throws an error.
      */
-    private getIssueIdsFromEvents(events: EventRecord[]): Hash[] {
+    public getIssueIdsFromEvents(events: EventRecord[]): Hash[] {
         return getRequestIdsFromEvents(events, this.api.events.issue.RequestIssue, this.api);
     }
 
@@ -227,9 +227,8 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultAccountId?: AccountId,
         collateralCurrency?: CollateralCurrencyExt,
         atomic: boolean = true,
-        retries: number = 0,
         cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
-    ): Promise<Issue[]> {
+    ): Promise<ExtrinsicData> {
         try {
             if (vaultAccountId) {
                 if (!collateralCurrency) {
@@ -249,29 +248,11 @@ export class DefaultIssueAPI implements IssueAPI {
                 const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>([
                     [vaultId, amount],
                 ]);
-                return await this.requestAdvanced(amountsPerVault, atomic);
+                return this.requestAdvanced(amountsPerVault, atomic);
             }
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
-            const result = await this.requestAdvanced(amountsPerVault, atomic);
-            const successfulSum = result.reduce(
-                (sum, req) => sum.add(req.wrappedAmount),
-                newMonetaryAmount(0, this.wrappedCurrency)
-            );
-            const remainder = amount.sub(successfulSum);
-            if (remainder.isZero() || retries === 0) return result;
-            else {
-                return (
-                    await this.request(
-                        remainder,
-                        vaultAccountId,
-                        collateralCurrency,
-                        atomic,
-                        retries - 1,
-                        availableVaults
-                    )
-                ).concat(result);
-            }
+            return this.requestAdvanced(amountsPerVault, atomic);
         } catch (e) {
             return Promise.reject(e);
         }
@@ -284,24 +265,15 @@ export class DefaultIssueAPI implements IssueAPI {
         return this.api.tx.issue.requestIssue(amount.toString(true), vaultId);
     }
 
-    async requestAdvanced(
+    requestAdvanced(
         amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
         atomic: boolean
-    ): Promise<Issue[]> {
+    ): ExtrinsicData {
         const txs = Array.from(amountsPerVault.entries()).map(([vaultId, amount]) =>
             this.buildRequestIssueExtrinsic(vaultId, amount)
         );
         const batch = this.transactionAPI.buildBatchExtrinsic(txs, atomic);
-        try {
-            // When requesting an issue, wait for the finalized event because we cannot revert BTC transactions.
-            // For more details see: https://github.com/interlay/interbtc-api/pull/373#issuecomment-1058949000
-            const result = await this.transactionAPI.sendLogged(batch, this.api.events.issue.RequestIssue);
-            const ids = this.getIssueIdsFromEvents(result.events);
-            const issueRequests = await this.getRequestsByIds(ids);
-            return issueRequests;
-        } catch (e) {
-            return Promise.reject(e);
-        }
+        return { extrinsic: batch, event: this.api.events.issue.RequestIssue };
     }
 
     async buildExecuteIssueExtrinsic(
@@ -317,9 +289,9 @@ export class DefaultIssueAPI implements IssueAPI {
         );
     }
 
-    async execute(requestId: string, btcTxId: string): Promise<void> {
+    async execute(requestId: string, btcTxId: string): Promise<ExtrinsicData> {
         const tx = await this.buildExecuteIssueExtrinsic(requestId, btcTxId);
-        await this.transactionAPI.sendLogged(tx, this.api.events.issue.ExecuteIssue, true);
+        return { extrinsic: tx, event: this.api.events.issue.ExecuteIssue };
     }
 
     buildCancelIssueExtrinsic(requestId: string): SubmittableExtrinsic<"promise", ISubmittableResult> {
@@ -327,15 +299,15 @@ export class DefaultIssueAPI implements IssueAPI {
         return this.api.tx.issue.cancelIssue(parsedRequestId);
     }
 
-    async cancel(requestId: string): Promise<void> {
+    cancel(requestId: string): ExtrinsicData {
         const cancelIssueTx = this.buildCancelIssueExtrinsic(requestId);
-        await this.transactionAPI.sendLogged(cancelIssueTx, this.api.events.issue.CancelIssue, true);
+        return { extrinsic: cancelIssueTx, event: this.api.events.issue.CancelIssue };
     }
 
-    async setIssuePeriod(blocks: number): Promise<void> {
+    setIssuePeriod(blocks: number): ExtrinsicData {
         const period = this.api.createType("BlockNumber", blocks);
         const tx = this.api.tx.sudo.sudo(this.api.tx.issue.setIssuePeriod(period));
-        await this.transactionAPI.sendLogged(tx, undefined, true);
+        return { extrinsic: tx };
     }
 
     async getIssuePeriod(): Promise<number> {

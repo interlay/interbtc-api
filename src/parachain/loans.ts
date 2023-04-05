@@ -12,6 +12,7 @@ import {
     WrappedCurrency,
     CollateralPosition,
     UndercollateralizedPosition,
+    ExtrinsicData,
 } from "../types";
 import { ApiPromise } from "@polkadot/api";
 import Big, { RoundingMode } from "big.js";
@@ -33,7 +34,6 @@ import {
     newAccountId,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
-import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
 
 /**
@@ -102,16 +102,18 @@ export interface LoansAPI {
      *
      * @param {CurrencyExt} underlyingCurrency  Currency to lend.
      * @param {MonetaryAmount<CurrencyExt>} amount Amount of currency to lend.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      * @throws If there is not active market for `underlyingCurrency`.
      * @throws If `amount` is exceeding available balance of account.
      */
-    lend(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    lend(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData>;
 
     /**
      * Withdraw previously lent currency from protocol.
      *
      * @param {CurrencyExt} underlyingCurrency Currency to witdhraw.
      * @param {MonetaryAmount<CurrencyExt>} amount Amount of currency to withdraw.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      * @throws If there is not active market for `underlyingCurrency`.
      * @throws If `amount` is exceeding lent amount of account.
      * @throws If `underlyingCurrency` is used as collateral and withdrawal of
@@ -119,68 +121,75 @@ export interface LoansAPI {
      * @throws If there is not enough of underlying currency currently
      * available in the protocol.
      */
-    withdraw(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    withdraw(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData>;
 
     /**
      * Same as `withdraw`, but exits full position.
      *
      * @param underlyingCurrency Currency to fully withdraw.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      */
-    withdrawAll(underlyingCurrency: CurrencyExt): Promise<void>;
+    withdrawAll(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData>;
 
     /**
      * Enable lend position of account as collateral for borrowing.
      *
      * @param underlyingCurrency Currency to enable as collateral.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      * @throws If there is no existing lend position for `currency`.
      */
-    enableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void>;
+    enableAsCollateral(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData>;
 
     /**
      * Enable lend position of account as collateral for borrowing.
      *
      * @param underlyingCurrency Currency to enable as collateral.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      * @throws If there is no existing lend position for `currency`.
      * @throws If disabling lend position of `currency` would bring
      * account under collateral threshold.
      */
-    disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void>;
+    disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData>;
 
     /**
      * Claim subsidy rewards for all markets available for account.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      */
-    claimAllSubsidyRewards(): Promise<void>;
+    claimAllSubsidyRewards(): ExtrinsicData;
 
     /**
      * Borrow currency from the protocol.
      *
      * @param underlyingCurrency Currency to borrow.
      * @param amount Amount of currency to borrow.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      * @throws If there is no active market for `underlyingCurrency`.
      * @throws If there is not enough collateral provided by account for
      * `amount` of `underlyingCurrency`.
      * @throws If `amount` is higher than available amount of `underlyingCurrency`
      * in the protocol.
      */
-    borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData>;
 
     /**
      * Repay borrowed loan.
      *
      * @param underlyingCurrency Currency to repay.
      * @param amount Amount of currency to repay.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      * @throws If there is no active market for `underlyingCurrency`.
      * @throws If `amount` is higher than available balance of account.
      * @throws If `amount` is higher than outstanding loan.
      */
-    repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData>;
 
     /**
      * Same as `repay`, but repays full loan.
      *
      * @param underlyingCurrency Currency to repay.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
      */
-    repayAll(underlyingCurrency: CurrencyExt): Promise<void>;
+    repayAll(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData>;
 
     /**
      * Liquidates borrow position for exchange of collateral.
@@ -189,13 +198,14 @@ export interface LoansAPI {
      * @param liquidationCurrency Currency of position that will be liquidated.
      * @param repayAmount Amount to be repaid.
      * @param collateralCurrency Collateral currency which will be claimed by liquidator.
+     * @returns {ExtrinsicData} A submittable extrinsic and event.
      */
     liquidateBorrowPosition(
         borrower: AccountId,
         liquidationCurrency: CurrencyExt,
         repayAmount: MonetaryAmount<CurrencyExt>,
         collateralCurrency: CurrencyExt
-    ): Promise<void>;
+    ): ExtrinsicData;
     /**
      * @returns An array of `UndercollateralizedPosition`s, with all details needed to
      * liquidate them (accountId, shortfall - expressed in the wrapped currency, open borrow positions, collateral
@@ -219,22 +229,14 @@ export interface LoansAPI {
 }
 
 export class DefaultLoansAPI implements LoansAPI {
-    constructor(
-        private api: ApiPromise,
-        private wrappedCurrency: WrappedCurrency,
-        private transactionAPI: TransactionAPI,
-        private oracleAPI: OracleAPI
-    ) {}
+    constructor(private api: ApiPromise, private wrappedCurrency: WrappedCurrency, private oracleAPI: OracleAPI) {}
 
     async getLoansMarkets(): Promise<[CurrencyExt, LoansMarket][]> {
         const entries = (await this.api.query.loans.markets.entries()).filter((entry) => entry[1].isSome);
         const parsedMarkets = await Promise.all(
             entries.map(async ([key, market]): Promise<[CurrencyExt, LoansMarket]> => {
                 const underlyingCurrencyId = storageKeyToNthInner(key);
-                const underlyingCurrency = await currencyIdToMonetaryCurrency(
-                    this.api,
-                    underlyingCurrencyId
-                );
+                const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyId);
                 return [underlyingCurrency, market.unwrap()];
             })
         );
@@ -619,7 +621,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 this._getBorrowApy(underlyingCurrencyId),
                 this._getTotalLiquidityCapacityAndBorrows(underlyingCurrency, underlyingCurrencyId),
                 this._getRewardCurrency(),
-                this.oracleAPI.getExchangeRate(underlyingCurrency)
+                this.oracleAPI.getExchangeRate(underlyingCurrency),
             ]);
 
         // Format data.
@@ -695,90 +697,90 @@ export class DefaultLoansAPI implements LoansAPI {
         }
     }
 
-    async lend(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+    async lend(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "lend");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const lendExtrinsic = this.api.tx.loans.mint(underlyingCurrencyId, amount.toString(true));
 
-        await this.transactionAPI.sendLogged(lendExtrinsic, this.api.events.loans.Deposited, true);
+        return { extrinsic: lendExtrinsic, event: this.api.events.loans.Deposited };
     }
 
-    async withdraw(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+    async withdraw(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "withdraw");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const withdrawExtrinsic = this.api.tx.loans.redeem(underlyingCurrencyId, amount.toString(true));
 
-        await this.transactionAPI.sendLogged(withdrawExtrinsic, this.api.events.loans.Redeemed, true);
+        return { extrinsic: withdrawExtrinsic, event: this.api.events.loans.Redeemed };
     }
 
-    async withdrawAll(underlyingCurrency: CurrencyExt): Promise<void> {
+    async withdrawAll(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "withdraw");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const withdrawExtrinsic = this.api.tx.loans.redeemAll(underlyingCurrencyId);
 
-        await this.transactionAPI.sendLogged(withdrawExtrinsic, this.api.events.loans.Redeemed, true);
+        return { extrinsic: withdrawExtrinsic, event: this.api.events.loans.Redeemed };
     }
 
-    async enableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void> {
+    async enableAsCollateral(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "enable collateral");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const enableCollateralExtrinsic = this.api.tx.loans.depositAllCollateral(underlyingCurrencyId);
 
-        await this.transactionAPI.sendLogged(enableCollateralExtrinsic, this.api.events.loans.DepositCollateral, true);
+        return { extrinsic: enableCollateralExtrinsic, event: this.api.events.loans.DepositCollateral };
     }
 
-    async disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<void> {
+    async disableAsCollateral(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "disable collateral");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const enableCollateralExtrinsic = this.api.tx.loans.withdrawAllCollateral(underlyingCurrencyId);
 
-        await this.transactionAPI.sendLogged(enableCollateralExtrinsic, this.api.events.loans.WithdrawCollateral, true);
+        return { extrinsic: enableCollateralExtrinsic, event: this.api.events.loans.WithdrawCollateral };
     }
 
-    async claimAllSubsidyRewards(): Promise<void> {
+    claimAllSubsidyRewards(): ExtrinsicData {
         const claimRewardsExtrinsic = this.api.tx.loans.claimReward();
 
-        await this.transactionAPI.sendLogged(claimRewardsExtrinsic, this.api.events.loans.RewardPaid, true);
+        return { extrinsic: claimRewardsExtrinsic, event: this.api.events.loans.RewardPaid };
     }
 
-    async borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+    async borrow(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "borrow");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const borrowExtrinsic = this.api.tx.loans.borrow(underlyingCurrencyId, amount.toString(true));
 
-        await this.transactionAPI.sendLogged(borrowExtrinsic, this.api.events.loans.Borrowed, true);
+        return { extrinsic: borrowExtrinsic, event: this.api.events.loans.Borrowed };
     }
 
-    async repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+    async repay(underlyingCurrency: CurrencyExt, amount: MonetaryAmount<CurrencyExt>): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "repay debt of");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
-        const repay = this.api.tx.loans.repayBorrow(underlyingCurrencyId, amount.toString(true));
+        const repayExtrinsic = this.api.tx.loans.repayBorrow(underlyingCurrencyId, amount.toString(true));
 
-        await this.transactionAPI.sendLogged(repay, this.api.events.loans.RepaidBorrow, true);
+        return { extrinsic: repayExtrinsic, event: this.api.events.loans.RepaidBorrow };
     }
 
-    async repayAll(underlyingCurrency: CurrencyExt): Promise<void> {
+    async repayAll(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData> {
         await this._checkMarketState(underlyingCurrency, "repay all debt of");
 
         const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
         const repayAllExtrinsic = this.api.tx.loans.repayBorrowAll(underlyingCurrencyId);
 
-        await this.transactionAPI.sendLogged(repayAllExtrinsic, this.api.events.loans.RepaidBorrow, true);
+        return { extrinsic: repayAllExtrinsic, event: this.api.events.loans.RepaidBorrow };
     }
 
-    async liquidateBorrowPosition(
+    liquidateBorrowPosition(
         borrower: AccountId,
         liquidationCurrency: CurrencyExt,
         repayAmount: MonetaryAmount<CurrencyExt>,
         collateralCurrency: CurrencyExt
-    ): Promise<void> {
+    ): ExtrinsicData {
         const liquidationCurrencyId = newCurrencyId(this.api, liquidationCurrency);
         const collateralCurrencyId = newCurrencyId(this.api, collateralCurrency);
         const rawAmount = repayAmount.toString(true);
@@ -789,6 +791,6 @@ export class DefaultLoansAPI implements LoansAPI {
             collateralCurrencyId
         );
 
-        await this.transactionAPI.sendLogged(liquidateBorrowExtrinsic, this.api.events.loans.LiquidatedBorrow, true);
+        return { extrinsic: liquidateBorrowExtrinsic, event: this.api.events.loans.LiquidatedBorrow };
     }
 }

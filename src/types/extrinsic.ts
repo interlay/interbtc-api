@@ -1,5 +1,8 @@
 import { SubmittableExtrinsic, ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 
-type ExtrinsicData = [SubmittableExtrinsic<ApiTypes>, AugmentedEvent<ApiTypes>];
+interface ExtrinsicData {
+    extrinsic: SubmittableExtrinsic<ApiTypes>;
+    event?: AugmentedEvent<ApiTypes>;
+}
 
 export type { ExtrinsicData };

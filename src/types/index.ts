@@ -3,3 +3,4 @@ export * from "./bitcoinTypes";
 export * from "./currency";
 export * from "./vault";
 export * from "./loans";
+export * from "./extrinsic";
