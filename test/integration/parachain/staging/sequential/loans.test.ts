@@ -16,7 +16,7 @@ import {
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
-import { callWithExchangeRate, includesStringified } from "../../../../utils/helpers";
+import { callWithExchangeRate, includesStringified, submitExtrinsic } from "../../../../utils/helpers";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
 import { expect } from "../../../../chai";
 import sinon from "sinon";
@@ -58,11 +58,10 @@ describe("Loans", () => {
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
         userAccountId = newAccountId(api, userAccount.address);
         user2AccountId = newAccountId(api, user2Account.address);
-        TransactionAPI = new DefaultTransactionAPI(api, userAccount);
         const wrappedCurrency = sudoInterBtcAPI.getWrappedCurrency();
-        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, TransactionAPI);
+        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
 
-        LoansAPI = new DefaultLoansAPI(api, wrappedCurrency, TransactionAPI, oracleAPI);
+        LoansAPI = new DefaultLoansAPI(api, wrappedCurrency, oracleAPI);
 
         // Add market for governance currency.
         underlyingCurrencyId = sudoInterBtcAPI.api.consts.currency.getNativeCurrencyId;
@@ -263,7 +262,7 @@ describe("Loans", () => {
             const [{ amount: lendAmountBefore }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
-            await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount));
 
             const [{ amount: lendAmountAfter }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
             const actuallyLentAmount = lendAmountAfter.sub(lendAmountBefore);
@@ -274,13 +273,21 @@ describe("Loans", () => {
         it("should throw if trying to lend from inactive market", async () => {
             const inactiveUnderlyingCurrency = InterBtc;
             const amount = newMonetaryAmount(1, inactiveUnderlyingCurrency);
+            const lendPromise = submitExtrinsic(
+                userInterBtcAPI,
+                await userInterBtcAPI.loans.lend(inactiveUnderlyingCurrency, amount)
+            );
 
-            await expect(userInterBtcAPI.loans.lend(inactiveUnderlyingCurrency, amount)).to.be.rejected;
+            await expect(lendPromise).to.be.rejected;
         });
         it("should throw if trying to lend more than free balance", async () => {
             const tooBigAmount = newMonetaryAmount("1000000000000000000000000000000000000", underlyingCurrency);
+            const lendPromise = submitExtrinsic(
+                userInterBtcAPI,
+                await userInterBtcAPI.loans.lend(underlyingCurrency, tooBigAmount)
+            );
 
-            await expect(userInterBtcAPI.loans.lend(underlyingCurrency, tooBigAmount)).to.be.rejected;
+            await expect(lendPromise).to.be.rejected;
         });
     });
 
@@ -299,7 +306,10 @@ describe("Loans", () => {
             const [{ amount: lendAmountBefore }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             const amountToWithdraw = newMonetaryAmount(1, underlyingCurrency, true);
-            await userInterBtcAPI.loans.withdraw(underlyingCurrency, amountToWithdraw);
+            await submitExtrinsic(
+                userInterBtcAPI,
+                await userInterBtcAPI.loans.withdraw(underlyingCurrency, amountToWithdraw)
+            );
 
             const [{ amount: lendAmountAfter }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
             const actuallyWithdrawnAmount = lendAmountBefore.sub(lendAmountAfter).toBig().round(2);
@@ -314,7 +324,7 @@ describe("Loans", () => {
 
     describe("withdrawAll", () => {
         it("should withdraw full amount from lending protocol", async function () {
-            await userInterBtcAPI.loans.withdrawAll(underlyingCurrency);
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.withdrawAll(underlyingCurrency));
 
             const lendPositions = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
@@ -325,8 +335,8 @@ describe("Loans", () => {
     describe("enableAsCollateral", () => {
         it("should enable lend position as collateral", async function () {
             const lendAmount = newMonetaryAmount(1, underlyingCurrency, true);
-            await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
-            await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.lend(underlyingCurrency, lendAmount));
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency));
             const [{ isCollateral }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             expect(isCollateral).to.be.true;
@@ -335,7 +345,7 @@ describe("Loans", () => {
 
     describe("disableAsCollateral", () => {
         it("should disable enabled collateral position if there are no borrows", async function () {
-            await userInterBtcAPI.loans.disableAsCollateral(underlyingCurrency);
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.disableAsCollateral(underlyingCurrency));
             const [{ isCollateral }] = await userInterBtcAPI.loans.getLendPositionsOfAccount(userAccountId);
 
             expect(isCollateral).to.be.false;
@@ -381,14 +391,20 @@ describe("Loans", () => {
         it("should borrow specified amount", async function () {
             const lendAmount = newMonetaryAmount(100, underlyingCurrency, true);
             const borrowAmount = newMonetaryAmount(1, underlyingCurrency, true);
-            await user2InterBtcAPI.loans.lend(underlyingCurrency, lendAmount);
-            await user2InterBtcAPI.loans.enableAsCollateral(underlyingCurrency);
+            await submitExtrinsic(user2InterBtcAPI, await user2InterBtcAPI.loans.lend(underlyingCurrency, lendAmount));
+            await submitExtrinsic(
+                user2InterBtcAPI,
+                await user2InterBtcAPI.loans.enableAsCollateral(underlyingCurrency)
+            );
             let borrowers = await user2InterBtcAPI.loans.getBorrowerAccountIds();
             expect(
                 !includesStringified(borrowers, user2AccountId),
                 `Expected ${user2AccountId.toString()} not to be included in the result of \`getBorrowerAccountIds\``
             ).to.be.true;
-            await user2InterBtcAPI.loans.borrow(underlyingCurrency, borrowAmount);
+            await submitExtrinsic(
+                user2InterBtcAPI,
+                await user2InterBtcAPI.loans.borrow(underlyingCurrency, borrowAmount)
+            );
             borrowers = await user2InterBtcAPI.loans.getBorrowerAccountIds();
             expect(
                 includesStringified(borrowers, user2AccountId),
@@ -410,7 +426,10 @@ describe("Loans", () => {
             const [{ amount: borrowAmountBefore }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(
                 user2AccountId
             );
-            await user2InterBtcAPI.loans.repay(underlyingCurrency, repayAmount);
+            await submitExtrinsic(
+                user2InterBtcAPI,
+                await user2InterBtcAPI.loans.repay(underlyingCurrency, repayAmount)
+            );
             const [{ amount: borrowAmountAfter }] = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(
                 user2AccountId
             );
@@ -427,7 +446,7 @@ describe("Loans", () => {
 
     describe("repayAll", () => {
         it("should repay whole loan", async function () {
-            await user2InterBtcAPI.loans.repayAll(underlyingCurrency);
+            await submitExtrinsic(user2InterBtcAPI, await user2InterBtcAPI.loans.repayAll(underlyingCurrency));
             const borrowPositions = await user2InterBtcAPI.loans.getBorrowPositionsOfAccount(user2AccountId);
 
             expect(
@@ -453,8 +472,11 @@ describe("Loans", () => {
         it("should liquidate position when possible", async function () {
             // Supply asset by account1, borrow by account2
             const borrowAmount = newMonetaryAmount(10, underlyingCurrency2, true);
-            await userInterBtcAPI.loans.lend(underlyingCurrency2, borrowAmount);
-            await user2InterBtcAPI.loans.borrow(underlyingCurrency2, borrowAmount);
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.lend(underlyingCurrency2, borrowAmount));
+            await submitExtrinsic(
+                user2InterBtcAPI,
+                await user2InterBtcAPI.loans.borrow(underlyingCurrency2, borrowAmount)
+            );
 
             const exchangeRateValue = new Big(1);
             await callWithExchangeRate(sudoInterBtcAPI, underlyingCurrency2, exchangeRateValue, async () => {
@@ -466,13 +488,17 @@ describe("Loans", () => {
                 ).to.be.eq(1);
                 expect(
                     undercollateralizedBorrowers[0].accountId.toString(),
-                    `Expected undercollateralized borrower to be ${user2AccountId.toString()}, found ${undercollateralizedBorrowers[0].accountId.toString()}`
+                    `Expected undercollateralized borrower to be ${user2AccountId.toString()},\
+                     found ${undercollateralizedBorrowers[0].accountId.toString()}`
                 ).to.be.eq(user2AccountId.toString());
-                await userInterBtcAPI.loans.liquidateBorrowPosition(
-                    user2AccountId,
-                    underlyingCurrency2,
-                    repayAmount,
-                    underlyingCurrency
+                await submitExtrinsic(
+                    userInterBtcAPI,
+                    userInterBtcAPI.loans.liquidateBorrowPosition(
+                        user2AccountId,
+                        underlyingCurrency2,
+                        repayAmount,
+                        underlyingCurrency
+                    )
                 );
             });
         });
@@ -481,11 +507,14 @@ describe("Loans", () => {
             const repayAmount = newMonetaryAmount(1, underlyingCurrency2, true); // repay smallest amount
 
             await expect(
-                userInterBtcAPI.loans.liquidateBorrowPosition(
-                    user2AccountId,
-                    underlyingCurrency2,
-                    repayAmount,
-                    underlyingCurrency
+                submitExtrinsic(
+                    userInterBtcAPI,
+                    userInterBtcAPI.loans.liquidateBorrowPosition(
+                        user2AccountId,
+                        underlyingCurrency2,
+                        repayAmount,
+                        underlyingCurrency
+                    )
                 )
             ).to.be.rejected;
         });

@@ -14,6 +14,8 @@ import {
     GovernanceCurrency,
     CollateralCurrencyExt,
     DefaultTransactionAPI,
+    ExtrinsicData,
+    newExtrinsicStatus,
 } from "../../src";
 import {
     setStorageAtKey,
@@ -24,6 +26,7 @@ import {
 } from "../../src/utils";
 import { SUDO_URI } from "../config";
 import { expect } from "chai";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 export const SLEEP_TIME_MS = 1000;
 
@@ -241,4 +244,13 @@ export async function getIssuableAmounts(interBtcApi: InterBtcApi): Promise<Arra
             return wrappedAmount;
         })
     );
+}
+
+export async function submitExtrinsic(
+    interBtcApi: InterBtcApi,
+    extrinsicData: ExtrinsicData,
+    onlyInBlock = true
+): Promise<ISubmittableResult> {
+    const extrinsicStatus = newExtrinsicStatus(interBtcApi.api, onlyInBlock ? "InBlock" : "Finalized");
+    return await interBtcApi.transaction.sendLogged(extrinsicData.extrinsic, extrinsicData.event, extrinsicStatus);
 }

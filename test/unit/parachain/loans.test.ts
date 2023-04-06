@@ -5,7 +5,6 @@ import {
     CurrencyExt,
     DefaultLoansAPI,
     DefaultOracleAPI,
-    DefaultTransactionAPI,
     CollateralPosition,
     LoanAsset,
     TickerToData,
@@ -32,9 +31,8 @@ describe("DefaultLoansAPI", () => {
     });
 
     beforeEach(() => {
-        const transactionAPI = new DefaultTransactionAPI(api);
-        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency, transactionAPI);
-        loansApi = new DefaultLoansAPI(api, KBtc, transactionAPI, oracleAPI);
+        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
+        loansApi = new DefaultLoansAPI(api, KBtc, oracleAPI);
     });
 
     describe("getLendPositionsOfAccount", () => {

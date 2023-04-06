@@ -1,9 +1,8 @@
 import { ApiPromise } from "@polkadot/api";
 import { Header, BlockHash } from "@polkadot/types/interfaces";
 import { SecurityStatusCode } from "@polkadot/types/lookup";
+import { ExtrinsicData } from "../types";
 import { BLOCK_TIME_SECONDS } from "../utils";
-
-import { TransactionAPI } from "./transaction";
 
 /**
  * @category BTC Bridge
@@ -38,8 +37,9 @@ export interface SystemAPI {
     /**
      * @remarks Upgrades runtime using `sudoUncheckedWeight`
      * @param code Hex-encoded wasm blob
+     * @returns {ExtrinsicData} A submittable extrinsic and event.
      */
-    setCode(code: string): Promise<void>;
+    setCode(code: string): ExtrinsicData;
 
     /**
      * @param blockNumber The block number to get the hash for
@@ -59,7 +59,7 @@ export interface SystemAPI {
 }
 
 export class DefaultSystemAPI implements SystemAPI {
-    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) { }
+    constructor(private api: ApiPromise) {}
 
     async getCurrentBlockNumber(): Promise<number> {
         return (await this.api.query.system.number()).toNumber();
@@ -89,9 +89,9 @@ export class DefaultSystemAPI implements SystemAPI {
         return await this.api.query.security.parachainStatus();
     }
 
-    async setCode(code: string): Promise<void> {
+    setCode(code: string): ExtrinsicData {
         const tx = this.api.tx.sudo.sudoUncheckedWeight(this.api.tx.system.setCode(code), "0");
-        await this.transactionAPI.sendLogged(tx, this.api.events.system.CodeUpdated, true);
+        return { extrinsic: tx, event: this.api.events.system.CodeUpdated };
     }
 
     async getBlockHash(blockNumber: number): Promise<BlockHash> {

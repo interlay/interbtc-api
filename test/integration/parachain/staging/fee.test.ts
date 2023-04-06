@@ -4,24 +4,16 @@ import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../config";
-import {
-    CollateralCurrencyExt,
-    DefaultInterBtcApi,
-    InterBtcApi,
-    WrappedCurrency,
-} from "../../../../src";
-import {
-    newMonetaryAmount
-} from "../../../../src/utils";
+import { DefaultInterBtcApi, InterBtcApi, WrappedCurrency } from "../../../../src";
+import { newMonetaryAmount } from "../../../../src/utils";
 import { GriefingCollateralType } from "../../../../src/parachain/fee";
-import { callWithExchangeRate, getCorrespondingCollateralCurrenciesForTests } from "../../../utils/helpers";
+import { callWithExchangeRate } from "../../../utils/helpers";
 
 describe("fee", () => {
     let api: ApiPromise;
     let oracleInterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
 
-    let collateralCurrencies: Array<CollateralCurrencyExt>;
     let wrappedCurrency: WrappedCurrency;
 
     before(async function () {
@@ -33,7 +25,6 @@ describe("fee", () => {
         oracleInterBtcAPI = new DefaultInterBtcApi(api, "regtest", oracleAccount, ESPLORA_BASE_PATH);
         sudoInterBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
 
-        collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(oracleInterBtcAPI.getGovernanceCurrency());
         wrappedCurrency = oracleInterBtcAPI.getWrappedCurrency();
     });
 

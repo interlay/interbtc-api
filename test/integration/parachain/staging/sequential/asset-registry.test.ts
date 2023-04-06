@@ -9,10 +9,7 @@ import { OrmlTraitsAssetRegistryAssetMetadata } from "@polkadot/types/lookup";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
 import { DefaultAssetRegistryAPI, DefaultInterBtcApi, DefaultTransactionAPI } from "../../../../../src";
-import {
-    storageKeyToNthInner,
-    stripHexPrefix
-} from "../../../../../src/utils";
+import { storageKeyToNthInner, stripHexPrefix } from "../../../../../src/utils";
 
 describe("AssetRegistry", () => {
     let api: ApiPromise;
@@ -93,10 +90,7 @@ describe("AssetRegistry", () => {
                 api.events.sudo.RegisteredAsset
             );
 
-            assert.isTrue(
-                result.isCompleted,
-                `Sudo event to create new foreign asset not found`
-            );
+            assert.isTrue(result.isCompleted, "Sudo event to create new foreign asset not found");
         }
 
         // get the metadata for the asset we just registered

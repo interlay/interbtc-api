@@ -1,9 +1,16 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 
 import { assert } from "../../../chai";
-import { createAPIRegistry, createSubstrateAPI, DefaultInterBtcApi, InterBtcApi, newMonetaryAmount } from "../../../../src";
+import {
+    createAPIRegistry,
+    createSubstrateAPI,
+    DefaultInterBtcApi,
+    InterBtcApi,
+    newMonetaryAmount,
+} from "../../../../src";
 import { SingleAccountSigner } from "../../../utils/SingleAccountSigner";
 import { ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
+import { submitExtrinsic } from "test/utils/helpers";
 
 describe("InterBtcApi", () => {
     const keyring = new Keyring();
@@ -52,7 +59,7 @@ describe("InterBtcApi", () => {
             const governanceCurrency = interBTC.getGovernanceCurrency();
             const amount = newMonetaryAmount(1, governanceCurrency, true);
             const aliceAddress = keyring.addFromUri("//Alice").address;
-            const tx = interBTC.tokens.transfer(aliceAddress, amount);
+            const tx = submitExtrinsic(interBTC, interBTC.tokens.transfer(aliceAddress, amount));
             // Transfer to Alice should be rejected, since Bob's account was removed.
             await assert.isRejected(tx);
         });

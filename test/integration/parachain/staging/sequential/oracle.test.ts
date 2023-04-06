@@ -10,6 +10,7 @@ import {
     getCorrespondingCollateralCurrenciesForTests,
     getExchangeRateValueToSetForTesting,
     ORACLE_MAX_DELAY,
+    submitExtrinsic,
 } from "../../../../utils/helpers";
 
 describe("OracleAPI", () => {
@@ -46,7 +47,7 @@ describe("OracleAPI", () => {
                 collateralCurrency,
                 exchangeRateValue
             );
-            await interBtcAPI.oracle.setExchangeRate(newExchangeRate);
+            await submitExtrinsic(interBtcAPI, interBtcAPI.oracle.setExchangeRate(newExchangeRate));
         }
     });
 

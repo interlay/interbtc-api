@@ -7,7 +7,6 @@ import { KBtc, Kusama } from "@interlay/monetary-js";
 import {
     prepareBackingCollateralProportionMocks,
     prepareRegisterNewCollateralVaultMocks,
-    MOCKED_SEND_LOGGED_ERR_MSG,
     prepareLiquidationRateMocks,
 } from "../mocks/vaultsTestMocks";
 
@@ -126,43 +125,9 @@ describe("DefaultVaultsAPI", () => {
         it("should reject if transaction API account id is not set", async () => {
             prepareRegisterNewCollateralVaultMocks(sinon, vaultsApi, stubbedTransactionApi, true);
 
-            const voidPromise = vaultsApi.registerNewCollateralVault(testCollateralAmount);
+            const registerVaultCall = () => vaultsApi.registerNewCollateralVault(testCollateralAmount);
             // check for partial string here
-            expect(voidPromise).to.be.rejectedWith("account must be set");
-        });
-
-        it("should reject with same message if transactionApi.sendLogged rejects", async () => {
-            prepareRegisterNewCollateralVaultMocks(sinon, vaultsApi, stubbedTransactionApi, false, true);
-
-            expect(vaultsApi.registerNewCollateralVault(testCollateralAmount)).to.be.rejectedWith(
-                MOCKED_SEND_LOGGED_ERR_MSG
-            );
-        });
-
-        it("should submit call to register new vault with new collateral currency", async () => {
-            const submittedMockExtrinsic = prepareRegisterNewCollateralVaultMocks(
-                sinon,
-                vaultsApi,
-                stubbedTransactionApi
-            );
-            // check precondition
-            assert.isFalse(
-                submittedMockExtrinsic == null,
-                "Test setup error: Expected submitted mock extrinsic to be set, but it was not."
-            );
-
-            expect(vaultsApi.registerNewCollateralVault(testCollateralAmount)).to.be.fulfilled;
-            expect(stubbedTransactionApi.sendLogged.callCount).to.be.equal(
-                1,
-                `Expected transactionApi.sendLogged to be called exactly once, 
-                but it was called ${stubbedTransactionApi.sendLogged.callCount} times`
-            );
-
-            const actualSubmittedExtrinsic = stubbedTransactionApi.sendLogged.getCall(0).args[0];
-            expect(actualSubmittedExtrinsic).to.be.equal(
-                submittedMockExtrinsic,
-                `Expected submitted mock extrinsic have been submitted, but found this instead: ${actualSubmittedExtrinsic.toString()}`
-            );
+            expect(registerVaultCall).to.throw("account must be set");
         });
     });
 

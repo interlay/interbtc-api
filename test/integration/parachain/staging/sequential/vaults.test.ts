@@ -22,6 +22,7 @@ import {
     getAUSDForeignAsset,
     getCorrespondingCollateralCurrenciesForTests,
     getIssuableAmounts,
+    submitExtrinsic,
     vaultStatusToLabel,
 } from "../../../../utils/helpers";
 import sinon from "sinon";
@@ -125,7 +126,7 @@ describe("vaultsAPI", () => {
                 newAccountId(api, vault_1.address),
                 collateralCurrency
             );
-            await interBtcAPI.vaults.depositCollateral(amount);
+            await submitExtrinsic(interBtcAPI, interBtcAPI.vaults.depositCollateral(amount));
             const collateralizationAfterDeposit = await interBtcAPI.vaults.getVaultCollateralization(
                 newAccountId(api, vault_1.address),
                 collateralCurrency
@@ -143,7 +144,7 @@ describe("vaultsAPI", () => {
                 expected ${collateralizationAfterDeposit} greater than ${collateralizationBeforeDeposit}`
             );
 
-            await interBtcAPI.vaults.withdrawCollateral(amount);
+            await submitExtrinsic(interBtcAPI, await interBtcAPI.vaults.withdrawCollateral(amount));
             const collateralizationAfterWithdrawal = await interBtcAPI.vaults.getVaultCollateralization(
                 newAccountId(api, vault_1.address),
                 collateralCurrency
@@ -351,11 +352,17 @@ describe("vaultsAPI", () => {
             // Check that vault 1 is active.
             await assertVaultStatus(vault_1_id, VaultStatusExt.Active);
             // Disables vault 1 which is active.
-            await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, REJECT_NEW_ISSUES);
+            await submitExtrinsic(
+                interBtcAPI,
+                await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, REJECT_NEW_ISSUES)
+            );
             // Check that vault 1 is inactive.
             await assertVaultStatus(vault_1_id, VaultStatusExt.Inactive);
             // Re-enable issuing with vault 1.
-            await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, ACCEPT_NEW_ISSUES);
+            await submitExtrinsic(
+                interBtcAPI,
+                await interBtcAPI.vaults.toggleIssueRequests(vault_1_id, ACCEPT_NEW_ISSUES)
+            );
             // Check that vault 1 is again active.
             await assertVaultStatus(vault_1_id, VaultStatusExt.Active);
         }

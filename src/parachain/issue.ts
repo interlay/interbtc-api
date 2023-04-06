@@ -2,7 +2,7 @@ import { ApiPromise } from "@polkadot/api";
 import { SubmittableExtrinsic } from "@polkadot/api/submittable/types";
 import { Option } from "@polkadot/types";
 import { ISubmittableResult } from "@polkadot/types/types";
-import { AccountId, H256, Hash, EventRecord } from "@polkadot/types/interfaces";
+import { AccountId, H256 } from "@polkadot/types/interfaces";
 import { Network } from "bitcoinjs-lib";
 import Big from "big.js";
 import { MonetaryAmount } from "@interlay/monetary-js";
@@ -13,7 +13,6 @@ import {
     decodeFixedPointType,
     getTxProof,
     allocateAmountsToVaults,
-    getRequestIdsFromEvents,
     storageKeyToNthInner,
     ensureHashEncoded,
     addHexPrefix,
@@ -22,7 +21,6 @@ import {
     newVaultId,
     newCurrencyId,
 } from "../utils";
-import { FeeAPI } from "./fee";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, ExtrinsicData, Issue, WrappedCurrency } from "../types";
@@ -186,7 +184,6 @@ export class DefaultIssueAPI implements IssueAPI {
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency,
-        private feeAPI: FeeAPI,
         private vaultsAPI: VaultsAPI,
         private transactionAPI: TransactionAPI
     ) {}
@@ -211,15 +208,6 @@ export class DefaultIssueAPI implements IssueAPI {
             return total.add(vaultAvailable);
         }, newMonetaryAmount(0, this.wrappedCurrency));
         return { singleVaultMaxIssuable, totalMaxIssuable };
-    }
-
-    /**
-     * @param events The EventRecord array returned after sending an issue request transaction
-     * @returns The issueId associated with the request. If the EventRecord array does not
-     * contain issue request events, the function throws an error.
-     */
-    public getIssueIdsFromEvents(events: EventRecord[]): Hash[] {
-        return getRequestIdsFromEvents(events, this.api.events.issue.RequestIssue, this.api);
     }
 
     async request(

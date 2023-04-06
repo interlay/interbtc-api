@@ -103,31 +103,26 @@ export class DefaultEscrowAPI implements EscrowAPI {
     createLock(amount: MonetaryAmount<GovernanceCurrency>, unlockHeight: number): ExtrinsicData {
         const tx = this.api.tx.escrow.createLock(amount.toString(true), unlockHeight);
         return { extrinsic: tx, event: this.api.events.escrow.Deposit };
-        // await this.transactionAPI.sendLogged(tx, , true);
     }
 
     withdraw(): ExtrinsicData {
         const tx = this.api.tx.escrow.withdraw();
         return { extrinsic: tx, event: this.api.events.escrow.Withdraw };
-        // await this.transactionAPI.sendLogged(tx, , true);
     }
 
     withdrawRewards(): ExtrinsicData {
         const tx = this.api.tx.escrowAnnuity.withdrawRewards();
         return { extrinsic: tx, event: this.api.events.escrowRewards.WithdrawReward };
-        // this.transactionAPI.sendLogged(tx, this.api.events.escrowRewards.WithdrawReward, true);
     }
 
     increaseAmount(amount: MonetaryAmount<GovernanceCurrency>): ExtrinsicData {
         const tx = this.api.tx.escrow.increaseAmount(amount.toString(true));
         return { extrinsic: tx, event: this.api.events.escrow.Deposit };
-        // await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
     }
 
     increaseUnlockHeight(unlockHeight: number): ExtrinsicData {
         const tx = this.api.tx.escrow.increaseUnlockHeight(unlockHeight);
         return { extrinsic: tx, event: this.api.events.escrow.Deposit };
-        // await this.transactionAPI.sendLogged(tx, this.api.events.escrow.Deposit, true);
     }
 
     async getRewards(accountId: AccountId): Promise<MonetaryAmount<GovernanceCurrency>> {

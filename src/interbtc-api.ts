@@ -123,13 +123,21 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.oracle,
             this.fee,
             this.rewards,
-            this.system
+            this.system,
+            this.transaction
         );
         this.faucet = new FaucetClient(api, "");
         this.btcRelay = new DefaultBTCRelayAPI(api);
 
-        this.replace = new DefaultReplaceAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.fee);
-        this.issue = new DefaultIssueAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency, this.fee, this.vaults);
+        this.replace = new DefaultReplaceAPI(api, btcNetwork, this.electrsAPI, wrappedCurrency);
+        this.issue = new DefaultIssueAPI(
+            api,
+            btcNetwork,
+            this.electrsAPI,
+            wrappedCurrency,
+            this.vaults,
+            this.transaction
+        );
         this.redeem = new DefaultRedeemAPI(
             api,
             btcNetwork,
@@ -137,6 +145,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             wrappedCurrency,
             this.vaults,
             this.oracle,
+            this.transaction,
             this.system
         );
         this.nomination = new DefaultNominationAPI(api, wrappedCurrency, this.vaults, this.rewards);
@@ -150,15 +159,15 @@ export class DefaultInterBtcApi implements InterBtcApi {
         if (signer) {
             this.api.setSigner(signer);
         }
-        this.transactionAPI.setAccount(account);
+        this.transaction.setAccount(account);
     }
 
     removeAccount(): void {
-        this.transactionAPI.removeAccount();
+        this.transaction.removeAccount();
     }
 
     get account(): AddressOrPair | undefined {
-        return this.transactionAPI.getAccount();
+        return this.transaction.getAccount();
     }
 
     public getGovernanceCurrency(): GovernanceCurrency {

@@ -3,6 +3,7 @@ import { Codec } from "@polkadot/types/types";
 import { AddressOrPair } from "@polkadot/api/types";
 
 import { DefaultTransactionAPI } from "../parachain";
+import { newExtrinsicStatus } from "./encoding";
 
 export async function setRawStorage(
     api: ApiPromise,
@@ -21,5 +22,6 @@ export async function setStorageAtKey(
     sudoAccount: AddressOrPair
 ): Promise<void> {
     const tx = api.tx.sudo.sudo(api.tx.system.setStorage([[key, data]]));
-    await DefaultTransactionAPI.sendLogged(api, sudoAccount, tx, undefined, true);
+    const inBlockExtrinsicStatus = newExtrinsicStatus(api, "InBlock");
+    await DefaultTransactionAPI.sendLogged(api, sudoAccount, tx, undefined, inBlockExtrinsicStatus);
 }

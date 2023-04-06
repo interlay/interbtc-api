@@ -17,8 +17,8 @@ import {
     unwrapRawExchangeRate,
 } from "../utils";
 import { UnsignedFixedPoint } from "../interfaces/default";
-import { TransactionAPI } from "./transaction";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types/currency";
+import { ExtrinsicData } from "../types";
 
 /**
  * @category BTC Bridge
@@ -51,15 +51,17 @@ export interface OracleAPI {
      */
     isOnline(): Promise<boolean>;
     /**
-     * Send a transaction to set the exchange rate between Bitcoin and a collateral currency
+     * Create a transaction to set the exchange rate between Bitcoin and a collateral currency
      * @param exchangeRate The rate to set
+     * @returns {ExtrinsicData} A submittable extrinsic and event.
      */
-    setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): Promise<void>;
+    setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): ExtrinsicData;
     /**
-     * Send a transaction to set the current fee estimate for BTC transactions
+     * Create a transaction to set the current fee estimate for BTC transactions
      * @param fees Estimated Satoshis per bytes to get a transaction included
+     * @returns {ExtrinsicData} A submittable extrinsic and event.
      */
-    setBitcoinFees(fees: Big): Promise<void>;
+    setBitcoinFees(fees: Big): ExtrinsicData;
     /**
      * @param amount The amount of wrapped tokens to convert
      * @param currency A `Monetary.js` object
@@ -87,20 +89,12 @@ export interface OracleAPI {
 }
 
 export class DefaultOracleAPI implements OracleAPI {
-    constructor(
-        private api: ApiPromise,
-        private wrappedCurrency: WrappedCurrency,
-        private transactionAPI: TransactionAPI
-    ) { }
+    constructor(private api: ApiPromise, private wrappedCurrency: WrappedCurrency) {}
 
     async getExchangeRate(currency: CurrencyExt): Promise<ExchangeRate<Bitcoin, CurrencyExt>> {
         // KBTC / IBTC have an exchange rate of one
         if (isCurrencyEqual(currency, this.wrappedCurrency)) {
-            return new ExchangeRate<WrappedCurrency, CurrencyExt>(
-                currency,
-                currency,
-                new Big(1),
-            );
+            return new ExchangeRate<WrappedCurrency, CurrencyExt>(currency, currency, new Big(1));
         }
         const oracleKey = createExchangeRateOracleKey(this.api, currency);
 
@@ -138,11 +132,11 @@ export class DefaultOracleAPI implements OracleAPI {
         return moment.toNumber();
     }
 
-    async setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): Promise<void> {
+    setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): ExtrinsicData {
         const encodedExchangeRate = encodeUnsignedFixedPoint(this.api, exchangeRate.toBig([ATOMIC_UNIT, ATOMIC_UNIT]));
         const oracleKey = createExchangeRateOracleKey(this.api, exchangeRate.counter);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedExchangeRate]]);
-        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
+        return { extrinsic: tx, event: this.api.events.oracle.FeedValues };
     }
 
     async getBitcoinFees(): Promise<Big> {
@@ -160,7 +154,7 @@ export class DefaultOracleAPI implements OracleAPI {
         return parseFees(fees);
     }
 
-    async setBitcoinFees(fees: Big): Promise<void> {
+    setBitcoinFees(fees: Big): ExtrinsicData {
         if (!fees.round().eq(fees)) {
             throw new Error("tx fees must be an integer amount of satoshi");
         } else if (fees.lt(0)) {
@@ -170,7 +164,7 @@ export class DefaultOracleAPI implements OracleAPI {
         const oracleKey = createFeeEstimationOracleKey(this.api);
         const encodedFee = encodeUnsignedFixedPoint(this.api, fees);
         const tx = this.api.tx.oracle.feedValues([[oracleKey, encodedFee]]);
-        await this.transactionAPI.sendLogged(tx, this.api.events.oracle.FeedValues, true);
+        return { extrinsic: tx, event: this.api.events.oracle.FeedValues };
     }
 
     async getSourcesById(): Promise<Map<string, string>> {
