@@ -43,14 +43,24 @@ async function main(): Promise<void> {
     console.log('');
 
     const deposit = api.consts.democracy.minimumDeposit.toNumber();
-    const preImageSubmission = api.tx.democracy.notePreimage(call.toHex());
-    const proposal = api.tx.democracy.propose(call.hash.toHex(), deposit);
-    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
+
+    let proposal;
+
+    if (call.toU8a().byteLength <= 128) {
+        proposal = api.tx.democracy.propose({ Inline: call.toHex() }, deposit);
+    } else {
+        const preImageSubmission = api.tx.preimage.notePreimage(call.toHex());
+        const innerProposal = api.tx.democracy.propose({ Lookup: {
+            hash: call.hash.toHex(),
+            len: call.toU8a().byteLength
+        }}, deposit);
+        proposal = api.tx.utility.batchAll([preImageSubmission, innerProposal]);
+    }
 
     console.log('**Extrinsic:**', url.href);
     console.log('');
 
-    url.hash = hashPrefix + batched.toHex();
+    url.hash = hashPrefix + proposal.toHex();
     console.log('**Proposal:**', url.href);
     console.log('');
 
