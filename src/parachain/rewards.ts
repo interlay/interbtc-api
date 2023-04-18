@@ -32,7 +32,7 @@ export interface RewardsAPI {
     /**
      * @param vaultId VaultId object
      * @param nonce Staking pool nonce
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Withdraw all rewards from the current account in the `vaultId` staking pool.
      */
     withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<ExtrinsicData>;

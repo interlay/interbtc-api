@@ -111,7 +111,7 @@ export interface AMMAPI {
      * @param {MonetaryAmount<CurrencyExt>} minimumAmountOut Minimum output amount to be received.
      * @param {AddressOrPair} recipient Recipient address.
      * @param {number | string} deadline Deadline block for the swap transaction.
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     swap(
         trade: Trade,
@@ -129,7 +129,7 @@ export interface AMMAPI {
      * @param {number} maxSlippage Maximum allowed slippage.
      * @param {number} deadline Deadline block number.
      * @param {AddressOrPair} recipient Recipient of the liquidity pool token.
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     addLiquidity(
         amounts: PooledCurrencies,
@@ -147,7 +147,7 @@ export interface AMMAPI {
      * @param {number} maxSlippage Maximum allowed slippage.
      * @param {number} deadline Deadline block number.
      * @param {AddressOrPair} recipient Recipient of the pooled currencies.
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @note Removes `amount` of liquidity in LP token, breaks it down and transfers to account.
      */
     removeLiquidity(
@@ -163,7 +163,7 @@ export interface AMMAPI {
      *
      * @param claimableRewards Map of LpToken -> Array of reward monetary amounts -> supposed to be
      *                         output of `getClaimableFarmingRewards`
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     claimFarmingRewards(claimableRewards: Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>): ExtrinsicData;
 }

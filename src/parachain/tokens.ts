@@ -37,7 +37,7 @@ export interface TokensAPI {
     /**
      * @param destination The address of a user
      * @param amount The amount to transfer, as `Monetary.js` object or `ForeignAsset`
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): ExtrinsicData;
     /**
@@ -56,7 +56,7 @@ export interface TokensAPI {
      * @param accountId Account whose balance to set
      * @param freeBalance Free balance to set, as a Monetary.js object
      * @param lockedBalance Locked balance to set, as a Monetary.js object
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks This extrinsic is only valid if submitted by a sudo account
      */
     setBalance(

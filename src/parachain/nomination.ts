@@ -42,13 +42,13 @@ export interface NominationAPI {
     /**
      * @param vaultAccountId Vault to nominate collateral to
      * @param amount Amount to deposit, as a `Monetary.js` object or `ForeignAsset`
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     depositCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): ExtrinsicData;
     /**
      * @param vaultAccountId Vault that collateral was nominated to
      * @param amount Amount to withdraw, as a `Monetary.js` object or `ForeignAsset`
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     withdrawCollateral(
         vaultAccountId: AccountId,
@@ -56,18 +56,18 @@ export interface NominationAPI {
     ): Promise<ExtrinsicData>;
     /**
      * @param collateralCurrency Currency to accept as nomination
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Function callable by vaults to opt in to the nomination feature
      */
     optIn(collateralCurrency: CollateralCurrencyExt): ExtrinsicData;
     /**
      * @param collateralCurrency Currency to stop accepting as nomination
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Function callable by vaults to opt out of the nomination feature
      */
     optOut(collateralCurrency: CollateralCurrencyExt): ExtrinsicData;
     /**
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Testnet utility function
      */
     setNominationEnabled(enabled: boolean): ExtrinsicData;

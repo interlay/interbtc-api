@@ -30,7 +30,7 @@ export interface EscrowAPI {
     /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
      * @param unlockHeight Block number to lock until
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks The amount can't be less than the max period (`getMaxPeriod` getter) to prevent rounding errors
      */
     createLock(amount: MonetaryAmount<GovernanceCurrency>, unlockHeight: number): ExtrinsicData;
@@ -47,7 +47,7 @@ export interface EscrowAPI {
      */
     getTotalStakedBalance(): Promise<MonetaryAmount<GovernanceCurrency>>;
     /**
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Withdraws all locked governance currency
      */
     withdraw(): ExtrinsicData;
@@ -60,19 +60,19 @@ export interface EscrowAPI {
      */
     getMaxPeriod(): Promise<BN>;
     /**
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Withdraws stake-to-vote rewards
      */
     withdrawRewards(): ExtrinsicData;
     /**
      * @param amount Governance token amount to lock (e.g. KINT or INTR)
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     increaseAmount(amount: MonetaryAmount<GovernanceCurrency>): ExtrinsicData;
 
     /**
      * @param unlockHeight The unlock height to increase by.
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     increaseUnlockHeight(unlockHeight: number): ExtrinsicData;
     /**

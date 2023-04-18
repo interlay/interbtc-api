@@ -9,6 +9,7 @@ import type { AnyTuple } from "@polkadot/types/types";
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
 import { MonetaryAmount, Currency } from "@interlay/monetary-js";
 import { tokenSymbolToCurrency, newMonetaryAmount } from "../utils";
+import { DryRunResult } from "../types";
 
 export interface TransactionAPI {
     api: ApiPromise;
@@ -35,21 +36,22 @@ export interface TransactionAPI {
     ): SubmittableExtrinsic<"promise", ISubmittableResult>;
 
     /**
-     * Getter for fee estimation of the extrinsic.
+     * Getter for fee estimate of the extrinsic.
      *
      * @param {SubmittableExtrinsic<"promise">} extrinsic Extrinsic to get fee estimation about.
      * @returns {MonetaryAmount<Currency>} amount of native currency that will be paid as transaction fee.
      * @note This fee estimation does not include tip.
      */
-    getFeeEstimation(extrinsic: SubmittableExtrinsic<"promise">): Promise<MonetaryAmount<Currency>>;
+    getFeeEstimate(extrinsic: SubmittableExtrinsic<"promise">): Promise<MonetaryAmount<Currency>>;
 
     /**
      * Tests extrinsic execution against runtime.
      *
      * @param {SubmittableExtrinsic<"promise">} extrinsic Extrinsic to dry run.
-     * @return {boolean} True if extrinsic was successfully executed, false otherwise.
+     * @return {Promise<DryRunResult>} Object consisting of `success` boolean that is true if extrinsic
+     * was successfully executed, false otherwise. If execution fails, caught error is exposed.
      */
-    dryRun(extrinsic: SubmittableExtrinsic<"promise">): Promise<boolean>;
+    dryRun(extrinsic: SubmittableExtrinsic<"promise">): Promise<DryRunResult>;
 }
 
 export class DefaultTransactionAPI implements TransactionAPI {
@@ -78,7 +80,7 @@ export class DefaultTransactionAPI implements TransactionAPI {
         return DefaultTransactionAPI.sendLogged(this.api, this.account, transaction, successEventType, extrinsicStatus);
     }
 
-    async getFeeEstimation(extrinsic: SubmittableExtrinsic<"promise">): Promise<MonetaryAmount<Currency>> {
+    async getFeeEstimate(extrinsic: SubmittableExtrinsic<"promise">): Promise<MonetaryAmount<Currency>> {
         const nativeCurrency = tokenSymbolToCurrency(this.api.consts.currency.getNativeCurrencyId.asToken);
 
         const account = this.account;
@@ -90,15 +92,15 @@ export class DefaultTransactionAPI implements TransactionAPI {
         return newMonetaryAmount(paymentInfo.partialFee.toString(), nativeCurrency);
     }
 
-    async dryRun(extrinsic: SubmittableExtrinsic<"promise">): Promise<boolean> {
+    async dryRun(extrinsic: SubmittableExtrinsic<"promise">): Promise<DryRunResult> {
         if (this.account === undefined) {
             return Promise.reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
         }
         try {
             await extrinsic.dryRun(this.account);
-            return true;
-        } catch {
-            return false;
+            return { success: true };
+        } catch (error) {
+            return { success: false, error };
         }
     }
 

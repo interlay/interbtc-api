@@ -79,7 +79,7 @@ export interface IssueAPI {
      * @param amountsPerVault A mapping of vaults to issue from, and wrapped token amounts to issue using each vault
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     requestAdvanced(
         amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
@@ -104,7 +104,7 @@ export interface IssueAPI {
      *
      * @param issueId The ID returned by the issue request transaction
      * @param btcTxId Bitcoin transaction ID
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     execute(requestId: string, btcTxId: string): Promise<ExtrinsicData>;
 
@@ -121,7 +121,7 @@ export interface IssueAPI {
      * the issuance request can be cancelled. As a result, the griefing collateral
      * of the requester will be slashed and sent to the vault that had prepared to issue.
      * @param issueId The ID returned by the issue request transaction
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     cancel(issueId: string): ExtrinsicData;
     /**
@@ -129,7 +129,7 @@ export interface IssueAPI {
      * @param blocks The time difference in number of blocks between an issue request is created
      * and required completion time by a user. The issue period has an upper limit
      * to prevent griefing of vault collateral.
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     setIssuePeriod(blocks: number): ExtrinsicData;
     /**

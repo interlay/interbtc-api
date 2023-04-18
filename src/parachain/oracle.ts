@@ -53,13 +53,13 @@ export interface OracleAPI {
     /**
      * Create a transaction to set the exchange rate between Bitcoin and a collateral currency
      * @param exchangeRate The rate to set
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     setExchangeRate(exchangeRate: ExchangeRate<Bitcoin, CurrencyExt>): ExtrinsicData;
     /**
      * Create a transaction to set the current fee estimate for BTC transactions
      * @param fees Estimated Satoshis per bytes to get a transaction included
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     setBitcoinFees(fees: Big): ExtrinsicData;
     /**

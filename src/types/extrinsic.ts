@@ -5,4 +5,9 @@ interface ExtrinsicData {
     event?: AugmentedEvent<ApiTypes>;
 }
 
-export type { ExtrinsicData };
+interface DryRunResult {
+    success: boolean;
+    error?: unknown;
+}
+
+export type { ExtrinsicData, DryRunResult };

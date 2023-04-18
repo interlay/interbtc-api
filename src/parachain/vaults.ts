@@ -224,7 +224,7 @@ export interface VaultsAPI {
 
     /**
      * @param amount The amount of collateral to withdraw
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<ExtrinsicData>;
 
@@ -240,7 +240,7 @@ export interface VaultsAPI {
 
     /**
      * @param amount The amount of extra collateral to lock
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     depositCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): ExtrinsicData;
     /**
@@ -297,7 +297,7 @@ export interface VaultsAPI {
      *
      * @param vaultId The vault ID of the vault to be reported.
      * @param btcTxId Bitcoin transaction ID
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     reportVaultTheft(vaultId: InterbtcPrimitivesVaultId, btcTxId: string): Promise<ExtrinsicData>;
 
@@ -357,7 +357,7 @@ export interface VaultsAPI {
      * Enables or disables issue requests for given vault
      * @param vaultId The vault ID whose issuing will be toggled
      * @param acceptNewIssues Boolean denoting whether issuing should be enabled or not
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     toggleIssueRequests(vaultId: InterbtcPrimitivesVaultId, acceptNewIssues: boolean): Promise<ExtrinsicData>;
 
@@ -392,7 +392,7 @@ export interface VaultsAPI {
      * Rejects with an Error if unable to register.
      *
      * @param collateralAmount The collateral amount to register the vault with - in the new collateral currency
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     registerNewCollateralVault(collateralAmount: MonetaryAmount<CollateralCurrencyExt>): ExtrinsicData;
     /**

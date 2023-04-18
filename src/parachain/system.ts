@@ -37,7 +37,7 @@ export interface SystemAPI {
     /**
      * @remarks Upgrades runtime using `sudoUncheckedWeight`
      * @param code Hex-encoded wasm blob
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     setCode(code: string): ExtrinsicData;
 

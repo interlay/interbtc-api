@@ -102,7 +102,7 @@ export interface LoansAPI {
      *
      * @param {CurrencyExt} underlyingCurrency  Currency to lend.
      * @param {MonetaryAmount<CurrencyExt>} amount Amount of currency to lend.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @throws If there is not active market for `underlyingCurrency`.
      * @throws If `amount` is exceeding available balance of account.
      */
@@ -113,7 +113,7 @@ export interface LoansAPI {
      *
      * @param {CurrencyExt} underlyingCurrency Currency to witdhraw.
      * @param {MonetaryAmount<CurrencyExt>} amount Amount of currency to withdraw.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @throws If there is not active market for `underlyingCurrency`.
      * @throws If `amount` is exceeding lent amount of account.
      * @throws If `underlyingCurrency` is used as collateral and withdrawal of
@@ -127,7 +127,7 @@ export interface LoansAPI {
      * Same as `withdraw`, but exits full position.
      *
      * @param underlyingCurrency Currency to fully withdraw.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     withdrawAll(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData>;
 
@@ -135,7 +135,7 @@ export interface LoansAPI {
      * Enable lend position of account as collateral for borrowing.
      *
      * @param underlyingCurrency Currency to enable as collateral.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @throws If there is no existing lend position for `currency`.
      */
     enableAsCollateral(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData>;
@@ -144,7 +144,7 @@ export interface LoansAPI {
      * Enable lend position of account as collateral for borrowing.
      *
      * @param underlyingCurrency Currency to enable as collateral.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @throws If there is no existing lend position for `currency`.
      * @throws If disabling lend position of `currency` would bring
      * account under collateral threshold.
@@ -153,7 +153,7 @@ export interface LoansAPI {
 
     /**
      * Claim subsidy rewards for all markets available for account.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     claimAllSubsidyRewards(): ExtrinsicData;
 
@@ -162,7 +162,7 @@ export interface LoansAPI {
      *
      * @param underlyingCurrency Currency to borrow.
      * @param amount Amount of currency to borrow.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @throws If there is no active market for `underlyingCurrency`.
      * @throws If there is not enough collateral provided by account for
      * `amount` of `underlyingCurrency`.
@@ -176,7 +176,7 @@ export interface LoansAPI {
      *
      * @param underlyingCurrency Currency to repay.
      * @param amount Amount of currency to repay.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @throws If there is no active market for `underlyingCurrency`.
      * @throws If `amount` is higher than available balance of account.
      * @throws If `amount` is higher than outstanding loan.
@@ -187,7 +187,7 @@ export interface LoansAPI {
      * Same as `repay`, but repays full loan.
      *
      * @param underlyingCurrency Currency to repay.
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and event.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     repayAll(underlyingCurrency: CurrencyExt): Promise<ExtrinsicData>;
 
@@ -198,7 +198,7 @@ export interface LoansAPI {
      * @param liquidationCurrency Currency of position that will be liquidated.
      * @param repayAmount Amount to be repaid.
      * @param collateralCurrency Collateral currency which will be claimed by liquidator.
-     * @returns {ExtrinsicData} A submittable extrinsic and event.
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     liquidateBorrowPosition(
         borrower: AccountId,
