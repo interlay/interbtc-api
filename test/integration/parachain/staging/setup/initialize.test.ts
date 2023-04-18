@@ -248,7 +248,7 @@ describe("Initialize parachain state", () => {
                 foreignAsset,
                 getExchangeRateValueToSetForTesting(foreignAsset)
             );
-            await submitExtrinsic(userInterBtcAPI, sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate));
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate));
         }
     });
 
@@ -256,7 +256,7 @@ describe("Initialize parachain state", () => {
         async function setCollateralExchangeRate(value: Big, currency: CurrencyExt) {
             const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
             // result will be medianized
-            await submitExtrinsic(userInterBtcAPI, sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate));
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate));
         }
         await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot);
         await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama);
@@ -267,7 +267,7 @@ describe("Initialize parachain state", () => {
         const setFeeEstimate = new Big(1);
         let getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees().catch((_) => undefined);
         if (!getFeeEstimate) {
-            await submitExtrinsic(userInterBtcAPI, sudoInterBtcAPI.oracle.setBitcoinFees(setFeeEstimate));
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.oracle.setBitcoinFees(setFeeEstimate));
             // NOTE: this will fail if the chain does not support instant-seal
             await api.rpc.engine.createBlock(true, true);
             // just check that this is set since we medianize results
@@ -287,7 +287,7 @@ describe("Initialize parachain state", () => {
     it("should enable vault nomination", async () => {
         let isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         if (!isNominationEnabled) {
-            await submitExtrinsic(userInterBtcAPI, sudoInterBtcAPI.nomination.setNominationEnabled(true));
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.nomination.setNominationEnabled(true));
             isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         }
         assert.isTrue(isNominationEnabled);

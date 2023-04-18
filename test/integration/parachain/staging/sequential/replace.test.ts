@@ -103,6 +103,7 @@ describe("replace", () => {
                     interBtcAPI.replace.request(replaceAmount, collateralCurrency),
                     false
                 );
+                console.log("\n\n res, val", result.status.type, result.status.asFinalized);
                 const blockHash = result.status.asFinalized;
 
                 // query at included block since it may be accepted after

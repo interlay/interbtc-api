@@ -148,7 +148,9 @@ export class DefaultTransactionAPI implements TransactionAPI {
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
                 foundStatus =
-                    foundStatus || (extrinsicStatus ? extrinsicStatus.type === status.type : status.isInBlock);
+                    foundStatus ||
+                    (extrinsicStatus ? extrinsicStatus.type === status.type : status.isInBlock) ||
+                    status.isFinalized;
                 foundEvent =
                     // if we found it before there is no need to check again
                     foundEvent ||

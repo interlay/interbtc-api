@@ -117,7 +117,10 @@ describe("escrow", () => {
         const stakedTotalBefore = await interBtcAPI.escrow.getTotalStakedBalance();
 
         interBtcAPI.setAccount(userAccount1);
-        await interBtcAPI.escrow.createLock(user1Amount, currentBlockNumber + unlockHeightDiff);
+        await submitExtrinsic(
+            interBtcAPI,
+            interBtcAPI.escrow.createLock(user1Amount, currentBlockNumber + unlockHeightDiff)
+        );
 
         const votingBalance = await interBtcAPI.escrow.votingBalance(
             newAccountId(api, userAccount1.address),

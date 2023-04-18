@@ -10,7 +10,7 @@ import {
 } from "../../../../src";
 import { SingleAccountSigner } from "../../../utils/SingleAccountSigner";
 import { ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../config";
-import { submitExtrinsic } from "test/utils/helpers";
+import { submitExtrinsic } from "../../../utils/helpers";
 
 describe("InterBtcApi", () => {
     const keyring = new Keyring();
