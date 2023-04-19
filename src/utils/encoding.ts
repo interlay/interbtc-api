@@ -10,6 +10,7 @@ import { Moment } from "@polkadot/types/interfaces";
 import { Option } from "@polkadot/types/codec";
 import { Bytes } from "@polkadot/types-codec";
 import { u32 } from "@polkadot/types";
+import { ExtrinsicStatus } from "@polkadot/types/interfaces";
 import {
     InterbtcPrimitivesRedeemRedeemRequest,
     InterbtcPrimitivesReplaceReplaceRequest,
@@ -391,4 +392,8 @@ export function decodeNumberOrHex(value: NumberOrHex): Big {
 
 export function monetaryAmountToRawString(amount: MonetaryAmount<CurrencyExt>): string {
     return amount.toString(true);
+}
+
+export function newExtrinsicStatus(api: ApiPromise, type: ExtrinsicStatus["type"]): ExtrinsicStatus {
+    return api.createType("ExtrinsicStatus", type);
 }

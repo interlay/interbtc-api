@@ -1,20 +1,25 @@
 import { AddressOrPair, SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
 import { EventRecord, DispatchError } from "@polkadot/types/interfaces/system";
+import { ExtrinsicStatus } from "@polkadot/types/interfaces/author";
 import { ApiPromise } from "@polkadot/api";
 import { AugmentedEvent, ApiTypes } from "@polkadot/api/types";
 import type { AnyTuple } from "@polkadot/types/types";
 
 import { ACCOUNT_NOT_SET_ERROR_MESSAGE, IGNORED_ERROR_MESSAGES } from "../utils/constants";
+import { MonetaryAmount, Currency } from "@interlay/monetary-js";
+import { tokenSymbolToCurrency, newMonetaryAmount } from "../utils";
+import { DryRunResult } from "../types";
 
 export interface TransactionAPI {
+    api: ApiPromise;
     setAccount(account: AddressOrPair): void;
     removeAccount(): void;
     getAccount(): AddressOrPair | undefined;
     sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
         successEventType?: AugmentedEvent<ApiTypes, T>,
-        onlyInBlock?: boolean
+        extrinsicStatus?: ExtrinsicStatus
     ): Promise<ISubmittableResult>;
 
     /**
@@ -29,10 +34,28 @@ export interface TransactionAPI {
         extrinsics: SubmittableExtrinsic<"promise", ISubmittableResult>[],
         atomic?: boolean
     ): SubmittableExtrinsic<"promise", ISubmittableResult>;
+
+    /**
+     * Getter for fee estimate of the extrinsic.
+     *
+     * @param {SubmittableExtrinsic<"promise">} extrinsic Extrinsic to get fee estimation about.
+     * @returns {MonetaryAmount<Currency>} amount of native currency that will be paid as transaction fee.
+     * @note This fee estimation does not include tip.
+     */
+    getFeeEstimate(extrinsic: SubmittableExtrinsic<"promise">): Promise<MonetaryAmount<Currency>>;
+
+    /**
+     * Tests extrinsic execution against runtime.
+     *
+     * @param {SubmittableExtrinsic<"promise">} extrinsic Extrinsic to dry run.
+     * @return {Promise<DryRunResult>} Object consisting of `success` boolean that is true if extrinsic
+     * was successfully executed, false otherwise. If execution fails, caught error is exposed.
+     */
+    dryRun(extrinsic: SubmittableExtrinsic<"promise">): Promise<DryRunResult>;
 }
 
 export class DefaultTransactionAPI implements TransactionAPI {
-    constructor(public api: ApiPromise, private account?: AddressOrPair) { }
+    constructor(public api: ApiPromise, private account?: AddressOrPair) {}
 
     public setAccount(account: AddressOrPair): void {
         this.account = account;
@@ -49,12 +72,36 @@ export class DefaultTransactionAPI implements TransactionAPI {
     async sendLogged<T extends AnyTuple>(
         transaction: SubmittableExtrinsic<"promise">,
         successEventType?: AugmentedEvent<ApiTypes, T>,
-        onlyInBlock?: boolean
+        extrinsicStatus?: ExtrinsicStatus
     ): Promise<ISubmittableResult> {
         if (this.account === undefined) {
             return Promise.reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
         }
-        return DefaultTransactionAPI.sendLogged(this.api, this.account, transaction, successEventType, onlyInBlock);
+        return DefaultTransactionAPI.sendLogged(this.api, this.account, transaction, successEventType, extrinsicStatus);
+    }
+
+    async getFeeEstimate(extrinsic: SubmittableExtrinsic<"promise">): Promise<MonetaryAmount<Currency>> {
+        const nativeCurrency = tokenSymbolToCurrency(this.api.consts.currency.getNativeCurrencyId.asToken);
+
+        const account = this.account;
+        if (account === undefined) {
+            return newMonetaryAmount(0, nativeCurrency);
+        }
+
+        const paymentInfo = await extrinsic.paymentInfo(account);
+        return newMonetaryAmount(paymentInfo.partialFee.toString(), nativeCurrency);
+    }
+
+    async dryRun(extrinsic: SubmittableExtrinsic<"promise">): Promise<DryRunResult> {
+        if (this.account === undefined) {
+            return Promise.reject(new Error(ACCOUNT_NOT_SET_ERROR_MESSAGE));
+        }
+        try {
+            await extrinsic.dryRun(this.account);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error };
+        }
     }
 
     buildBatchExtrinsic(
@@ -87,7 +134,7 @@ export class DefaultTransactionAPI implements TransactionAPI {
         account: AddressOrPair,
         transaction: SubmittableExtrinsic<"promise">,
         successEventType?: AugmentedEvent<ApiTypes, T>,
-        onlyInBlock?: boolean
+        extrinsicStatus?: ExtrinsicStatus
     ): Promise<ISubmittableResult> {
         const { unsubscribe, result } = await new Promise((resolve, reject) => {
             let unsubscribe: () => void;
@@ -102,7 +149,10 @@ export class DefaultTransactionAPI implements TransactionAPI {
             let foundEvent = successEventType !== undefined;
             function callback(callbackObject: { unsubscribe: () => void; result: ISubmittableResult }): void {
                 const status = callbackObject.result.status;
-                foundStatus = foundStatus || (onlyInBlock && status.isInBlock) || status.isFinalized;
+                foundStatus =
+                    foundStatus ||
+                    (extrinsicStatus ? extrinsicStatus.type === status.type : status.isInBlock) ||
+                    status.isFinalized;
                 foundEvent =
                     // if we found it before there is no need to check again
                     foundEvent ||

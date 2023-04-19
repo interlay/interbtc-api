@@ -13,8 +13,7 @@ import {
     queryNominationsMap,
     storageKeyToNthInner,
 } from "../utils";
-import { TransactionAPI } from "./transaction";
-import { CollateralCurrencyExt, NominationStatus, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, ExtrinsicData, NominationStatus, WrappedCurrency } from "../types";
 import { RewardsAPI } from "./rewards";
 import { UnsignedFixedPoint } from "../interfaces";
 import { currencyIdToMonetaryCurrency } from "../utils/currency";
@@ -43,27 +42,35 @@ export interface NominationAPI {
     /**
      * @param vaultAccountId Vault to nominate collateral to
      * @param amount Amount to deposit, as a `Monetary.js` object or `ForeignAsset`
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
-    depositCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
+    depositCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): ExtrinsicData;
     /**
      * @param vaultAccountId Vault that collateral was nominated to
      * @param amount Amount to withdraw, as a `Monetary.js` object or `ForeignAsset`
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
-    withdrawCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void>;
+    withdrawCollateral(
+        vaultAccountId: AccountId,
+        amount: MonetaryAmount<CollateralCurrencyExt>
+    ): Promise<ExtrinsicData>;
     /**
      * @param collateralCurrency Currency to accept as nomination
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Function callable by vaults to opt in to the nomination feature
      */
-    optIn(collateralCurrency: CollateralCurrencyExt): Promise<void>;
+    optIn(collateralCurrency: CollateralCurrencyExt): ExtrinsicData;
     /**
      * @param collateralCurrency Currency to stop accepting as nomination
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Function callable by vaults to opt out of the nomination feature
      */
-    optOut(collateralCurrency: CollateralCurrencyExt): Promise<void>;
+    optOut(collateralCurrency: CollateralCurrencyExt): ExtrinsicData;
     /**
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Testnet utility function
      */
-    setNominationEnabled(enabled: boolean): Promise<void>;
+    setNominationEnabled(enabled: boolean): ExtrinsicData;
     /**
      * @returns A boolean value representing whether the vault nomination feature is enabled
      */
@@ -139,8 +146,7 @@ export class DefaultNominationAPI implements NominationAPI {
         private api: ApiPromise,
         private wrappedCurrency: WrappedCurrency,
         private vaultsAPI: VaultsAPI,
-        private rewardsAPI: RewardsAPI,
-        private transactionAPI: TransactionAPI
+        private rewardsAPI: RewardsAPI
     ) {}
 
     static buildDepositCollateralExtrinsic(
@@ -154,14 +160,14 @@ export class DefaultNominationAPI implements NominationAPI {
         return api.tx.nomination.depositCollateral(vaultId, amountAsPlanck);
     }
 
-    async depositCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): Promise<void> {
+    depositCollateral(vaultAccountId: AccountId, amount: MonetaryAmount<CollateralCurrencyExt>): ExtrinsicData {
         const tx = DefaultNominationAPI.buildDepositCollateralExtrinsic(
             this.api,
             vaultAccountId,
             amount,
             this.wrappedCurrency
         );
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.DepositCollateral, true);
+        return { extrinsic: tx, event: this.api.events.nomination.DepositCollateral };
     }
 
     static async buildWithdrawCollateralExtrinsic(
@@ -183,7 +189,7 @@ export class DefaultNominationAPI implements NominationAPI {
         vaultAccountId: AccountId,
         amount: MonetaryAmount<CollateralCurrencyExt>,
         nonce?: number
-    ): Promise<void> {
+    ): Promise<ExtrinsicData> {
         const tx = await DefaultNominationAPI.buildWithdrawCollateralExtrinsic(
             this.api,
             this.rewardsAPI,
@@ -192,24 +198,24 @@ export class DefaultNominationAPI implements NominationAPI {
             this.wrappedCurrency,
             nonce
         );
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.WithdrawCollateral, true);
+        return { extrinsic: tx, event: this.api.events.nomination.WithdrawCollateral };
     }
 
-    async optIn(collateralCurrency: CollateralCurrencyExt): Promise<void> {
+    optIn(collateralCurrency: CollateralCurrencyExt): ExtrinsicData {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const tx = this.api.tx.nomination.optInToNomination(vaultCurrencyPair);
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptIn, true);
+        return { extrinsic: tx, event: this.api.events.nomination.NominationOptIn };
     }
 
-    async optOut(collateralCurrency: CollateralCurrencyExt): Promise<void> {
+    optOut(collateralCurrency: CollateralCurrencyExt): ExtrinsicData {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const tx = this.api.tx.nomination.optOutOfNomination(vaultCurrencyPair);
-        await this.transactionAPI.sendLogged(tx, this.api.events.nomination.NominationOptOut, true);
+        return { extrinsic: tx, event: this.api.events.nomination.NominationOptOut };
     }
 
-    async setNominationEnabled(enabled: boolean): Promise<void> {
+    setNominationEnabled(enabled: boolean): ExtrinsicData {
         const tx = this.api.tx.sudo.sudo(this.api.tx.nomination.setNominationEnabled(enabled));
-        await this.transactionAPI.sendLogged(tx, undefined, true);
+        return { extrinsic: tx };
     }
 
     async isNominationEnabled(): Promise<boolean> {

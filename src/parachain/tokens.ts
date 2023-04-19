@@ -3,8 +3,7 @@ import { ApiPromise } from "@polkadot/api";
 import { MonetaryAmount } from "@interlay/monetary-js";
 
 import { newAccountId, newCurrencyId, newMonetaryAmount } from "../utils";
-import { TransactionAPI } from "./transaction";
-import { ChainBalance, CurrencyExt, parseOrmlTokensAccountData } from "../types";
+import { ChainBalance, CurrencyExt, ExtrinsicData, parseOrmlTokensAccountData } from "../types";
 import { OrmlTokensAccountData } from "@polkadot/types/lookup";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
@@ -38,8 +37,9 @@ export interface TokensAPI {
     /**
      * @param destination The address of a user
      * @param amount The amount to transfer, as `Monetary.js` object or `ForeignAsset`
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
-    transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): Promise<void>;
+    transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): ExtrinsicData;
     /**
      * Subscribe to balance updates
      * @param currency The currency specification, `Monetary.js` object or `ForeignAsset`
@@ -56,17 +56,18 @@ export interface TokensAPI {
      * @param accountId Account whose balance to set
      * @param freeBalance Free balance to set, as a Monetary.js object
      * @param lockedBalance Locked balance to set, as a Monetary.js object
+     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks This extrinsic is only valid if submitted by a sudo account
      */
     setBalance(
         accountId: AccountId,
         freeBalance: MonetaryAmount<CurrencyExt>,
         lockedBalance?: MonetaryAmount<CurrencyExt>
-    ): Promise<void>;
+    ): ExtrinsicData;
 }
 
 export class DefaultTokensAPI implements TokensAPI {
-    constructor(private api: ApiPromise, private transactionAPI: TransactionAPI) {}
+    constructor(private api: ApiPromise) {}
 
     async total<CurrencyT extends CurrencyExt>(currency: CurrencyT): Promise<MonetaryAmount<CurrencyT>> {
         const currencyId = newCurrencyId(this.api, currency);
@@ -115,21 +116,21 @@ export class DefaultTokensAPI implements TokensAPI {
         return this.api.tx.tokens.transfer(destination, newCurrencyId(this.api, amount.currency), amountAtomicUnit);
     }
 
-    async transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): Promise<void> {
+    transfer(destination: string, amount: MonetaryAmount<CurrencyExt>): ExtrinsicData {
         const amountAtomicUnit = this.api.createType("Balance", amount.toString(true));
         const transferTransaction = this.api.tx.tokens.transfer(
             destination,
             newCurrencyId(this.api, amount.currency),
             amountAtomicUnit
         );
-        await this.transactionAPI.sendLogged(transferTransaction, this.api.events.tokens.Transfer, true);
+        return { extrinsic: transferTransaction, event: this.api.events.tokens.Transfer };
     }
 
-    async setBalance(
+    setBalance(
         accountId: AccountId,
         freeBalance: MonetaryAmount<CurrencyExt>,
         lockedBalance?: MonetaryAmount<CurrencyExt>
-    ): Promise<void> {
+    ): ExtrinsicData {
         lockedBalance = lockedBalance ? lockedBalance : newMonetaryAmount(0, freeBalance.currency);
         const tx = this.api.tx.sudo.sudo(
             this.api.tx.tokens.setBalance(
@@ -139,6 +140,6 @@ export class DefaultTokensAPI implements TokensAPI {
                 lockedBalance.toString(true)
             )
         );
-        await this.transactionAPI.sendLogged(tx, this.api.events.tokens.BalanceSet, true);
+        return { extrinsic: tx, event: this.api.events.tokens.BalanceSet };
     }
 }

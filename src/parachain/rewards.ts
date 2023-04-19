@@ -10,8 +10,7 @@ import {
     newVaultId,
 } from "../utils";
 import { InterbtcPrimitivesVaultId } from "../parachain";
-import { TransactionAPI } from "../parachain/transaction";
-import { WrappedCurrency, CollateralCurrencyExt, CurrencyExt } from "../types";
+import { WrappedCurrency, CollateralCurrencyExt, CurrencyExt, ExtrinsicData } from "../types";
 import { SignedFixedPoint } from "..";
 
 export interface RewardsAPI {
@@ -33,17 +32,14 @@ export interface RewardsAPI {
     /**
      * @param vaultId VaultId object
      * @param nonce Staking pool nonce
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @remarks Withdraw all rewards from the current account in the `vaultId` staking pool.
      */
-    withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<void>;
+    withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<ExtrinsicData>;
 }
 
 export class DefaultRewardsAPI implements RewardsAPI {
-    constructor(
-        public api: ApiPromise,
-        private wrappedCurrency: WrappedCurrency,
-        private transactionAPI: TransactionAPI
-    ) {}
+    constructor(public api: ApiPromise, private wrappedCurrency: WrappedCurrency) {}
 
     async getStakingPoolNonce(collateralCurrency: CollateralCurrencyExt, vaultAccountId: AccountId): Promise<number> {
         const vaultId = newVaultId(this.api, vaultAccountId.toString(), collateralCurrency, this.wrappedCurrency);
@@ -71,7 +67,7 @@ export class DefaultRewardsAPI implements RewardsAPI {
         );
     }
 
-    async withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<void> {
+    async withdrawRewards(vaultId: InterbtcPrimitivesVaultId, nonce?: number): Promise<ExtrinsicData> {
         const definedNonce = nonce
             ? nonce
             : await this.getStakingPoolNonce(
@@ -79,6 +75,6 @@ export class DefaultRewardsAPI implements RewardsAPI {
                   vaultId.accountId
               );
         const tx = this.api.tx.fee.withdrawRewards(vaultId, definedNonce.toString());
-        await this.transactionAPI.sendLogged(tx, this.api.events.vaultStaking.WithdrawReward, true);
+        return { extrinsic: tx, event: this.api.events.vaultStaking.WithdrawReward };
     }
 }

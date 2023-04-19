@@ -5,6 +5,7 @@ import {
     CollateralCurrencyExt,
     currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
+    getIssueRequestsFromExtrinsicResult,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
     IssueStatus,
@@ -29,7 +30,13 @@ import {
 import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
-import { getCorrespondingCollateralCurrenciesForTests, getIssuableAmounts, runWhileMiningBTCBlocks, sudo } from "../../../../utils/helpers";
+import {
+    getCorrespondingCollateralCurrenciesForTests,
+    getIssuableAmounts,
+    runWhileMiningBTCBlocks,
+    submitExtrinsic,
+    sudo,
+} from "../../../../utils/helpers";
 
 describe("issue", () => {
     let api: ApiPromise;
@@ -81,7 +88,10 @@ describe("issue", () => {
         // may fail if the relay isn't fully initialized
         const amount = newMonetaryAmount(0.0001, wrappedCurrency, true);
         const feesToPay = await userInterBtcAPI.issue.getFeesToPay(amount);
-        const requestResults = await userInterBtcAPI.issue.request(amount);
+        const requestResults = await getIssueRequestsFromExtrinsicResult(
+            userInterBtcAPI,
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.issue.request(amount))
+        );
         assert.equal(
             requestResults.length,
             1,
@@ -106,7 +116,10 @@ describe("issue", () => {
     it("should batch request across several vaults", async () => {
         const requestLimits = await userInterBtcAPI.issue.getRequestLimits();
         const amount = requestLimits.singleVaultMaxIssuable.mul(1.1);
-        const issueRequests = await userInterBtcAPI.issue.request(amount);
+        const issueRequests = await getIssueRequestsFromExtrinsicResult(
+            userInterBtcAPI,
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.issue.request(amount))
+        );
         assert.equal(issueRequests.length, 2, "Created wrong amount of requests, vaults have insufficient collateral");
         const issuedAmount1 = issueRequests[0].wrappedAmount;
         const issueFee1 = issueRequests[0].bridgeFee;
@@ -186,7 +199,7 @@ describe("issue", () => {
 
         const issuableAmounts = await getIssuableAmounts(userInterBtcAPI);
         const singleIssueable = issuableAmounts.reduce(
-            (prev, curr) => (prev > curr) ? prev : curr,
+            (prev, curr) => (prev > curr ? prev : curr),
             newMonetaryAmount(0, wrappedCurrency)
         );
         const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
@@ -206,29 +219,47 @@ describe("issue", () => {
         for (const vault_2_id of vault_2_ids) {
             await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
                 const initialIssuePeriod = await userInterBtcAPI.issue.getIssuePeriod();
-                await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(1));
+                await sudo(userInterBtcAPI, async () => {
+                    await submitExtrinsic(userInterBtcAPI, userInterBtcAPI.issue.setIssuePeriod(1));
+                });
                 try {
                     // request issue
                     const amount = newMonetaryAmount(0.0000121, wrappedCurrency, true);
                     const vaultCollateral = await currencyIdToMonetaryCurrency(api, vault_2_id.currencies.collateral);
-                    const requestResults = await userInterBtcAPI.issue.request(
-                        amount,
-                        newAccountId(api, vault_2.address),
-                        vaultCollateral
+                    const requestResults = await getIssueRequestsFromExtrinsicResult(
+                        userInterBtcAPI,
+                        await submitExtrinsic(
+                            userInterBtcAPI,
+                            await userInterBtcAPI.issue.request(
+                                amount,
+                                newAccountId(api, vault_2.address),
+                                vaultCollateral
+                            )
+                        )
                     );
                     assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
                     const requestResult = requestResults[0];
 
-                    await userInterBtcAPI.issue.cancel(requestResult.id);
+                    await submitExtrinsic(userInterBtcAPI, userInterBtcAPI.issue.cancel(requestResult.id));
 
                     const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
                     assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
 
                     // Set issue period back to its initial value to minimize side effects.
-                    await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
+                    await sudo(userInterBtcAPI, async () => {
+                        await submitExtrinsic(
+                            userInterBtcAPI,
+                            userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod)
+                        );
+                    });
                 } catch (e) {
                     // Set issue period back to its initial value to minimize side effects.
-                    await sudo(userInterBtcAPI, () => userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod));
+                    await sudo(userInterBtcAPI, async () => {
+                        await submitExtrinsic(
+                            userInterBtcAPI,
+                            userInterBtcAPI.issue.setIssuePeriod(initialIssuePeriod)
+                        );
+                    });
                     throw e;
                 }
             });

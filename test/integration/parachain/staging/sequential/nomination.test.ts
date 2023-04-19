@@ -28,7 +28,12 @@ import {
     PARACHAIN_ENDPOINT,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { callWith, getCorrespondingCollateralCurrenciesForTests, sudo } from "../../../../utils/helpers";
+import {
+    callWith,
+    getCorrespondingCollateralCurrenciesForTests,
+    submitExtrinsic,
+    sudo,
+} from "../../../../utils/helpers";
 import { Nomination } from "../../../../../src/parachain/nomination";
 
 // TODO: readd this once we want to activate nomination
@@ -62,7 +67,9 @@ describe.skip("NominationAPI", () => {
 
         if (!(await sudoInterBtcAPI.nomination.isNominationEnabled())) {
             console.log("Enabling nomination...");
-            await sudo(sudoInterBtcAPI, () => sudoInterBtcAPI.nomination.setNominationEnabled(true));
+            await sudo(sudoInterBtcAPI, async () => {
+                await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.nomination.setNominationEnabled(true));
+            });
         }
 
         // The account of a vault from docker-compose
@@ -110,7 +117,10 @@ describe.skip("NominationAPI", () => {
                     collateralCurrency
                 );
                 // Deposit
-                await userInterBtcAPI.nomination.depositCollateral(vault_1_id.accountId, nominatorDeposit);
+                await submitExtrinsic(
+                    userInterBtcAPI,
+                    userInterBtcAPI.nomination.depositCollateral(vault_1_id.accountId, nominatorDeposit)
+                );
                 const stakingCapacityAfterNomination = await userInterBtcAPI.vaults.getStakingCapacity(
                     vault_1_id.accountId,
                     collateralCurrency
@@ -150,9 +160,12 @@ describe.skip("NominationAPI", () => {
                 assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0), "Nominator should receive non-zero wrapped tokens");
 
                 // Withdraw Rewards
-                await userInterBtcAPI.rewards.withdrawRewards(vault_1_id);
+                await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.rewards.withdrawRewards(vault_1_id));
                 // Withdraw Collateral
-                await userInterBtcAPI.nomination.withdrawCollateral(vault_1_id.accountId, nominatorDeposit);
+                await submitExtrinsic(
+                    userInterBtcAPI,
+                    await userInterBtcAPI.nomination.withdrawCollateral(vault_1_id.accountId, nominatorDeposit)
+                );
 
                 const nominatorsAfterWithdrawal = await userInterBtcAPI.nomination.list();
                 // The vault always has a "nomination" to itself
@@ -174,10 +187,14 @@ describe.skip("NominationAPI", () => {
 
     async function optInWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrencyExt) {
         // will fail if vault is already opted in
-        await callWith(userInterBtcAPI, vaultAccount, () => userInterBtcAPI.nomination.optIn(collateralCurrency));
+        await callWith(userInterBtcAPI, vaultAccount, async () => {
+            await submitExtrinsic(userInterBtcAPI, userInterBtcAPI.nomination.optIn(collateralCurrency));
+        });
     }
 
     async function optOutWithAccount(vaultAccount: KeyringPair, collateralCurrency: CollateralCurrencyExt) {
-        await callWith(userInterBtcAPI, vaultAccount, () => userInterBtcAPI.nomination.optOut(collateralCurrency));
+        await callWith(userInterBtcAPI, vaultAccount, async () => {
+            await submitExtrinsic(userInterBtcAPI, userInterBtcAPI.nomination.optOut(collateralCurrency));
+        });
     }
 });

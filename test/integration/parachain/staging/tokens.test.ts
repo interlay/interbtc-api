@@ -12,11 +12,8 @@ import {
     DefaultInterBtcApi,
     InterBtcApi,
 } from "../../../../src";
-import {
-    newAccountId,
-    newMonetaryAmount
-} from "../../../../src/utils";
-import { getCorrespondingCollateralCurrenciesForTests } from "../../../utils/helpers";
+import { newAccountId, newMonetaryAmount } from "../../../../src/utils";
+import { getCorrespondingCollateralCurrenciesForTests, submitExtrinsic } from "../../../utils/helpers";
 
 describe("TokensAPI", () => {
     let api: ApiPromise;
@@ -64,7 +61,10 @@ describe("TokensAPI", () => {
         );
 
         // Send the first transfer, expect the callback to be called with correct values
-        await interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy);
+        await submitExtrinsic(
+            interBtcAPI,
+            interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy)
+        );
         assert.equal(updatedAccount, user2Account.address);
         const expectedUser2BalanceAfterFirstTransfer = new ChainBalance(
             currency,
@@ -75,7 +75,10 @@ describe("TokensAPI", () => {
         assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterFirstTransfer.toString());
 
         // Send the second transfer, expect the callback to be called with correct values
-        await interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy);
+        await submitExtrinsic(
+            interBtcAPI,
+            interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy)
+        );
         assert.equal(updatedAccount, user2Account.address);
         const expectedUser2BalanceAfterSecondTransfer = new ChainBalance(
             currency,

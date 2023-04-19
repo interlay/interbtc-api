@@ -28,7 +28,7 @@ import { assert, expect } from "../../../../chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
-import { getCorrespondingCollateralCurrenciesForTests } from "../../../../utils/helpers";
+import { getCorrespondingCollateralCurrenciesForTests, submitExtrinsic } from "../../../../utils/helpers";
 import { BlockHash } from "@polkadot/types/interfaces";
 import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
 import { FrameSystemEventRecord } from "@polkadot/types/lookup";
@@ -98,7 +98,12 @@ describe("replace", () => {
                 const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_3_id.currencies.collateral);
 
                 console.log(`Requesting vault replacement for ${replaceAmount.toString()}`);
-                const blockHash = await interBtcAPI.replace.request(replaceAmount, collateralCurrency);
+                const result = await submitExtrinsic(
+                    interBtcAPI,
+                    interBtcAPI.replace.request(replaceAmount, collateralCurrency),
+                    false
+                );
+                const blockHash = result.status.asFinalized;
 
                 // query at included block since it may be accepted after
                 const apiAt = await api.at(blockHash);
@@ -160,7 +165,11 @@ describe("replace", () => {
                 // make sure vault does not hold enough issued tokens to request a replace
                 const replaceAmount = dustValue.add(tokensInVault);
 
-                const replacePromise = interBtcAPI.replace.request(replaceAmount, collateralCurrency);
+                const replacePromise = submitExtrinsic(
+                    interBtcAPI,
+                    interBtcAPI.replace.request(replaceAmount, collateralCurrency),
+                    false
+                );
                 expect(replacePromise).to.be.rejectedWith(
                     Error,
                     `Expected replace request to fail with Error (${currencyTicker} vault)`

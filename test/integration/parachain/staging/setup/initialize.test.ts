@@ -47,6 +47,7 @@ import {
     ORACLE_MAX_DELAY,
     sleep,
     SLEEP_TIME_MS,
+    submitExtrinsic,
 } from "../../../../utils/helpers";
 import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
 import { BN } from "bn.js";
@@ -77,7 +78,7 @@ describe("Initialize parachain state", () => {
     }
 
     async function waitForRegister(api: VaultsAPI, accountId: AccountId, collateralCurrency: CollateralCurrencyExt) {
-        for (; ;) {
+        for (;;) {
             try {
                 await api.get(accountId, collateralCurrency);
                 return;
@@ -98,10 +99,7 @@ describe("Initialize parachain state", () => {
         vault_2 = keyring.addFromUri(VAULT_2_URI);
         vault_3 = keyring.addFromUri(VAULT_3_URI);
 
-        vaultAnnuityAddress = intoAccountTruncating(
-            api,
-            api.consts.vaultAnnuity.annuityPalletId
-        );
+        vaultAnnuityAddress = intoAccountTruncating(api, api.consts.vaultAnnuity.annuityPalletId);
 
         bitcoinCoreClient = new BitcoinCoreClient(
             BITCOIN_CORE_NETWORK,
@@ -185,7 +183,7 @@ describe("Initialize parachain state", () => {
 
         // fund with 100 KINT/INTR
         const fundAmount = new MonetaryAmount(sudoInterBtcAPI.getGovernanceCurrency(), 100);
-        await userInterBtcAPI.tokens.transfer(vaultAnnuityKeyPair, fundAmount);
+        await submitExtrinsic(userInterBtcAPI, userInterBtcAPI.tokens.transfer(vaultAnnuityKeyPair, fundAmount));
     });
 
     it("should have or register aUSD as foreign asset", async () => {
@@ -215,10 +213,7 @@ describe("Initialize parachain state", () => {
                 sudoInterBtcAPI.api.tx.sudo.sudo(callToRegister),
                 api.events.assetRegistry.RegisteredAsset
             );
-            assert.isTrue(
-                result.isCompleted,
-                `Sudo event to register new foreign asset not found`
-            );
+            assert.isTrue(result.isCompleted, "Sudo event to register new foreign asset not found");
         }
 
         const currencies = await sudoInterBtcAPI.assetRegistry.getForeignAssets();
@@ -238,7 +233,7 @@ describe("Initialize parachain state", () => {
             sudoInterBtcAPI.api,
             api.query.oracle.maxDelay.key(),
             api.createType("Moment", new BN(ORACLE_MAX_DELAY)),
-            sudoAccount,
+            sudoAccount
         );
     });
 
@@ -253,7 +248,7 @@ describe("Initialize parachain state", () => {
                 foreignAsset,
                 getExchangeRateValueToSetForTesting(foreignAsset)
             );
-            await sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate);
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate));
         }
     });
 
@@ -261,7 +256,7 @@ describe("Initialize parachain state", () => {
         async function setCollateralExchangeRate(value: Big, currency: CurrencyExt) {
             const exchangeRate = new ExchangeRate(Bitcoin, currency, value);
             // result will be medianized
-            await sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate);
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.oracle.setExchangeRate(exchangeRate));
         }
         await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Polkadot), Polkadot);
         await setCollateralExchangeRate(getExchangeRateValueToSetForTesting(Kusama), Kusama);
@@ -272,7 +267,7 @@ describe("Initialize parachain state", () => {
         const setFeeEstimate = new Big(1);
         let getFeeEstimate = await sudoInterBtcAPI.oracle.getBitcoinFees().catch((_) => undefined);
         if (!getFeeEstimate) {
-            await sudoInterBtcAPI.oracle.setBitcoinFees(setFeeEstimate);
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.oracle.setBitcoinFees(setFeeEstimate));
             // NOTE: this will fail if the chain does not support instant-seal
             await api.rpc.engine.createBlock(true, true);
             // just check that this is set since we medianize results
@@ -292,7 +287,7 @@ describe("Initialize parachain state", () => {
     it("should enable vault nomination", async () => {
         let isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         if (!isNominationEnabled) {
-            await sudoInterBtcAPI.nomination.setNominationEnabled(true);
+            await submitExtrinsic(sudoInterBtcAPI, sudoInterBtcAPI.nomination.setNominationEnabled(true));
             isNominationEnabled = await sudoInterBtcAPI.nomination.isNominationEnabled();
         }
         assert.isTrue(isNominationEnabled);
@@ -375,10 +370,7 @@ describe("Initialize parachain state", () => {
         const tx = api.tx.sudo.sudo(batch);
 
         const result = await DefaultTransactionAPI.sendLogged(api, sudoAccount, tx, api.events.sudo.Sudid);
-        assert.isTrue(
-            result.isCompleted,
-            `Cannot find Sudid event for setting thresholds in batch`
-        );
+        assert.isTrue(result.isCompleted, "Cannot find Sudid event for setting thresholds in batch");
     });
 
     it("should fund and register aUSD foreign asset vaults", async function () {
@@ -404,31 +396,21 @@ describe("Initialize parachain state", () => {
             const result = await DefaultTransactionAPI.sendLogged(
                 api,
                 sudoAccount,
-                api.tx.sudo.sudo(
-                    api.tx.tokens.setBalance(
-                        vaultAccountId,
-                        newCurrencyId(api, aUsd),
-                        100000000000,
-                        0
-                    )
-                ),
+                api.tx.sudo.sudo(api.tx.tokens.setBalance(vaultAccountId, newCurrencyId(api, aUsd), 100000000000, 0)),
                 api.events.tokens.BalanceSet
             );
-            assert.isTrue(
-                result.isCompleted,
-                `Cannot find BalanceSet event for ${vaultAccountId}`
-            );
+            assert.isTrue(result.isCompleted, `Cannot find BalanceSet event for ${vaultAccountId}`);
 
             // register the aUSD vault
             const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultKeyringPair, ESPLORA_BASE_PATH);
             const collateralAmount = new MonetaryAmount(aUsd, 10000);
-            await vaultInterBtcApi.vaults.registerNewCollateralVault(collateralAmount);
+            await submitExtrinsic(
+                vaultInterBtcApi,
+                vaultInterBtcApi.vaults.registerNewCollateralVault(collateralAmount)
+            );
             // sanity check the collateral computation
             const actualCollateralAmount = await vaultInterBtcApi.vaults.getCollateral(vaultAccountId, aUsd);
-            assert.equal(
-                actualCollateralAmount.toString(),
-                collateralAmount.toString(),
-            );
+            assert.equal(actualCollateralAmount.toString(), collateralAmount.toString());
         }
     });
 

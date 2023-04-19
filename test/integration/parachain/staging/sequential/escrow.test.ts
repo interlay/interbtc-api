@@ -7,15 +7,19 @@ import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { AccountId } from "@polkadot/types/interfaces";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
+import { ESPLORA_BASE_PATH, PARACHAIN_ENDPOINT, SUDO_URI } from "../../../../config";
 import {
-    ESPLORA_BASE_PATH,
-    PARACHAIN_ENDPOINT,
-    SUDO_URI,
-} from "../../../../config";
-import { decodeFixedPointType, DefaultInterBtcApi, GovernanceCurrency, InterBtcApi, newAccountId, newCurrencyId, newMonetaryAmount } from "../../../../../src";
+    decodeFixedPointType,
+    DefaultInterBtcApi,
+    GovernanceCurrency,
+    InterBtcApi,
+    newAccountId,
+    newCurrencyId,
+    newMonetaryAmount,
+} from "../../../../../src";
 
 import { setRawStorage } from "../../../../../src/utils/storage";
-import { makeRandomPolkadotKeyPair } from "../../../../utils/helpers";
+import { makeRandomPolkadotKeyPair, submitExtrinsic } from "../../../../utils/helpers";
 
 function fundAccountCall(api: InterBtcApi, address: string): SubmittableExtrinsic<"promise"> {
     return api.api.tx.tokens.setBalance(
@@ -67,11 +71,15 @@ describe("escrow", () => {
         userAccount2 = makeRandomPolkadotKeyPair(keyring);
         userAccount3 = makeRandomPolkadotKeyPair(keyring);
 
-        await api.tx.sudo.sudo(api.tx.utility.batchAll([
-            fundAccountCall(interBtcAPI, userAccount1.address),
-            fundAccountCall(interBtcAPI, userAccount2.address),
-            fundAccountCall(interBtcAPI, userAccount3.address),
-        ])).signAndSend(sudoAccount);
+        await api.tx.sudo
+            .sudo(
+                api.tx.utility.batchAll([
+                    fundAccountCall(interBtcAPI, userAccount1.address),
+                    fundAccountCall(interBtcAPI, userAccount2.address),
+                    fundAccountCall(interBtcAPI, userAccount3.address),
+                ])
+            )
+            .signAndSend(sudoAccount);
     });
 
     after(async () => {
@@ -109,7 +117,10 @@ describe("escrow", () => {
         const stakedTotalBefore = await interBtcAPI.escrow.getTotalStakedBalance();
 
         interBtcAPI.setAccount(userAccount1);
-        await interBtcAPI.escrow.createLock(user1Amount, currentBlockNumber + unlockHeightDiff);
+        await submitExtrinsic(
+            interBtcAPI,
+            interBtcAPI.escrow.createLock(user1Amount, currentBlockNumber + unlockHeightDiff)
+        );
 
         const votingBalance = await interBtcAPI.escrow.votingBalance(
             newAccountId(api, userAccount1.address),
@@ -129,7 +140,7 @@ describe("escrow", () => {
             api,
             api.query.escrowAnnuity.rewardPerBlock.key(),
             api.createType("Balance", rewardPerBlock),
-            sudoAccount,
+            sudoAccount
         );
 
         const account1 = newAccountId(api, userAccount1.address);
@@ -151,7 +162,7 @@ describe("escrow", () => {
 
         assert.isTrue(
             expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).lt(1.1) &&
-            expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
+                expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
             "The estimate should be within 10% of the actual first year rewards"
         );
         assert.isTrue(
@@ -161,7 +172,10 @@ describe("escrow", () => {
 
         // Lock the tokens of a second user, to ensure total voting supply is still correct
         interBtcAPI.setAccount(userAccount2);
-        await interBtcAPI.escrow.createLock(user2Amount, currentBlockNumber + unlockHeightDiff);
+        await submitExtrinsic(
+            interBtcAPI,
+            interBtcAPI.escrow.createLock(user2Amount, currentBlockNumber + unlockHeightDiff)
+        );
         const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(
             currentBlockNumber + 0.4 * unlockHeightDiff
         );
@@ -184,8 +198,14 @@ describe("escrow", () => {
         const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
 
         interBtcAPI.setAccount(userAccount3);
-        await interBtcAPI.escrow.createLock(userAmount, currentBlockNumber + unlockHeightDiff);
-        await interBtcAPI.escrow.increaseAmount(userAmount);
-        await interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff);
+        await submitExtrinsic(
+            interBtcAPI,
+            interBtcAPI.escrow.createLock(userAmount, currentBlockNumber + unlockHeightDiff)
+        );
+        await submitExtrinsic(interBtcAPI, interBtcAPI.escrow.increaseAmount(userAmount));
+        await submitExtrinsic(
+            interBtcAPI,
+            interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff)
+        );
     });
 });
