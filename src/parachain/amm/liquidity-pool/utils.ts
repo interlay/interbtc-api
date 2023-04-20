@@ -13,17 +13,21 @@ import { StableLiquidityPool } from "./stable";
 import { isStablePool, isStandardPool, LiquidityPool } from "./types";
 import { StableLiquidityMetaPool } from "./stable-meta";
 
+const filterNonEmptyPools = (pools: Array<LiquidityPool>): Array<LiquidityPool> =>
+    pools.filter(({ isEmpty }) => !isEmpty);
+
 /**
  * Get all trading pairs based on provided pools.
  *
- * @param pools All standard and stable pools.
+ * @param nonEmptyPools All standard and stable pools.
  * @returns {Array<TradingPair>} All trading pairs.
  */
 const getAllTradingPairs = (pools: Array<LiquidityPool>): Array<TradingPair> => {
-    const stablePools = pools.filter(isStablePool);
+    const nonEmptyPools = filterNonEmptyPools(pools);
+    const stablePools = nonEmptyPools.filter(isStablePool);
     const pairs: Array<TradingPair> = [];
 
-    pools.forEach((pool) => {
+    nonEmptyPools.forEach((pool) => {
         if (isStandardPool(pool)) {
             // Exclude pool in Bootstrap status
             if (pool.isTradingActive) {
@@ -205,4 +209,4 @@ const getStableSwapOutputAmount = (
     return outputAmount;
 };
 
-export { getAllTradingPairs, getStableSwapOutputAmount };
+export { getAllTradingPairs, getStableSwapOutputAmount, filterNonEmptyPools };

@@ -326,11 +326,7 @@ export class DefaultAMMAPI implements AMMAPI {
             this._getPoolRewardAmountsYearly(lpTokenCurrencyId, blockTimeMs),
         ]);
 
-        // Do not include pools with zero liquidity.
-        if (this._poolHasZeroLiquidity(pooledCurrencies)) {
-            return null;
-        }
-
+        const isEmpty = this._poolHasZeroLiquidity(pooledCurrencies);
         const totalSupply = new MonetaryAmount(lpToken, totalSupplyAmount);
 
         return new StandardLiquidityPool(
@@ -339,7 +335,8 @@ export class DefaultAMMAPI implements AMMAPI {
             yearlyRewards,
             tradingFee,
             isTradingActive,
-            totalSupply
+            totalSupply,
+            isEmpty
         );
     }
 
@@ -487,11 +484,7 @@ export class DefaultAMMAPI implements AMMAPI {
         }
         const { lpToken, actuallyPooledCurrencies, yearlyRewards, tradingFee, amplificationCoefficient, totalSupply } =
             processedPoolData;
-
-        // Do not include pools with zero liquidity.
-        if (this._poolHasZeroLiquidity(actuallyPooledCurrencies)) {
-            return null;
-        }
+        const isEmpty = this._poolHasZeroLiquidity(actuallyPooledCurrencies);
 
         if (poolData.isBase) {
             return new StableLiquidityPool(
@@ -503,7 +496,8 @@ export class DefaultAMMAPI implements AMMAPI {
                 tradingFee,
                 poolId,
                 amplificationCoefficient,
-                totalSupply
+                totalSupply,
+                isEmpty
             );
         }
 
@@ -526,6 +520,7 @@ export class DefaultAMMAPI implements AMMAPI {
             poolId,
             amplificationCoefficient,
             totalSupply,
+            isEmpty,
             basePool
         );
     }

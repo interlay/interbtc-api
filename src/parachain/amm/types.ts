@@ -12,6 +12,7 @@ interface LiquidityPoolBase {
     tradingFee: Big; // Decimal.
     totalSupply: MonetaryAmount<LpCurrency>;
     rewardAmountsYearly: Array<MonetaryAmount<CurrencyExt>>; // Array of monetary amounts containing reward per pool yearly.
+    isEmpty: boolean;
 }
 
 enum PoolType {
