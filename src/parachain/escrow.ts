@@ -81,16 +81,22 @@ export interface EscrowAPI {
      * @remarks Implements https://spec.interlay.io/spec/reward.html#computereward
      */
     getRewards(accountId: AccountId): Promise<MonetaryAmount<GovernanceCurrency>>;
+
     /**
+     * Estimate the annualized rewards for an account's staked amounts while applying an optional amount to increase
+     * the locked stake by, and an optional lock time extension.
+     *
      * @param accountId User account ID
-     * @param amountToLock New amount to add to the current stake
-     * @param blockLockTimeExtension Amount of blocks the stake will be locked for
-     * @returns The estimated reward, as amount and percentage (APY)
+     * @param amountToLock (optional) New amount to add to the current stake.
+     *                      Zero, null, or undefined are interpreted as no changes to the current stake for the estimation.
+     * @param newLockEndHeight (optional) At which block number the stake lock should end.
+     *                          Zero, null, or undefined are interpreted as no lock extension used for the estimate.
+     * @returns The estimated annualized reward as amount and percentage (APY).
      */
     getRewardEstimate(
         accountId: AccountId,
         amountToLock?: MonetaryAmount<GovernanceCurrency>,
-        blockLockTimeExtension?: number
+        newLockEndHeight?: number
     ): Promise<{
         amount: MonetaryAmount<GovernanceCurrency>;
         apy: Big;
@@ -136,7 +142,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
     async getRewardEstimate(
         accountId: AccountId,
         amountToLock?: MonetaryAmount<GovernanceCurrency>,
-        blockLockTimeExtension?: number
+        newLockEndHeight?: number
     ): Promise<{
         amount: MonetaryAmount<GovernanceCurrency>;
         apy: Big;
@@ -153,8 +159,8 @@ export class DefaultEscrowAPI implements EscrowAPI {
         }
 
         let nullableBlockToEnd: bigint | null = null;
-        if (blockLockTimeExtension) {
-            nullableBlockToEnd = BigInt(blockLockTimeExtension);
+        if (newLockEndHeight) {
+            nullableBlockToEnd = BigInt(newLockEndHeight);
         }
 
         // if there is no staked amount and no added amount to be checked, return 0
