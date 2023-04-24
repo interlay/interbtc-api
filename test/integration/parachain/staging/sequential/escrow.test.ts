@@ -103,8 +103,12 @@ describe("escrow", () => {
         const expected = new Big(0);
         assert.isTrue(expected.eq(rewardsEstimate.apy), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
         assert.isTrue(
-            rewardsEstimate.amount.isZero(),
-            `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`
+            rewardsEstimate.amountAnnualized.isZero(),
+            `Annualized rewards should be 0, but are ${rewardsEstimate.amountAnnualized.toHuman()}`
+        );
+        assert.isTrue(
+            rewardsEstimate.amountTotal.isZero(),
+            `Total rewards should be 0, but are ${rewardsEstimate.amountTotal.toHuman()}`
         );
     });
 
@@ -161,8 +165,8 @@ describe("escrow", () => {
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(account1);
 
         assert.isTrue(
-            expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).lt(1.1) &&
-                expectedRewards.toBig().div(rewardsEstimate.amount.toBig()).gt(0.9),
+            expectedRewards.toBig().div(rewardsEstimate.amountAnnualized.toBig()).lt(1.1) &&
+                expectedRewards.toBig().div(rewardsEstimate.amountAnnualized.toBig()).gt(0.9),
             "The estimate should be within 10% of the actual first year rewards"
         );
         assert.isTrue(
