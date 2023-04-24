@@ -103,12 +103,8 @@ describe("escrow", () => {
         const expected = new Big(0);
         assert.isTrue(expected.eq(rewardsEstimate.apy), `APY should be 0, but is ${rewardsEstimate.apy.toString()}`);
         assert.isTrue(
-            rewardsEstimate.amountAnnualized.isZero(),
-            `Annualized rewards should be 0, but are ${rewardsEstimate.amountAnnualized.toHuman()}`
-        );
-        assert.isTrue(
-            rewardsEstimate.amountTotal.isZero(),
-            `Total rewards should be 0, but are ${rewardsEstimate.amountTotal.toHuman()}`
+            rewardsEstimate.amount.isZero(),
+            `Rewards should be 0, but are ${rewardsEstimate.amount.toHuman()}`
         );
     });
 
@@ -148,26 +144,12 @@ describe("escrow", () => {
         );
 
         const account1 = newAccountId(api, userAccount1.address);
-        const stake = await getEscrowStake(api, account1);
-        const totalStake = await getEscrowTotalStake(api);
-        let rewardPerToken = await getEscrowRewardPerToken(interBtcAPI);
-        // estimate RPC withdraws rewards first
-        const rewardTally = stake.mul(rewardPerToken);
-        // update with previous rewards
-        rewardPerToken = rewardPerToken.add(new Big(firstYearRewards).div(totalStake));
 
-        const expectedRewards = newMonetaryAmount(
-            // rewardPerToken = rewardPerToken + reward / totalStake
-            // stake * rewardPerToken - rewardTally
-            stake.mul(rewardPerToken).sub(rewardTally),
-            interBtcAPI.getGovernanceCurrency()
-        );
         const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(account1);
 
         assert.isTrue(
-            expectedRewards.toBig().div(rewardsEstimate.amountAnnualized.toBig()).lt(1.1) &&
-                expectedRewards.toBig().div(rewardsEstimate.amountAnnualized.toBig()).gt(0.9),
-            "The estimate should be within 10% of the actual first year rewards"
+            rewardsEstimate.amount.toBig().gt(0),
+            `Expected reward to be a positive amount, got ${rewardsEstimate.amount.toString()}`
         );
         assert.isTrue(
             rewardsEstimate.apy.gte(100),

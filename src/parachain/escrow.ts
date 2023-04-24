@@ -92,15 +92,14 @@ export interface EscrowAPI {
      *                      Zero, null, or undefined are interpreted as no changes to the current stake for the estimation.
      * @param newLockEndHeight (optional) At which block number the stake lock should end.
      *                          Zero, null, or undefined are interpreted as no lock extension used for the estimate.
-     * @returns The estimated annualized reward as amount and percentage (APY).
+     * @returns The estimated total reward amount and annualized reward percentage (APY).
      */
     getRewardEstimate(
         accountId: AccountId,
         amountToLock?: MonetaryAmount<GovernanceCurrency>,
         newLockEndHeight?: number
     ): Promise<{
-        amountAnnualized: MonetaryAmount<GovernanceCurrency>;
-        amountTotal: MonetaryAmount<GovernanceCurrency>;
+        amount: MonetaryAmount<GovernanceCurrency>;
         apy: Big;
     }>;
 }
@@ -150,8 +149,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         amountToLock?: MonetaryAmount<GovernanceCurrency>,
         newLockEndHeight?: number
     ): Promise<{
-        amountAnnualized: MonetaryAmount<GovernanceCurrency>;
-        amountTotal: MonetaryAmount<GovernanceCurrency>;
+        amount: MonetaryAmount<GovernanceCurrency>;
         apy: Big;
     }> {
         const stakedBalance = await this.getStakedBalance(accountId);
@@ -174,8 +172,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         // if there is no staked amount and no added amount to be checked, return 0
         if (atomicStakedAmount.eq(Big(0))) {
             return {
-                amountAnnualized: newMonetaryAmount(0, this.governanceCurrency),
-                amountTotal: newMonetaryAmount(0, this.governanceCurrency),
+                amount: newMonetaryAmount(0, this.governanceCurrency),
                 apy: Big(0),
             };
         }
@@ -201,8 +198,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         const rewardAmountTotal = rewardAmountAnnualized.mul(effectiveLockEndHeight - currentHeight).div(blocksPerYear);
 
         return {
-            amountAnnualized: rewardAmountAnnualized,
-            amountTotal: rewardAmountTotal,
+            amount: rewardAmountTotal,
             apy: rewardRate.mul(100),
         };
     }
