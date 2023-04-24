@@ -1,11 +1,12 @@
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { AccountId } from "@polkadot/types/interfaces";
-import BN from "bn.js";
 import Big from "big.js";
+import BN from "bn.js";
 
-import { decodeFixedPointType, newCurrencyId, newMonetaryAmount, toVoting, ATOMIC_UNIT } from "../utils";
-import { GovernanceCurrency, parseEscrowLockedBalance, StakedBalance, VotingCurrency, ExtrinsicData } from "../types";
+import { SystemAPI } from "../parachain/system";
+import { ExtrinsicData, GovernanceCurrency, StakedBalance, VotingCurrency, parseEscrowLockedBalance } from "../types";
+import { ATOMIC_UNIT, MS_PER_YEAR, decodeFixedPointType, newCurrencyId, newMonetaryAmount, toVoting } from "../utils";
 
 /**
  * @category BTC Bridge
@@ -91,7 +92,7 @@ export interface EscrowAPI {
      *                      Zero, null, or undefined are interpreted as no changes to the current stake for the estimation.
      * @param newLockEndHeight (optional) At which block number the stake lock should end.
      *                          Zero, null, or undefined are interpreted as no lock extension used for the estimate.
-     * @returns The estimated annualized reward as amount and percentage (APY).
+     * @returns The estimated total reward amount and annualized reward percentage (APY).
      */
     getRewardEstimate(
         accountId: AccountId,
@@ -104,7 +105,11 @@ export interface EscrowAPI {
 }
 
 export class DefaultEscrowAPI implements EscrowAPI {
-    constructor(private api: ApiPromise, private governanceCurrency: GovernanceCurrency) {}
+    constructor(
+        private api: ApiPromise,
+        private governanceCurrency: GovernanceCurrency,
+        private systemApi: SystemAPI
+    ) {}
 
     createLock(amount: MonetaryAmount<GovernanceCurrency>, unlockHeight: number): ExtrinsicData {
         const tx = this.api.tx.escrow.createLock(amount.toString(true), unlockHeight);
@@ -150,6 +155,7 @@ export class DefaultEscrowAPI implements EscrowAPI {
         const stakedBalance = await this.getStakedBalance(accountId);
 
         let atomicStakedAmount: Big = stakedBalance.amount.toBig(ATOMIC_UNIT);
+        const currentLockEndHeight = stakedBalance.endBlock;
 
         let nullableAmountToCheck: bigint | null = null;
         if (amountToLock && !amountToLock.isZero()) {
@@ -179,11 +185,20 @@ export class DefaultEscrowAPI implements EscrowAPI {
 
         // annual reward rate
         const rewardRate = decodeFixedPointType(rawRewardRate);
-        // reward amount
-        const rewardAmount = newMonetaryAmount(atomicStakedAmount, this.governanceCurrency).mul(rewardRate);
+        // reward amount, annualized
+        const rewardAmountAnnualized = newMonetaryAmount(atomicStakedAmount, this.governanceCurrency).mul(rewardRate);
+        const effectiveLockEndHeight = newLockEndHeight || currentLockEndHeight;
+
+        const [blockTimeMs, currentHeight] = await Promise.all([
+            this.api.call.auraApi.slotDuration().then((u) => u.toBigInt()),
+            this.systemApi.getCurrentBlockNumber(),
+        ]);
+
+        const blocksPerYear = MS_PER_YEAR.div(blockTimeMs.toString());
+        const rewardAmountTotal = rewardAmountAnnualized.mul(effectiveLockEndHeight - currentHeight).div(blocksPerYear);
 
         return {
-            amount: rewardAmount,
+            amount: rewardAmountTotal,
             apy: rewardRate.mul(100),
         };
     }
