@@ -194,7 +194,7 @@ export class DefaultAMMAPI implements AMMAPI {
         };
     }
 
-    constructor(private api: ApiPromise, private tokensAPI: TokensAPI) {}
+    constructor(private api: ApiPromise, private tokensAPI: TokensAPI) { }
 
     public getOptimalTrade(
         inputAmount: MonetaryAmount<CurrencyExt>,
@@ -305,6 +305,8 @@ export class DefaultAMMAPI implements AMMAPI {
             typedPairStatus = pairStatus.asTrading;
             isTradingActive = true;
             tradingFee = Big(typedPairStatus.feeRate.toString()).div(FEE_MULTIPLIER_STANDARD);
+            // NOTE: this is a hacky way to convert totalSupply since it assumes
+            // we always use a precision of 18 for lpTokens, refactor this
             totalSupplyAmount = decodeFixedPointType(typedPairStatus.totalSupply);
         } else if (pairStatus.isBootstrap) {
             typedPairStatus = pairStatus.asBootstrap;
@@ -428,10 +430,10 @@ export class DefaultAMMAPI implements AMMAPI {
         const actuallyPooledCurrencies =
             metaPoolLpTokenAmount !== undefined
                 ? this._getStableBasePooledCurrenciesAdjustedToLpTokenAmount(
-                      pooledCurrenciesBase,
-                      totalSupply,
-                      metaPoolLpTokenAmount
-                  )
+                    pooledCurrenciesBase,
+                    totalSupply,
+                    metaPoolLpTokenAmount
+                )
                 : pooledCurrenciesBase;
 
         return { lpToken, actuallyPooledCurrencies, yearlyRewards, amplificationCoefficient, totalSupply, tradingFee };
