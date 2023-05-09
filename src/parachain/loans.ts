@@ -13,6 +13,7 @@ import {
     CollateralPosition,
     UndercollateralizedPosition,
     ExtrinsicData,
+    AccruedRewards,
 } from "../types";
 import { ApiPromise } from "@polkadot/api";
 import Big, { RoundingMode } from "big.js";
@@ -35,6 +36,7 @@ import {
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { OracleAPI } from "./oracle";
+import { CurrencyId } from "../interfaces";
 
 /**
  * @category Lending protocol
@@ -90,12 +92,12 @@ export interface LoansAPI {
     getLendTokens(): Promise<Array<LendToken>>;
 
     /**
-     * Get accrued subsidy rewards amount for the account
+     * Get accrued subsidy rewards amounts for the account.
      *
      * @param accountId Account to get rewards for
-     * @returns {MonetaryAmount<CurrencyExt>} Amount how much rewards the account can claim.
+     * @returns {Promise<AccruedRewards>} Total amount how much rewards the account can claim and rewards per market.
      */
-    getAccruedRewardsOfAccount(accountId: AccountId): Promise<MonetaryAmount<CurrencyExt>>;
+    getAccruedRewardsOfAccount(accountId: AccountId): Promise<AccruedRewards>;
 
     /**
      * Lend currency to protocol for borrowing.
@@ -675,13 +677,120 @@ export class DefaultLoansAPI implements LoansAPI {
         return loanAssets;
     }
 
-    async getAccruedRewardsOfAccount(accountId: AccountId): Promise<MonetaryAmount<CurrencyExt>> {
-        const [rewardAccrued, rewardCurrency] = await Promise.all([
+    async _getLatestSupplyIndex(
+        underlyingCurrencyId: CurrencyId,
+        lendTokenId: CurrencyId,
+        currentBlockNumber: number
+    ): Promise<Big> {
+        const [marketSupplyState, marketSupplySpeed, totalIssuance] = await Promise.all([
+            this.api.query.loans.rewardSupplyState(underlyingCurrencyId),
+            // Total KINT / INTR tokens awarded per block to suppliers of this market
+            this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
+            this.api.query.tokens.totalIssuance(lendTokenId),
+        ]);
+        const lastIndex = Big(marketSupplyState.index.toString());
+        const supplyRewardSpeed = Big(marketSupplySpeed.toString());
+        const totalSupply = Big(totalIssuance.toString());
+
+        const deltaBlocks = currentBlockNumber - marketSupplyState.block.toNumber();
+        const deltaIndex = supplyRewardSpeed.div(totalSupply).mul(deltaBlocks);
+
+        return lastIndex.add(deltaIndex);
+    }
+
+    async _getAccruedSupplyReward(
+        accountId: AccountId,
+        underlyingCurrencyId: CurrencyId,
+        lendTokenId: CurrencyId,
+        rewardCurrency: CurrencyExt,
+        currentBlock: number
+    ): Promise<MonetaryAmount<CurrencyExt>> {
+        const [latestSupplyIndex, rewardSupplierIndex, lendTokenRawBalance] = await Promise.all([
+            this._getLatestSupplyIndex(underlyingCurrencyId, lendTokenId, currentBlock),
+            this.api.query.loans.rewardSupplierIndex(underlyingCurrencyId, accountId),
+            this.api.query.tokens.accounts(accountId, lendTokenId),
+        ]);
+        const supplierIndex = Big(rewardSupplierIndex.toString());
+        const lendTokenBalance = Big(lendTokenRawBalance.free.toString()).add(lendTokenRawBalance.reserved.toString());
+        const deltaIndex = latestSupplyIndex.sub(supplierIndex);
+
+        const accruedRewardInPlanck = deltaIndex.mul(lendTokenBalance);
+        const accruedSupplyReward = newMonetaryAmount(accruedRewardInPlanck, rewardCurrency);
+        return accruedSupplyReward;
+    }
+
+    async _getLatestBorrowIndex(underlyingCurrencyId: CurrencyId, currentBlockNumber: number): Promise<Big> {
+        const [marketBorrowState, marketBorrowSpeed, totalBorrowsRaw] = await Promise.all([
+            this.api.query.loans.rewardBorrowState(underlyingCurrencyId),
+            // Total KINT / INTR tokens awarded per block to suppliers of this market
+            this.api.query.loans.rewardSpeed(underlyingCurrencyId),
+            this.api.query.loans.totalBorrows(underlyingCurrencyId),
+        ]);
+        const lastBorrowIndex = Big(marketBorrowState.index.toString());
+        const borrowRewardSpeed = Big(marketBorrowSpeed.toString());
+        const totalBorrowed = Big(totalBorrowsRaw.toString());
+
+        const deltaBlocks = currentBlockNumber - marketBorrowState.block.toNumber();
+        const deltaIndex = borrowRewardSpeed.div(totalBorrowed).mul(deltaBlocks);
+
+        return lastBorrowIndex.add(deltaIndex);
+    }
+
+    async _getAccruedBorrowReward(
+        accountId: AccountId,
+        underlyingCurrencyId: CurrencyId,
+        rewardCurrency: CurrencyExt,
+        currentBlock: number
+    ): Promise<MonetaryAmount<CurrencyExt>> {
+        const [latestBorrowIndex, rewardBorrowerIndex, accountBorrowSnapshot] = await Promise.all([
+            this._getLatestBorrowIndex(underlyingCurrencyId, currentBlock),
+            this.api.query.loans.rewardBorrowerIndex(underlyingCurrencyId, accountId),
+            this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
+        ]);
+        const borrowedAmount = Big(accountBorrowSnapshot.principal.toString());
+        const borrowerIndex = Big(rewardBorrowerIndex.toString());
+        const deltaIndex = latestBorrowIndex.sub(borrowerIndex);
+        const accruedRewardInPlanck = deltaIndex.mul(borrowedAmount);
+        const accruedBorrowReward = newMonetaryAmount(accruedRewardInPlanck, rewardCurrency);
+        return accruedBorrowReward;
+    }
+
+    async getAccruedRewardsOfAccount(accountId: AccountId): Promise<AccruedRewards> {
+        const [rewardAccrued, rewardCurrency, markets, blockNumber] = await Promise.all([
             this.api.query.loans.rewardAccrued(accountId),
             this._getRewardCurrency(),
+            this.getLoansMarkets(),
+            this.api.query.system.number(),
         ]);
 
-        return newMonetaryAmount(rewardAccrued.toString(), rewardCurrency);
+        const totalAccrued = newMonetaryAmount(rewardAccrued.toString(), rewardCurrency);
+        const currentBlock = blockNumber.toNumber();
+
+        let totalRewards = totalAccrued;
+        const rewardsPerMarket: TickerToData<{
+            lend: MonetaryAmount<CurrencyExt> | null;
+            borrow: MonetaryAmount<CurrencyExt> | null;
+        }> = {};
+        for (const [underlyingCurrency, market] of markets) {
+            // the following computes the reward not claimed and not yet computed, for a single market
+            const underlyingCurrencyId = newCurrencyId(this.api, underlyingCurrency);
+
+            const [lendReward, borrowReward] = await Promise.all([
+                this._getAccruedSupplyReward(
+                    accountId,
+                    underlyingCurrencyId,
+                    market.lendTokenId,
+                    rewardCurrency,
+                    currentBlock
+                ),
+                this._getAccruedBorrowReward(accountId, underlyingCurrencyId, rewardCurrency, currentBlock),
+            ]);
+            rewardsPerMarket[underlyingCurrency.ticker].lend = lendReward;
+            rewardsPerMarket[underlyingCurrency.ticker].borrow = borrowReward;
+
+            totalRewards = totalRewards.add(lendReward).add(borrowReward);
+        }
+        return { total: totalRewards, perMarket: rewardsPerMarket };
     }
 
     // Check that market for given currency is added and in active state.
