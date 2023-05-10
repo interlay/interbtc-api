@@ -697,7 +697,7 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         const deltaBlocks = currentBlockNumber - marketSupplyState.block.toNumber();
-        const deltaIndex = supplyRewardSpeed.div(totalSupply).mul(deltaBlocks);
+        const deltaIndex = supplyRewardSpeed.mul(deltaBlocks).div(totalSupply);
         return lastIndex.add(deltaIndex);
     }
 
@@ -738,7 +738,7 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         const deltaBlocks = currentBlockNumber - marketBorrowState.block.toNumber();
-        const deltaIndex = borrowRewardSpeed.div(totalBorrowed).mul(deltaBlocks);
+        const deltaIndex = borrowRewardSpeed.mul(deltaBlocks).div(totalBorrowed);
 
         return lastBorrowIndex.add(deltaIndex);
     }
