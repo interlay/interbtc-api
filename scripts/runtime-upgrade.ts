@@ -5,6 +5,8 @@ import { cryptoWaitReady, blake2AsHex, sha256AsU8a } from "@polkadot/util-crypto
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 import fetch from "cross-fetch";
 
+import { printDiscordProposal } from "./util";
+
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const args = yargs(hideBin(process.argv))
@@ -36,43 +38,6 @@ main().catch((err) => {
     console.log("Error thrown by script:");
     console.log(err);
 });
-
-function toUrl(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
-    return "https://polkadot.js.org/apps/?rpc=" +
-        encodeURIComponent(endpoint) +
-        "#/extrinsics/decode/" +
-        extrinsic.method.toHex();
-}
-
-function constructProposal(api: ApiPromise, extrinsic: SubmittableExtrinsic<"promise">) {
-    const deposit = api.consts.democracy.minimumDeposit.toNumber();
-    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
-    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
-    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
-    return batched
-}
-
-async function printDiscordProposal(
-    description: string,
-    extrinsic: SubmittableExtrinsic<"promise">,
-    endpoint: string,
-    api: ApiPromise,
-) {
-    const proposal = constructProposal(api, extrinsic);
-    const invocation = process.argv.map(function (x) { return x.substring(x.lastIndexOf('/') + 1) }).join(" ");
-
-    console.log("");
-    console.log("");
-    console.log("**" + description + "**");
-    console.log("");
-    console.log("**Extrinsic:**", toUrl(extrinsic, endpoint));
-    console.log("");
-    console.log("**Proposal:**", toUrl(proposal, endpoint));
-    console.log("");
-    console.log("_Generated with_: `" + invocation + "`");
-    console.log("");
-    console.log("");
-}
 
 async function setAllClientReleases(api: ApiPromise, baseUrl: String, runtimeName: String) {
     const checksumFile = await fetch(baseUrl + 'sha256sums.txt')
