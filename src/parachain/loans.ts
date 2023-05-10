@@ -688,13 +688,16 @@ export class DefaultLoansAPI implements LoansAPI {
             this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
             this.api.query.tokens.totalIssuance(lendTokenId),
         ]);
-        const lastIndex = Big(marketSupplyState.index.toString());
+        const lastIndex = decodeFixedPointType(marketSupplyState.index);
         const supplyRewardSpeed = Big(marketSupplySpeed.toString());
         const totalSupply = Big(totalIssuance.toString());
 
+        if (totalSupply.eq(0)) {
+            return Big(0);
+        }
+
         const deltaBlocks = currentBlockNumber - marketSupplyState.block.toNumber();
         const deltaIndex = supplyRewardSpeed.div(totalSupply).mul(deltaBlocks);
-
         return lastIndex.add(deltaIndex);
     }
 
@@ -710,7 +713,7 @@ export class DefaultLoansAPI implements LoansAPI {
             this.api.query.loans.rewardSupplierIndex(underlyingCurrencyId, accountId),
             this.api.query.tokens.accounts(accountId, lendTokenId),
         ]);
-        const supplierIndex = Big(rewardSupplierIndex.toString());
+        const supplierIndex = decodeFixedPointType(rewardSupplierIndex);
         const lendTokenBalance = Big(lendTokenRawBalance.free.toString()).add(lendTokenRawBalance.reserved.toString());
         const deltaIndex = latestSupplyIndex.sub(supplierIndex);
 
@@ -723,12 +726,16 @@ export class DefaultLoansAPI implements LoansAPI {
         const [marketBorrowState, marketBorrowSpeed, totalBorrowsRaw] = await Promise.all([
             this.api.query.loans.rewardBorrowState(underlyingCurrencyId),
             // Total KINT / INTR tokens awarded per block to suppliers of this market
-            this.api.query.loans.rewardSpeed(underlyingCurrencyId),
+            this.api.query.loans.rewardBorrowSpeed(underlyingCurrencyId),
             this.api.query.loans.totalBorrows(underlyingCurrencyId),
         ]);
-        const lastBorrowIndex = Big(marketBorrowState.index.toString());
+        const lastBorrowIndex = decodeFixedPointType(marketBorrowState.index);
         const borrowRewardSpeed = Big(marketBorrowSpeed.toString());
         const totalBorrowed = Big(totalBorrowsRaw.toString());
+
+        if (totalBorrowed.eq(0)) {
+            return Big(0);
+        }
 
         const deltaBlocks = currentBlockNumber - marketBorrowState.block.toNumber();
         const deltaIndex = borrowRewardSpeed.div(totalBorrowed).mul(deltaBlocks);
@@ -748,7 +755,7 @@ export class DefaultLoansAPI implements LoansAPI {
             this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
         ]);
         const borrowedAmount = Big(accountBorrowSnapshot.principal.toString());
-        const borrowerIndex = Big(rewardBorrowerIndex.toString());
+        const borrowerIndex = decodeFixedPointType(rewardBorrowerIndex);
         const deltaIndex = latestBorrowIndex.sub(borrowerIndex);
         const accruedRewardInPlanck = deltaIndex.mul(borrowedAmount);
         const accruedBorrowReward = newMonetaryAmount(accruedRewardInPlanck, rewardCurrency);
@@ -785,9 +792,10 @@ export class DefaultLoansAPI implements LoansAPI {
                 ),
                 this._getAccruedBorrowReward(accountId, underlyingCurrencyId, rewardCurrency, currentBlock),
             ]);
-            rewardsPerMarket[underlyingCurrency.ticker].lend = lendReward;
-            rewardsPerMarket[underlyingCurrency.ticker].borrow = borrowReward;
-
+            rewardsPerMarket[underlyingCurrency.ticker] = {
+                lend: lendReward.toBig().gt(0) ? lendReward : null,
+                borrow: borrowReward.toBig().gt(0) ? borrowReward : null,
+            };
             totalRewards = totalRewards.add(lendReward).add(borrowReward);
         }
         return { total: totalRewards, perMarket: rewardsPerMarket };
