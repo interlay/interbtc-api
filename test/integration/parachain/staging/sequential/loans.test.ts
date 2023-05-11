@@ -392,6 +392,33 @@ describe("Loans", () => {
             const rewards = await userInterBtcAPI.loans.getAccruedRewardsOfAccount(userAccountId);
 
             expect(rewards.total.toBig().eq(1)).to.be.true;
+
+            await submitExtrinsic(userInterBtcAPI, {
+                extrinsic: userInterBtcAPI.api.tx.utility.batchAll([
+                    (
+                        await userInterBtcAPI.loans.lend(
+                            underlyingCurrency2,
+                            newMonetaryAmount(0.1, underlyingCurrency2, true)
+                        )
+                    ).extrinsic,
+                    (await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency)).extrinsic,
+                    (
+                        await userInterBtcAPI.loans.borrow(
+                            underlyingCurrency2,
+                            newMonetaryAmount(0.1, underlyingCurrency2, true)
+                        )
+                    ).extrinsic,
+                ]),
+                event: userInterBtcAPI.api.events.loans.Borrowed,
+            });
+
+            const rewardsAfterBorrow = await userInterBtcAPI.loans.getAccruedRewardsOfAccount(userAccountId);
+
+            expect(rewardsAfterBorrow.total.toBig().eq(2)).to.be.true;
+
+            // repay the loan to clean the state
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.repayAll(underlyingCurrency2));
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.withdrawAll(underlyingCurrency2));
         });
     });
 
