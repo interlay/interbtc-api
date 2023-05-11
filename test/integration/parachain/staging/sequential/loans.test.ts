@@ -30,7 +30,6 @@ describe("Loans", () => {
     let userInterBtcAPI: InterBtcApi;
     let user2InterBtcAPI: InterBtcApi;
     let sudoInterBtcAPI: InterBtcApi;
-    let TransactionAPI: DefaultTransactionAPI;
     let LoansAPI: DefaultLoansAPI;
 
     let userAccount: KeyringPair;
@@ -354,8 +353,72 @@ describe("Loans", () => {
     });
 
     describe("getAccruedRewardsOfAccount", () => {
-        it("should return correct amount of reward", () => {
-            // TODO
+        before(async function () {
+            const addRewardExtrinsic = sudoInterBtcAPI.api.tx.loans.addReward("100000000000000");
+            const updateRewardSpeedExtrinsic_1 = sudoInterBtcAPI.api.tx.loans.updateMarketRewardSpeed(
+                underlyingCurrencyId,
+                "1000000000000",
+                "0"
+            );
+            const updateRewardSpeedExtrinsic_2 = sudoInterBtcAPI.api.tx.loans.updateMarketRewardSpeed(
+                underlyingCurrencyId2,
+                "0",
+                "1000000000000"
+            );
+
+            const updateRewardSpeed = api.tx.sudo.sudo(
+                sudoInterBtcAPI.api.tx.utility.batchAll([updateRewardSpeedExtrinsic_1, updateRewardSpeedExtrinsic_2])
+            );
+
+            const rewardExtrinsic = sudoInterBtcAPI.api.tx.utility.batchAll([addRewardExtrinsic, updateRewardSpeed]);
+
+            const result = await DefaultTransactionAPI.sendLogged(
+                api,
+                sudoAccount,
+                rewardExtrinsic,
+                api.events.sudo.Sudid
+            );
+
+            expect(result.isCompleted, "Sudo event to add rewards not found").to.be.true;
+        });
+
+        it("should return correct amount of rewards", async () => {
+            await submitExtrinsic(
+                userInterBtcAPI,
+                await userInterBtcAPI.loans.lend(underlyingCurrency, newMonetaryAmount(1, underlyingCurrency, true)),
+                false
+            );
+
+            const rewards = await userInterBtcAPI.loans.getAccruedRewardsOfAccount(userAccountId);
+
+            expect(rewards.total.toBig().eq(1)).to.be.true;
+
+            await submitExtrinsic(userInterBtcAPI, {
+                extrinsic: userInterBtcAPI.api.tx.utility.batchAll([
+                    (
+                        await userInterBtcAPI.loans.lend(
+                            underlyingCurrency2,
+                            newMonetaryAmount(0.1, underlyingCurrency2, true)
+                        )
+                    ).extrinsic,
+                    (await userInterBtcAPI.loans.enableAsCollateral(underlyingCurrency)).extrinsic,
+                    (
+                        await userInterBtcAPI.loans.borrow(
+                            underlyingCurrency2,
+                            newMonetaryAmount(0.1, underlyingCurrency2, true)
+                        )
+                    ).extrinsic,
+                ]),
+                event: userInterBtcAPI.api.events.loans.Borrowed,
+            });
+
+            const rewardsAfterBorrow = await userInterBtcAPI.loans.getAccruedRewardsOfAccount(userAccountId);
+
+            expect(rewardsAfterBorrow.total.toBig().eq(2)).to.be.true;
+
+            // repay the loan to clean the state
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.repayAll(underlyingCurrency2));
+            await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.loans.withdrawAll(underlyingCurrency2));
         });
     });
 

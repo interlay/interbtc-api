@@ -78,7 +78,16 @@ type UndercollateralizedPosition = {
     borrowPositions: Array<BorrowPosition>;
 };
 
+interface AccruedRewards {
+    total: MonetaryAmount<CurrencyExt>;
+    perMarket: TickerToData<{
+        lend: MonetaryAmount<CurrencyExt> | null;
+        borrow: MonetaryAmount<CurrencyExt> | null;
+    }>;
+}
+
 export type {
+    AccruedRewards,
     LoanPosition,
     CollateralPosition,
     BorrowPosition,
