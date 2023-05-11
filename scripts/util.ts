@@ -8,7 +8,7 @@ export function constructProposal(api: ApiPromise, call: SubmittableExtrinsic<"p
     if (call.toU8a().byteLength <= 128) {
         return api.tx.democracy.propose({ Inline: call.toHex() }, deposit);
     } else {
-        const preImageSubmission = api.tx.preimage.notePreimage(call.toHex());
+        const preImageSubmission = api.tx.preimage.notePreimage(call.method.toHex());
         const innerProposal = api.tx.democracy.propose({ Lookup: {
             hash: call.hash.toHex(),
             len: call.toU8a().byteLength
