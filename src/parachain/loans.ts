@@ -92,6 +92,12 @@ export interface LoansAPI {
     getLendTokens(): Promise<Array<LendToken>>;
 
     /**
+     * @return Exchange rates for underlying currency -> lend token.
+     * Representing amount of lend token equal to 1 of underlying currency.
+     */
+    getLendTokenExchangeRates(): Promise<TickerToData<Big>>;
+
+    /**
      * Get accrued subsidy rewards amounts for the account.
      *
      * @param accountId Account to get rewards for
@@ -304,6 +310,21 @@ export class DefaultLoansAPI implements LoansAPI {
         return marketEntries.map(([currency, loansMarket]) =>
             DefaultLoansAPI.getLendTokenFromUnderlyingCurrency(currency, loansMarket.lendTokenId)
         );
+    }
+
+    async getLendTokenExchangeRates(): Promise<TickerToData<Big>> {
+        const exchangeRateEntries = await this.api.query.loans.exchangeRate.entries();
+        const underlyingCurrencies = await Promise.all(
+            exchangeRateEntries.map(([key]) => currencyIdToMonetaryCurrency(this.api, storageKeyToNthInner(key)))
+        );
+
+        return exchangeRateEntries.reduce((exchangeRates, [, rate], index) => {
+            const underlyingCurrencyTicker = underlyingCurrencies[index].ticker;
+            return {
+                ...exchangeRates,
+                [underlyingCurrencyTicker]: decodeFixedPointType(rate),
+            };
+        }, {});
     }
 
     async getBorrowerAccountIds(): Promise<Array<AccountId>> {
