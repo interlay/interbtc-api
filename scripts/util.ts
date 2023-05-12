@@ -5,13 +5,14 @@ import { SubmittableExtrinsic } from "@polkadot/api/types";
 export function constructProposal(api: ApiPromise, call: SubmittableExtrinsic<"promise">) {
     const deposit = api.consts.democracy.minimumDeposit.toNumber();
 
-    if (call.toU8a().byteLength <= 128) {
-        return api.tx.democracy.propose({ Inline: call.toHex() }, deposit);
+    let method = call.method;
+    if (method.toU8a().byteLength <= 128) {
+        return api.tx.democracy.propose({ Inline: method.toHex() }, deposit);
     } else {
-        const preImageSubmission = api.tx.preimage.notePreimage(call.method.toHex());
+        const preImageSubmission = api.tx.preimage.notePreimage(method.toHex());
         const innerProposal = api.tx.democracy.propose({ Lookup: {
-            hash: call.hash.toHex(),
-            len: call.toU8a().byteLength
+            hash: method.hash.toHex(),
+            len: method.toU8a().byteLength
         }}, deposit);
         return api.tx.utility.batchAll([preImageSubmission, innerProposal]);
     }
