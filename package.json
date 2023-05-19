@@ -54,7 +54,7 @@
   "dependencies": {
     "@interlay/esplora-btc-api": "0.4.0",
     "@interlay/interbtc-types": "1.12.0",
-    "@interlay/monetary-js": "0.7.2",
+    "@interlay/monetary-js": "0.7.3",
     "@polkadot/api": "9.14.2",
     "big.js": "6.1.1",
     "bitcoin-core": "^3.0.0",
