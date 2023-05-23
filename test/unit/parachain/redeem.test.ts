@@ -4,6 +4,7 @@ import { DefaultRedeemAPI, DefaultVaultsAPI, VaultsAPI } from "../../../src";
 import { newMonetaryAmount } from "../../../src/utils";
 import { ExchangeRate, KBtc, Kintsugi } from "@interlay/monetary-js";
 import Big from "big.js";
+import { NO_LIQUIDATION_VAULT_FOUND_REJECTION } from "../../../src/parachain/vaults";
 
 describe("DefaultRedeemAPI", () => {
     let redeemApi: DefaultRedeemAPI;
@@ -93,6 +94,28 @@ describe("DefaultRedeemAPI", () => {
                 expectedExchangeRate.mul(testMultiplier).toNumber(),
                 0.000001
             );
+        });
+    });
+
+    describe("getMaxBurnableTokens", () => {
+        afterEach(() => {
+            sinon.restore();
+            sinon.reset();
+        });
+
+        it("should return zero if getLiquidationVault rejects with no liquidation vault message", async () => {
+            // stub internal call to return no liquidation vault
+            stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).returns(Promise.reject(NO_LIQUIDATION_VAULT_FOUND_REJECTION));
+
+            const actualValue = await redeemApi.getMaxBurnableTokens(Kintsugi);
+            expect(actualValue.toBig().toNumber()).to.be.eq(0);
+        });
+
+        it("should propagate rejection if getLiquidationVault rejects with other message", async () => {
+            // stub internal call to return no liquidation vault
+            stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).returns(Promise.reject("foobar happened here"));
+
+            await expect(redeemApi.getMaxBurnableTokens(Kintsugi)).to.be.rejectedWith("foobar happened here");
         });
     });
 });

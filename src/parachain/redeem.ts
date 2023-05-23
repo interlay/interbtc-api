@@ -12,7 +12,7 @@ import {
     InterbtcPrimitivesRedeemRedeemRequest,
 } from "@polkadot/types/lookup";
 
-import { VaultsAPI } from "./vaults";
+import { NO_LIQUIDATION_VAULT_FOUND_REJECTION, VaultsAPI } from "./vaults";
 import {
     decodeBtcAddress,
     decodeFixedPointType,
@@ -27,7 +27,7 @@ import { allocateAmountsToVaults } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
-import { CollateralCurrencyExt, ExtrinsicData, Redeem, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, ExtrinsicData, Redeem, SystemVaultExt, WrappedCurrency } from "../types";
 import { SystemAPI } from "./system";
 
 /**
@@ -332,7 +332,15 @@ export class DefaultRedeemAPI implements RedeemAPI {
     }
 
     async getMaxBurnableTokens(collateralCurrency: CollateralCurrencyExt): Promise<MonetaryAmount<WrappedCurrency>> {
-        const liquidationVault = await this.vaultsAPI.getLiquidationVault(collateralCurrency);
+        const liquidationVault: SystemVaultExt | null = await this.vaultsAPI.getLiquidationVault(collateralCurrency)
+            // method rejects if no vault was found, wrap as null    
+            .catch((reason) => (reason === NO_LIQUIDATION_VAULT_FOUND_REJECTION) ? null : Promise.reject(reason));
+
+        if (liquidationVault === null) {
+            // no liquidation vault exists, therefore, no burnable tokens)
+            return BitcoinAmount.zero();
+        }
+
         // This should never be below 0, but still...
         const burnableTokens = liquidationVault.issuedTokens.sub(liquidationVault.toBeRedeemedTokens);
         if (burnableTokens.lte(BitcoinAmount.zero())) {

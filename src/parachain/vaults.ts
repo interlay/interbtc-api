@@ -410,6 +410,8 @@ export interface VaultsAPI {
     ): Promise<Big | undefined>;
 }
 
+export const NO_LIQUIDATION_VAULT_FOUND_REJECTION = "No liquidation vault found";
+
 export class DefaultVaultsAPI implements VaultsAPI {
     constructor(
         private api: ApiPromise,
@@ -657,8 +659,9 @@ export class DefaultVaultsAPI implements VaultsAPI {
         const vaultCurrencyPair = newVaultCurrencyPair(this.api, collateralCurrency, this.wrappedCurrency);
         const liquidationVault = await this.api.query.vaultRegistry.liquidationVault(vaultCurrencyPair);
         if (!liquidationVault.isSome) {
-            return Promise.reject("System vault could not be fetched");
+            return Promise.reject(NO_LIQUIDATION_VAULT_FOUND_REJECTION);
         }
+
         return await parseSystemVault(
             this.api,
             liquidationVault.value as VaultRegistrySystemVault,
