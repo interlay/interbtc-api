@@ -5,7 +5,7 @@ import {
     AddressApi,
     UTXO,
     VOut,
-    Transaction,
+    Transaction as ElectrsTransaction,
     ScripthashApi,
     Configuration,
 } from "@interlay/esplora-btc-api";
@@ -15,6 +15,32 @@ import { TypeRegistry } from "@polkadot/types";
 import { Bytes } from "@polkadot/types";
 import { Bitcoin, BitcoinAmount } from "@interlay/monetary-js";
 import { atomicToBaseAmount } from "../utils";
+import { Transaction as BitcoinTransaction, Block as BitcoinBlock } from "bitcoinjs-lib";
+import { BufferReader } from "bitcoinjs-lib/types/bufferutils";
+
+export class BitcoinMerkleProof {
+    blockHeader?: BitcoinBlock;
+    transactionsCount?: number;
+    hashes?: Array<string>;
+    flagBits?: Array<boolean>;
+
+    static fromBuffer(buffer: Buffer): BitcoinMerkleProof {
+        const bufferReader = new BufferReader(buffer);
+        const merkleProof = new BitcoinMerkleProof();
+
+        const rawBlockHeader = bufferReader.readSlice(80);
+        merkleProof.blockHeader = BitcoinBlock.fromBuffer(rawBlockHeader);
+        merkleProof.transactionsCount = bufferReader.readVarInt();
+        // merkleProof.hashes = bufferReader.readVarSlice();
+        // merkleProof.flagBits = bufferReader.readVarSlice();
+
+        return merkleProof;
+    }
+
+    static fromHex(hex: string): BitcoinMerkleProof {
+        return BitcoinMerkleProof.fromBuffer(Buffer.from(hex, 'hex'));
+    }
+}
 
 export const MAINNET_ESPLORA_BASE_PATH = "https://btc-mainnet.interlay.io";
 export const TESTNET_ESPLORA_BASE_PATH = "https://btc-testnet.interlay.io";
@@ -133,7 +159,7 @@ export interface ElectrsAPI {
      *
      * @returns A Bitcoin Transaction object
      */
-    getTx(txid: string): Promise<Transaction>;
+    getTx(txid: string): Promise<ElectrsTransaction>;
     /**
      * Fetch the Bitcoin UTXO amount that matches the given TxId and recipient
      *
@@ -154,9 +180,9 @@ export interface ElectrsAPI {
      *
      * @param txid A Bitcoin transaction ID
      *
-     * @returns A tuple of Bytes object, representing [merkleProof, rawTx]
+     * @returns A tuple representing [merkleProof, transaction]
      */
-    getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]>;
+    getParsedExecutionParameters(txid: string): Promise<[BitcoinMerkleProof, BitcoinTransaction]>;
     /**
      * Return a promise that either resolves to the first txid with the given opreturn `data`,
      * or rejects if the `timeout` has elapsed.
@@ -219,7 +245,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return this.getData(this.txApi.getTxMerkleBlockProof(txid));
     }
 
-    getTx(txid: string): Promise<Transaction> {
+    getTx(txid: string): Promise<ElectrsTransaction> {
         return this.getData(this.txApi.getTx(txid));
     }
 
@@ -323,7 +349,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         const opReturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
         const hash = bitcoinjs.crypto.sha256(opReturnBuffer).toString("hex");
 
-        let txs: Transaction[] = [];
+        let txs: ElectrsTransaction[] = [];
         try {
             // TODO: this should be paged
             txs = await this.getData(this.scripthashApi.getTxsByScripthash(hash));
@@ -440,19 +466,14 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return (await this.getTxStatus(txid)).block_height;
     }
 
-    async getParsedExecutionParameters(txid: string): Promise<[Bytes, Bytes]> {
-        const [unparsedMerkleProof, unparsedRawTx] = await Promise.all([
+
+    async getParsedExecutionParameters(txid: string): Promise<[BitcoinMerkleProof, BitcoinTransaction]> {
+        const [merkleProofHex, txHex] = await Promise.all([
             this.getMerkleProof(txid),
             this.getRawTransaction(txid),
         ]);
-        // To avoid taking an ApiPromise object as a constructor parameter,
-        // use the default TypeRegistry (without custom type metadata),
-        // because the Bytes type instantiated is provided by default.
-        const registry = new TypeRegistry();
 
-        const merkleProof = registry.createType("Bytes", "0x" + unparsedMerkleProof);
-        const rawTx = registry.createType("Bytes", "0x" + unparsedRawTx);
-        return [merkleProof, rawTx];
+        return [BitcoinMerkleProof.fromHex(merkleProofHex), BitcoinTransaction.fromHex(txHex)];
     }
 
     getRawTransaction(txid: string): Promise<string> {

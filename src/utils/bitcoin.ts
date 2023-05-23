@@ -8,6 +8,7 @@ import { TypeRegistry, Bytes } from "@polkadot/types";
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
 import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "../utils";
+import { Transaction } from "../types";
 
 export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
@@ -93,11 +94,35 @@ export function decodeBtcAddress(
 export async function getTxProof(
     electrsAPI: ElectrsAPI,
     btcTxId: string
-): Promise<{ merkleProof: Bytes; rawTx: Bytes }> {
-    const [merkleProof, rawTx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
+): Promise<{
+    merkleProof: Bytes;
+    transaction: Transaction;
+    lengthBound: number;
+}> {
+    const [merkleProof, tx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
     return {
         merkleProof,
-        rawTx,
+        transaction: {
+            version: tx.version,
+            inputs: tx.ins.map(txIn => {
+                return {
+                    source: 'Coinbase',
+                    script: txIn.script,
+                    sequence: txIn.sequence,
+                    witness: txIn.witness,
+                };
+            }),
+            outputs: tx.outs.map(txOut => {
+                return {
+                    value: txOut.value,
+                    script: {
+                        bytes: txOut.script,
+                    }
+                };
+            }),
+            lockAt: 'BlockHeight',
+        },
+        lengthBound: tx.byteLength(),
     };
 }
 

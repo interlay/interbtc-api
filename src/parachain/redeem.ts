@@ -224,7 +224,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
         private oracleAPI: OracleAPI,
         private transactionAPI: TransactionAPI,
         private systemAPI: SystemAPI
-    ) {}
+    ) { }
 
     async request(
         amount: MonetaryAmount<WrappedCurrency>,
@@ -284,7 +284,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
         return this.api.tx.redeem.executeRedeem(
             parsedRequestId,
             txInclusionDetails.merkleProof,
-            txInclusionDetails.rawTx
+            txInclusionDetails.transaction,
+            txInclusionDetails.lengthBound,
         );
     }
 

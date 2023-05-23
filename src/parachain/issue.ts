@@ -186,7 +186,7 @@ export class DefaultIssueAPI implements IssueAPI {
         private wrappedCurrency: WrappedCurrency,
         private vaultsAPI: VaultsAPI,
         private transactionAPI: TransactionAPI
-    ) {}
+    ) { }
 
     async getRequestLimits(
         vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
@@ -273,7 +273,8 @@ export class DefaultIssueAPI implements IssueAPI {
         return this.api.tx.issue.executeIssue(
             parsedRequestId,
             txInclusionDetails.merkleProof,
-            txInclusionDetails.rawTx
+            txInclusionDetails.transaction,
+            txInclusionDetails.lengthBound,
         );
     }
 
