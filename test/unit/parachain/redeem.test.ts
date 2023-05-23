@@ -103,7 +103,7 @@ describe("DefaultRedeemAPI", () => {
             sinon.reset();
         });
 
-        it("should return zero when no getLiquidationVault rejects with no liquidation vault message", async () => {
+        it("should return zero if getLiquidationVault rejects with no liquidation vault message", async () => {
             // stub internal call to return no liquidation vault
             stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).returns(Promise.reject(NO_LIQUIDATION_VAULT_FOUND_REJECTION));
 
