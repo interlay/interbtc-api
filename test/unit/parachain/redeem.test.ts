@@ -2,7 +2,7 @@ import { expect } from "../../chai";
 import sinon from "sinon";
 import { DefaultRedeemAPI, DefaultVaultsAPI, VaultsAPI } from "../../../src";
 import { newMonetaryAmount } from "../../../src/utils";
-import { ExchangeRate, KBtc, Kintsugi} from "@interlay/monetary-js";
+import { ExchangeRate, KBtc, Kintsugi } from "@interlay/monetary-js";
 import Big from "big.js";
 import { NO_LIQUIDATION_VAULT_FOUND_REJECTION } from "../../../src/parachain/vaults";
 
