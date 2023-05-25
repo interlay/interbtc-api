@@ -1,12 +1,12 @@
 export type BitcoinNetwork = "mainnet" | "testnet" | "regtest";
 
 export type BlockHeader = {
-    merkleRoot: string,
-    target: number, // U256 
+    merkleRoot: Uint8Array,
+    target: Uint8Array, // u256
     timestamp: number,
     version: number,
-    hash_: string,
-    hashPrevBlock: string,
+    hash_: Uint8Array,
+    hashPrevBlock: Uint8Array,
     nonce: number,
 }
 
@@ -14,7 +14,7 @@ export type MerkleProof = {
     blockHeader: BlockHeader,
     flagBits: Array<boolean>,
     transactionsCount: number,
-    hashes: Array<string>
+    hashes: Array<Uint8Array>
 };
 
 export type Transaction = {

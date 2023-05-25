@@ -8,7 +8,7 @@ import { TypeRegistry, Bytes } from "@polkadot/types";
 import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
 import { sleep, addHexPrefix, reverseEndiannessHex, SLEEP_TIME_MS, BitcoinCoreClient } from "../utils";
-import { Transaction } from "../types";
+import { Transaction, MerkleProof, BlockHeader } from "../types";
 
 export function encodeBtcAddress(address: BitcoinAddress, network: bitcoinjs.Network): string {
     let btcAddress: string | undefined;
@@ -90,18 +90,36 @@ export function decodeBtcAddress(
 
     throw new Error("Unable to decode address");
 }
+export function qwe() {
+    console.log("qwe");
+}
 
 export async function getTxProof(
     electrsAPI: ElectrsAPI,
     btcTxId: string
 ): Promise<{
-    merkleProof: Bytes;
+    merkleProof: MerkleProof;
     transaction: Transaction;
     lengthBound: number;
 }> {
-    const [merkleProof, tx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
+    const [proof, tx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
+    console.log(proof.blockHeader.toString());
+    console.log(JSON.stringify(proof.blockHeader));
     return {
-        merkleProof,
+        merkleProof: {
+            blockHeader: {
+                merkleRoot: proof.blockHeader.merkleRoot!,
+                target: bitcoinjs.Block.calculateTarget(proof.blockHeader.bits),
+                timestamp: proof.blockHeader.timestamp,
+                version: proof.blockHeader.version,
+                hash_: proof.blockHeader.getHash(),
+                hashPrevBlock: proof.blockHeader.prevHash!,
+                nonce: proof.blockHeader.nonce,
+            },
+            flagBits: proof.flagBits,
+            transactionsCount: proof.transactionsCount,
+            hashes: proof.hashes,
+        },
         transaction: {
             version: tx.version,
             inputs: tx.ins.map(txIn => {

@@ -18,6 +18,7 @@
             "@polkadot/api/augment": ["src/interfaces/augment-api.ts"],
             "@polkadot/types/augment": ["src/interfaces/augment-types.ts"],
             "@polkadot/types/lookup": ["src/interfaces/types-lookup.ts"],
+            "bitcoinjs-lib/src/bufferutils": ["node_modules/bitcoinjs-lib/types/bufferutils"],
             "@interlay/interbtc-api/*": ["src/*"]
         }
     },

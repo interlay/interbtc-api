@@ -16,29 +16,66 @@ import { Bytes } from "@polkadot/types";
 import { Bitcoin, BitcoinAmount } from "@interlay/monetary-js";
 import { atomicToBaseAmount } from "../utils";
 import { Transaction as BitcoinTransaction, Block as BitcoinBlock } from "bitcoinjs-lib";
-import { BufferReader } from "bitcoinjs-lib/types/bufferutils";
+import { BufferReader } from "bitcoinjs-lib/src/bufferutils";
 
 export class BitcoinMerkleProof {
-    blockHeader?: BitcoinBlock;
-    transactionsCount?: number;
-    hashes?: Array<string>;
-    flagBits?: Array<boolean>;
-
-    static fromBuffer(buffer: Buffer): BitcoinMerkleProof {
+    blockHeader: BitcoinBlock;
+    transactionsCount: number;
+    hashes: Array<Buffer>;
+    flagBits: Array<boolean>;
+    
+    constructor(buffer: Buffer) {
+    // }
+    // static fromBuffer(buffer: Buffer): BitcoinMerkleProof {
         const bufferReader = new BufferReader(buffer);
-        const merkleProof = new BitcoinMerkleProof();
 
+        // The serialization format:
+        //  - uint32     total_transactions (4 bytes)
+        //  - varint     number of hashes   (1-3 bytes)
+        //  - uint256[]  hashes in depth-first order (<= 32*N bytes)
+        //  - varint     number of bytes of flag bits (1-3 bytes)
+        //  - byte[]     flag bits, packed per 8 in a byte, least significant bit first (<= 2*N-1 bits)
         const rawBlockHeader = bufferReader.readSlice(80);
-        merkleProof.blockHeader = BitcoinBlock.fromBuffer(rawBlockHeader);
-        merkleProof.transactionsCount = bufferReader.readVarInt();
-        // merkleProof.hashes = bufferReader.readVarSlice();
-        // merkleProof.flagBits = bufferReader.readVarSlice();
+        this.blockHeader = BitcoinBlock.fromBuffer(rawBlockHeader);
+        this.transactionsCount = bufferReader.readUInt32();
+        const hashesCount = bufferReader.readVarInt();
 
-        return merkleProof;
+        const hashes = [];
+        for (let i = 0; i < hashesCount; i++) {
+            const slice = bufferReader.readSlice(32); // H256Le
+            hashes.push(slice);
+        }
+        this.hashes = hashes;
+
+        const flagByteCount = bufferReader.readVarInt();
+        const flagBits = [];
+        for (let i = 0; i < flagByteCount; i++) {
+            const byte = bufferReader.readUInt8();
+            for (let j = 0; j < 8; j++) {
+                const mask = 1 << j;
+                const bit = (byte & mask) != 0;
+                flagBits.push(bit);
+            }
+        }
+        this.flagBits = flagBits;
     }
+// 
+//     static parseBoolVec(bufferReader: BufferReader): Array<boolean> {
+//         const flagByteCount = bufferReader.readVarInt();
+//         const flagBits = [];
+//         for (let i = 0; i < flagByteCount; i++) {
+//             const byte = bufferReader.readUInt8();
+//             for (let j = 0; j < 8; j++) {
+//                 const mask = 1 << i;
+//                 const bit = (byte & mask) != 0;
+//                 flagBits.push(bit);
+//             }
+//         }
+//         return flagBits;
+//     }
 
     static fromHex(hex: string): BitcoinMerkleProof {
-        return BitcoinMerkleProof.fromBuffer(Buffer.from(hex, 'hex'));
+        return new BitcoinMerkleProof(Buffer.from(hex, 'hex'));
     }
 }
 

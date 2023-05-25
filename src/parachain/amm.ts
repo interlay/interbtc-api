@@ -783,7 +783,7 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         const lpTokenCurrencyId = newCurrencyId(this.api, pool.lpToken);
-        const farmDepositExtrinsic = this.api.tx.farming.deposit(lpTokenCurrencyId);
+        const farmDepositExtrinsic = this.api.tx.farming.deposit(lpTokenCurrencyId, 123);
         const batchedExtrinsics = this.api.tx.utility.batchAll([depositExtrinsic, farmDepositExtrinsic]);
 
         return { extrinsic: batchedExtrinsics, event: depositEvent };
@@ -901,7 +901,7 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         const lpTokenCurrencyId = newCurrencyId(this.api, pool.lpToken);
-        const farmWithdrawalExtrinsic = this.api.tx.farming.withdraw(lpTokenCurrencyId, amount.toString(true));
+        const farmWithdrawalExtrinsic = this.api.tx.farming.withdraw(lpTokenCurrencyId, amount.toString(true), 123);
 
         const batchedExtrinsics = this.api.tx.utility.batchAll([farmWithdrawalExtrinsic, withdrawalExtrinsic]);
 
