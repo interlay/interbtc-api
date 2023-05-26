@@ -1,9 +1,6 @@
 name: Generate js docs
 
-on:
-  push:
-    branches:
-      - master
+on: push
 
 jobs:
   publish:
@@ -21,7 +18,7 @@ jobs:
       - run: sh generate_docs
 
       - name: Deploy to GitHub Pages
-        if: success()
+        if: github.ref == 'refs/heads/master'
         uses: crazy-max/ghaction-github-pages@v3
         with:
           target_branch: gh-pages
