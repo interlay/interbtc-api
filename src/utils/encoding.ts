@@ -34,7 +34,7 @@ import {
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
 import { NumberOrHex, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
-import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, CurrencyExt, HexString, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { VaultsAPI } from "../parachain";
 import { AddressOrPair } from "@polkadot/api/types";
@@ -396,4 +396,8 @@ export function monetaryAmountToRawString(amount: MonetaryAmount<CurrencyExt>): 
 
 export function newExtrinsicStatus(api: ApiPromise, type: ExtrinsicStatus["type"]): ExtrinsicStatus {
     return api.createType("ExtrinsicStatus", type);
+}
+
+export function bufferToHexString(buffer: Buffer): HexString {
+    return `0x${buffer.toString("hex")}`;
 }

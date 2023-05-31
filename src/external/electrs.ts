@@ -10,106 +10,15 @@ import {
     Configuration,
 } from "@interlay/esplora-btc-api";
 import { AxiosResponse } from "axios";
-import * as bitcoinjs from "bitcoinjs-lib";
-import { TypeRegistry } from "@polkadot/types";
-import { Bytes } from "@polkadot/types";
+import { script, crypto, opcodes } from "bitcoinjs-lib";
 import { Bitcoin, BitcoinAmount } from "@interlay/monetary-js";
-import { atomicToBaseAmount } from "../utils";
-import { Transaction as BitcoinTransaction, Block as BitcoinBlock } from "bitcoinjs-lib";
-import { BufferReader } from "bitcoinjs-lib/src/bufferutils";
-
-export class BitcoinMerkleProof {
-    blockHeader: BitcoinBlock;
-    transactionsCount: number;
-    hashes: Array<Buffer>;
-    flagBits: Array<boolean>;
-    
-    constructor(buffer: Buffer) {
-    // }
-    // static fromBuffer(buffer: Buffer): BitcoinMerkleProof {
-        const bufferReader = new BufferReader(buffer);
-
-        // The serialization format:
-        //  - uint32     total_transactions (4 bytes)
-        //  - varint     number of hashes   (1-3 bytes)
-        //  - uint256[]  hashes in depth-first order (<= 32*N bytes)
-        //  - varint     number of bytes of flag bits (1-3 bytes)
-        //  - byte[]     flag bits, packed per 8 in a byte, least significant bit first (<= 2*N-1 bits)
-        const rawBlockHeader = bufferReader.readSlice(80);
-        this.blockHeader = BitcoinBlock.fromBuffer(rawBlockHeader);
-        this.transactionsCount = bufferReader.readUInt32();
-        const hashesCount = bufferReader.readVarInt();
-
-        const hashes = [];
-        for (let i = 0; i < hashesCount; i++) {
-            const slice = bufferReader.readSlice(32); // H256Le
-            hashes.push(slice);
-        }
-        this.hashes = hashes;
-
-        const flagByteCount = bufferReader.readVarInt();
-        const flagBits = [];
-        for (let i = 0; i < flagByteCount; i++) {
-            const byte = bufferReader.readUInt8();
-            for (let j = 0; j < 8; j++) {
-                const mask = 1 << j;
-                const bit = (byte & mask) != 0;
-                flagBits.push(bit);
-            }
-        }
-        this.flagBits = flagBits;
-    }
-// 
-//     static parseBoolVec(bufferReader: BufferReader): Array<boolean> {
-//         const flagByteCount = bufferReader.readVarInt();
-//         const flagBits = [];
-//         for (let i = 0; i < flagByteCount; i++) {
-//             const byte = bufferReader.readUInt8();
-//             for (let j = 0; j < 8; j++) {
-//                 const mask = 1 << i;
-//                 const bit = (byte & mask) != 0;
-//                 flagBits.push(bit);
-//             }
-//         }
-//         return flagBits;
-//     }
-
-    static fromHex(hex: string): BitcoinMerkleProof {
-        return new BitcoinMerkleProof(Buffer.from(hex, 'hex'));
-    }
-}
+import { atomicToBaseAmount, BitcoinMerkleProof } from "../utils";
+import { Transaction as BitcoinTransaction } from "bitcoinjs-lib";
+import { TxStatus } from "../types";
 
 export const MAINNET_ESPLORA_BASE_PATH = "https://btc-mainnet.interlay.io";
 export const TESTNET_ESPLORA_BASE_PATH = "https://btc-testnet.interlay.io";
 export const REGTEST_ESPLORA_BASE_PATH = "http://localhost:3002";
-
-export type TxStatus = {
-    confirmed: boolean;
-    confirmations: number;
-    blockHeight?: number;
-    blockHash?: string;
-};
-
-export type TxOutput = {
-    scriptpubkey: string;
-    scriptpubkeyAsm: string;
-    scriptpubkeyType: string;
-    scriptpubkeyAddress: string;
-    value: number;
-};
-
-export type TxInput = {
-    txId: string;
-    vout: number;
-    isCoinbase: boolean;
-    scriptsig: string;
-    scriptsigAsm: string;
-    innerRedeemscriptAsm: string;
-    innerWitnessscriptAsm: string;
-    sequence: number;
-    witness: string[];
-    prevout: TxOutput;
-};
 
 /**
  * Bitcoin Core API
@@ -383,8 +292,8 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         if (data.length !== 32) {
             return Promise.reject(new Error("Requires a 32 byte hash as OP_RETURN"));
         }
-        const opReturnBuffer = bitcoinjs.script.compile([bitcoinjs.opcodes.OP_RETURN, data]);
-        const hash = bitcoinjs.crypto.sha256(opReturnBuffer).toString("hex");
+        const opReturnBuffer = script.compile([opcodes.OP_RETURN, data]);
+        const hash = crypto.sha256(opReturnBuffer).toString("hex");
 
         let txs: ElectrsTransaction[] = [];
         try {
@@ -503,12 +412,8 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         return (await this.getTxStatus(txid)).block_height;
     }
 
-
     async getParsedExecutionParameters(txid: string): Promise<[BitcoinMerkleProof, BitcoinTransaction]> {
-        const [merkleProofHex, txHex] = await Promise.all([
-            this.getMerkleProof(txid),
-            this.getRawTransaction(txid),
-        ]);
+        const [merkleProofHex, txHex] = await Promise.all([this.getMerkleProof(txid), this.getRawTransaction(txid)]);
 
         return [BitcoinMerkleProof.fromHex(merkleProofHex), BitcoinTransaction.fromHex(txHex)];
     }

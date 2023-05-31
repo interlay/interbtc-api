@@ -16,7 +16,7 @@ import { FaucetClient } from "./clients";
 import { BTCRelayAPI, DefaultBTCRelayAPI } from "./parachain/btc-relay";
 import { DefaultReplaceAPI, ReplaceAPI } from "./parachain/replace";
 import { Network, networks } from "bitcoinjs-lib";
-import { BitcoinNetwork } from "./types/bitcoinTypes";
+import { BitcoinNetwork } from "./types/bitcoin";
 import { DefaultRewardsAPI, RewardsAPI } from "./parachain/rewards";
 import { DefaultTransactionAPI, TransactionAPI } from "./parachain/transaction";
 import { GovernanceCurrency, WrappedCurrency } from "./types";

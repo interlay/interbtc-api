@@ -14,7 +14,6 @@ import {
     decodeFixedPointType,
     newMonetaryAmount,
     parseSystemVault,
-    getTxProof,
     newCurrencyId,
     newVaultId,
     newVaultCurrencyPair,
@@ -414,7 +413,7 @@ export class DefaultVaultsAPI implements VaultsAPI {
         private rewardsAPI: RewardsAPI,
         private systemAPI: SystemAPI,
         private transactionAPI: TransactionAPI
-    ) { }
+    ) {}
 
     getWrappedCurrency(): WrappedCurrency {
         return this.wrappedCurrency;
