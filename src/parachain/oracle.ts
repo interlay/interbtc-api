@@ -19,6 +19,8 @@ import {
 import { UnsignedFixedPoint } from "../interfaces/default";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types/currency";
 import { ExtrinsicData } from "../types";
+import { currencyIdToMonetaryCurrency, isLendToken } from "../utils/currency";
+import { newCurrencyId } from "../utils/encoding";
 
 /**
  * @category BTC Bridge
@@ -96,6 +98,26 @@ export class DefaultOracleAPI implements OracleAPI {
         if (isCurrencyEqual(currency, this.wrappedCurrency)) {
             return new ExchangeRate<WrappedCurrency, CurrencyExt>(currency, currency, new Big(1));
         }
+
+        if (isLendToken(currency)) {
+            const lendTokenId = newCurrencyId(this.api, currency);
+            const underlyingCcyId = await this.api.query.loans.underlyingAssetId(lendTokenId);
+            
+            const rawLendToUnderlying = (await this.api.query.loans.exchangeRate(underlyingCcyId)) as UnsignedFixedPoint;
+            // multiply this rate with lendtoken to get underlying amount
+            const lendToUnderRate = decodeFixedPointType(rawLendToUnderlying);
+            
+            const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCcyId.unwrap());
+            const btcUnderlyingRate = await this.getExchangeRate(underlyingCurrency);
+
+            // multiple underlying amount with this rate to get btc amount (get normalized rate instead of atomic amounts rate)
+            const underToBtcRate = btcUnderlyingRate.toCounter(new MonetaryAmount(Bitcoin, 1)).toBig();
+            const lendToBtcRate = lendToUnderRate.mul(underToBtcRate);
+
+            // final rate is normalized (base unit vs base unit), construct accordingly
+            return new ExchangeRate(this.wrappedCurrency, currency, lendToBtcRate);
+        }
+
         const oracleKey = createExchangeRateOracleKey(this.api, currency);
 
         const encodedRawRate = unwrapRawExchangeRate(await this.api.query.oracle.aggregate(oracleKey));
