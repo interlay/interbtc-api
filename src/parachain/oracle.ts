@@ -108,10 +108,7 @@ export class DefaultOracleAPI implements OracleAPI {
             const lendToUnderRate = decodeFixedPointType(rawLendToUnderlying);
             
             const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCcyId.unwrap());
-            const btcUnderlyingRate = await this.getExchangeRate(underlyingCurrency);
-
-            // multiply btc amount with this rate to get underlying amount (get normalized rate instead of atomic amounts rate)
-            const btcToUnderRate = btcUnderlyingRate.toCounter(new MonetaryAmount(Bitcoin, 1)).toBig();
+            const btcToUnderRate = await this.convertWrappedToCurrency(new MonetaryAmount(Bitcoin, 1), underlyingCurrency).toBig();
             const btcToLendRate = btcToUnderRate.div(lendToUnderRate);
 
             // final rate is normalized (base unit vs base unit), construct accordingly
