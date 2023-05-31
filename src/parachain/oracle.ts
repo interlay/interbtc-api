@@ -110,12 +110,12 @@ export class DefaultOracleAPI implements OracleAPI {
             const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCcyId.unwrap());
             const btcUnderlyingRate = await this.getExchangeRate(underlyingCurrency);
 
-            // multiple underlying amount with this rate to get btc amount (get normalized rate instead of atomic amounts rate)
-            const underToBtcRate = btcUnderlyingRate.toCounter(new MonetaryAmount(Bitcoin, 1)).toBig();
-            const lendToBtcRate = lendToUnderRate.mul(underToBtcRate);
+            // multiply btc amount with this rate to get underlying amount (get normalized rate instead of atomic amounts rate)
+            const btcToUnderRate = btcUnderlyingRate.toCounter(new MonetaryAmount(Bitcoin, 1)).toBig();
+            const btcToLendRate = btcToUnderRate.div(lendToUnderRate);
 
             // final rate is normalized (base unit vs base unit), construct accordingly
-            return new ExchangeRate(this.wrappedCurrency, currency, lendToBtcRate);
+            return new ExchangeRate(this.wrappedCurrency, currency, btcToLendRate);
         }
 
         const oracleKey = createExchangeRateOracleKey(this.api, currency);
