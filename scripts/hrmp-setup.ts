@@ -6,6 +6,9 @@ import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
 
 import { SubmittableExtrinsic } from "@polkadot/api/types";
+
+import { constructProposal, printDiscordProposal, toUrl } from "./util";
+
 import { assert } from "console";
 import { BN } from "bn.js";
 
@@ -206,43 +209,6 @@ async function maybeSubmitProposal(
     await transactionAPI.sendLogged(batched, undefined);
 
     rl.close();
-}
-
-function toUrl(extrinsic: SubmittableExtrinsic<"promise">, endpoint: string) {
-    return "https://polkadot.js.org/apps/?rpc=" +
-        encodeURIComponent(endpoint) +
-        "#/extrinsics/decode/" +
-        extrinsic.method.toHex();
-}
-
-function constructProposal(api: ApiPromise, extrinsic: SubmittableExtrinsic<"promise">) {
-    const deposit = api.consts.democracy.minimumDeposit.toNumber();
-    const preImageSubmission = api.tx.democracy.notePreimage(extrinsic.method.toHex());
-    const proposal = api.tx.democracy.propose(extrinsic.method.hash.toHex(), deposit);
-    const batched = api.tx.utility.batchAll([preImageSubmission, proposal]);
-    return batched
-}
-
-function printDiscordProposal(
-    description: string,
-    extrinsic: SubmittableExtrinsic<"promise">,
-    endpoint: string,
-    api: ApiPromise,
-) {
-    const proposal = constructProposal(api, extrinsic);
-    const invocation = process.argv.map(function (x) { return x.substring(x.lastIndexOf('/') + 1) }).join(" ");
-
-    console.log("");
-    console.log("");
-    console.log("**" + description + "**");
-    console.log("");
-    console.log("**Extrinsic:**", toUrl(extrinsic, endpoint));
-    console.log("");
-    console.log("**Proposal:**", toUrl(proposal, endpoint));
-    console.log("");
-    console.log("_Generated with_: `" + invocation + "`");
-    console.log("");
-    console.log("");
 }
 
 async function main(): Promise<void> {
