@@ -28,7 +28,8 @@ async function main(): Promise<void> {
     const transactionAPI = new DefaultTransactionAPI(api, userKeyring);
 
     const proposal = api.tx.parachainSystem.authorizeUpgrade(
-        "0x72e1663c5c98310ff9654700738b4f2987a7d8d9d4ccbfd39babe98517ddd7eb"
+        "0x72e1663c5c98310ff9654700738b4f2987a7d8d9d4ccbfd39babe98517ddd7eb",
+        true
     );
     const proposalData = proposal.method.toHex();
     const proposalHash = proposal.method.hash.toHex();

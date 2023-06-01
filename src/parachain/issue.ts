@@ -23,7 +23,7 @@ import {
 } from "../utils";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
-import { CollateralCurrencyExt, ExtrinsicData, Issue, WrappedCurrency } from "../types";
+import { CollateralCurrencyExt, CurrencyExt, ExtrinsicData, Issue, WrappedCurrency } from "../types";
 import { currencyIdToMonetaryCurrency } from "../utils";
 
 export type IssueLimits = {
@@ -64,6 +64,7 @@ export interface IssueAPI {
      * @param atomic (optional) Whether the issue request should be handled atomically or not. Only makes a difference
      * if more than one vault is needed to fulfil it. Defaults to false.
      * @param availableVaults (optional) A list of all vaults usable for issue. If not provided, will fetch from the parachain.
+     * @param griefingCollateralCurrency (optional) Currency in which griefing collateral will be locked.
      * @returns {Promise<ExtrinsicData>} An extrinsic with event.
      */
     request(
@@ -71,7 +72,8 @@ export interface IssueAPI {
         vaultAccountId?: AccountId,
         collateralCurrency?: CollateralCurrencyExt,
         atomic?: boolean,
-        availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
+        availableVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
+        griefingCollateralCurrency?: CurrencyExt
     ): Promise<ExtrinsicData>;
 
     /**
@@ -186,7 +188,7 @@ export class DefaultIssueAPI implements IssueAPI {
         private wrappedCurrency: WrappedCurrency,
         private vaultsAPI: VaultsAPI,
         private transactionAPI: TransactionAPI
-    ) { }
+    ) {}
 
     async getRequestLimits(
         vaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
@@ -248,9 +250,15 @@ export class DefaultIssueAPI implements IssueAPI {
 
     buildRequestIssueExtrinsic(
         vaultId: InterbtcPrimitivesVaultId,
-        amount: MonetaryAmount<WrappedCurrency>
+        amount: MonetaryAmount<WrappedCurrency>,
+        griefingCollateralCurrency?: CurrencyExt
     ): SubmittableExtrinsic<"promise", ISubmittableResult> {
-        return this.api.tx.issue.requestIssue(amount.toString(true), vaultId);
+        // NOTE: If griefing collateral currency is not used, native currency is required as griefing collateral.
+        const griefingCollateralCurrencyId = griefingCollateralCurrency
+            ? newCurrencyId(this.api, griefingCollateralCurrency)
+            : this.api.consts.currency.getNativeCurrencyId;
+
+        return this.api.tx.issue.requestIssue(amount.toString(true), vaultId, griefingCollateralCurrencyId);
     }
 
     requestAdvanced(
@@ -274,7 +282,7 @@ export class DefaultIssueAPI implements IssueAPI {
             parsedRequestId,
             txInclusionDetails.merkleProof,
             txInclusionDetails.transaction,
-            txInclusionDetails.lengthBound,
+            txInclusionDetails.lengthBound
         );
     }
 
