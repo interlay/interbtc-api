@@ -16,6 +16,7 @@ import {
     bufferToHexString,
 } from "../utils";
 import {
+    HexString,
     MerkleProof,
     Transaction,
     TransactionInput,
@@ -109,7 +110,7 @@ const parseTxInputSource = (txInput: TxInput, isCoinbase: boolean): TransactionI
     if (isCoinbase) {
         return "coinbase";
     }
-    return { fromOutput: [txInput.hash, txInput.index] }; // Hash is in H256Le.
+    return { fromOutput: [bufferToHexString(txInput.hash), txInput.index] }; // Hash is in H256Le.
 };
 
 const parseTxInput = (txInput: TxInput, isCoinbase: boolean): TransactionInput => ({
@@ -155,12 +156,12 @@ export async function getTxProof(
     return {
         merkleProof: {
             blockHeader: {
-                merkleRoot: proof.blockHeader.merkleRoot,
-                target: BitcoinBlock.calculateTarget(proof.blockHeader.bits),
+                merkleRoot: bufferToHexString(proof.blockHeader.merkleRoot),
+                target: bufferToHexString(BitcoinBlock.calculateTarget(proof.blockHeader.bits)),
                 timestamp: proof.blockHeader.timestamp,
                 version: proof.blockHeader.version,
-                hash_: proof.blockHeader.getHash(),
-                hashPrevBlock: proof.blockHeader.prevHash,
+                hash_: bufferToHexString(proof.blockHeader.getHash()),
+                hashPrevBlock: bufferToHexString(proof.blockHeader.prevHash),
                 nonce: proof.blockHeader.nonce,
             },
             flagBits: proof.flagBits,
@@ -200,7 +201,7 @@ export async function waitForBlockFinalization(
 export class BitcoinMerkleProof {
     blockHeader: BitcoinBlock;
     transactionsCount: number;
-    hashes: Array<Buffer>;
+    hashes: Array<HexString>;
     flagBits: Array<boolean>;
 
     constructor(buffer: Buffer) {
@@ -210,10 +211,10 @@ export class BitcoinMerkleProof {
         this.transactionsCount = bufferReader.readUInt32();
         const hashesCount = bufferReader.readVarInt();
 
-        const hashes = [];
+        const hashes: HexString[] = [];
         for (let i = 0; i < hashesCount; i++) {
             const slice = bufferReader.readSlice(32); // H256Le
-            hashes.push(slice);
+            hashes.push(bufferToHexString(slice));
         }
         this.hashes = hashes;
 

@@ -3,12 +3,12 @@ import { HexString } from "./encoding";
 export type BitcoinNetwork = "mainnet" | "testnet" | "regtest";
 
 export type BlockHeader = {
-    merkleRoot: Uint8Array;
-    target: Uint8Array; // u256
+    merkleRoot: HexString;
+    target: HexString; // u256
     timestamp: number;
     version: number;
-    hash_: Uint8Array;
-    hashPrevBlock: Uint8Array;
+    hash_: HexString;
+    hashPrevBlock: HexString;
     nonce: number;
 };
 
@@ -16,13 +16,13 @@ export type MerkleProof = {
     blockHeader: BlockHeader;
     flagBits: Array<boolean>;
     transactionsCount: number;
-    hashes: Array<Uint8Array>;
+    hashes: Array<HexString>;
 };
 
 export type TransactionInputSource =
     | "coinbase"
     | {
-          fromOutput: [Uint8Array, number]; // [txHash, output index]
+          fromOutput: [HexString, number]; // [txHash, output index]
       };
 
 export interface TransactionInput {
@@ -57,25 +57,4 @@ export type TxStatus = {
     confirmations: number;
     blockHeight?: number;
     blockHash?: string;
-};
-
-export type TxOutput = {
-    scriptpubkey: string;
-    scriptpubkeyAsm: string;
-    scriptpubkeyType: string;
-    scriptpubkeyAddress: string;
-    value: number;
-};
-
-export type TxInput = {
-    txId: string;
-    vout: number;
-    isCoinbase: boolean;
-    scriptsig: string;
-    scriptsigAsm: string;
-    innerRedeemscriptAsm: string;
-    innerWitnessscriptAsm: string;
-    sequence: number;
-    witness: string[];
-    prevout: TxOutput;
 };
