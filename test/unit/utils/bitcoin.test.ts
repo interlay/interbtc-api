@@ -137,22 +137,10 @@ describe("Bitcoin", () => {
             const expectedMerkleProof = { txCount: 692, hashCount: 11, flagBitsCount: 24 };
             const expectedTxIns = [
                 {
-                    source: {
-                        fromOutput: [
-                            {
-                                type: "Buffer",
-                                data: [
-                                    161, 220, 243, 202, 3, 52, 99, 227, 70, 51, 150, 66, 221, 115, 5, 227, 61, 228, 206,
-                                    90, 177, 121, 209, 225, 155, 30, 177, 70, 83, 68, 33, 102,
-                                ],
-                            },
-                            0,
-                        ],
-                    },
+                    source: { fromOutput: ["0xa1dcf3ca033463e346339642dd7305e33de4ce5ab179d1e19b1eb14653442166", 0] },
                     script: "0x160014a97a9058829417d4c581ad5004b6e46cc680063d",
                     sequence: 4294967293,
                     witness: [
-                        // eslint-disable-next-line max-len
                         "0x3044022051480b10ef40d12bce982d1d08176a403f176dd3e51189c07a0a9584ddb8e91602204a02134b2b892904a3519da0044e97da9ae78232f8f7678fea0b6531bf31041301",
                         "0x039dcac4d315739516bf5cea98bc6a9cfb49cb6269beb67c520bc5ecacc3c7d472",
                     ],
