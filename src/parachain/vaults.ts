@@ -14,7 +14,6 @@ import {
     decodeFixedPointType,
     newMonetaryAmount,
     parseSystemVault,
-    getTxProof,
     newCurrencyId,
     newVaultId,
     newVaultCurrencyPair,
@@ -290,16 +289,6 @@ export interface VaultsAPI {
         vaultId: InterbtcPrimitivesVaultId,
         nonce?: number
     ): Promise<MonetaryAmount<CollateralCurrencyExt>>;
-    /**
-     * A relayer may report Vault misbehavior by providing a fraud proof
-     * (malicious Bitcoin transaction and transaction inclusion proof).
-     * @remarks If `txId` is not set, the `merkleProof` and `rawTx` must both be set.
-     *
-     * @param vaultId The vault ID of the vault to be reported.
-     * @param btcTxId Bitcoin transaction ID
-     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
-     */
-    reportVaultTheft(vaultId: InterbtcPrimitivesVaultId, btcTxId: string): Promise<ExtrinsicData>;
 
     /**
      * @returns The wrapped currency issued by the vaults
@@ -976,16 +965,6 @@ export class DefaultVaultsAPI implements VaultsAPI {
             liquidatedCollateral,
             secureThreshold
         );
-    }
-
-    async reportVaultTheft(vaultId: InterbtcPrimitivesVaultId, btcTxId: string): Promise<ExtrinsicData> {
-        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        const tx = this.api.tx.relay.reportVaultTheft(
-            vaultId,
-            txInclusionDetails.merkleProof,
-            txInclusionDetails.rawTx
-        );
-        return { extrinsic: tx, event: this.api.events.relay.VaultTheft };
     }
 
     buildAcceptNewIssuesExtrinsic(

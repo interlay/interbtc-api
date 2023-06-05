@@ -129,7 +129,7 @@ export interface AMMAPI {
      * @param {number} maxSlippage Maximum allowed slippage.
      * @param {number} deadline Deadline block number.
      * @param {AddressOrPair} recipient Recipient of the liquidity pool token.
-     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     addLiquidity(
         amounts: PooledCurrencies,
@@ -137,7 +137,7 @@ export interface AMMAPI {
         maxSlippage: number,
         deadline: number,
         recipient: AddressOrPair
-    ): ExtrinsicData;
+    ): Promise<ExtrinsicData>;
 
     /**
      * Removes liquidity from pool.
@@ -147,7 +147,7 @@ export interface AMMAPI {
      * @param {number} maxSlippage Maximum allowed slippage.
      * @param {number} deadline Deadline block number.
      * @param {AddressOrPair} recipient Recipient of the pooled currencies.
-     * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      * @note Removes `amount` of liquidity in LP token, breaks it down and transfers to account.
      */
     removeLiquidity(
@@ -156,7 +156,7 @@ export interface AMMAPI {
         maxSlippage: number,
         deadline: number,
         recipient: AddressOrPair
-    ): ExtrinsicData;
+    ): Promise<ExtrinsicData>;
 
     /**
      * Claim all pending farming rewards.
@@ -194,7 +194,7 @@ export class DefaultAMMAPI implements AMMAPI {
         };
     }
 
-    constructor(private api: ApiPromise, private tokensAPI: TokensAPI) { }
+    constructor(private api: ApiPromise, private tokensAPI: TokensAPI) {}
 
     public getOptimalTrade(
         inputAmount: MonetaryAmount<CurrencyExt>,
@@ -430,10 +430,10 @@ export class DefaultAMMAPI implements AMMAPI {
         const actuallyPooledCurrencies =
             metaPoolLpTokenAmount !== undefined
                 ? this._getStableBasePooledCurrenciesAdjustedToLpTokenAmount(
-                    pooledCurrenciesBase,
-                    totalSupply,
-                    metaPoolLpTokenAmount
-                )
+                      pooledCurrenciesBase,
+                      totalSupply,
+                      metaPoolLpTokenAmount
+                  )
                 : pooledCurrenciesBase;
 
         return { lpToken, actuallyPooledCurrencies, yearlyRewards, amplificationCoefficient, totalSupply, tradingFee };
@@ -754,13 +754,13 @@ export class DefaultAMMAPI implements AMMAPI {
         return { extrinsic: addLiquidityToStableMetaPoolExtrinsic, event: this.api.events.dexStable.AddLiquidity };
     }
 
-    public addLiquidity(
+    public async addLiquidity(
         amounts: PooledCurrencies,
         pool: LiquidityPool,
         maxSlippage: number,
         deadline: number,
         recipient: AddressOrPair
-    ): ExtrinsicData {
+    ): Promise<ExtrinsicData> {
         const maxSlippageComplement = 1 - maxSlippage / 100;
 
         let depositExtrinsic: SubmittableExtrinsic<ApiTypes>;
@@ -783,7 +783,8 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         const lpTokenCurrencyId = newCurrencyId(this.api, pool.lpToken);
-        const farmDepositExtrinsic = this.api.tx.farming.deposit(lpTokenCurrencyId);
+        const rewardCurrencies = await this.api.query.farmingRewards.rewardCurrencies(lpTokenCurrencyId);
+        const farmDepositExtrinsic = this.api.tx.farming.deposit(lpTokenCurrencyId, rewardCurrencies.size);
         const batchedExtrinsics = this.api.tx.utility.batchAll([depositExtrinsic, farmDepositExtrinsic]);
 
         return { extrinsic: batchedExtrinsics, event: depositEvent };
@@ -865,13 +866,13 @@ export class DefaultAMMAPI implements AMMAPI {
         return { extrinsic: withdrawLiquidityExtrinsic, event: this.api.events.dexStable.RemoveLiquidity };
     }
 
-    public removeLiquidity(
+    public async removeLiquidity(
         amount: MonetaryAmount<LpCurrency>,
         pool: LiquidityPool,
         maxSlippage: number, // Percentage.
         deadline: number,
         recipient: AddressOrPair
-    ): ExtrinsicData {
+    ): Promise<ExtrinsicData> {
         if (!isCurrencyEqual(amount.currency, pool.lpToken)) {
             throw new Error(
                 `Input amount and pool lp token should be same but are: [${amount.currency.ticker}, ${pool.lpToken.ticker}].`
@@ -901,7 +902,12 @@ export class DefaultAMMAPI implements AMMAPI {
         }
 
         const lpTokenCurrencyId = newCurrencyId(this.api, pool.lpToken);
-        const farmWithdrawalExtrinsic = this.api.tx.farming.withdraw(lpTokenCurrencyId, amount.toString(true));
+        const rewardCurrencies = await this.api.query.farmingRewards.rewardCurrencies(lpTokenCurrencyId);
+        const farmWithdrawalExtrinsic = this.api.tx.farming.withdraw(
+            lpTokenCurrencyId,
+            amount.toString(true),
+            rewardCurrencies.size
+        );
 
         const batchedExtrinsics = this.api.tx.utility.batchAll([farmWithdrawalExtrinsic, withdrawalExtrinsic]);
 

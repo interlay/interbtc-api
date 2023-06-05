@@ -156,7 +156,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency
-    ) {}
+    ) { }
 
     buildRequestReplaceExtrinsic(
         amount: MonetaryAmount<WrappedCurrency>,
@@ -225,7 +225,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         return this.api.tx.replace.executeReplace(
             parsedRequestId,
             txInclusionDetails.merkleProof,
-            txInclusionDetails.rawTx
+            txInclusionDetails.transaction,
+            txInclusionDetails.lengthBound,
         );
     }
 

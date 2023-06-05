@@ -123,11 +123,13 @@ describe("replace", () => {
                     // eslint-disable-next-line no-constant-condition
                     while (true) {
                         const header = await api.rpc.chain.getHeader(hash);
-                        try {
-                            hash = await api.rpc.chain.getBlockHash(header.number.toNumber() + 1);
-                        } catch (_) {
-                            sleep(SLEEP_TIME_MS);
+                        const nextHash = await api.rpc.chain.getBlockHash(header.number.toNumber() + 1);
+
+                        if (nextHash.isEmpty) {
+                            await sleep(SLEEP_TIME_MS);
                             continue;
+                        } else {
+                            hash = nextHash;
                         }
 
                         const apiAt = await api.at(hash);

@@ -3,8 +3,7 @@ import { createSubstrateAPI } from "../src/factory";
 import { Keyring } from "@polkadot/api";
 import { DefaultTransactionAPI } from "../src/parachain";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
-import { XcmVersionedMultiLocation } from "@polkadot/types/lookup";
-import { XcmV1MultiLocation } from "@polkadot/types/lookup";
+import { XcmVersionedMultiLocation, XcmV3MultiLocation } from "@polkadot/types/lookup";
 
 const PARACHAIN_ENDPOINT = "ws://127.0.0.1:9999";
 const ACCOUNT_URI = "//Alice";
@@ -65,10 +64,10 @@ async function main(): Promise<void> {
         }),
     });
 
-    const sibling = api.createType<XcmV1MultiLocation>("XcmV1MultiLocation", {
+    const sibling = api.createType<XcmV3MultiLocation>("XcmV3MultiLocation", {
         parents: 1,
-        interior: api.createType("XcmV1MultilocationJunctions", {
-            x1: api.createType("XcmV1Junction", { parachain: 2000 }),
+        interior: api.createType("XcmV3MultilocationJunctions", {
+            x1: api.createType("XcmV3Junction", { parachain: 2000 }),
         }),
     });
 
