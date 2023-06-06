@@ -8,6 +8,7 @@ import {
     VaultRegistrySystemVault,
     InterbtcPrimitivesVaultId,
     VaultRegistryVault,
+    InterbtcPrimitivesVaultCurrencyPair,
 } from "@polkadot/types/lookup";
 
 import {
@@ -21,6 +22,7 @@ import {
     currencyIdToMonetaryCurrency,
     decodeRpcVaultId,
     addressOrPairAsAccountId,
+    storageKeyToNthInner,
 } from "../utils";
 import { TokensAPI } from "./tokens";
 import { OracleAPI } from "./oracle";
@@ -85,14 +87,13 @@ export interface VaultsAPI {
         newCollateral?: MonetaryAmount<CollateralCurrencyExt>,
         onlyIssued?: boolean
     ): Promise<Big | undefined>;
-    // /**
-    //  * Get the total system collateralization measured by dividing the value of issued (wrapped) tokens
-    //  * by the value of total locked collateral.
-    //  *
-    //  * @returns The total system collateralization
-    //  */
-    // TODO: Uncomment once implemented
-    // getSystemCollateralization(): Promise<Big | undefined>;
+    /**
+     * Get the total system collateralization measured by dividing the value of issued (wrapped) tokens
+     * by the value of total locked collateral.
+     *
+     * @returns The total system collateralization
+     */
+    getSystemCollateralization(): Promise<Big | undefined>;
     /**
      * Get the amount of collateral required for the given vault to be at the
      * current SecureCollateralThreshold with the current exchange rate
@@ -724,8 +725,23 @@ export class DefaultVaultsAPI implements VaultsAPI {
     }
 
     async getSystemCollateralization(): Promise<Big | undefined> {
-        // TODO: Implement once method of calculation is decided on
-        return Promise.resolve(undefined);
+        const issuedTokens = await this.tokensAPI.total(this.wrappedCurrency);
+        const totalCollateralEntries = await this.api.query.vaultRegistry.totalUserVaultCollateral.entries();
+        const totalWrappedEntries = await Promise.all(totalCollateralEntries
+            .map(([key, value]): [InterbtcPrimitivesVaultCurrencyPair, string] => [storageKeyToNthInner(key), value.toString()])
+            .map(async ([currencyPair, balance]) => {
+                const collateralCurrency = await currencyIdToMonetaryCurrency(
+                    this.assetRegistryAPI,
+                    this.loansAPI,
+                    currencyPair.collateral
+                );
+                const collateralAmount = newMonetaryAmount(balance, collateralCurrency);
+                // TODO: we can probably use multiQuery for this
+                return this.oracleAPI.convertCollateralToWrapped(collateralAmount);
+            }));
+        const totalCollateralAsWrapped = totalWrappedEntries
+            .reduce((prev, curr) => prev.add(curr), newMonetaryAmount(0, this.wrappedCurrency));
+        return totalCollateralAsWrapped.div(issuedTokens.toBig()).toBig();
     }
 
     async getRequiredCollateralForVault(
