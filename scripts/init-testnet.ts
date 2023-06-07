@@ -495,7 +495,10 @@ function constructForeignAssetSetup(api: ApiPromise) {
                                     Parachain: 2000
                                 },
                                 {
-                                    GeneralKey: "0x008300000000000000000000000000000000000000000000000000000000000000"
+                                    GeneralKey: {
+                                        length: 2,
+                                        data: "0x0083000000000000000000000000000000000000000000000000000000000000"
+                                    }
                                 }
                             ]
                         }
@@ -519,7 +522,10 @@ function constructForeignAssetSetup(api: ApiPromise) {
                                     Parachain: 2001
                                 },
                                 {
-                                    GeneralKey: "0x010400000000000000000000000000000000000000000000000000000000000000"
+                                    GeneralKey: {
+                                        length: 2,
+                                        data: "0x0104000000000000000000000000000000000000000000000000000000000000"
+                                    }
                                 }
                             ]
                         }
