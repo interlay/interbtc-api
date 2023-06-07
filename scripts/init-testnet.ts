@@ -186,6 +186,9 @@ function constructFundingSetup(api: ApiPromise) {
         { ForeignAsset: 3 }, // LKSM
         { ForeignAsset: 4 }, // VKSM
         { ForeignAsset: 5 }, // SKSM
+        { ForeignAsset: 6 }, // ETH
+        { ForeignAsset: 7 }, // AUSD
+        { ForeignAsset: 8 }, // KAR
     ];
     const fundNormalTokens = tokens.map((token) => {
         return [
@@ -484,7 +487,7 @@ function constructForeignAssetSetup(api: ApiPromise) {
                 symbol: "LKSM",
                 existentialDeposit: 0,
                 location: {
-                    V1: {
+                    V3: {
                         parents: 1,
                         interior: {
                             X2: [
@@ -492,7 +495,7 @@ function constructForeignAssetSetup(api: ApiPromise) {
                                     Parachain: 2000
                                 },
                                 {
-                                    GeneralKey: "0x0083"
+                                    GeneralKey: "0x008300000000000000000000000000000000000000000000000000000000000000"
                                 }
                             ]
                         }
@@ -508,7 +511,7 @@ function constructForeignAssetSetup(api: ApiPromise) {
                 symbol: "VKSM",
                 existentialDeposit: 0,
                 location: {
-                    V1: {
+                    V3: {
                         parents: 1,
                         interior: {
                             X2: [
@@ -516,7 +519,7 @@ function constructForeignAssetSetup(api: ApiPromise) {
                                     Parachain: 2001
                                 },
                                 {
-                                    GeneralKey: "0x0104"
+                                    GeneralKey: "0x010400000000000000000000000000000000000000000000000000000000000000"
                                 }
                             ]
                         }
@@ -578,7 +581,7 @@ async function constructClientsInfoSetup(api: ApiPromise, baseUrl: String) {
             return res.text();
         });
 
-    const re = /([a-f0-9]+)\s*[.]\/(([a-z]+)-parachain-metadata-kintsugi-testnet)/g;
+    const re = /([a-f0-9]+)\s*[.]\/(([a-z]+)-parachain-metadata-kintsugi)/g;
     let matches = []
     let match;
     while ((match = re.exec(checksumFile)) !== null) {
