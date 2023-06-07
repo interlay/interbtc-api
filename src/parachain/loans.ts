@@ -833,7 +833,6 @@ export class DefaultLoansAPI implements LoansAPI {
                 lend: lendReward.toBig().gt(0) ? lendReward : null,
                 borrow: borrowReward.toBig().gt(0) ? borrowReward : null,
             };
-            console.log(underlyingCurrency.ticker, "lend", lendReward.toString(), "borrow", borrowReward.toString());
             totalRewards = totalRewards.add(lendReward).add(borrowReward);
         }
         return { total: totalRewards, perMarket: rewardsPerMarket };
