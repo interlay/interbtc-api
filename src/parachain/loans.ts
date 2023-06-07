@@ -701,7 +701,8 @@ export class DefaultLoansAPI implements LoansAPI {
     async _getLatestSupplyIndex(
         underlyingCurrencyId: CurrencyId,
         lendTokenId: CurrencyId,
-        currentBlockNumber: number
+        currentBlockNumber: number,
+        rewardCurrency: CurrencyExt
     ): Promise<Big> {
         const [marketSupplyState, marketSupplySpeed, totalIssuance] = await Promise.all([
             this.api.query.loans.rewardSupplyState(underlyingCurrencyId),
@@ -709,7 +710,7 @@ export class DefaultLoansAPI implements LoansAPI {
             this.api.query.loans.rewardSupplySpeed(underlyingCurrencyId),
             this.api.query.tokens.totalIssuance(lendTokenId),
         ]);
-        const lastIndex = decodeFixedPointType(marketSupplyState.index);
+        const lastIndex = Big(marketSupplyState.index.toString());
         const supplyRewardSpeed = Big(marketSupplySpeed.toString());
         const totalSupply = Big(totalIssuance.toString());
 
@@ -718,7 +719,13 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         const deltaBlocks = currentBlockNumber - marketSupplyState.block.toNumber();
-        const deltaIndex = supplyRewardSpeed.mul(deltaBlocks).div(totalSupply);
+        // NOTE: index needs to be multiplied by currency decimals to have same amount of decimals
+        //       as index computed on runtime side
+        const deltaIndex = supplyRewardSpeed
+            .mul(10 ** rewardCurrency.decimals)
+            .mul(deltaBlocks)
+            .div(totalSupply);
+
         return lastIndex.add(deltaIndex);
     }
 
@@ -730,27 +737,31 @@ export class DefaultLoansAPI implements LoansAPI {
         currentBlock: number
     ): Promise<MonetaryAmount<CurrencyExt>> {
         const [latestSupplyIndex, rewardSupplierIndex, lendTokenRawBalance] = await Promise.all([
-            this._getLatestSupplyIndex(underlyingCurrencyId, lendTokenId, currentBlock),
+            this._getLatestSupplyIndex(underlyingCurrencyId, lendTokenId, currentBlock, rewardCurrency),
             this.api.query.loans.rewardSupplierIndex(underlyingCurrencyId, accountId),
             this.api.query.tokens.accounts(accountId, lendTokenId),
         ]);
-        const supplierIndex = decodeFixedPointType(rewardSupplierIndex);
+        const supplierIndex = Big(rewardSupplierIndex.toString());
         const lendTokenBalance = Big(lendTokenRawBalance.free.toString()).add(lendTokenRawBalance.reserved.toString());
         const deltaIndex = latestSupplyIndex.sub(supplierIndex);
 
-        const accruedRewardInPlanck = deltaIndex.mul(lendTokenBalance);
+        const accruedRewardInPlanck = deltaIndex.mul(lendTokenBalance).div(10 ** rewardCurrency.decimals);
         const accruedSupplyReward = newMonetaryAmount(accruedRewardInPlanck, rewardCurrency);
         return accruedSupplyReward;
     }
 
-    async _getLatestBorrowIndex(underlyingCurrencyId: CurrencyId, currentBlockNumber: number): Promise<Big> {
+    async _getLatestBorrowIndex(
+        underlyingCurrencyId: CurrencyId,
+        currentBlockNumber: number,
+        rewardCurrency: CurrencyExt
+    ): Promise<Big> {
         const [marketBorrowState, marketBorrowSpeed, totalBorrowsRaw] = await Promise.all([
             this.api.query.loans.rewardBorrowState(underlyingCurrencyId),
             // Total KINT / INTR tokens awarded per block to suppliers of this market
             this.api.query.loans.rewardBorrowSpeed(underlyingCurrencyId),
             this.api.query.loans.totalBorrows(underlyingCurrencyId),
         ]);
-        const lastBorrowIndex = decodeFixedPointType(marketBorrowState.index);
+        const lastBorrowIndex = Big(marketBorrowState.index.toString());
         const borrowRewardSpeed = Big(marketBorrowSpeed.toString());
         const totalBorrowed = Big(totalBorrowsRaw.toString());
 
@@ -759,7 +770,12 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         const deltaBlocks = currentBlockNumber - marketBorrowState.block.toNumber();
-        const deltaIndex = borrowRewardSpeed.mul(deltaBlocks).div(totalBorrowed);
+        // NOTE: index needs to be multiplied by currency decimals to have same amount of decimals
+        //       as index computed on runtime side
+        const deltaIndex = borrowRewardSpeed
+            .mul(10 ** rewardCurrency.decimals)
+            .mul(deltaBlocks)
+            .div(totalBorrowed);
 
         return lastBorrowIndex.add(deltaIndex);
     }
@@ -771,14 +787,14 @@ export class DefaultLoansAPI implements LoansAPI {
         currentBlock: number
     ): Promise<MonetaryAmount<CurrencyExt>> {
         const [latestBorrowIndex, rewardBorrowerIndex, accountBorrowSnapshot] = await Promise.all([
-            this._getLatestBorrowIndex(underlyingCurrencyId, currentBlock),
+            this._getLatestBorrowIndex(underlyingCurrencyId, currentBlock, rewardCurrency),
             this.api.query.loans.rewardBorrowerIndex(underlyingCurrencyId, accountId),
             this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
         ]);
         const borrowedAmount = Big(accountBorrowSnapshot.principal.toString());
-        const borrowerIndex = decodeFixedPointType(rewardBorrowerIndex);
+        const borrowerIndex = Big(rewardBorrowerIndex.toString());
         const deltaIndex = latestBorrowIndex.sub(borrowerIndex);
-        const accruedRewardInPlanck = deltaIndex.mul(borrowedAmount);
+        const accruedRewardInPlanck = deltaIndex.mul(borrowedAmount).div(10 ** rewardCurrency.decimals);
         const accruedBorrowReward = newMonetaryAmount(accruedRewardInPlanck, rewardCurrency);
         return accruedBorrowReward;
     }
@@ -817,6 +833,7 @@ export class DefaultLoansAPI implements LoansAPI {
                 lend: lendReward.toBig().gt(0) ? lendReward : null,
                 borrow: borrowReward.toBig().gt(0) ? borrowReward : null,
             };
+            console.log(underlyingCurrency.ticker, "lend", lendReward.toString(), "borrow", borrowReward.toString());
             totalRewards = totalRewards.add(lendReward).add(borrowReward);
         }
         return { total: totalRewards, perMarket: rewardsPerMarket };
