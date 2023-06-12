@@ -33,6 +33,7 @@ import {
     calculateBorrowLimitBtcChangeFactory,
     calculateLtvAndThresholdsChangeFactory,
     newAccountId,
+    LOANS_REWARD_INDEX_SCALING_FACTOR,
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { OracleAPI } from "./oracle";
@@ -701,8 +702,7 @@ export class DefaultLoansAPI implements LoansAPI {
     async _getLatestSupplyIndex(
         underlyingCurrencyId: CurrencyId,
         lendTokenId: CurrencyId,
-        currentBlockNumber: number,
-        rewardCurrency: CurrencyExt
+        currentBlockNumber: number
     ): Promise<Big> {
         const [marketSupplyState, marketSupplySpeed, totalIssuance] = await Promise.all([
             this.api.query.loans.rewardSupplyState(underlyingCurrencyId),
@@ -719,12 +719,9 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         const deltaBlocks = currentBlockNumber - marketSupplyState.block.toNumber();
-        // NOTE: index needs to be multiplied by currency decimals to have same amount of decimals
+        // NOTE: index needs to be multiplied by index scaling factor to have same amount of decimals
         //       as index computed on runtime side
-        const deltaIndex = supplyRewardSpeed
-            .mul(10 ** rewardCurrency.decimals)
-            .mul(deltaBlocks)
-            .div(totalSupply);
+        const deltaIndex = supplyRewardSpeed.mul(LOANS_REWARD_INDEX_SCALING_FACTOR).mul(deltaBlocks).div(totalSupply);
 
         return lastIndex.add(deltaIndex);
     }
@@ -737,7 +734,7 @@ export class DefaultLoansAPI implements LoansAPI {
         currentBlock: number
     ): Promise<MonetaryAmount<CurrencyExt>> {
         const [latestSupplyIndex, rewardSupplierIndex, lendTokenRawBalance] = await Promise.all([
-            this._getLatestSupplyIndex(underlyingCurrencyId, lendTokenId, currentBlock, rewardCurrency),
+            this._getLatestSupplyIndex(underlyingCurrencyId, lendTokenId, currentBlock),
             this.api.query.loans.rewardSupplierIndex(underlyingCurrencyId, accountId),
             this.api.query.tokens.accounts(accountId, lendTokenId),
         ]);
@@ -745,16 +742,12 @@ export class DefaultLoansAPI implements LoansAPI {
         const lendTokenBalance = Big(lendTokenRawBalance.free.toString()).add(lendTokenRawBalance.reserved.toString());
         const deltaIndex = latestSupplyIndex.sub(supplierIndex);
 
-        const accruedRewardInPlanck = deltaIndex.mul(lendTokenBalance).div(10 ** rewardCurrency.decimals);
+        const accruedRewardInPlanck = deltaIndex.mul(lendTokenBalance).div(LOANS_REWARD_INDEX_SCALING_FACTOR);
         const accruedSupplyReward = newMonetaryAmount(accruedRewardInPlanck, rewardCurrency);
         return accruedSupplyReward;
     }
 
-    async _getLatestBorrowIndex(
-        underlyingCurrencyId: CurrencyId,
-        currentBlockNumber: number,
-        rewardCurrency: CurrencyExt
-    ): Promise<Big> {
+    async _getLatestBorrowIndex(underlyingCurrencyId: CurrencyId, currentBlockNumber: number): Promise<Big> {
         const [marketBorrowState, marketBorrowSpeed, totalBorrowsRaw] = await Promise.all([
             this.api.query.loans.rewardBorrowState(underlyingCurrencyId),
             // Total KINT / INTR tokens awarded per block to suppliers of this market
@@ -770,12 +763,9 @@ export class DefaultLoansAPI implements LoansAPI {
         }
 
         const deltaBlocks = currentBlockNumber - marketBorrowState.block.toNumber();
-        // NOTE: index needs to be multiplied by currency decimals to have same amount of decimals
+        // NOTE: index needs to be multiplied by index scaling factor to have same amount of decimals
         //       as index computed on runtime side
-        const deltaIndex = borrowRewardSpeed
-            .mul(10 ** rewardCurrency.decimals)
-            .mul(deltaBlocks)
-            .div(totalBorrowed);
+        const deltaIndex = borrowRewardSpeed.mul(LOANS_REWARD_INDEX_SCALING_FACTOR).mul(deltaBlocks).div(totalBorrowed);
 
         return lastBorrowIndex.add(deltaIndex);
     }
@@ -787,14 +777,14 @@ export class DefaultLoansAPI implements LoansAPI {
         currentBlock: number
     ): Promise<MonetaryAmount<CurrencyExt>> {
         const [latestBorrowIndex, rewardBorrowerIndex, accountBorrowSnapshot] = await Promise.all([
-            this._getLatestBorrowIndex(underlyingCurrencyId, currentBlock, rewardCurrency),
+            this._getLatestBorrowIndex(underlyingCurrencyId, currentBlock),
             this.api.query.loans.rewardBorrowerIndex(underlyingCurrencyId, accountId),
             this.api.query.loans.accountBorrows(underlyingCurrencyId, accountId),
         ]);
         const borrowedAmount = Big(accountBorrowSnapshot.principal.toString());
         const borrowerIndex = Big(rewardBorrowerIndex.toString());
         const deltaIndex = latestBorrowIndex.sub(borrowerIndex);
-        const accruedRewardInPlanck = deltaIndex.mul(borrowedAmount).div(10 ** rewardCurrency.decimals);
+        const accruedRewardInPlanck = deltaIndex.mul(borrowedAmount).div(LOANS_REWARD_INDEX_SCALING_FACTOR);
         const accruedBorrowReward = newMonetaryAmount(accruedRewardInPlanck, rewardCurrency);
         return accruedBorrowReward;
     }
