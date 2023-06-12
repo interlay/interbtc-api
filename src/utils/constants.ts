@@ -24,3 +24,5 @@ export function sleep(ms: number): Promise<void> {
 
 // Decimal precision of Newton's approximations that are computed in this class.
 export const STABLE_POOLS_APPROXIMATION_PRECISION = Big(10).pow(9);
+
+export const LOANS_REWARD_INDEX_SCALING_FACTOR = 10 ** 12;
