@@ -515,22 +515,6 @@ const INTERLAY_GENESIS: ParachainGenesis = {
             secureCollateral: "1550000000000000000",
             minimumCollateral: "150000000",
             systemCollateralCeiling: "200000000000",
-        },
-        {
-            collateralCurrency: { LendToken: 2 }, // qDOT
-            liquidationCollateral: "1250000000000000000",
-            premiumRedeem: "1400000000000000000",
-            secureCollateral: "1550000000000000000",
-            minimumCollateral: "300000000000",
-            systemCollateralCeiling: "24500000000000000",
-        },
-        {
-            collateralCurrency: { LendToken: 3 }, // qUSDT
-            liquidationCollateral: "1350000000000000000",
-            premiumRedeem: "1450000000000000000",
-            secureCollateral: "1550000000000000000",
-            minimumCollateral: "150000000",
-            systemCollateralCeiling: "200000000000",
         }
     ],
 }
