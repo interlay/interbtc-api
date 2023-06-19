@@ -49,11 +49,13 @@ export interface IssueAPI {
      *
      * @param vaultId The vault ID of the vault to issue with.
      * @param amount wrapped token amount to issue.
+     * @param griefingCollateralCurrency (optional) Currency in which griefing collateral will be locked.
      * @returns An execute issue submittable extrinsic.
      */
     buildRequestIssueExtrinsic(
         vaultId: InterbtcPrimitivesVaultId,
-        amount: MonetaryAmount<WrappedCurrency>
+        amount: MonetaryAmount<WrappedCurrency>,
+        griefingCollateralCurrency?: CurrencyExt
     ): SubmittableExtrinsic<"promise", ISubmittableResult>;
 
     /**
@@ -81,11 +83,13 @@ export interface IssueAPI {
      * @param amountsPerVault A mapping of vaults to issue from, and wrapped token amounts to issue using each vault
      * @param atomic Whether the issue request should be handled atomically or not. Only makes a difference if more than
      * one vault is needed to fulfil it.
+     * @param griefingCollateralCurrency (optional) Currency in which griefing collateral will be locked.
      * @returns {ExtrinsicData} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
      */
     requestAdvanced(
         amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
-        atomic: boolean
+        atomic: boolean,
+        griefingCollateralCurrency?: CurrencyExt
     ): ExtrinsicData;
 
     /**
@@ -217,7 +221,8 @@ export class DefaultIssueAPI implements IssueAPI {
         vaultAccountId?: AccountId,
         collateralCurrency?: CollateralCurrencyExt,
         atomic: boolean = true,
-        cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>
+        cachedVaults?: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
+        griefingCollateralCurrency?: CurrencyExt
     ): Promise<ExtrinsicData> {
         try {
             if (vaultAccountId) {
@@ -238,11 +243,11 @@ export class DefaultIssueAPI implements IssueAPI {
                 const amountsPerVault = new Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>([
                     [vaultId, amount],
                 ]);
-                return this.requestAdvanced(amountsPerVault, atomic);
+                return this.requestAdvanced(amountsPerVault, atomic, griefingCollateralCurrency);
             }
             const availableVaults = cachedVaults || (await this.vaultsAPI.getVaultsWithIssuableTokens());
             const amountsPerVault = allocateAmountsToVaults(availableVaults, amount);
-            return this.requestAdvanced(amountsPerVault, atomic);
+            return this.requestAdvanced(amountsPerVault, atomic, griefingCollateralCurrency);
         } catch (e) {
             return Promise.reject(e);
         }
@@ -263,10 +268,11 @@ export class DefaultIssueAPI implements IssueAPI {
 
     requestAdvanced(
         amountsPerVault: Map<InterbtcPrimitivesVaultId, MonetaryAmount<WrappedCurrency>>,
-        atomic: boolean
+        atomic: boolean,
+        griefingCollateralCurrency?: CurrencyExt
     ): ExtrinsicData {
         const txs = Array.from(amountsPerVault.entries()).map(([vaultId, amount]) =>
-            this.buildRequestIssueExtrinsic(vaultId, amount)
+            this.buildRequestIssueExtrinsic(vaultId, amount, griefingCollateralCurrency)
         );
         const batch = this.transactionAPI.buildBatchExtrinsic(txs, atomic);
         return { extrinsic: batch, event: this.api.events.issue.RequestIssue };
