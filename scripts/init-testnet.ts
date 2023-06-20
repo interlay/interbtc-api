@@ -664,7 +664,7 @@ async function constructAmmSetup(api: ApiPromise, genesis: ParachainGenesis) {
                 { LpToken: [token0, token1] },
                 genesis.nativeCurrency[0],
                 60 * 24 * 7 * 12, // three months, reward period is per minute
-                new BN(10).pow(new BN(12)).muln(reward as any),
+                new BN(10).pow(new BN(genesis.nativeCurrency[1])).muln(reward as any),
             ),
             api.tx.utility.dispatchAs(
                 { system: { Signed: treasuryAccount } },
