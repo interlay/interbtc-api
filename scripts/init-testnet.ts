@@ -68,6 +68,7 @@ type ParachainGenesis = {
             supplyCap?: any;
             borrowCap?: any;
             lendTokenId?: any;
+            supplyIncentivesPerBlock: number,
         }
     ][],
     prices: Map<string, number>,
@@ -232,7 +233,8 @@ const KINTSUGI_GENESIS: ParachainGenesis = {
                 // 100 KBTC. Mainnet will be only 20 KBTC.
                 supplyCap: "10000000000",
                 borrowCap: "10000000000",
-                lendTokenId: { LendToken: 1 }
+                lendTokenId: { LendToken: 1 },
+                supplyIncentivesPerBlock: 0
             }
         ],
         [
@@ -258,7 +260,8 @@ const KINTSUGI_GENESIS: ParachainGenesis = {
                 // 30,000 KSM
                 supplyCap: "30000000000000000",
                 borrowCap: "30000000000000000",
-                lendTokenId: { LendToken: 2 }
+                lendTokenId: { LendToken: 2 },
+                supplyIncentivesPerBlock: 0
             }
         ],
         [
@@ -284,7 +287,8 @@ const KINTSUGI_GENESIS: ParachainGenesis = {
                 // 800,000 USDT
                 supplyCap: "800000000000",
                 borrowCap: "800000000000",
-                lendTokenId: { LendToken: 3 }
+                lendTokenId: { LendToken: 3 },
+                supplyIncentivesPerBlock: 0
             }
         ],
         [
@@ -310,7 +314,8 @@ const KINTSUGI_GENESIS: ParachainGenesis = {
                 // 10,000 MOVR
                 supplyCap: "10000000000000000000000",
                 borrowCap: "10000000000000000000000",
-                lendTokenId: { LendToken: 4 }
+                lendTokenId: { LendToken: 4 },
+                supplyIncentivesPerBlock: 0
             }
         ],
     ],
@@ -427,7 +432,8 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 // 100 IBTC. Mainnet will be only 30 IBTC.
                 supplyCap: "10000000000",
                 borrowCap: "10000000000",
-                lendTokenId: { LendToken: 1 }
+                lendTokenId: { LendToken: 1 },
+                supplyIncentivesPerBlock: 0
             }
         ],
         [
@@ -453,7 +459,8 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 // 1,000,000 DOT
                 supplyCap: "10000000000000000",
                 borrowCap: "10000000000000000",
-                lendTokenId: { LendToken: 2 }
+                lendTokenId: { LendToken: 2 },
+                supplyIncentivesPerBlock: 7440476190
             }
         ],
         [
@@ -479,7 +486,8 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 // 600,000 USDT
                 supplyCap: "600000000000",
                 borrowCap: "600000000000",
-                lendTokenId: { LendToken: 3 }
+                lendTokenId: { LendToken: 3 },
+                supplyIncentivesPerBlock: 3472222222
             }
         ],
     ],
@@ -535,10 +543,15 @@ function constructLendingSetup(api: ApiPromise, genesis: ParachainGenesis) {
     //     )
     // ];
 
-    const activateMarketWithRewards = genesis.markets.map(([token, _]) => {
+    const activateMarketWithRewards = genesis.markets.map(([token, market]) => {
         return [
             api.tx.loans.activateMarket(token),
-            // api.tx.loans.updateMarketRewardSpeed(token, 10, 10), // no incentives
+            api.tx.loans.updateMarketRewardSpeed(token, market.supplyIncentivesPerBlock, 0),
+            api.tx.utility.dispatchAs(
+                { system: { Signed: treasuryAccount } },
+                // add one year's worth. Plus one so that the 0 case doesn't error
+                api.tx.loans.addReward(new BN(market.supplyIncentivesPerBlock).muln(5*60*24*365).addn(1))
+            )
         ]
     }).flat();
 
