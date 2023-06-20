@@ -491,20 +491,20 @@ const INTERLAY_GENESIS: ParachainGenesis = {
         {
             token0: { Token: "IBTC" },
             token1: { Token: "DOT" },
-            reward: 4_000_000,
-            liquidity: 1_200_000,
+            reward: 2_000_000,
+            liquidity: 400_000,
         },
         {
             token0: { Token: "IBTC" },
             token1: { ForeignAsset: 2 }, // USDT
             reward: 3_800_000,
-            liquidity: 2_000_000,
+            liquidity: 1_000_000,
         },
         {
-            token0: { Token: "DOT" },
-            token1: { Token: "INTR" },
-            reward: 3_500_000,
-            liquidity: 500_000,
+            token0: { Token: "INTR" },
+            token1: { ForeignAsset: 2 }, // USDT
+            reward: 2_000_000,
+            liquidity: 200_000,
         },
     ],
     vaultParams: [
