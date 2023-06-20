@@ -77,6 +77,7 @@ type ParachainGenesis = {
         reward: number,
         liquidity: number,
     }[],
+    dexFees: number,
     vaultParams: {
         collateralCurrency: Currency,
         liquidationCollateral: string,
@@ -367,6 +368,7 @@ const KINTSUGI_GENESIS: ParachainGenesis = {
             liquidity: 100_000, // liquidity in usd
         },
     ],
+    dexFees: 15,
     vaultParams: [
         {
             collateralCurrency: { ForeignAsset: 3 }, // LKSM
@@ -507,6 +509,7 @@ const INTERLAY_GENESIS: ParachainGenesis = {
             liquidity: 200_000,
         },
     ],
+    dexFees: 0,
     vaultParams: [
         {
             collateralCurrency: { ForeignAsset: 2 }, // USDT
@@ -659,7 +662,7 @@ async function constructAmmSetup(api: ApiPromise, genesis: ParachainGenesis) {
 
         return [
             // @ts-ignore
-            api.tx.dexGeneral.createPair(token0, token1, 30),
+            api.tx.dexGeneral.createPair(token0, token1, genesis.dexFees),
             api.tx.farming.updateRewardSchedule(
                 { LpToken: [token0, token1] },
                 genesis.nativeCurrency[0],
