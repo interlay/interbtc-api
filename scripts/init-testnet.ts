@@ -389,7 +389,7 @@ const KINTSUGI_GENESIS: ParachainGenesis = {
 const INTERLAY_GENESIS: ParachainGenesis = {
     relayChainCurrency: [{ Token: "DOT" }, 10],
     wrappedCurrency: [{ Token: "IBTC" }, 8],
-    nativeCurrency: [{ Token: "INTR" }, 8],
+    nativeCurrency: [{ Token: "INTR" }, 10],
     foreignAssets: [
         {
             decimals: 10,
@@ -419,7 +419,7 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 reserveFactor: 100000,
                 closeFactor: 500000,
                 liquidateIncentive: "1100000000000000000",
-                liquidateIncentiveReservedFactor: 25000,
+                liquidateIncentiveReservedFactor: 0,
                 rateModel: {
                     Jump: {
                         baseRate: 0,
@@ -430,8 +430,8 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 },
                 state: "Pending",
                 // 100 IBTC. Mainnet will be only 30 IBTC.
-                supplyCap: "10000000000",
-                borrowCap: "10000000000",
+                supplyCap: "3000000000",
+                borrowCap: "3000000000",
                 lendTokenId: { LendToken: 1 },
                 supplyIncentivesPerBlock: 0
             }
@@ -446,7 +446,7 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 reserveFactor: 100000,
                 closeFactor: 500000,
                 liquidateIncentive: "1100000000000000000",
-                liquidateIncentiveReservedFactor: 25000,
+                liquidateIncentiveReservedFactor: 0,
                 rateModel: {
                     Jump: {
                         baseRate: "50000000000000000",
@@ -460,7 +460,7 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 supplyCap: "10000000000000000",
                 borrowCap: "10000000000000000",
                 lendTokenId: { LendToken: 2 },
-                supplyIncentivesPerBlock: 7440476190
+                supplyIncentivesPerBlock: 6793478260
             }
         ],
         [
@@ -473,7 +473,7 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 reserveFactor: 100000,
                 closeFactor: 500000,
                 liquidateIncentive: "1100000000000000000",
-                liquidateIncentiveReservedFactor: 25000,
+                liquidateIncentiveReservedFactor: 0,
                 rateModel: {
                     Jump: {
                         baseRate: 0,
@@ -487,7 +487,7 @@ const INTERLAY_GENESIS: ParachainGenesis = {
                 supplyCap: "600000000000",
                 borrowCap: "600000000000",
                 lendTokenId: { LendToken: 3 },
-                supplyIncentivesPerBlock: 3472222222
+                supplyIncentivesPerBlock: 3170289855
             }
         ],
     ],
@@ -544,15 +544,22 @@ function constructLendingSetup(api: ApiPromise, genesis: ParachainGenesis) {
     // ];
 
     const activateMarketWithRewards = genesis.markets.map(([token, market]) => {
-        return [
-            api.tx.loans.activateMarket(token),
+        const activate = [api.tx.loans.activateMarket(token)];
+        const threeMonths = 5*60*24*92; // 92 days
+        const setRewards = market.supplyIncentivesPerBlock === 0 ? [] : [
             api.tx.loans.updateMarketRewardSpeed(token, market.supplyIncentivesPerBlock, 0),
+            // add 12 weeks worth
             api.tx.utility.dispatchAs(
                 { system: { Signed: treasuryAccount } },
-                // add one year's worth. Plus one so that the 0 case doesn't error
-                api.tx.loans.addReward(new BN(market.supplyIncentivesPerBlock).muln(5*60*24*365).addn(1))
-            )
-        ]
+                api.tx.loans.addReward(new BN(market.supplyIncentivesPerBlock).muln(threeMonths))
+            ),
+            // stop in 12 weeks
+            api.tx.scheduler.scheduleAfter(threeMonths - 1, null, 32, api.tx.loans.updateMarketRewardSpeed(token, 0, 0)),
+        ];
+        return [
+            activate,
+            setRewards
+        ].flat();
     }).flat();
 
     const addSupply = genesis.markets.map(([token, market]) => {
@@ -679,7 +686,7 @@ async function constructAmmSetup(api: ApiPromise, genesis: ParachainGenesis) {
             api.tx.farming.updateRewardSchedule(
                 { LpToken: [token0, token1] },
                 genesis.nativeCurrency[0],
-                60 * 24 * 7 * 12, // three months, reward period is per minute
+                60 * 24 * 92, // 92 days, reward period is per minute
                 new BN(10).pow(new BN(genesis.nativeCurrency[1])).muln(reward as any),
             ),
             api.tx.utility.dispatchAs(
