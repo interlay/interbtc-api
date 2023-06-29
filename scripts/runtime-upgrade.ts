@@ -39,7 +39,7 @@ main().catch((err) => {
 
 async function setAllClientReleases(api: ApiPromise, baseUrl: string, runtimeName: string) {
     const checksumFile = await fetch(baseUrl + "sha256sums.txt").then((res) => {
-        if (res.status >= 400) {
+        if (!res.ok) {
             throw new Error("Bad response from server");
         }
         return res.text();
@@ -95,6 +95,11 @@ async function main(): Promise<void> {
     const runtimeFileName = `${args["runtime-name"]}_runtime_parachain.compact.compressed.wasm`;
     // NOTE: fetch flagged as experimental, not sure if there is a better alternative
     const wasmRuntime = await fetch(`${parachainRepo}/releases/download/${parachainVersion}/${runtimeFileName}`);
+
+    if (!wasmRuntime.ok) {
+        throw wasmRuntime.statusText;
+    }
+
     const wasmRuntimeRaw = await wasmRuntime.arrayBuffer();
     const codeHash = blake2AsHex(Buffer.from(wasmRuntimeRaw));
     console.log(`Blake2-256 hash: ${codeHash}`);
