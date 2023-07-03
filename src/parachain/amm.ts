@@ -597,12 +597,9 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _getFarmingRewardCurrencyIds(
         lpTokenCurrencyId: InterbtcPrimitivesCurrencyId
     ): Promise<Array<InterbtcPrimitivesCurrencyId>> {
-        const rewardCurrencies: Array<InterbtcPrimitivesCurrencyId> = [];
-
         const rewardCurrenciesRaw = await this.api.query.farmingRewards.rewardCurrencies(lpTokenCurrencyId);
-        rewardCurrenciesRaw.forEach((rewardCurrencyId: InterbtcPrimitivesCurrencyId) =>
-            rewardCurrencies.push(rewardCurrencyId)
-        );
+
+        const rewardCurrencies = Array.from(rewardCurrenciesRaw.values());
 
         return rewardCurrencies;
     }
