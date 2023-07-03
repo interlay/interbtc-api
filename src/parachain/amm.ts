@@ -594,22 +594,35 @@ export class DefaultAMMAPI implements AMMAPI {
         return { extrinsic: swapExtrinsic, event: this.api.events.dexStable.CurrencyExchange };
     }
 
+    private async _getFarmingRewardCurrencyIds(
+        lpTokenCurrencyId: InterbtcPrimitivesCurrencyId
+    ): Promise<Array<InterbtcPrimitivesCurrencyId>> {
+        const rewardCurrenciesRaw = await this.api.query.farmingRewards.rewardCurrencies(lpTokenCurrencyId);
+
+        const rewardCurrencies = Array.from(rewardCurrenciesRaw.values());
+
+        return rewardCurrencies;
+    }
+
     private async _getClaimableFarmingRewardsByPool(
         accountId: AccountId,
-        lpToken: LpCurrency,
-        pool: LiquidityPool
+        lpToken: LpCurrency
     ): Promise<Array<MonetaryAmount<CurrencyExt>>> {
         const lpTokenCurrencyId = newCurrencyId(this.api, lpToken);
-        const rewardCurrencyIds = pool.rewardAmountsYearly.map(({ currency: rewardCurrency }) =>
-            newCurrencyId(this.api, rewardCurrency)
-        );
+
+        const rewardCurrencyIds = await this._getFarmingRewardCurrencyIds(lpTokenCurrencyId);
+
         const farmingRewards = await Promise.all(
             rewardCurrencyIds.map((rewardCurrencyId) =>
                 this.api.rpc.reward.computeFarmingReward(accountId, lpTokenCurrencyId, rewardCurrencyId)
             )
         );
-        const rewardAmounts = pool.rewardAmountsYearly.map(({ currency: rewardCurrency }, index) =>
-            newMonetaryAmount(farmingRewards[index].amount.toString(), rewardCurrency)
+
+        const rewardAmounts = Promise.all(
+            rewardCurrencyIds.map(async (currencyId, index) => {
+                const currency = await currencyIdToMonetaryCurrency(this.api, currencyId);
+                return newMonetaryAmount(farmingRewards[index].amount.toString(), currency);
+            })
         );
 
         return rewardAmounts;
@@ -627,7 +640,7 @@ export class DefaultAMMAPI implements AMMAPI {
                     // Return empty array for pools without liquidity.
                     return [];
                 }
-                return this._getClaimableFarmingRewardsByPool(accountId, currency, pool);
+                return this._getClaimableFarmingRewardsByPool(accountId, currency);
             })
         );
 
