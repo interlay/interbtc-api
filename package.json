@@ -33,6 +33,7 @@
     "xcm-cross-chain-transfer": "ts-node scripts/xcm-cross-chain-transfer",
     "xcm-return-unknown-tokens": "ts-node scripts/xcm-return-unknown-tokens",
     "democracy": "ts-node scripts/democracy",
+    "statemint-usdt-fee": "ts-node scripts/statemint-usdt-fee",
     "create-proposal": "ts-node scripts/create-proposal",
     "undercollateralized-borrowers": "ts-node scripts/get-undercollateralized-borrowers",
     "test": "run-s build test:*",
