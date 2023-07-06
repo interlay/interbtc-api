@@ -1,9 +1,6 @@
 name: Generate js docs
 
-on:
-  push:
-    branches:
-      - master
+on: push
 
 jobs:
   publish:
@@ -15,13 +12,13 @@ jobs:
       - name: setup node
         uses: actions/setup-node@v3
         with:
-            node-version: "14.x"
-      - run: npm install
+            node-version: "18"
+      - run: yarn install --frozen-lockfile
       - run: npm run build
       - run: sh generate_docs
 
       - name: Deploy to GitHub Pages
-        if: success()
+        if: github.ref == 'refs/heads/master'
         uses: crazy-max/ghaction-github-pages@v3
         with:
           target_branch: gh-pages

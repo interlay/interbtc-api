@@ -136,7 +136,7 @@ export class DefaultTransactionAPI implements TransactionAPI {
         successEventType?: AugmentedEvent<ApiTypes, T>,
         extrinsicStatus?: ExtrinsicStatus
     ): Promise<ISubmittableResult> {
-        const { unsubscribe, result } = await new Promise((resolve, reject) => {
+        const { unsubscribe, result } = await new Promise<{ unsubscribe: () => void; result: ISubmittableResult }>((resolve, reject) => {
             let unsubscribe: () => void;
             // When passing { nonce: -1 } to signAndSend the API will use system.accountNextIndex to determine the nonce
             transaction
@@ -171,7 +171,7 @@ export class DefaultTransactionAPI implements TransactionAPI {
         } else if (result.status.isFinalized) {
             console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
         }
-        unsubscribe(result);
+        unsubscribe();
 
         // Print all events for debugging
         DefaultTransactionAPI.printEvents(api, result.events);
