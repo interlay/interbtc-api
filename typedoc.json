@@ -4,5 +4,6 @@
     "publicPath": "/",
     "namedAnchors": true,
     "entryPoints": ["src/index.ts"],
-    "out": "docs"
+    "out": "docs",
+    "githubPages": false
 }
