@@ -59,7 +59,7 @@
     "big.js": "6.1.1",
     "bitcoin-core": "^3.0.0",
     "bitcoinjs-lib": "^5.2.0",
-    "bn.js": "4.12.0",
+    "bn.js": "5.2.1",
     "cross-fetch": "^3.0.6",
     "isomorphic-fetch": "^3.0.0",
     "regtest-client": "^0.2.0"
@@ -98,7 +98,7 @@
     "yargs": "^17.5.1"
   },
   "resolutions": {
-    "bn.js": "4.12.0"
+    "bn.js": "5.2.1"
   },
   "files": [
     "build/main",
