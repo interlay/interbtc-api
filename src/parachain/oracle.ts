@@ -101,14 +101,23 @@ export class DefaultOracleAPI implements OracleAPI {
 
         if (isLendToken(currency)) {
             const lendTokenId = newCurrencyId(this.api, currency);
-            const underlyingCcyId = await this.api.query.loans.underlyingAssetId(lendTokenId);
-            
-            const rawLendToUnderlying = (await this.api.query.loans.exchangeRate(underlyingCcyId)) as UnsignedFixedPoint;
+            const underlyingCurrencyIdRaw = await this.api.query.loans.underlyingAssetId(lendTokenId);
+            if (underlyingCurrencyIdRaw.isNone) {
+                throw new Error(
+                    `No underlying asset found for lend token with id ${lendTokenId.asLendToken.toString()}`
+                );
+            }
+            const underlyingCurrencyId = underlyingCurrencyIdRaw.unwrap();
+
+            const rawLendToUnderlying = await this.api.query.loans.exchangeRate(underlyingCurrencyId);
+
             // multiply this rate with lendtoken to get underlying amount
             const lendToUnderRate = decodeFixedPointType(rawLendToUnderlying);
-            
-            const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCcyId.unwrap());
-            const btcToUnderRate = (await this.convertWrappedToCurrency(new MonetaryAmount(Bitcoin, 1), underlyingCurrency)).toBig();
+
+            const underlyingCurrency = await currencyIdToMonetaryCurrency(this.api, underlyingCurrencyIdRaw.unwrap());
+            const btcToUnderRate = (
+                await this.convertWrappedToCurrency(new MonetaryAmount(Bitcoin, 1), underlyingCurrency)
+            ).toBig();
             const btcToLendRate = btcToUnderRate.div(lendToUnderRate);
 
             // final rate is normalized (base unit vs base unit), construct accordingly
