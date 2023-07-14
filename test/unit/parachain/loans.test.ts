@@ -140,6 +140,7 @@ describe("DefaultLoansAPI", () => {
         ): CollateralPosition => ({
             amount,
             isCollateral,
+            vaultCollateralAmount: newMonetaryAmount(0, amount.currency),
         });
         const mockBorrowPosition = (amount: MonetaryAmount<CurrencyExt>): BorrowPosition => ({
             amount,

@@ -303,7 +303,13 @@ export class DefaultLoansAPI implements LoansAPI {
             lendTokenBalanceInBig,
             underlyingCurrencyId
         );
-        return [amountInUnderlying, lendTokenBalanceInBig];
+
+        const reservedAmountInUnderlying = await this.convertLendTokenToUnderlyingCurrency(
+            Big(lendTokenBalance.reserved.toString()),
+            underlyingCurrencyId
+        );
+
+        return [amountInUnderlying, reservedAmountInUnderlying];
     }
 
     async getLendTokens(): Promise<LendToken[]> {
@@ -369,7 +375,7 @@ export class DefaultLoansAPI implements LoansAPI {
         underlyingCurrency: CurrencyExt,
         lendTokenId: InterbtcPrimitivesCurrencyId
     ): Promise<CollateralPosition | null> {
-        const [underlyingCurrencyAmount] = await this.getLendPositionAmounts(
+        const [underlyingCurrencyAmount, reservedAmountInUnderlyingCurrency] = await this.getLendPositionAmounts(
             accountId,
             lendTokenId,
             newCurrencyId(this.api, underlyingCurrency)
@@ -382,9 +388,14 @@ export class DefaultLoansAPI implements LoansAPI {
 
         const isCollateral = !accountDeposits.isZero();
 
+        // MEMO: If position is not used as loan collateral, but has reserved amount it means
+        // this account uses the qToken as vault collateral.
+        const amountLockedAsVaultCollateral = isCollateral ? Big(0) : reservedAmountInUnderlyingCurrency;
+
         return {
             amount: newMonetaryAmount(underlyingCurrencyAmount, underlyingCurrency),
             isCollateral,
+            vaultCollateralAmount: newMonetaryAmount(amountLockedAsVaultCollateral, underlyingCurrency),
         };
     }
 
