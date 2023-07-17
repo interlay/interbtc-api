@@ -1,8 +1,7 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
 import { createSubstrateAPI } from "../src/factory";
 import { ApiPromise } from "@polkadot/api";
-import { cryptoWaitReady, blake2AsHex } from "@polkadot/util-crypto";
-import fetch from "cross-fetch";
+import { cryptoWaitReady } from "@polkadot/util-crypto";
 import BN from "bn.js";
 import { assert } from "console";
 
@@ -11,16 +10,29 @@ main().catch((err) => {
     console.log(err);
 });
 
-async function main(): Promise<void> {
-    await cryptoWaitReady();
+type NativeCurrencyId = { Token: string };
 
-    const paraApi = await createSubstrateAPI("wss://api.interlay.io/parachain");
-    // const paraApi = await createSubstrateAPI("wss://api-kusama.interlay.io/parachain");
+type CirculationData = {
+    totalIssuance: BN,
+    totalFree: BN,
+    totalReserved: BN,
+    totalFrozen: BN,
+    systemAccountSupply: BN,
+    circulating: BN
+};
 
-    const nativeCurrencyId = { Token: "INTR" };
-    const totalIssuance = await paraApi.query.tokens.totalIssuance(nativeCurrencyId);
+async function fetchCirculationInfo(
+    api: ApiPromise,
+    blockhash: string | Uint8Array,
+    nativeCurrencyId: NativeCurrencyId
+): Promise<CirculationData> {
+    const apiAtBlock = await api.at(blockhash);
 
-    const allBalances = await paraApi.query.tokens.accounts.entries();
+    const [totalIssuance, allBalances] = await Promise.all([
+        apiAtBlock.query.tokens.totalIssuance(nativeCurrencyId),
+        apiAtBlock.query.tokens.accounts.entries()
+    ]);
+
     const allNativeBalances = allBalances.filter(([{ args: [_account, currencyId] }, _value]) => {
         if (currencyId.isToken) {
             return currencyId.asToken.isIntr;
@@ -38,14 +50,10 @@ async function main(): Promise<void> {
         .map(value => (value[1] as any).frozen.toBn())
         .reduce((acc: BN, r) => acc.add(r), new BN(0));
 
-    console.log(`Total Issuance: ${totalIssuance.toString()}`);
-    console.log(`Total Free: ${totalFree.toString()}`);
-    console.log(`Total Reserved: ${totalReserved.toString()}`);
-    console.log(`Total Frozen: ${totalFrozen.toString()}`);
 
     assert(totalFree.add(totalReserved).eq(totalIssuance));
 
-    const liquidityPairs = await paraApi.query.dexGeneral.liquidityPairs.entries();
+    const liquidityPairs = await apiAtBlock.query.dexGeneral.liquidityPairs.entries();
     const lpTokens = liquidityPairs.map(([_key, value]) => value.unwrap());
 
     const systemAccounts = [
@@ -81,17 +89,76 @@ async function main(): Promise<void> {
 
     const systemAccountBalances = await Promise.all(
         systemAccounts.map(account =>
-            paraApi.query.tokens.accounts(account, nativeCurrencyId)
+            apiAtBlock.query.tokens.accounts(account, nativeCurrencyId)
         )
     );
 
     const systemAccountSupply = systemAccountBalances
         .reduce((acc: BN, accountData) => acc.add(accountData.free), new BN(0));
-    console.log(`System Account Supply: ${systemAccountSupply.toString()}`);
 
     // circulating = total_issuance - total_locked - total_reserved - system_account_supply
     const circulating = totalIssuance.sub(totalFrozen).sub(totalReserved).sub(systemAccountSupply);
-    console.log(`Circulating: ${circulating.toString()}`);
+
+    return {
+        totalIssuance,
+        totalFree,
+        totalReserved,
+        totalFrozen,
+        systemAccountSupply,
+        circulating
+    };
+}
+
+function logData(data: CirculationData): void {
+    console.log(`Total Issuance: ${data.totalIssuance.toString()}`);
+    console.log(`Total Free: ${data.totalFree.toString()}`);
+    console.log(`Total Reserved: ${data.totalReserved.toString()}`);
+    console.log(`Total Frozen: ${data.totalFrozen.toString()}`);
+    console.log(`System Account Supply: ${data.systemAccountSupply.toString()}`);
+    console.log(`Circulating: ${data.circulating.toString()}`);
+}
+
+async function main(): Promise<void> {
+    await cryptoWaitReady();
+
+    const endpoint = "wss://api.interlay.io/parachain";
+    const nativeCurrencyId = { Token: "INTR" };
+    const startHash = "0xaa44632945aa72aba1cbd95465e76d1c2af17d4cedace096b4e1e735023a668b";
+    const startHeight = 2959963;
+    const endHash = "0xa360c4b8995819d97ee5ec82242261f092e662b7faf4a746fe978c032c35821f";
+    const endHeight = 3131000;
+    
+    // const endpoint = "wss://api-kusama.interlay.io/parachain";
+    // const nativeCurrencyId = { Token: "KINT" };
+    // const startHeight = 123;
+    // const startHash = "0x123";
+    // const endHash = "0x456";
+    // const endHeight = 456;
+    
+    const paraApi = await createSubstrateAPI(endpoint);
+    const startData = await fetchCirculationInfo(paraApi, startHash, nativeCurrencyId);
+    console.log(`Native Currency: ${nativeCurrencyId.Token} - wss: ${endpoint}`);
+    console.log("===========================");
+    console.log(`Start at height: ${startHeight}, hash: ${startHash}`);
+    logData(startData);
+
+    const endData = await fetchCirculationInfo(paraApi, endHash, nativeCurrencyId);
+    console.log("===========================");
+    console.log(`End at height: ${endHeight}, hash: ${endHash}`);
+    logData(endData);
+
+    const deltaData = {
+        totalIssuance: endData.totalIssuance.sub(startData.totalIssuance),
+        totalFree: endData.totalFree.sub(startData.totalFree),
+        totalReserved: endData.totalReserved.sub(startData.totalReserved),
+        totalFrozen: endData.totalFrozen.sub(startData.totalFrozen),
+        systemAccountSupply: endData.systemAccountSupply.sub(startData.systemAccountSupply),
+        circulating: endData.circulating.sub(startData.circulating),
+    };
+    console.log("===========================");
+    console.log("Delta end - start");
+    logData(deltaData);
+    console.log("===========================");
 
     await paraApi.disconnect();
 }
