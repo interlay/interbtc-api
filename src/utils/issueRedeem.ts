@@ -75,7 +75,7 @@ export const getRedeemRequestsFromExtrinsicResult = async (
  * for redeem) and an amount to allocate, selects one or more vaults to fulfil
  * the request.
  * If the amount cannot be allocated by a single vault, greedily selects the vault
- * with highest available amount and tries again for the remainder. If at leaast
+ * with highest available amount and tries again for the remainder. If at least
  * one vault can fulfil a request alone, a random one among them is selected.
  **/
 export function allocateAmountsToVaults(

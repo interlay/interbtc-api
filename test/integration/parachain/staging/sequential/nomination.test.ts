@@ -36,7 +36,7 @@ import {
 } from "../../../../utils/helpers";
 import { Nomination } from "../../../../../src/parachain/nomination";
 
-// TODO: readd this once we want to activate nomination
+// TODO: re-add this once we want to activate nomination
 describe.skip("NominationAPI", () => {
     let api: ApiPromise;
     let userInterBtcAPI: InterBtcApi;
