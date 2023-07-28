@@ -124,6 +124,7 @@ describe("Bitcoin", () => {
         const mockElectrsGetParsedExecutionParameters = (merkleProofHex: string, txHex: string) => {
             const [proof, tx] = [BitcoinMerkleProof.fromHex(merkleProofHex), bitcoinjs.Transaction.fromHex(txHex)];
             stubbedElectrsApi.getParsedExecutionParameters.withArgs(sinon.match.any).resolves([proof, tx]);
+            stubbedElectrsApi.getCoinbaseTxId.withArgs(sinon.match.any).resolves(tx.getId());
         };
 
         it.only("should parse proof and transactions correctly", async () => {
