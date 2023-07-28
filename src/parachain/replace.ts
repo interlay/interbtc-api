@@ -156,7 +156,7 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         private btcNetwork: Network,
         private electrsAPI: ElectrsAPI,
         private wrappedCurrency: WrappedCurrency
-    ) { }
+    ) {}
 
     buildRequestReplaceExtrinsic(
         amount: MonetaryAmount<WrappedCurrency>,
@@ -221,13 +221,8 @@ export class DefaultReplaceAPI implements ReplaceAPI {
         btcTxId: string
     ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
-        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        return this.api.tx.replace.executeReplace(
-            parsedRequestId,
-            txInclusionDetails.merkleProof,
-            txInclusionDetails.transaction,
-            txInclusionDetails.lengthBound,
-        );
+        const fullTxProof = await getTxProof(this.electrsAPI, btcTxId);
+        return this.api.tx.replace.executeReplace(parsedRequestId, fullTxProof);
     }
 
     async execute(requestId: string, btcTxId: string): Promise<ExtrinsicData> {

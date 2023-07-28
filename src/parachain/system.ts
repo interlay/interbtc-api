@@ -1,6 +1,5 @@
 import { ApiPromise } from "@polkadot/api";
 import { Header, BlockHash } from "@polkadot/types/interfaces";
-import { SecurityStatusCode } from "@polkadot/types/lookup";
 import { ExtrinsicData } from "../types";
 import { BLOCK_TIME_SECONDS } from "../utils";
 
@@ -30,10 +29,6 @@ export interface SystemAPI {
      */
     subscribeToCurrentBlockHeads(callback: (blockHeader: Header) => void): Promise<() => void>;
 
-    /**
-     * @returns The parachain status code object.
-     */
-    getStatusCode(): Promise<SecurityStatusCode>;
     /**
      * @remarks Upgrades runtime using `sudoUncheckedWeight`
      * @param code Hex-encoded wasm blob
@@ -83,10 +78,6 @@ export class DefaultSystemAPI implements SystemAPI {
             callback(head);
         });
         return unsub;
-    }
-
-    async getStatusCode(): Promise<SecurityStatusCode> {
-        return await this.api.query.security.parachainStatus();
     }
 
     setCode(code: string): ExtrinsicData {

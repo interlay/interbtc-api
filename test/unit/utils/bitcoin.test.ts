@@ -155,7 +155,9 @@ describe("Bitcoin", () => {
             const expectedTxLockTime = { blockHeight: 640774 };
             const expectedLengthBound = 214;
 
-            const { merkleProof, transaction, lengthBound } = await getTxProof(stubbedElectrsApi, "");
+            const {
+                userTxProof: { merkleProof, transaction, lengthBound },
+            } = await getTxProof(stubbedElectrsApi, "");
 
             assert.equal(merkleProof.transactionsCount, expectedMerkleProof.txCount);
             assert.equal(merkleProof.flagBits.length, expectedMerkleProof.flagBitsCount);
@@ -173,7 +175,9 @@ describe("Bitcoin", () => {
                 "010000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff270342170c0b2f4d61726120506f6f6c2f1a01000200000003000000700027ff6200000000000000ffffffff02c164ae28000000001976a9142fc701e2049ee4957b07134b6c1d771dd5a96b2188ac0000000000000000266a24aa21a9ed054d90af5d454378394db8e2ab79b49aa9ba346af428d4f4969e9029750bf31a0120000000000000000000000000000000000000000000000000000000000000000000000000";
             mockElectrsGetParsedExecutionParameters(merkleProofHex, txHex);
 
-            const { transaction } = await getTxProof(stubbedElectrsApi, "");
+            const {
+                userTxProof: { transaction },
+            } = await getTxProof(stubbedElectrsApi, "");
             assert.equal(transaction.inputs[0].source, "coinbase");
         });
 
@@ -186,7 +190,9 @@ describe("Bitcoin", () => {
 
             const expectedLocktime = { time: 1802726473 };
 
-            const { transaction } = await getTxProof(stubbedElectrsApi, "");
+            const {
+                userTxProof: { transaction },
+            } = await getTxProof(stubbedElectrsApi, "");
             assert.deepEqual(transaction.lockAt, expectedLocktime);
         });
     });

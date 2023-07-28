@@ -1,7 +1,7 @@
 version: "3.8"
 services:
     interbtc:
-        image: "interlayhq/interbtc:1.24.0-rc2"
+        image: "interlayhq/interbtc:1.25.0-rc4"
         command:
             - --rpc-external
             - --ws-external
@@ -54,9 +54,9 @@ services:
             - "3002:3002"
         restart: always
     oracle:
-        image: "interlayhq/interbtc-clients:oracle-parachain-metadata-kintsugi-testnet-1.22.0"
+        image: "interlayhq/interbtc-clients:oracle-parachain-metadata-kintsugi-1.23.0-rc1"
         command:
-            - oracle-parachain-metadata-kintsugi-testnet
+            - oracle-parachain-metadata-kintsugi
             - --keyring=bob
             - --btc-parachain-url=ws://interbtc:9944
         environment:
@@ -64,9 +64,9 @@ services:
         volumes:
             - ./docker/oracle-config.json:/oracle-config.json
     vault_1:
-        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-testnet-1.22.0"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-1.23.0-rc1"
         command:
-            - vault-parachain-metadata-kintsugi-testnet
+            - vault-parachain-metadata-kintsugi
             - --keyfile=/keyfile.json
             - --keyname=vault_1
             - --auto-register=KSM=10000000000000
@@ -81,9 +81,9 @@ services:
         volumes:
             - ./docker/vault_1-keyfile.json:/keyfile.json
     vault_2:
-        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-testnet-1.22.0"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-1.23.0-rc1"
         command:
-            - vault-parachain-metadata-kintsugi-testnet
+            - vault-parachain-metadata-kintsugi
             - --keyfile=/keyfile.json
             - --keyname=vault_2
             - --auto-register=KSM=10000000000000
@@ -94,9 +94,9 @@ services:
         volumes:
             - ./docker/vault_2-keyfile.json:/keyfile.json
     vault_3:
-        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-testnet-1.22.0"
+        image: "interlayhq/interbtc-clients:vault-parachain-metadata-kintsugi-1.23.0-rc1"
         command:
-            - vault-parachain-metadata-kintsugi-testnet
+            - vault-parachain-metadata-kintsugi
             - --keyfile=/keyfile.json
             - --keyname=vault_3
             - --auto-register=KSM=10000000000000

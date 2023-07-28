@@ -5,7 +5,13 @@ import { Bitcoin, BitcoinAmount, ExchangeRate } from "@interlay/monetary-js";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import { assert } from "../../../../chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
-import { CollateralCurrencyExt, DefaultInterBtcApi, getSS58Prefix, InterBtcApi } from "../../../../../src";
+import {
+    CollateralCurrencyExt,
+    DefaultInterBtcApi,
+    getSS58Prefix,
+    InterBtcApi,
+    tokenSymbolToCurrency,
+} from "../../../../../src";
 import {
     getCorrespondingCollateralCurrenciesForTests,
     getExchangeRateValueToSetForTesting,
@@ -99,7 +105,10 @@ describe("OracleAPI", () => {
     });
 
     it("should be online", async () => {
-        const isOnline = await interBtcAPI.oracle.isOnline();
+        const relayChainCurrencyId = api.consts.currency.getRelayChainCurrencyId;
+        const relayChainCurrency = tokenSymbolToCurrency(relayChainCurrencyId.asToken);
+
+        const isOnline = await interBtcAPI.oracle.isOnline(relayChainCurrency);
         assert.isTrue(isOnline);
     });
 });

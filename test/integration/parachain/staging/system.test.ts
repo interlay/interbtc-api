@@ -28,11 +28,6 @@ describe("systemAPI", () => {
         assert.isDefined(currentBlockNumber);
     });
 
-    it("should getStatusCode", async () => {
-        const statusCode = await interBtcAPI.system.getStatusCode();
-        assert.isDefined(statusCode);
-    });
-
     it("should getFutureBlockNumber", async () => {
         const approximately10BlocksTime = 10 * BLOCK_TIME_SECONDS;
         const [currentBlockNumber, futureBlockNumber] = await Promise.all([

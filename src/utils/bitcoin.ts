@@ -5,7 +5,6 @@ import { H160 } from "@polkadot/types/interfaces";
 import { BitcoinAddress } from "@polkadot/types/lookup";
 import { TypeRegistry } from "@polkadot/types";
 
-import { ElectrsAPI } from "../external";
 import { BTCRelayAPI } from "../parachain";
 import {
     sleep,
@@ -24,6 +23,9 @@ import {
     TransactionLocktime,
     TransactionOutput,
 } from "../types";
+
+import { Transaction as BitcoinTransaction } from "bitcoinjs-lib";
+import { ElectrsAPI } from "../external";
 
 export function encodeBtcAddress(address: BitcoinAddress, network: Network): string {
     let btcAddress: string | undefined;
@@ -137,15 +139,13 @@ const parseLockTime = (locktime: number): TransactionLocktime => {
     return { time: locktime };
 };
 
-export async function getTxProof(
-    electrsAPI: ElectrsAPI,
-    btcTxId: string
-): Promise<{
+interface PartialTxProof {
     merkleProof: MerkleProof;
     transaction: Transaction;
     lengthBound: number;
-}> {
-    const [proof, tx] = await electrsAPI.getParsedExecutionParameters(btcTxId);
+}
+
+function getPartialTxProof(proof: BitcoinMerkleProof, tx: BitcoinTransaction): PartialTxProof {
     if (proof.blockHeader.merkleRoot === undefined) {
         throw new Error("Block header data is missing merkle root");
     }
@@ -175,6 +175,33 @@ export async function getTxProof(
             lockAt: parseLockTime(tx.locktime),
         },
         lengthBound: tx.byteLength(),
+    };
+}
+
+export async function getTxProof(
+    electrsAPI: ElectrsAPI,
+    userTxId: string
+): Promise<{
+    userTxProof: PartialTxProof;
+    coinbaseProof: PartialTxProof;
+}> {
+    const coinbaseTxId = await electrsAPI.getCoinbaseTxId(userTxId);
+
+    if (coinbaseTxId === undefined) {
+        throw new Error(`Coinbase txid not found for transaction ${userTxId}`);
+    }
+
+    const [userTxParams, coinbaseTxParams] = await Promise.all([
+        electrsAPI.getParsedExecutionParameters(userTxId),
+        electrsAPI.getParsedExecutionParameters(coinbaseTxId),
+    ]);
+
+    const userTxPartialProof = getPartialTxProof(userTxParams[0], userTxParams[1]);
+    const coinbaseTxPartialProof = getPartialTxProof(coinbaseTxParams[0], coinbaseTxParams[1]);
+
+    return {
+        userTxProof: userTxPartialProof,
+        coinbaseProof: coinbaseTxPartialProof,
     };
 }
 
