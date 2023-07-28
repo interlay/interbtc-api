@@ -142,7 +142,7 @@ const parseLockTime = (locktime: number): TransactionLocktime => {
 interface PartialTxProof {
     merkleProof: MerkleProof;
     transaction: Transaction;
-    lengthBound: number;
+    txEncodedLen: number;
 }
 
 function getPartialTxProof(proof: BitcoinMerkleProof, tx: BitcoinTransaction): PartialTxProof {
@@ -174,7 +174,7 @@ function getPartialTxProof(proof: BitcoinMerkleProof, tx: BitcoinTransaction): P
             outputs: tx.outs.map(parseTxOutput),
             lockAt: parseLockTime(tx.locktime),
         },
-        lengthBound: tx.byteLength(),
+        txEncodedLen: tx.byteLength(),
     };
 }
 

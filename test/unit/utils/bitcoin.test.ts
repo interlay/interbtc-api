@@ -156,7 +156,7 @@ describe("Bitcoin", () => {
             const expectedLengthBound = 214;
 
             const {
-                userTxProof: { merkleProof, transaction, lengthBound },
+                userTxProof: { merkleProof, transaction, txEncodedLen },
             } = await getTxProof(stubbedElectrsApi, "");
 
             assert.equal(merkleProof.transactionsCount, expectedMerkleProof.txCount);
@@ -165,7 +165,7 @@ describe("Bitcoin", () => {
             assert.equal(JSON.stringify(transaction.inputs), JSON.stringify(expectedTxIns));
             assert.equal(JSON.stringify(transaction.outputs), JSON.stringify(expectedTxOuts));
             assert.deepEqual(transaction.lockAt, expectedTxLockTime);
-            assert.equal(lengthBound, expectedLengthBound);
+            assert.equal(txEncodedLen, expectedLengthBound);
         });
 
         it("should parse coinbase transaction correctly", async () => {
