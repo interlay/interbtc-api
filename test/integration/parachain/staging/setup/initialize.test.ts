@@ -57,7 +57,7 @@ function getSetBalanceExtrinsic(
     api: ApiPromise,
     vaultAccount: KeyringPair,
     currencyId: InterbtcPrimitivesCurrencyId,
-    amountFree: number
+    amountFree: string
 ) {
     return api.tx.sudo.sudo(api.tx.tokens.setBalance(vaultAccount.address, currencyId, amountFree, 0));
 }
@@ -133,9 +133,9 @@ describe("Initialize parachain state", () => {
 
         // Fund all vaults with relay chain currency
         const relayChainCurrencyId = api.consts.currency.getRelayChainCurrencyId;
-        const relayChainAmount = 10000000000000;
+        const relayChainAmount = "1000000000000000000";
         const setBalanceExtrinsic = api.tx.utility.batchAll(
-            [vault_1, vault_2, vault_3].map((vaultAccount) =>
+            [vault_1, vault_2, vault_3, userAccount].map((vaultAccount) =>
                 getSetBalanceExtrinsic(api, vaultAccount, relayChainCurrencyId, relayChainAmount)
             )
         );
