@@ -431,7 +431,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
 
     async getCoinbaseTxId(userTxId: string): Promise<string | undefined> {
         const blockHash = (await this.getTxStatus(userTxId)).block_hash;
-        console.log("utxid", userTxId, "blockhash", blockHash);
+
         if (blockHash === undefined) {
             return undefined;
         }
