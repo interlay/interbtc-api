@@ -3,7 +3,7 @@ import { Option, Bool } from "@polkadot/types";
 import { Moment } from "@polkadot/types/interfaces";
 import Big from "big.js";
 import { Bitcoin, ExchangeRate, MonetaryAmount } from "@interlay/monetary-js";
-import { SecurityErrorCode, InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
+import { InterbtcPrimitivesOracleKey } from "@polkadot/types/lookup";
 
 import {
     ATOMIC_UNIT,
@@ -49,9 +49,10 @@ export interface OracleAPI {
      */
     getSourcesById(): Promise<Map<string, string>>;
     /**
-     * @returns Boolean value indicating whether the oracle is online
+     * @returns Boolean value indicating whether the oracle is online for currency
+     * @param currency Currency for which we check status of oracle.
      */
-    isOnline(): Promise<boolean>;
+    isOnline(currency: CurrencyExt): Promise<boolean>;
     /**
      * Create a transaction to set the exchange rate between Bitcoin and a collateral currency
      * @param exchangeRate The rate to set
@@ -208,22 +209,16 @@ export class DefaultOracleAPI implements OracleAPI {
         return validUntil.isSome ? convertMoment(validUntil.value as Moment) : Promise.reject("No such oracle key");
     }
 
-    async isOnline(): Promise<boolean> {
-        const errors = await this.api.query.security.errors();
-        return !this.hasOracleError(Array.from(errors));
+    async isOnline(currency: CurrencyExt): Promise<boolean> {
+        const oracleKey = createExchangeRateOracleKey(this.api, currency);
+        const value = await this.api.query.oracle.aggregate(oracleKey);
+
+        // If the oracle has value then it is active for the given currency.
+        return value.isSome;
     }
 
     async getRawValuesUpdated(key: InterbtcPrimitivesOracleKey): Promise<boolean> {
         const isSet = await this.api.query.oracle.rawValuesUpdated<Option<Bool>>(key);
         return isSet.unwrap().isTrue;
-    }
-
-    private hasOracleError(errors: SecurityErrorCode[]): boolean {
-        for (const error of errors.values()) {
-            if (error.isOracleOffline) {
-                return true;
-            }
-        }
-        return false;
     }
 }

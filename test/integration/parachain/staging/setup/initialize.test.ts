@@ -23,6 +23,7 @@ import {
     DefaultTransactionAPI,
     newCurrencyId,
     intoAccountTruncating,
+    InterbtcPrimitivesCurrencyId,
 } from "../../../../../src";
 import {
     SUDO_URI,
@@ -51,6 +52,15 @@ import {
 } from "../../../../utils/helpers";
 import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
 import { BN } from "bn.js";
+
+function getSetBalanceExtrinsic(
+    api: ApiPromise,
+    vaultAccount: KeyringPair,
+    currencyId: InterbtcPrimitivesCurrencyId,
+    amountFree: string
+) {
+    return api.tx.sudo.sudo(api.tx.tokens.setBalance(vaultAccount.address, currencyId, amountFree, 0));
+}
 
 describe("Initialize parachain state", () => {
     let api: ApiPromise;
@@ -120,6 +130,17 @@ describe("Initialize parachain state", () => {
             [vault_2, collateralCurrency],
             [vault_3, collateralCurrency],
         ];
+
+        // Fund all vaults with relay chain currency
+        const relayChainCurrencyId = api.consts.currency.getRelayChainCurrencyId;
+        const relayChainAmount = "1000000000000000000";
+        const setBalanceExtrinsic = api.tx.utility.batchAll(
+            [vault_1, vault_2, vault_3, userAccount].map((vaultAccount) =>
+                getSetBalanceExtrinsic(api, vaultAccount, relayChainCurrencyId, relayChainAmount)
+            )
+        );
+        await DefaultTransactionAPI.sendLogged(api, sudoAccount, setBalanceExtrinsic);
+
         // wait for all vaults to register
         await Promise.all(
             vaultCollateralPairs

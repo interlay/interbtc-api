@@ -130,6 +130,13 @@ export interface ElectrsAPI {
      */
     getParsedExecutionParameters(txid: string): Promise<[BitcoinMerkleProof, BitcoinTransaction]>;
     /**
+     * Returns tx id of the coinbase tx of block in which `userTxId` was included.
+     *
+     * @param userTxId User tx ID which block's txId will be returned.
+     * @returns {string} Tx ID of coinbase transaction or undefined if block was not found.
+     */
+    getCoinbaseTxId(userTxId: string): Promise<string | undefined>;
+    /**
      * Return a promise that either resolves to the first txid with the given opreturn `data`,
      * or rejects if the `timeout` has elapsed.
      *
@@ -420,6 +427,16 @@ export class DefaultElectrsAPI implements ElectrsAPI {
 
     getRawTransaction(txid: string): Promise<string> {
         return this.getData(this.txApi.getTxHex(txid));
+    }
+
+    async getCoinbaseTxId(userTxId: string): Promise<string | undefined> {
+        const blockHash = (await this.getTxStatus(userTxId)).block_hash;
+
+        if (blockHash === undefined) {
+            return undefined;
+        }
+
+        return this.getData(this.blockApi.getBlockTxByIndex(blockHash, 0));
     }
 
     /**

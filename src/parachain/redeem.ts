@@ -224,7 +224,7 @@ export class DefaultRedeemAPI implements RedeemAPI {
         private oracleAPI: OracleAPI,
         private transactionAPI: TransactionAPI,
         private systemAPI: SystemAPI
-    ) { }
+    ) {}
 
     async request(
         amount: MonetaryAmount<WrappedCurrency>,
@@ -280,13 +280,8 @@ export class DefaultRedeemAPI implements RedeemAPI {
         btcTxId: string
     ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
         const parsedRequestId = ensureHashEncoded(this.api, redeemId);
-        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        return this.api.tx.redeem.executeRedeem(
-            parsedRequestId,
-            txInclusionDetails.merkleProof,
-            txInclusionDetails.transaction,
-            txInclusionDetails.lengthBound,
-        );
+        const fullTxProof = await getTxProof(this.electrsAPI, btcTxId);
+        return this.api.tx.redeem.executeRedeem(parsedRequestId, fullTxProof);
     }
 
     async execute(requestId: string, btcTxId: string): Promise<ExtrinsicData> {
@@ -333,9 +328,10 @@ export class DefaultRedeemAPI implements RedeemAPI {
     }
 
     async getMaxBurnableTokens(collateralCurrency: CollateralCurrencyExt): Promise<MonetaryAmount<WrappedCurrency>> {
-        const liquidationVault: SystemVaultExt | null = await this.vaultsAPI.getLiquidationVault(collateralCurrency)
-            // method rejects if no vault was found, wrap as null    
-            .catch((reason) => (reason === NO_LIQUIDATION_VAULT_FOUND_REJECTION) ? null : Promise.reject(reason));
+        const liquidationVault: SystemVaultExt | null = await this.vaultsAPI
+            .getLiquidationVault(collateralCurrency)
+            // method rejects if no vault was found, wrap as null
+            .catch((reason) => (reason === NO_LIQUIDATION_VAULT_FOUND_REJECTION ? null : Promise.reject(reason)));
 
         if (liquidationVault === null) {
             // no liquidation vault exists, therefore, no burnable tokens)

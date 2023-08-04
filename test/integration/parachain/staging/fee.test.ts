@@ -42,7 +42,7 @@ describe("fee", () => {
         const nativeCurrency = oracleInterBtcAPI.getGovernanceCurrency();
 
         await callWithExchangeRate(sudoInterBtcAPI, nativeCurrency, exchangeRateValue, async () => {
-            const amountBtc = newMonetaryAmount(0.001, wrappedCurrency, true);
+            const amountBtc = newMonetaryAmount(0.00001, wrappedCurrency, true);
             const griefingCollateral = await oracleInterBtcAPI.fee.getGriefingCollateral(
                 amountBtc,
                 GriefingCollateralType.Issue

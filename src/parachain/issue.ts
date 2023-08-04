@@ -283,13 +283,8 @@ export class DefaultIssueAPI implements IssueAPI {
         btcTxId: string
     ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
         const parsedRequestId = ensureHashEncoded(this.api, requestId);
-        const txInclusionDetails = await getTxProof(this.electrsAPI, btcTxId);
-        return this.api.tx.issue.executeIssue(
-            parsedRequestId,
-            txInclusionDetails.merkleProof,
-            txInclusionDetails.transaction,
-            txInclusionDetails.lengthBound
-        );
+        const fullTxProof = await getTxProof(this.electrsAPI, btcTxId);
+        return this.api.tx.issue.executeIssue(parsedRequestId, fullTxProof);
     }
 
     async execute(requestId: string, btcTxId: string): Promise<ExtrinsicData> {
