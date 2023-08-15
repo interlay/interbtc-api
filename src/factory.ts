@@ -29,7 +29,13 @@ export function createSubstrateAPI(
 
     const types = getAPITypes();
     const rpc = getRPCTypes();
-    return ApiPromise.create({ provider, types, rpc, noInitWarn: noInitWarn || true });
+    return ApiPromise.create({
+        provider,
+        types,
+        rpc,
+        noInitWarn: noInitWarn || true,
+        runtime: definitions.default.runtime
+    });
 }
 
 export async function createInterBtcApi(
