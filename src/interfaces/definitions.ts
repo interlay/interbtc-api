@@ -1,4 +1,5 @@
-import definitions, { RpcFunctionDefinition } from "@interlay/interbtc-types";
+import { definitions } from "./interbtc-types";
+
 export default {
     types: definitions.types[0].types,
     rpc: parseProviderRpcDefinitions(definitions.rpc),
@@ -25,4 +26,21 @@ function parseProviderRpcDefinitions(
 
 interface DecoratedRpcFunctionDefinition extends RpcFunctionDefinition {
     aliasSection: string;
+}
+
+type RpcParams = Array<{
+    name: string,
+    type: string,
+    isHistoric?: boolean,
+    isOptional?: boolean
+}>;
+
+interface RpcFunctionDefinition {
+    description: string;
+    params: RpcParams;
+    type: string;
+    isSubscription?: boolean;
+    jsonrpc?: string;
+    method?: string;
+    section?: string;
 }

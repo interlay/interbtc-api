@@ -1,8 +1,11 @@
 {
+    "ts-node": {
+        "experimentalSpecifierResolution": "node"
+    },
     "compilerOptions": {
         "skipLibCheck": true,
-        "target": "es6",
-        "module": "commonjs",
+        "target": "esnext",
+        "module": "esnext",
         "outDir": "build",
         "declaration": true,
         "strict": true,

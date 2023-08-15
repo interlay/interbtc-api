@@ -8,6 +8,7 @@ src/**.js
 yarn.lock
 src/interfaces/*
 !src/interfaces/definitions.ts
+!src/interfaces/interbtc-types.ts
 !src/interfaces/default
 src/interfaces/default/*
 !src/interfaces/default/.keep
