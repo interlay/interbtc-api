@@ -2,7 +2,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api';
 
 /**
  * This script allows to verify that Vaults are replicated on another networks.
- * This script was orginially used to verify the correctness of the Kintsugi Vault v6
+ * This script was originally used to verify the correctness of the Kintsugi Vault v6
  * migration bug.
  */
 async function main() {

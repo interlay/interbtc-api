@@ -30,7 +30,7 @@ async function main() {
             faucet.fundAccount(accountId, Kintsugi)
         );
     }
-    console.log(`Making ${users} simulatenous faucet requests...`);
+    console.log(`Making ${users} simultaneous faucet requests...`);
     await Promise.all(promises);
     console.log("Finished");
 }
