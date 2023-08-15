@@ -38,4 +38,13 @@ describe("systemAPI", () => {
         assert.isAtLeast(futureBlockNumber, currentBlockNumber + 9);
         assert.isAtMost(futureBlockNumber, currentBlockNumber + 11);
     });
+
+    it("should get paymentInfo", async () => {
+        const tx = api.tx.system.remark("");
+        assert.isTrue(tx.hasPaymentInfo);
+        await assert.isFulfilled(
+            tx.paymentInfo(sudoAccount),
+            "Expected payment info for extrinsic"
+        );
+    });
 });

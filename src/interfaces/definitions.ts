@@ -3,31 +3,6 @@ export default {
     types: definitions.types[0].types,
     rpc: parseProviderRpcDefinitions(definitions.rpc),
     providerRpc: definitions.rpc,
-    // manual definition for transactionPaymentApi.queryInfo until polkadot-js/api can be upgraded
-    // TODO: revert when this work is merged: https://github.com/interlay/interbtc-api/pull/672
-    runtime: {
-        TransactionPaymentApi: [
-            {
-                methods: {
-                    queryInfo: {
-                        description: 'Retrieves the fee information for an encoded extrinsic',
-                        params: [
-                            {
-                                name: 'uxt',
-                                type: 'Extrinsic'
-                            },
-                            {
-                                name: 'len',
-                                type: 'u32'
-                            }
-                        ],
-                        type: 'RuntimeDispatchInfo'
-                    }
-                },
-                version: 4
-            }
-        ]
-    }
 };
 
 function parseProviderRpcDefinitions(
