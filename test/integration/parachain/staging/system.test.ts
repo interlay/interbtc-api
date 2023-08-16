@@ -2,7 +2,6 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "chai";
 import { SUDO_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { BLOCK_TIME_SECONDS, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
@@ -25,7 +24,7 @@ describe("systemAPI", () => {
 
     it("should getCurrentBlockNumber", async () => {
         const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
-        assert.isDefined(currentBlockNumber);
+        expect(currentBlockNumber).toBeDefined();
     });
 
     it("should getFutureBlockNumber", async () => {
@@ -35,16 +34,13 @@ describe("systemAPI", () => {
             interBtcAPI.system.getFutureBlockNumber(approximately10BlocksTime),
         ]);
 
-        assert.isAtLeast(futureBlockNumber, currentBlockNumber + 9);
-        assert.isAtMost(futureBlockNumber, currentBlockNumber + 11);
+        expect(futureBlockNumber).toBeGreaterThanOrEqual(currentBlockNumber + 9);
+        expect(futureBlockNumber).toBeLessThanOrEqual(currentBlockNumber + 11);
     });
 
     it("should get paymentInfo", async () => {
         const tx = api.tx.system.remark("");
-        assert.isTrue(tx.hasPaymentInfo);
-        await assert.isFulfilled(
-            tx.paymentInfo(sudoAccount),
-            "Expected payment info for extrinsic"
-        );
+        expect(tx.hasPaymentInfo).toBe(true);
+        await expect(tx.paymentInfo(sudoAccount)).resolves.toBeDefined();
     });
 });

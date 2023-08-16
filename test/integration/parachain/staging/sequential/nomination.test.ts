@@ -91,10 +91,10 @@ describe.skip("NominationAPI", () => {
         for (const vault_1_id of vault_1_ids) {
             await optInWithAccount(vault_1, await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral));
             const nominationVaults = await userInterBtcAPI.nomination.listVaults();
-            assert.equal(1, nominationVaults.length);
-            assert.equal(vault_1.address, nominationVaults.map((v) => v.accountId.toString())[0]);
+            expect(1).toEqual(nominationVaults.length);
+            expect(vault_1.address).toEqual(nominationVaults.map((v) => v.accountId.toString())[0]);
             await optOutWithAccount(vault_1, await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral));
-            assert.equal(0, (await userInterBtcAPI.nomination.listVaults()).length);
+            expect(0).toEqual((await userInterBtcAPI.nomination.listVaults()).length);
         }
     });
 
@@ -124,17 +124,9 @@ describe.skip("NominationAPI", () => {
                     vault_1_id.accountId,
                     collateralCurrency
                 );
-                assert.equal(
-                    stakingCapacityBeforeNomination.sub(nominatorDeposit).toString(),
-                    stakingCapacityAfterNomination.toString(),
-                    "Nomination failed to decrease staking capacity"
-                );
+                expect(stakingCapacityBeforeNomination.sub(nominatorDeposit).toString()).toEqual(stakingCapacityAfterNomination.toString());
                 const nominationPairs = await userInterBtcAPI.nomination.list();
-                assert.equal(
-                    2,
-                    nominationPairs.length,
-                    "There should be one nomination pair in the system, besides the vault to itself"
-                );
+                expect(2).toEqual(nominationPairs.length);
 
                 const userAddress = userAccount.address;
                 const vault_1Address = vault_1.address;
@@ -143,8 +135,8 @@ describe.skip("NominationAPI", () => {
                     (nomination) => userAddress == nomination.nominatorId.toString()
                 ) as Nomination;
 
-                assert.equal(userAddress, nomination.nominatorId.toString());
-                assert.equal(vault_1Address, nomination.vaultId.accountId.toString());
+                expect(userAddress).toEqual(nomination.nominatorId.toString());
+                expect(vault_1Address).toEqual(nomination.vaultId.accountId.toString());
 
                 const amountToIssue = newMonetaryAmount(0.00001, wrappedCurrency, true);
                 await issueSingle(userInterBtcAPI, bitcoinCoreClient, userAccount, amountToIssue, vault_1_id);
@@ -156,7 +148,7 @@ describe.skip("NominationAPI", () => {
                         newAccountId(api, userAccount.address)
                     )
                 ).toBig();
-                assert.isTrue(wrappedRewardsBeforeWithdrawal.gt(0), "Nominator should receive non-zero wrapped tokens");
+                expect(wrappedRewardsBeforeWithdrawal.gt(0)).toBe(true);
 
                 // Withdraw Rewards
                 await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.rewards.withdrawRewards(vault_1_id));
@@ -168,12 +160,12 @@ describe.skip("NominationAPI", () => {
 
                 const nominatorsAfterWithdrawal = await userInterBtcAPI.nomination.list();
                 // The vault always has a "nomination" to itself
-                assert.equal(1, nominatorsAfterWithdrawal.length);
+                expect(1).toEqual(nominatorsAfterWithdrawal.length);
                 const totalNomination = await userInterBtcAPI.nomination.getTotalNomination(
                     newAccountId(api, userAccount.address),
                     await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral)
                 );
-                assert.equal(totalNomination.toString(), "0");
+                expect(totalNomination.toString()).toEqual("0");
             } finally {
                 await setIssueFee(encodeUnsignedFixedPoint(api, issueFee));
                 await optOutWithAccount(

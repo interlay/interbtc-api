@@ -1,7 +1,6 @@
-import { expect } from "chai";
 import { DefaultRedeemAPI, DefaultVaultsAPI, VaultsAPI } from "../../../src";
 import { newMonetaryAmount } from "../../../src/utils";
-import { ExchangeRate, KBtc, Kintsugi } from "@interlay/monetary-js";
+import { KBtc, Kintsugi } from "@interlay/monetary-js";
 import Big from "big.js";
 import { NO_LIQUIDATION_VAULT_FOUND_REJECTION } from "../../../src/parachain/vaults";
 
@@ -28,13 +27,11 @@ describe("DefaultRedeemAPI", () => {
 
     afterEach(() => {
         jest.restoreAllMocks();
-        sinon.mockReset();
     });
 
     describe("getBurnExchangeRate", () => {
         afterEach(() => {
             jest.restoreAllMocks();
-            sinon.mockReset();
         });
 
         it("should reject if burnable amount is zero", async () => {
@@ -49,7 +46,7 @@ describe("DefaultRedeemAPI", () => {
             // stub internal call to reutn our mocked vault
             stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
 
-            await expect(redeemApi.getBurnExchangeRate(Kintsugi)).to.be.rejectedWith("no burnable tokens");
+            await expect(redeemApi.getBurnExchangeRate(Kintsugi)).rejects.toThrow("no burnable tokens");
         });
 
         it("should return an exchange rate", async () => {
@@ -64,8 +61,7 @@ describe("DefaultRedeemAPI", () => {
             stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
 
             const exchangeRate = await redeemApi.getBurnExchangeRate(Kintsugi);
-            expect(exchangeRate).to.be.an.instanceof(ExchangeRate);
-            expect(exchangeRate.rate.toNumber()).to.be.greaterThan(0);
+            expect(exchangeRate.rate.toNumber()).toBeGreaterThan(0);
         });
 
         it("should return a specific exchange rate for given values", async () => {
@@ -88,18 +84,15 @@ describe("DefaultRedeemAPI", () => {
             stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
 
             const exchangeRate = await redeemApi.getBurnExchangeRate(Kintsugi);
-            expect(exchangeRate).to.be.an.instanceof(ExchangeRate);
-            expect(exchangeRate.rate.mul(testMultiplier).toNumber()).to.be.closeTo(
-                expectedExchangeRate.mul(testMultiplier).toNumber(),
-                0.000001
-            );
+
+            const delta = Math.abs(exchangeRate.rate.mul(testMultiplier).toNumber() - expectedExchangeRate.mul(testMultiplier).toNumber());
+            expect(delta).toBeLessThan(0.000001);
         });
     });
 
     describe("getMaxBurnableTokens", () => {
         afterEach(() => {
             jest.restoreAllMocks();
-            sinon.mockReset();
         });
 
         it(
@@ -113,7 +106,7 @@ describe("DefaultRedeemAPI", () => {
                 });
 
                 const actualValue = await redeemApi.getMaxBurnableTokens(Kintsugi);
-                expect(actualValue.toBig().toNumber()).to.be.eq(0);
+                expect(actualValue.toBig().toNumber()).toBe(0);
             }
         );
 
@@ -127,7 +120,7 @@ describe("DefaultRedeemAPI", () => {
                     }
                 });
 
-                await expect(redeemApi.getMaxBurnableTokens(Kintsugi)).to.be.rejectedWith("foobar happened here");
+                await expect(redeemApi.getMaxBurnableTokens(Kintsugi)).rejects.toThrow("foobar happened here");
             }
         );
     });

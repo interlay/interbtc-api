@@ -1,4 +1,3 @@
-import { assert, expect } from "chai";
 import Big from "big.js";
 import { DefaultRewardsAPI, DefaultTransactionAPI, DefaultVaultsAPI } from "../../../src";
 import { newMonetaryAmount } from "../../../src/utils";
@@ -36,7 +35,6 @@ describe("DefaultVaultsAPI", () => {
 
     afterEach(() => {
         jest.restoreAllMocks();
-        sinon.mockReset();
     });
 
     describe("backingCollateralProportion", () => {
@@ -62,11 +60,7 @@ describe("DefaultVaultsAPI", () => {
 
                 // check result
                 const expectedProportion = new Big(0);
-                assert.equal(
-                    proportion.toString(),
-                    expectedProportion.toString(),
-                    `Expected actual proportion to be ${expectedProportion.toString()} but it was ${proportion.toString()}`
-                );
+                expect(proportion.toString()).toEqual(expectedProportion.toString());
             }
         );
 
@@ -91,7 +85,7 @@ describe("DefaultVaultsAPI", () => {
                     nominatorId,
                     testCollateralCurrency
                 );
-                expect(proportionPromise).to.be.rejectedWith(Error);
+                await expect(proportionPromise).rejects.toThrow(Error);
             }
         );
 
@@ -117,11 +111,7 @@ describe("DefaultVaultsAPI", () => {
 
             // check result
             const expectedProportion = nominatorAmount.div(vaultAmount);
-            assert.equal(
-                proportion.toString(),
-                expectedProportion.toString(),
-                `Expected actual proportion to be ${expectedProportion.toString()} but it was ${proportion.toString()}`
-            );
+            expect(proportion.toString()).toEqual(expectedProportion.toString());
         });
     });
 
@@ -132,7 +122,7 @@ describe("DefaultVaultsAPI", () => {
 
             const registerVaultCall = () => vaultsApi.registerNewCollateralVault(testCollateralAmount);
             // check for partial string here
-            expect(registerVaultCall).to.throw("account must be set");
+            await expect(registerVaultCall).rejects.toThrow("account must be set");
         });
     });
 
@@ -161,8 +151,8 @@ describe("DefaultVaultsAPI", () => {
                 testCollateralCurrency
             );
 
-            expect(actualRate).to.not.be.undefined;
-            expect(actualRate?.toNumber()).eq(expectedLiquidationExchangeRate);
+            expect(actualRate).toBeDefined();
+            expect(actualRate?.toNumber()).toBe(expectedLiquidationExchangeRate);
         });
 
         it("should return undefined if vault has no issued tokens", async () => {
@@ -186,7 +176,7 @@ describe("DefaultVaultsAPI", () => {
                 testCollateralCurrency
             );
 
-            expect(actualRate).to.be.undefined;
+            expect(actualRate).toBeUndefined();
         });
 
         it("should return undefined if liquidation rate is zero", async () => {
@@ -210,7 +200,7 @@ describe("DefaultVaultsAPI", () => {
                 testCollateralCurrency
             );
 
-            expect(actualRate).to.be.undefined;
+            expect(actualRate).toBeUndefined();
         });
     });
 });

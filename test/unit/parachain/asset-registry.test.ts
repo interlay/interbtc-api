@@ -1,5 +1,4 @@
 import mock from "jest-mock";
-import { expect } from "chai";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
 import {
@@ -72,7 +71,6 @@ describe("DefaultAssetRegistryAPI", () => {
 
     afterEach(() => {
         jest.restoreAllMocks();
-        sinon.mockReset();
     });
 
     describe("getForeignAssets", () => {
@@ -83,7 +81,7 @@ describe("DefaultAssetRegistryAPI", () => {
                 mock.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve([]));
 
                 const actual = await assetRegistryApi.getForeignAssets();
-                expect(actual).to.be.empty;
+                expect(actual).toHaveLength(0);
             }
         );
 
@@ -101,13 +99,10 @@ describe("DefaultAssetRegistryAPI", () => {
 
                 const actual = await assetRegistryApi.getForeignAssets();
 
-                expect(actual).to.have.lengthOf(1, `Expected only one currency to be returned, but got ${actual.length}`);
+                expect(actual).toHaveLength(1);
 
                 const actualCurrency = actual[0];
-                expect(actualCurrency.ticker).to.equal(
-                    mockMetadataValues.symbol,
-                    `Expected the returned currency ticker to be ${mockMetadataValues.symbol}, but it was ${actualCurrency.ticker}`
-                );
+                expect(actualCurrency.ticker).toBe(mockMetadataValues.symbol);
             }
         );
     });
@@ -116,25 +111,13 @@ describe("DefaultAssetRegistryAPI", () => {
         it("should convert foreign asset metadata to currency", async () => {
             const actual = DefaultAssetRegistryAPI.metadataTupleToForeignAsset([mockStorageKey, mockMetadata]);
 
-            expect(actual.ticker).to.equal(
-                mockMetadataValues.symbol,
-                `Expected currency ticker to be ${mockMetadataValues.symbol}, but was ${actual.ticker}`
-            );
+            expect(actual.ticker).toBe(mockMetadataValues.symbol);
 
-            expect(actual.name).to.equal(
-                mockMetadataValues.name,
-                `Expected currency name to be ${mockMetadataValues.name}, but was ${actual.name}`
-            );
+            expect(actual.name).toBe(mockMetadataValues.name);
 
-            expect(actual.decimals).to.equal(
-                mockMetadataValues.decimals,
-                `Expected currency base to be ${mockMetadataValues.decimals}, but was ${actual.decimals}`
-            );
+            expect(actual.decimals).toBe(mockMetadataValues.decimals);
 
-            expect(actual.foreignAsset.coingeckoId).to.equal(
-                mockMetadataValues.coingeckoId,
-                `Expected coingecko id to be ${mockMetadataValues.coingeckoId}, but was ${actual.foreignAsset.coingeckoId}`
-            );
+            expect(actual.foreignAsset.coingeckoId).toBe(mockMetadataValues.coingeckoId);
         });
     });
 
@@ -168,7 +151,7 @@ describe("DefaultAssetRegistryAPI", () => {
 
             const actual = await assetRegistryApi.getCollateralForeignAssets();
 
-            expect(actual).to.be.empty;
+            expect(actual).toHaveLength(0);
         });
 
         it(
@@ -177,7 +160,7 @@ describe("DefaultAssetRegistryAPI", () => {
                 prepareMocks(sinon, assetRegistryApi, mockForeignAssets, []);
 
                 const actual = await assetRegistryApi.getCollateralForeignAssets();
-                expect(actual).to.be.empty;
+                expect(actual).toHaveLength(0);
             }
         );
 
@@ -218,10 +201,10 @@ describe("DefaultAssetRegistryAPI", () => {
                 const actual = await assetRegistryApi.getCollateralForeignAssets();
 
                 // expect one returned value
-                expect(actual).to.have.lengthOf(1);
+                expect(actual).toHaveLength(1);
 
                 const actualAssetId = actual[0].foreignAsset.id;
-                expect(actualAssetId).to.be.eq(expectedForeignAssetId);
+                expect(actualAssetId).toBe(expectedForeignAssetId);
             }
         );
     });

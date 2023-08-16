@@ -3,7 +3,6 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinAmount, ExchangeRate } from "@interlay/monetary-js";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
 import {
     CollateralCurrencyExt,
@@ -67,11 +66,7 @@ describe("OracleAPI", () => {
                 bitcoinAmount,
                 collateralCurrency
             );
-            assert.equal(
-                collateralAmount.toBig(collateralCurrency.decimals).round(0, 0).toString(),
-                expectedCollateral.toString(),
-                `Unexpected collateral (${collateralCurrency.ticker}) amount`
-            );
+            expect(collateralAmount.toBig(collateralCurrency.decimals).round(0, 0).toString()).toEqual(expectedCollateral.toString());
         }
     });
 
@@ -82,14 +77,14 @@ describe("OracleAPI", () => {
         expectedSources.set(charlieAccount.address, "Charlie");
         const sources = await interBtcAPI.oracle.getSourcesById();
         for (const entry of sources.entries()) {
-            assert.equal(entry[1], expectedSources.get(entry[0]));
+            expect(entry[1]).toEqual(expectedSources.get(entry[0]));
         }
     });
 
     it("should getOnlineTimeout", async () => {
         const onlineTimeout = await interBtcAPI.oracle.getOnlineTimeout();
         const expectedOnlineTimeout = ORACLE_MAX_DELAY;
-        assert.equal(onlineTimeout, expectedOnlineTimeout);
+        expect(onlineTimeout).toEqual(expectedOnlineTimeout);
     });
 
     it("should getValidUntil", async () => {
@@ -97,10 +92,7 @@ describe("OracleAPI", () => {
             const validUntil = await interBtcAPI.oracle.getValidUntil(collateralCurrency);
             const dateAnHourFromNow = new Date();
             dateAnHourFromNow.setMinutes(dateAnHourFromNow.getMinutes() + 30);
-            assert.isTrue(
-                validUntil > dateAnHourFromNow,
-                `lastExchangeRateTime is older than one hour (${collateralCurrency.ticker})`
-            );
+            expect(validUntil > dateAnHourFromNow).toBe(true);
         }
     });
 
@@ -109,6 +101,6 @@ describe("OracleAPI", () => {
         const relayChainCurrency = tokenSymbolToCurrency(relayChainCurrencyId.asToken);
 
         const isOnline = await interBtcAPI.oracle.isOnline(relayChainCurrency);
-        assert.isTrue(isOnline);
+        expect(isOnline).toBe(true);
     });
 });

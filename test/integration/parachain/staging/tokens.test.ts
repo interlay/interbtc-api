@@ -2,7 +2,6 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "chai";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import {
     ATOMIC_UNIT,
@@ -65,28 +64,28 @@ describe("TokensAPI", () => {
             interBtcAPI,
             interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy)
         );
-        assert.equal(updatedAccount, user2Account.address);
+        expect(updatedAccount).toEqual(user2Account.address);
         const expectedUser2BalanceAfterFirstTransfer = new ChainBalance(
             currency,
             user2BalanceBeforeTransfer.free.add(amountToUpdateUser2sAccountBy).toBig(ATOMIC_UNIT),
             user2BalanceBeforeTransfer.transferable.add(amountToUpdateUser2sAccountBy).toBig(ATOMIC_UNIT),
             user2BalanceBeforeTransfer.reserved.toBig(ATOMIC_UNIT)
         );
-        assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterFirstTransfer.toString());
+        expect(updatedBalance.toString()).toEqual(expectedUser2BalanceAfterFirstTransfer.toString());
 
         // Send the second transfer, expect the callback to be called with correct values
         await submitExtrinsic(
             interBtcAPI,
             interBtcAPI.tokens.transfer(user2Account.address, amountToUpdateUser2sAccountBy)
         );
-        assert.equal(updatedAccount, user2Account.address);
+        expect(updatedAccount).toEqual(user2Account.address);
         const expectedUser2BalanceAfterSecondTransfer = new ChainBalance(
             currency,
             expectedUser2BalanceAfterFirstTransfer.free.add(amountToUpdateUser2sAccountBy).toBig(ATOMIC_UNIT),
             expectedUser2BalanceAfterFirstTransfer.transferable.add(amountToUpdateUser2sAccountBy).toBig(ATOMIC_UNIT),
             expectedUser2BalanceAfterFirstTransfer.reserved.toBig(ATOMIC_UNIT)
         );
-        assert.equal(updatedBalance.toString(), expectedUser2BalanceAfterSecondTransfer.toString());
+        expect(updatedBalance.toString()).toEqual(expectedUser2BalanceAfterSecondTransfer.toString());
 
         // TODO: Commented out because it blocks release, fix.
         // Fails because it conflicts with the escrowAPI test:

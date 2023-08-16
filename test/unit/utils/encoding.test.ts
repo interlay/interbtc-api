@@ -1,5 +1,4 @@
 import { TypeRegistry } from "@polkadot/types";
-import { assert } from "../../chai";
 import { getAPITypes } from "../../../src/factory";
 import { RedeemStatus } from "../../../src/types";
 import {
@@ -30,14 +29,14 @@ describe("Encoding", () => {
     it("should encode / decode same block hash as H256Le", () => {
         const blockHashHexLE = "0x9067166e896765258f6636a082abad6953f17a0e8dc21fc4f85648ceeedbda69";
         const blockHash = createH256Le(blockHashHexLE);
-        return assert.equal(blockHash.toHex(), blockHashHexLE);
+        return expect(blockHash.toHex()).toEqual(blockHashHexLE);
     });
 
     it("should strip prefix", () => {
         const blockHashHexBEWithPrefix = "0x5499ac3ca3ddf563ace6b6a56ec2e8bdc5f796bef249445c36d90a69d0757d4c";
         const blockHashHexBEWithoutPrefix = "5499ac3ca3ddf563ace6b6a56ec2e8bdc5f796bef249445c36d90a69d0757d4c";
-        assert.equal(stripHexPrefix(blockHashHexBEWithPrefix), blockHashHexBEWithoutPrefix);
-        assert.equal(stripHexPrefix(blockHashHexBEWithoutPrefix), blockHashHexBEWithoutPrefix);
+        expect(stripHexPrefix(blockHashHexBEWithPrefix)).toEqual(blockHashHexBEWithoutPrefix);
+        expect(stripHexPrefix(blockHashHexBEWithoutPrefix)).toEqual(blockHashHexBEWithoutPrefix);
     });
 
     it("should reverse endianness from le to be", () => {
@@ -46,13 +45,13 @@ describe("Encoding", () => {
         const blockHash = createH256Le(blockHashHexLE);
 
         const result = uint8ArrayToString(reverseEndianness(blockHash));
-        return assert.equal(result, stripHexPrefix(blockHashHexBE));
+        return expect(result).toEqual(stripHexPrefix(blockHashHexBE));
     });
 
     it("should reverse endianness hex", () => {
         const blockHashHexLE = "0x9067166e896765258f6636a082abad6953f17a0e8dc21fc4f85648ceeedbda69";
         const blockHashHexBE = "0x69dadbeece4856f8c41fc28d0e7af15369adab82a036668f256567896e166790";
-        return assert.equal(reverseEndiannessHex(blockHashHexLE), stripHexPrefix(blockHashHexBE));
+        return expect(reverseEndiannessHex(blockHashHexLE)).toEqual(stripHexPrefix(blockHashHexBE));
     });
 
     describe("parseRedeemRequestStatus", () => {
@@ -77,8 +76,12 @@ describe("Encoding", () => {
             };
         };
 
-        const assertEqualPretty = (expected: RedeemStatus, actual: RedeemStatus): void => {
-            assert.equal(actual, expected, `Expected '${RedeemStatus[expected]}' but was '${RedeemStatus[actual]}'`);
+        const expectEqualPretty = (expected: RedeemStatus, actual: RedeemStatus): void => {
+            try {
+                expect(actual).toBe(expected);
+            } catch(_) {
+                throw Error(`Expected '${RedeemStatus[expected]}' but was '${RedeemStatus[actual]}'`);
+            }
         };
 
         it("should correctly parse completed status", () => {
@@ -87,7 +90,7 @@ describe("Encoding", () => {
 
             const actualStatus = parseRedeemRequestStatus(mockRequest, 42, 42);
 
-            assertEqualPretty(actualStatus, expectedStatus);
+            expectEqualPretty(actualStatus, expectedStatus);
         });
 
         it("should correctly parse reimbursed status", () => {
@@ -96,7 +99,7 @@ describe("Encoding", () => {
 
             const actualStatus = parseRedeemRequestStatus(mockRequest, 42, 42);
 
-            assertEqualPretty(actualStatus, expectedStatus);
+            expectEqualPretty(actualStatus, expectedStatus);
         });
 
         it("should correctly parse retried status", () => {
@@ -105,7 +108,7 @@ describe("Encoding", () => {
 
             const actualStatus = parseRedeemRequestStatus(mockRequest, 42, 42);
 
-            assertEqualPretty(actualStatus, expectedStatus);
+            expectEqualPretty(actualStatus, expectedStatus);
         });
 
         describe("should correctly parse expired status", () => {
@@ -121,14 +124,14 @@ describe("Encoding", () => {
                     const globalRedeemPeriod = currentBlock - 5;
                     const requestPeriod = globalRedeemPeriod - 3;
                     // preconditions
-                    assert.isAbove(globalRedeemPeriod, requestPeriod, "Precondition failed: fix test setup");
-                    assert.isBelow(globalRedeemPeriod, currentBlock, "Precondition failed: fix test setup");
+                    expect(globalRedeemPeriod).toBeGreaterThan(requestPeriod);
+                    expect(globalRedeemPeriod).toBeLessThan(currentBlock);
 
                     const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
 
                     const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
-                    assertEqualPretty(actualStatus, expectedStatus);
+                    expectEqualPretty(actualStatus, expectedStatus);
                 }
             );
 
@@ -138,14 +141,14 @@ describe("Encoding", () => {
                     const requestPeriod = currentBlock - 3;
                     const globalRedeemPeriod = requestPeriod - 5;
                     // preconditions
-                    assert.isAbove(requestPeriod, globalRedeemPeriod, "Precondition failed: fix test setup");
-                    assert.isBelow(requestPeriod, currentBlock, "Precondition failed: fix test setup");
+                    expect(requestPeriod).toBeGreaterThan(globalRedeemPeriod);
+                    expect(requestPeriod).toBeLessThan(currentBlock);
 
                     const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
 
                     const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
-                    assertEqualPretty(actualStatus, expectedStatus);
+                    expectEqualPretty(actualStatus, expectedStatus);
                 }
             );
         });
@@ -160,16 +163,13 @@ describe("Encoding", () => {
                 const globalRedeemPeriod = 50;
                 const requestPeriod = 25;
                 // preconditions
-                assert.isTrue(
-                    opentimeBlock + Math.max(requestPeriod, globalRedeemPeriod) > currentBlock,
-                    "Precondition failed: fix test setup"
-                );
+                expect(opentimeBlock + Math.max(requestPeriod, globalRedeemPeriod) > currentBlock).toBe(true);
 
                 const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
 
                 const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
-                assertEqualPretty(actualStatus, expectedStatus);
+                expectEqualPretty(actualStatus, expectedStatus);
             });
 
             it("when opentime + period is equal to current block count", () => {
@@ -177,16 +177,15 @@ describe("Encoding", () => {
                 // anything less than above
                 const requestPeriod = globalRedeemPeriod - 1;
                 // preconditions
-                assert.isTrue(
-                    opentimeBlock + Math.max(requestPeriod, globalRedeemPeriod) == currentBlock,
-                    "Precondition failed: fix test setup"
-                );
+                expect(
+                    opentimeBlock + Math.max(requestPeriod, globalRedeemPeriod) == currentBlock
+                ).toBe(true);
 
                 const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
 
                 const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
-                assertEqualPretty(actualStatus, expectedStatus);
+                expectEqualPretty(actualStatus, expectedStatus);
             });
         });
     });

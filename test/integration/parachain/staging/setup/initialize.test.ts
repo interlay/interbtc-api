@@ -292,7 +292,7 @@ describe("Initialize parachain state", () => {
         // so the test doesn't need to wait for transfer to settle
         const updateRewardsExtrinsic = api.tx.vaultAnnuity.updateRewards();
         const hash = await api.tx.sudo.sudo(updateRewardsExtrinsic).signAndSend(sudoAccount);
-        assert.isNotEmpty(hash);
+        expect(hash).not.toHaveLength(0);
     });
 
     it("should enable vault nomination", async () => {
@@ -312,7 +312,7 @@ describe("Initialize parachain state", () => {
 
             if (aUSD === undefined) {
                 // no point in completing this if aUSD is not registered
-                this.skip();
+                return;
             }
 
             // (unsafely) get first collateral currency's ceiling and thresholds
@@ -393,7 +393,7 @@ describe("Initialize parachain state", () => {
 
         if (aUSD === undefined) {
             // no point in completing this if aUSD is not registered
-            this.skip();
+            return;
         }
 
         // assign locally to make TS understand it isn't undefined

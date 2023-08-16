@@ -24,7 +24,6 @@ import {
     VAULT_3_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { assert, expect } from "chai";
 import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
 import { MonetaryAmount } from "@interlay/monetary-js";
@@ -110,7 +109,7 @@ describe("replace", () => {
                 const vault = await apiAt.query.vaultRegistry.vaults(vault_3_id);
                 const toBeReplaced = vault.unwrap().toBeReplacedTokens.toBn();
 
-                assert.equal(toBeReplaced.toString(), replaceAmount.toString(true));
+                expect(toBeReplaced.toString()).toEqual(replaceAmount.toString(true));
 
                 // hacky way to subscribe to events from a previous height
                 // we can remove this once the request / accept flow is removed
@@ -148,7 +147,7 @@ describe("replace", () => {
                 const requestId = api.createType("Hash", acceptReplaceEvent.event.data[0]);
 
                 const replaceRequest = await interBtcAPI.replace.getRequestById(requestId, foundBlockHash);
-                assert.equal(replaceRequest.oldVault.accountId.toString(), vault_3_id.accountId.toString());
+                expect(replaceRequest.oldVault.accountId.toString()).toEqual(vault_3_id.accountId.toString());
             }
         }, 1000 * 30);
 
@@ -174,10 +173,8 @@ describe("replace", () => {
                         interBtcAPI.replace.request(replaceAmount, collateralCurrency),
                         false
                     );
-                    expect(replacePromise).to.be.rejectedWith(
-                        Error,
-                        `Expected replace request to fail with Error (${currencyTicker} vault)`
-                    );
+
+                    expect(replacePromise).rejects.toThrow();
                 }
             }
         );
@@ -185,19 +182,19 @@ describe("replace", () => {
 
     it("should getDustValue", async () => {
         const dustValue = await interBtcAPI.replace.getDustValue();
-        assert.equal(dustValue.toString(), "0.00001");
+        expect(dustValue.toString()).toEqual("0.00001");
     }, 500);
 
     it("should getReplacePeriod", async () => {
         const replacePeriod = await interBtcAPI.replace.getReplacePeriod();
-        assert.isDefined(replacePeriod, "Expected replace period to be defined, but was not");
+        expect(replacePeriod).toBeDefined();
     }, 500);
 
     it("should list replace request by a vault", async () => {
         const vault3Id = newAccountId(api, vault_3.address);
         const replaceRequests = await interBtcAPI.replace.mapReplaceRequests(vault3Id);
         replaceRequests.forEach((request) => {
-            assert.deepEqual(request.oldVault.accountId, vault3Id);
+            expect(request.oldVault.accountId).toEqual(vault3Id);
         });
     });
 });

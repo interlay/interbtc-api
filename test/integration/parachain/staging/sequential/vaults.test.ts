@@ -14,7 +14,6 @@ import {
 } from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "chai";
 import { VAULT_1_URI, VAULT_2_URI, PARACHAIN_ENDPOINT, VAULT_3_URI, ESPLORA_BASE_PATH } from "../../../../config";
 import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
 import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
@@ -83,10 +82,7 @@ describe("vaultsAPI", () => {
         const issuableInterBTC = await interBtcAPI.vaults.getTotalIssuableAmount();
         const issuableAmounts = await getIssuableAmounts(interBtcAPI);
         const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
-        assert.isTrue(
-            issuableInterBTC.toBig().sub(totalIssuable.toBig()).abs().lte(1),
-            `${issuableInterBTC.toHuman()} != ${totalIssuable.toHuman()}`
-        );
+        expect(issuableInterBTC.toBig().sub(totalIssuable.toBig()).abs().lte(1)).toBe(true);
     });
 
     it("should get the required collateral for the vault", async () => {
@@ -102,11 +98,7 @@ describe("vaultsAPI", () => {
             // The numeric value of the required collateral should be greater than that of issued tokens.
             // e.g. we require `0.8096` KSM for `0.00014` kBTC
             // edge case: we require 0 KSM for 0 kBTC, so check greater than or equal to
-            assert.isTrue(
-                requiredCollateralForVault.toBig().gte(vault.getBackedTokens().toBig()),
-                `Expect required collateral (${requiredCollateralForVault.toHuman()})
-                to be greater than or equal to backed tokens (${vault.getBackedTokens().toHuman()})`
-            );
+            expect(requiredCollateralForVault.toBig().gte(vault.getBackedTokens().toBig())).toBe(true);
         }
     });
 
@@ -131,17 +123,10 @@ describe("vaultsAPI", () => {
                 collateralCurrency
             );
             if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
-                assert.fail(
-                    `Collateralization is undefined for vault with collateral currency ${currencyTicker}
-                    - potential cause: the vault may not have any issued tokens secured by ${currencyTicker}`
-                );
+                expect(false).toBe(true);
                 return;
             }
-            assert.isTrue(
-                collateralizationAfterDeposit.gt(collateralizationBeforeDeposit),
-                `Depositing did not increase collateralization (${currencyTicker} vault),
-                expected ${collateralizationAfterDeposit} greater than ${collateralizationBeforeDeposit}`
-            );
+            expect(collateralizationAfterDeposit.gt(collateralizationBeforeDeposit)).toBe(true);
 
             await submitExtrinsic(interBtcAPI, await interBtcAPI.vaults.withdrawCollateral(amount));
             const collateralizationAfterWithdrawal = await interBtcAPI.vaults.getVaultCollateralization(
@@ -149,19 +134,11 @@ describe("vaultsAPI", () => {
                 collateralCurrency
             );
             if (collateralizationAfterWithdrawal === undefined) {
-                assert.fail(`Collateralization is undefined for vault with collateral currency ${currencyTicker}`);
+                expect(false).toBe(true);
                 return;
             }
-            assert.isTrue(
-                collateralizationAfterDeposit.gt(collateralizationAfterWithdrawal),
-                `Withdrawing did not decrease collateralization (${currencyTicker} vault), expected
-                ${collateralizationAfterDeposit} greater than ${collateralizationAfterWithdrawal}`
-            );
-            assert.equal(
-                collateralizationBeforeDeposit.toString(),
-                collateralizationAfterWithdrawal.toString(),
-                `Collateralization after identical deposit and withdrawal changed (${currencyTicker} vault)`
-            );
+            expect(collateralizationAfterDeposit.gt(collateralizationAfterWithdrawal)).toBe(true);
+            expect(collateralizationBeforeDeposit.toString()).toEqual(collateralizationAfterWithdrawal.toString());
         }
         if (prevAccount) {
             interBtcAPI.setAccount(prevAccount);
@@ -173,42 +150,44 @@ describe("vaultsAPI", () => {
             const currencyTicker = collateralCurrency.ticker;
 
             const threshold = await interBtcAPI.vaults.getLiquidationCollateralThreshold(collateralCurrency);
-            assert.isTrue(
-                threshold.gt(0),
-                `Expected liquidation threshold for ${currencyTicker} to be greater than 0, but was ${threshold.toString()}`
-            );
+            try {
+                expect(threshold.gt(0)).toBe(true);
+            } catch(_) {
+                throw Error(`Liqduiation collateral threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
+            }
         }
     });
 
     it("should getPremiumRedeemThreshold", async () => {
         for (const collateralCurrency of collateralCurrencies) {
             const currencyTicker = collateralCurrency.ticker;
-
             const threshold = await interBtcAPI.vaults.getPremiumRedeemThreshold(collateralCurrency);
-            assert.isTrue(
-                threshold.gt(0),
-                `Expected premium redeem threshold for ${currencyTicker} to be greater than 0, but was ${threshold.toString()}`
-            );
+
+            try {
+                expect(threshold.gt(0)).toBe(true);
+            } catch(_) {
+                throw Error(`Premium redeem threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
+            }
         }
     });
 
     it("should select random vault for issue", async () => {
         const randomVault = await interBtcAPI.vaults.selectRandomVaultIssue(newMonetaryAmount(0, wrappedCurrency));
-        assert.isTrue(vaultIsATestVault(randomVault.accountId.toHuman()));
+        expect(vaultIsATestVault(randomVault.accountId.toHuman())).toBe(true);
     });
 
     it("should fail if no vault for issuing is found", async () => {
-        assert.isRejected(interBtcAPI.vaults.selectRandomVaultIssue(newMonetaryAmount(9000000, wrappedCurrency, true)));
+        await expect(interBtcAPI.vaults.selectRandomVaultIssue(newMonetaryAmount(9000000, wrappedCurrency, true))).rejects.toThrow();
     });
 
     it("should select random vault for redeem", async () => {
         const randomVault = await interBtcAPI.vaults.selectRandomVaultRedeem(newMonetaryAmount(0, wrappedCurrency));
-        assert.isTrue(vaultIsATestVault(randomVault.accountId.toHuman()));
+        expect(vaultIsATestVault(randomVault.accountId.toHuman())).toBe(true);
     });
 
     it("should fail if no vault for redeeming is found", async () => {
         const amount = newMonetaryAmount(9000000, wrappedCurrency, true);
-        assert.isRejected(interBtcAPI.vaults.selectRandomVaultRedeem(amount));
+        await expect(interBtcAPI.vaults.selectRandomVaultRedeem(amount)).rejects.toThrow();
     });
 
     it(
@@ -219,10 +198,12 @@ describe("vaultsAPI", () => {
                 const currencyTicker = collateralCurrency.ticker;
 
                 const vault1Id = newAccountId(api, vault_1.address);
-                assert.isRejected(
-                    interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency),
-                    `Collateralization should not be available (${currencyTicker} vault)`
-                );
+
+                try {
+                    await expect(interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency)).rejects.toThrow();
+                } catch(_) {
+                    throw Error(`Collateralization should not be available (${currencyTicker} vault)`);
+                }
             }
         }
     );
@@ -234,16 +215,13 @@ describe("vaultsAPI", () => {
 
             const vault = await interBtcAPI.vaults.get(vault_1_id.accountId, collateralCurrency);
             const issuableTokens = await vault.getIssuableTokens();
-            assert.isTrue(
-                issuableTokens.gt(newMonetaryAmount(0, wrappedCurrency)),
-                `Issuable tokens should be greater than 0 (${currencyTicker} vault)`
-            );
+            expect(issuableTokens.gt(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
         }
     });
 
     it("should get the issuable InterBtc", async () => {
         const issuableInterBtc = await interBtcAPI.vaults.getTotalIssuableAmount();
-        assert.isTrue(issuableInterBtc.gt(newMonetaryAmount(0, wrappedCurrency)));
+        expect(issuableInterBtc.gt(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
     });
 
     it("should getFees", async () => {
@@ -271,11 +249,7 @@ describe("vaultsAPI", () => {
                 collateralCurrency,
                 wrappedCurrency
             );
-            assert.isTrue(
-                feesWrapped.gte(newMonetaryAmount(0, wrappedCurrency)),
-                // eslint-disable-next-line max-len
-                `Fees (wrapped reward) should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`
-            );
+            expect(feesWrapped.gte(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
 
             if (feesWrapped.gt(newMonetaryAmount(0, wrappedCurrency))) {
                 // we will check that at least one return was greater than zero
@@ -287,27 +261,13 @@ describe("vaultsAPI", () => {
                 collateralCurrency,
                 governanceCurrency
             );
-            assert.isTrue(
-                govTokenReward.gte(newMonetaryAmount(0, governanceCurrency)),
-                // eslint-disable-next-line max-len
-                `Governance reward should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`
-            );
+            expect(govTokenReward.gte(newMonetaryAmount(0, governanceCurrency))).toBe(true);
         }
         // make sure not every vault has been skipped (due to no issued tokens)
-        assert.notEqual(
-            countSkippedVaults,
-            vaultIdsInScope.length,
-            // eslint-disable-next-line max-len
-            `Unexpected test behavior: skipped all ${vaultIdsInScope.length} vaults in the test; all vaults lacking capacity (issued + issuable > 0)`
-        );
+        expect(countSkippedVaults).not.toEqual(vaultIdsInScope.length);
 
         // make sure at least one vault is receiving wrapped rewards greater than zero
-        assert.isAbove(
-            countVaultsWithNonZeroWrappedRewards,
-            0,
-            // eslint-disable-next-line max-len
-            `Unexpected test behavior: none of the ${vaultIdsInScope.length} vaults in the test have received more than 0 wrapped token rewards`
-        );
+        expect(countVaultsWithNonZeroWrappedRewards).toBeGreaterThan(0);
     });
 
     it("should getAPY", async () => {
@@ -319,22 +279,18 @@ describe("vaultsAPI", () => {
             const apy = await interBtcAPI.vaults.getAPY(accountId, collateralCurrency);
             const apyBig = new Big(apy);
             const apyBenchmark = new Big("0");
-            assert.isTrue(
-                apyBig.gte(apyBenchmark),
-                `APY should be greater than or equal to ${apyBenchmark.toString()},
-                    but was ${apyBig.toString()} (${currencyTicker} vault)`
-            );
+            expect(apyBig.gte(apyBenchmark)).toBe(true);
         }
     });
 
     it("should getPunishmentFee", async () => {
         const punishmentFee = await interBtcAPI.vaults.getPunishmentFee();
-        assert.equal(punishmentFee.toString(), "0.1");
+        expect(punishmentFee.toString()).toEqual("0.1");
     });
 
     it("should get vault list", async () => {
         const vaults = (await interBtcAPI.vaults.list()).map((vault) => vault.id.toHuman());
-        assert.isAbove(vaults.length, 0, "Vault list should not be empty");
+        expect(vaults.length).toBeGreaterThan(0);
     });
 
     it("should disable and enable issuing with vault", async () => {
@@ -345,7 +301,7 @@ describe("vaultsAPI", () => {
             const assertionMessage = `Vault with id ${id.toString()} (collateral: ${currencyTicker}) was expected to have
                     status: ${vaultStatusToLabel(expectedStatus)}, but got status: ${vaultStatusToLabel(status)}`;
 
-            assert.isTrue(status === expectedStatus, assertionMessage);
+            expect(status === expectedStatus).toBe(true);
         };
         const ACCEPT_NEW_ISSUES = true;
         const REJECT_NEW_ISSUES = false;

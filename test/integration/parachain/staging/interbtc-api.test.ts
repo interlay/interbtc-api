@@ -1,6 +1,5 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
 
-import { assert } from "../../../chai";
 import {
     createAPIRegistry,
     createSubstrateAPI,
@@ -31,17 +30,17 @@ describe("InterBtcApi", () => {
     describe("setAccount", () => {
         it("should succeed to set KeyringPair", () => {
             interBTC.setAccount(keyringPair);
-            assert.isDefined(interBTC.account);
+            expect(interBTC.account).toBeDefined();
         });
 
         it("should succeed to set address with signer", () => {
             const signer = new SingleAccountSigner(registry, keyringPair);
             interBTC.setAccount(keyringPair, signer);
-            assert.isDefined(interBTC.account);
+            expect(interBTC.account).toBeDefined();
         });
 
         it("should fail to set address without signer", () => {
-            assert.throw(() => interBTC.setAccount(keyringPair.address));
+            expect(() => interBTC.setAccount(keyringPair.address)).toThrow();
         });
     });
 
@@ -49,7 +48,7 @@ describe("InterBtcApi", () => {
         it("should remove account after it was set", () => {
             interBTC.setAccount(keyringPair);
             interBTC.removeAccount();
-            assert.isUndefined(interBTC.account);
+            expect(interBTC.account).not.toBeDefined();
         });
 
         it("should fail to send transaction after account removal", async () => {
@@ -61,7 +60,7 @@ describe("InterBtcApi", () => {
             const aliceAddress = keyring.addFromUri("//Alice").address;
             const tx = submitExtrinsic(interBTC, interBTC.tokens.transfer(aliceAddress, amount));
             // Transfer to Alice should be rejected, since Bob's account was removed.
-            await assert.isRejected(tx);
+            await expect(tx).rejects.toThrow();
         });
     });
 });

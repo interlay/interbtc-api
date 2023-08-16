@@ -8,7 +8,6 @@ import {
     VaultRegistryVault,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "chai";
 import {
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,
@@ -105,41 +104,37 @@ describe("redeem", () => {
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();
-        assert.isAtLeast(
-            redeemRequests.length,
-            1,
-            "Error in initialization setup. Should have at least 1 issue request"
-        );
+        expect(redeemRequests.length).toBeGreaterThanOrEqual(1);
     });
 
     it("should get redeemBtcDustValue", async () => {
         const dust = await interBtcAPI.api.query.redeem.redeemBtcDustValue();
-        assert.equal(dust.toString(), "1000");
+        expect(dust.toString()).toEqual("1000");
     });
 
     it("should getFeesToPay", async () => {
         const amount = newMonetaryAmount(2, wrappedCurrency, true);
         const feesToPay = await interBtcAPI.redeem.getFeesToPay(amount);
-        assert.equal(feesToPay.toString(), "0.01");
+        expect(feesToPay.toString()).toEqual("0.01");
     });
 
     it("should getFeeRate", async () => {
         const feePercentage = await interBtcAPI.redeem.getFeeRate();
-        assert.equal(feePercentage.toString(), "0.005");
+        expect(feePercentage.toString()).toEqual("0.005");
     });
 
     it("should getPremiumRedeemFeeRate", async () => {
         const premiumRedeemFee = await interBtcAPI.redeem.getPremiumRedeemFeeRate();
-        assert.equal(premiumRedeemFee.toString(), "0.05");
+        expect(premiumRedeemFee.toString()).toEqual("0.05");
     });
 
     it("should getCurrentInclusionFee", async () => {
         const currentInclusionFee = await interBtcAPI.redeem.getCurrentInclusionFee();
-        assert.isTrue(!currentInclusionFee.isZero());
+        expect(!currentInclusionFee.isZero()).toBe(true);
     });
 
     it("should getDustValue", async () => {
         const dustValue = await interBtcAPI.redeem.getDustValue();
-        assert.equal(dustValue.toString(), "0.00001");
+        expect(dustValue.toString()).toEqual("0.00001");
     });
 });
