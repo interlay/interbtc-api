@@ -1,4 +1,3 @@
-import mock from "jest-mock";
 import Big, { BigSource } from "big.js";
 import {
     CollateralCurrencyExt,
@@ -27,58 +26,54 @@ export const MOCKED_SEND_LOGGED_ERR_MSG = "mocked sendLogged rejection";
 /**
  *
  * @returns Two mock account IDs, one for the nominator and one for the vault
- * @param sinon The sinon sandbox to use for mocking
  * @param vaultsApi The vaults API used to call the method under test
- * @param stubbedTransactionApi The stubbed transaction API (called internally)
+ * @param transactionApi The transaction API (mocked/called internally)
  * @param isAccountIdUndefined if true, mocks that transactionApi.getAccountId() returns an undefined account ID
  * @param doesSendLoggedReject if true, mocks that transactionApi.sendLogged() rejects
  * @returns the mocked extrinsic to return when transactionApi.sendLogged() is finally called
  */
 export const prepareRegisterNewCollateralVaultMocks = (
-    sinon: sinon.SinonSandbox,
     vaultsApi: DefaultVaultsAPI,
-    stubbedTransactionApi: sinon.SinonStubbedInstance<DefaultTransactionAPI>,
+    transactionApi: DefaultTransactionAPI,
     isAccountIdUndefined?: boolean,
     doesSendLoggedReject?: boolean
 ): SubmittableExtrinsic<"promise", ISubmittableResult> | null => {
     if (isAccountIdUndefined) {
-        stubbedTransactionApi.getAccount.mockReturnValue(undefined);
+        jest.spyOn(transactionApi, "getAccount").mockClear().mockReturnValue(undefined);
         return null;
     }
 
     // mock getting a valid (ie. has been set) account id
     const vaultAccountId = createMockAccountId("0x0123456789012345678901234567890123456789012345678901234567890123");
-    stubbedTransactionApi.getAccount.mockReturnValue(vaultAccountId);
+    jest.spyOn(transactionApi, "getAccount").mockClear().mockReturnValue(vaultAccountId);
 
     // mock api returns to be able to call sendLogged
     const mockSubmittableExtrinsic = <SubmittableExtrinsic<"promise", ISubmittableResult>>{};
-    mock.spyOn(vaultsApi, "buildRegisterVaultExtrinsic").mockClear().mockReturnValue(mockSubmittableExtrinsic);
+    jest.spyOn(vaultsApi, "buildRegisterVaultExtrinsic").mockClear().mockReturnValue(mockSubmittableExtrinsic);
     const fakeEvent = <AugmentedEvent<ApiTypes, AnyTuple>>{};
-    mock.spyOn(vaultsApi, "getRegisterVaultEvent").mockClear().mockReturnValue(fakeEvent);
+    jest.spyOn(vaultsApi, "getRegisterVaultEvent").mockClear().mockReturnValue(fakeEvent);
 
     if (doesSendLoggedReject) {
-        stubbedTransactionApi.sendLogged.rejects(new Error(MOCKED_SEND_LOGGED_ERR_MSG));
+        jest.spyOn(transactionApi, "sendLogged").mockClear().mockReturnValue(Promise.reject(new Error(MOCKED_SEND_LOGGED_ERR_MSG)));
         return null;
     }
 
-    stubbedTransactionApi.sendLogged.resolves();
+    jest.spyOn(transactionApi, "sendLogged").mockClear().mockResolvedValue(undefined as never);
     return mockSubmittableExtrinsic;
 };
 
 /**
  * Helper function to mock calls outside of the function backingCollateralProportion
- * @param sinon The sinon sandbox to use for mocking
  * @param vaultsApi The vaults API used to call the method under test
- * @param stubbedRewardsApi The stubbed rewards API (called internally)
+ * @param rewardsApi The rewards API (mocked/called internally)
  * @param nominatorCollateralStakedAmount The mocked nominator's collateral staked amount
  * @param vaultBackingCollateralAmount The mocked vault's backing collateral amount
  * @param collateralCurrency The collateral currency for the amounts mocked
  * @returns Two mock account IDs, one for the nominator and one for the vault
  */
 export const prepareBackingCollateralProportionMocks = (
-    sinon: sinon.SinonSandbox,
     vaultsApi: DefaultVaultsAPI,
-    stubbedRewardsApi: sinon.SinonStubbedInstance<DefaultRewardsAPI>,
+    rewardsApi: DefaultRewardsAPI,
     nominatorCollateralStakedAmount: Big,
     vaultBackingCollateralAmount: Big,
     collateralCurrency: CollateralCurrencyExt
@@ -88,10 +83,9 @@ export const prepareBackingCollateralProportionMocks = (
 
     // prepare mocks
     const mockVault = createMockVaultWithBacking(vaultBackingCollateralAmount, collateralCurrency);
-    mockVaultsApiGetMethod(sinon, vaultsApi, mockVault);
+    mockVaultsApiGetMethod(vaultsApi, mockVault);
     mockComputeCollateralInStakingPoolMethod(
-        sinon,
-        stubbedRewardsApi,
+        rewardsApi,
         nominatorCollateralStakedAmount,
         collateralCurrency
     );
@@ -118,23 +112,22 @@ export const createMockAccountId = (someString: string): AccountId => {
 
 /**
  * Mock RewardsAPI.computeCollateralInStakingPool to return a specific collateral amount
- * @param sinon The sinon sandbox to use for mocking
- * @param stubbedRewardsApi A stubbed rewards API to add the mocked bahvior to
+ * @param rewardsApi The rewards API to add the mocked bahvior to
  * @param amount The mocked return amount
  * @param currency The currency of the mocked return amount
  */
 export const mockComputeCollateralInStakingPoolMethod = (
-    sinon: sinon.SinonSandbox,
-    stubbedRewardsApi: sinon.SinonStubbedInstance<DefaultRewardsAPI>,
+    rewardsApi: DefaultRewardsAPI,
     amount: BigSource,
     currency: CurrencyExt
 ): void => {
     // don't care what the inner method returns as we mock the outer one
     const tempId = <InterbtcPrimitivesVaultId>{};
-    mock.spyOn(allThingsEncoding, "newVaultId").mockClear().mockReturnValue(tempId);
+    jest.spyOn(allThingsEncoding, "newVaultId").mockClear().mockReturnValue(tempId);
 
-    // the actual mock that matters
-    stubbedRewardsApi.computeCollateralInStakingPool.resolves(newMonetaryAmount(amount, currency) as never);
+    jest.spyOn(rewardsApi, "computeCollateralInStakingPool")
+        .mockClear()
+        .mockReturnValue(Promise.resolve(newMonetaryAmount(amount, currency)));
 };
 
 /**
@@ -152,21 +145,18 @@ export const createMockVaultWithBacking = (amount: BigSource, collateralCurrency
 
 /**
  * Mock the return value of VaultsAPI.get
- * @param sinon The sinon sandbox to use for mocking
  * @param vaultsApi The vaultsAPI instance for which to mock .get() methed
  * @param vault The vault to return
  */
 export const mockVaultsApiGetMethod = (
-    sinon: sinon.SinonSandbox,
     vaultsApi: DefaultVaultsAPI,
     vault: VaultExt
 ): void => {
     // make VaultAPI.get() return a mocked vault
-    mock.spyOn(vaultsApi, "get").mockClear().mockReturnValue(Promise.resolve(vault));
+    jest.spyOn(vaultsApi, "get").mockClear().mockReturnValue(Promise.resolve(vault));
 };
 
 export const prepareLiquidationRateMocks = (
-    sinon: sinon.SinonSandbox,
     vaultsApi: DefaultVaultsAPI,
     mockIssuedTokensNumber: BigSource,
     mockCollateralTokensNumber: BigSource,
@@ -180,13 +170,13 @@ export const prepareLiquidationRateMocks = (
     };
 
     // mock this.get return mock vault
-    mockVaultsApiGetMethod(sinon, vaultsApi, mockVault);
+    mockVaultsApiGetMethod(vaultsApi, mockVault);
 
     // mock this.getLiquidationCollateralThreshold return value
     // if we have less than 2x collateral (in BTC) compared to BTC, we need to liquidate
-    mock.spyOn(vaultsApi, "getLiquidationCollateralThreshold").mockClear().mockReturnValue(Promise.resolve(Big(mockLiquidationThreshold)));
+    jest.spyOn(vaultsApi, "getLiquidationCollateralThreshold").mockClear().mockReturnValue(Promise.resolve(Big(mockLiquidationThreshold)));
 
     // mock this.getCollateral return value
     const mockCollateral = new MonetaryAmount(collateralCurrency, mockCollateralTokensNumber);
-    mock.spyOn(vaultsApi, "getCollateral").mockClear().mockReturnValue(Promise.resolve(mockCollateral));
+    jest.spyOn(vaultsApi, "getCollateral").mockClear().mockReturnValue(Promise.resolve(mockCollateral));
 };

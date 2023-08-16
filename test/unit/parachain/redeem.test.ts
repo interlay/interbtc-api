@@ -5,20 +5,33 @@ import Big from "big.js";
 import { NO_LIQUIDATION_VAULT_FOUND_REJECTION } from "../../../src/parachain/vaults";
 
 describe("DefaultRedeemAPI", () => {
+    // instances will be fully/partially mocked where needed
+    let vaultsApi: DefaultVaultsAPI;
     let redeemApi: DefaultRedeemAPI;
 
-    let stubbedVaultsApi: sinon.SinonStubbedInstance<DefaultVaultsAPI>;
 
     beforeEach(() => {
         // only mock/stub what we really need
         // add more if/when needed
-        stubbedVaultsApi = sinon.createStubInstance(DefaultVaultsAPI);
+        vaultsApi = new DefaultVaultsAPI(
+            null as any,
+            null as any,
+            null as any,
+            null as any,
+            null as any,
+            null as any,
+            null as any,
+            null as any,
+            null as any,
+            null as any
+        );
+
         redeemApi = new DefaultRedeemAPI(
             null as any,
             null as any,
             null as any,
             null as any,
-            stubbedVaultsApi as VaultsAPI,
+            vaultsApi as VaultsAPI,
             null as any,
             null as any,
             null as any
@@ -43,8 +56,8 @@ describe("DefaultRedeemAPI", () => {
                 collateral: newMonetaryAmount(10, Kintsugi),
             };
 
-            // stub internal call to reutn our mocked vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
+            // stub internal call to return our mocked vault
+            jest.spyOn(vaultsApi, "getLiquidationVault").mockClear().mockResolvedValue(mockVaultExt as any);
 
             await expect(redeemApi.getBurnExchangeRate(Kintsugi)).rejects.toThrow("no burnable tokens");
         });
@@ -57,8 +70,8 @@ describe("DefaultRedeemAPI", () => {
                 collateral: newMonetaryAmount(100, Kintsugi),
             };
 
-            // stub internal call to reutn our mocked vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
+            // stub internal call to return our mocked vault
+            jest.spyOn(vaultsApi, "getLiquidationVault").mockClear().mockResolvedValue(mockVaultExt as any);
 
             const exchangeRate = await redeemApi.getBurnExchangeRate(Kintsugi);
             expect(exchangeRate.rate.toNumber()).toBeGreaterThan(0);
@@ -80,8 +93,8 @@ describe("DefaultRedeemAPI", () => {
             // bring the numbers back down into a easier readable range of a JS number (expect 3.9127)
             const testMultiplier = 0.00001;
 
-            // stub internal call to reutn our mocked vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
+            // stub internal call to return our mocked vault
+            jest.spyOn(vaultsApi, "getLiquidationVault").mockClear().mockResolvedValue(mockVaultExt as any);
 
             const exchangeRate = await redeemApi.getBurnExchangeRate(Kintsugi);
 
@@ -99,11 +112,7 @@ describe("DefaultRedeemAPI", () => {
             "should return zero if getLiquidationVault rejects with no liquidation vault message",
             async () => {
                 // stub internal call to return no liquidation vault
-                stubbedVaultsApi.getLiquidationVault.mockImplementation((...args: any[]) => {
-                    if (args.length >= 1) {
-                        return Promise.reject(NO_LIQUIDATION_VAULT_FOUND_REJECTION);
-                    }
-                });
+                jest.spyOn(vaultsApi, "getLiquidationVault").mockClear().mockRejectedValue(NO_LIQUIDATION_VAULT_FOUND_REJECTION);
 
                 const actualValue = await redeemApi.getMaxBurnableTokens(Kintsugi);
                 expect(actualValue.toBig().toNumber()).toBe(0);
@@ -114,13 +123,9 @@ describe("DefaultRedeemAPI", () => {
             "should propagate rejection if getLiquidationVault rejects with other message",
             async () => {
                 // stub internal call to return no liquidation vault
-                stubbedVaultsApi.getLiquidationVault.mockImplementation((...args: any[]) => {
-                    if (args.length >= 1) {
-                        return Promise.reject("foobar happened here");
-                    }
-                });
+                jest.spyOn(vaultsApi, "getLiquidationVault").mockClear().mockRejectedValue("foobar happened here");
 
-                await expect(redeemApi.getMaxBurnableTokens(Kintsugi)).rejects.toThrow("foobar happened here");
+                await expect(redeemApi.getMaxBurnableTokens(Kintsugi)).rejects.toEqual("foobar happened here");
             }
         );
     });

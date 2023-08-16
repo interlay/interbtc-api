@@ -1,4 +1,3 @@
-import mock from "jest-mock";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
 import {
@@ -66,7 +65,7 @@ describe("DefaultAssetRegistryAPI", () => {
 
         // mock return type of storageKeyToNthInner method which only works correctly in integration tests
         const mockedReturn = api.createType("AssetId", mockStorageKeyValue);
-        mock.spyOn(allThingsEncoding, "storageKeyToNthInner").mockClear().mockReturnValue(mockedReturn);
+        jest.spyOn(allThingsEncoding, "storageKeyToNthInner").mockClear().mockReturnValue(mockedReturn);
     });
 
     afterEach(() => {
@@ -78,7 +77,7 @@ describe("DefaultAssetRegistryAPI", () => {
             "should return empty list if chain returns no foreign assets",
             async () => {
                 // mock empty list returned from chain
-                mock.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve([]));
+                jest.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve([]));
 
                 const actual = await assetRegistryApi.getForeignAssets();
                 expect(actual).toHaveLength(0);
@@ -95,7 +94,7 @@ describe("DefaultAssetRegistryAPI", () => {
                     [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", undefined)],
                 ];
 
-                mock.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve(chainDataReturned));
+                jest.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve(chainDataReturned));
 
                 const actual = await assetRegistryApi.getForeignAssets();
 
@@ -130,24 +129,23 @@ describe("DefaultAssetRegistryAPI", () => {
         ];
 
         const prepareMocks = (
-            sinon: sinon.SinonSandbox,
             assetRegistryApi: DefaultAssetRegistryAPI,
             allForeignAssets: ForeignAsset[],
             collateralCeilingCurrencyPairs?: InterbtcPrimitivesVaultCurrencyPair[]
         ) => {
-            mock.spyOn(assetRegistryApi, "getForeignAssets").mockClear().mockReturnValue(Promise.resolve(allForeignAssets));
+            jest.spyOn(assetRegistryApi, "getForeignAssets").mockClear().mockReturnValue(Promise.resolve(allForeignAssets));
 
             // this return does not matter since individual tests mock extractCollateralCeilingEntryKeys
             // which returns the actual values of interest
-            mock.spyOn(assetRegistryApi, "getSystemCollateralCeilingEntries").mockClear().mockReturnValue(Promise.resolve([]));
+            jest.spyOn(assetRegistryApi, "getSystemCollateralCeilingEntries").mockClear().mockReturnValue(Promise.resolve([]));
             if (collateralCeilingCurrencyPairs !== undefined) {
-                mock.spyOn(assetRegistryApi, "extractCollateralCeilingEntryKeys").mockClear()
+                jest.spyOn(assetRegistryApi, "extractCollateralCeilingEntryKeys").mockClear()
                     .mockReturnValue(collateralCeilingCurrencyPairs);
             }
         };
 
         it("should return empty array if there are no foreign assets", async () => {
-            prepareMocks(sinon, assetRegistryApi, []);
+            prepareMocks(assetRegistryApi, []);
 
             const actual = await assetRegistryApi.getCollateralForeignAssets();
 
@@ -157,7 +155,7 @@ describe("DefaultAssetRegistryAPI", () => {
         it(
             "should return empty array if there are no foreign assets with a collateral ceiling set",
             async () => {
-                prepareMocks(sinon, assetRegistryApi, mockForeignAssets, []);
+                prepareMocks(assetRegistryApi, mockForeignAssets, []);
 
                 const actual = await assetRegistryApi.getCollateralForeignAssets();
                 expect(actual).toHaveLength(0);
@@ -196,7 +194,7 @@ describe("DefaultAssetRegistryAPI", () => {
                     },
                 ];
 
-                prepareMocks(sinon, assetRegistryApi, mockForeignAssets, mockCurrencyPairs);
+                prepareMocks(assetRegistryApi, mockForeignAssets, mockCurrencyPairs);
 
                 const actual = await assetRegistryApi.getCollateralForeignAssets();
 

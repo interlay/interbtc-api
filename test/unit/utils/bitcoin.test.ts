@@ -117,11 +117,12 @@ describe("Bitcoin", () => {
 
     describe("getTxProof", () => {
         const mockElectrsGetParsedExecutionParameters = (merkleProofHex: string, txHex: string) => {
-            const stubbedElectrsApi = sinon.createStubInstance(DefaultElectrsAPI);
+            const mockedElectrsApi = new DefaultElectrsAPI("mainnet");
+
             const [proof, tx] = [BitcoinMerkleProof.fromHex(merkleProofHex), bitcoinjs.Transaction.fromHex(txHex)];
-            stubbedElectrsApi.getParsedExecutionParameters.withArgs(expect.anything()).resolves([proof, tx]);
-            stubbedElectrsApi.getCoinbaseTxId.withArgs(expect.anything()).resolves(tx.getId());
-            return stubbedElectrsApi;
+            jest.spyOn(mockedElectrsApi, "getParsedExecutionParameters").mockClear().mockResolvedValue([proof, tx]);
+            jest.spyOn(mockedElectrsApi, "getCoinbaseTxId").mockClear().mockResolvedValue(tx.getId());
+            return mockedElectrsApi;
         };
 
         it("should parse proof and transactions correctly", async () => {

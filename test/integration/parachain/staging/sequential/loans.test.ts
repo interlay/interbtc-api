@@ -1,4 +1,3 @@
-import mock from "jest-mock";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import {
@@ -164,7 +163,7 @@ describe("Loans", () => {
 
         it("should return empty array if no market exists", async () => {
             // Mock empty list returned from chain.
-            mock.spyOn(LoansAPI, "getLoansMarkets").mockClear().mockReturnValue(Promise.resolve([]));
+            jest.spyOn(LoansAPI, "getLoansMarkets").mockClear().mockReturnValue(Promise.resolve([]));
 
             const lendTokens = await LoansAPI.getLendTokens();
             expect(lendTokens).toHaveLength(0);
@@ -367,7 +366,7 @@ describe("Loans", () => {
 
         it("should return empty object if there are no added markets", async () => {
             // Mock empty list returned from chain.
-            mock.spyOn(LoansAPI, "getLoansMarkets").mockClear().mockReturnValue(Promise.resolve([]));
+            jest.spyOn(LoansAPI, "getLoansMarkets").mockClear().mockReturnValue(Promise.resolve([]));
 
             const loanAssets = await LoansAPI.getLoanAssets();
             expect(loanAssets).toHaveLength(0);

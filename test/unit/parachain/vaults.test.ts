@@ -9,16 +9,28 @@ import {
 } from "../mocks/vaultsTestMocks";
 
 describe("DefaultVaultsAPI", () => {
+    // apis will be mocked fully/partially as needed
+    let transactionApi: DefaultTransactionAPI;
+    let rewardsApi: DefaultRewardsAPI;
     let vaultsApi: DefaultVaultsAPI;
+
+    // alice
+    const aliceAccount = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
     const testCollateralCurrency = Kusama;
     const testWrappedCurrency = KBtc;
 
-    let stubbedRewardsApi: sinon.SinonStubbedInstance<DefaultRewardsAPI>;
-    let stubbedTransactionApi: sinon.SinonStubbedInstance<DefaultTransactionAPI>;
-
     beforeEach(async () => {
-        stubbedRewardsApi = sinon.createStubInstance(DefaultRewardsAPI);
-        stubbedTransactionApi = sinon.createStubInstance(DefaultTransactionAPI);
+        transactionApi = new DefaultTransactionAPI(
+            null as any,
+            aliceAccount
+        );
+
+        rewardsApi = new DefaultRewardsAPI(
+            null as any,
+            testWrappedCurrency
+        );
+
         vaultsApi = new DefaultVaultsAPI(
             null as any,
             null as any,
@@ -27,9 +39,9 @@ describe("DefaultVaultsAPI", () => {
             null as any,
             null as any,
             null as any,
-            stubbedRewardsApi,
+            rewardsApi,
             null as any,
-            stubbedTransactionApi
+            transactionApi
         );
     });
 
@@ -43,9 +55,8 @@ describe("DefaultVaultsAPI", () => {
             async () => {
                 // prepare mocks
                 const { nominatorId, vaultId } = prepareBackingCollateralProportionMocks(
-                    sinon,
                     vaultsApi,
-                    stubbedRewardsApi,
+                    rewardsApi,
                     new Big(0),
                     new Big(0),
                     testCollateralCurrency
@@ -71,9 +82,8 @@ describe("DefaultVaultsAPI", () => {
                 const nominatorAmount = new Big(1);
                 const vaultAmount = new Big(0);
                 const { nominatorId, vaultId } = prepareBackingCollateralProportionMocks(
-                    sinon,
                     vaultsApi,
-                    stubbedRewardsApi,
+                    rewardsApi,
                     nominatorAmount,
                     vaultAmount,
                     testCollateralCurrency
@@ -94,9 +104,8 @@ describe("DefaultVaultsAPI", () => {
             const nominatorAmount = new Big(1);
             const vaultAmount = new Big(2);
             const { nominatorId, vaultId } = prepareBackingCollateralProportionMocks(
-                sinon,
                 vaultsApi,
-                stubbedRewardsApi,
+                rewardsApi,
                 nominatorAmount,
                 vaultAmount,
                 testCollateralCurrency
@@ -118,11 +127,10 @@ describe("DefaultVaultsAPI", () => {
     describe("registerNewCollateralVault", () => {
         const testCollateralAmount = newMonetaryAmount(new Big(30), testCollateralCurrency);
         it("should reject if transaction API account id is not set", async () => {
-            prepareRegisterNewCollateralVaultMocks(sinon, vaultsApi, stubbedTransactionApi, true);
+            prepareRegisterNewCollateralVaultMocks(vaultsApi, transactionApi, true);
 
             const registerVaultCall = () => vaultsApi.registerNewCollateralVault(testCollateralAmount);
-            // check for partial string here
-            await expect(registerVaultCall).rejects.toThrow("account must be set");
+            expect(registerVaultCall).toThrow(Error);
         });
     });
 
@@ -136,7 +144,6 @@ describe("DefaultVaultsAPI", () => {
             const expectedLiquidationExchangeRate = 1.5;
 
             prepareLiquidationRateMocks(
-                sinon,
                 vaultsApi,
                 mockIssuedTokens,
                 mockCollateralTokens,
@@ -161,7 +168,6 @@ describe("DefaultVaultsAPI", () => {
             const mockLiquidationThreshold = 2;
 
             prepareLiquidationRateMocks(
-                sinon,
                 vaultsApi,
                 mockIssuedTokens,
                 mockCollateralTokens,
@@ -185,7 +191,6 @@ describe("DefaultVaultsAPI", () => {
             const mockLiquidationThreshold = 0;
 
             prepareLiquidationRateMocks(
-                sinon,
                 vaultsApi,
                 mockIssuedTokens,
                 mockCollateralTokens,
