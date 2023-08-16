@@ -8,7 +8,7 @@ import {
     VaultRegistryVault,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "../../../../chai";
+import { assert } from "chai";
 import {
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,
@@ -43,7 +43,7 @@ describe("redeem", () => {
 
     let interBtcAPI: InterBtcApi;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
@@ -70,7 +70,7 @@ describe("redeem", () => {
         );
     });
 
-    after(() => {
+    afterAll(() => {
         return api.disconnect();
     });
 
@@ -101,7 +101,7 @@ describe("redeem", () => {
                 ExecuteRedeem.False
             );
         }
-    }).timeout(1000 * 90);
+    }, 1000 * 90);
 
     it("should load existing redeem requests", async () => {
         const redeemRequests = await interBtcAPI.redeem.list();

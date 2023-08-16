@@ -1,4 +1,3 @@
-import { assert } from "../../../../chai";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { InterbtcPrimitivesCurrencyId } from "@polkadot/types/lookup";
@@ -66,7 +65,7 @@ describe("AMM", () => {
     let asset0: InterbtcPrimitivesCurrencyId;
     let asset1: InterbtcPrimitivesCurrencyId;
 
-    before(async () => {
+    beforeAll(async () => {
         const keyring = new Keyring({ type: "sr25519" });
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
 
@@ -89,7 +88,7 @@ describe("AMM", () => {
         );
     });
 
-    after(async () => {
+    afterAll(async () => {
         return api.disconnect();
     });
 
@@ -97,18 +96,18 @@ describe("AMM", () => {
         await createAndFundPair(api, sudoAccount, asset0, asset1, new BN(8000000000000000), new BN(2000000000));
 
         const liquidityPools = await interBtcAPI.amm.getLiquidityPools();
-        assert.isNotEmpty(liquidityPools, "Should have at least one pool");
+        expect(liquidityPools).not.toHaveLength(0);
 
         const lpTokens = await interBtcAPI.amm.getLpTokens();
-        assert.isNotEmpty(liquidityPools, "Should have at least one token");
+        expect(liquidityPools).not.toHaveLength(0);
 
-        assert.deepEqual(liquidityPools[0].lpToken, lpTokens[0]);
+        expect(liquidityPools[0].lpToken).toEqual(lpTokens[0]);
     });
 
     describe("should add liquidity", () => {
         let lpPool: LiquidityPool;
 
-        before(async () => {
+        beforeAll(async () => {
             const liquidityPools = await interBtcAPI.amm.getLiquidityPools();
             lpPool = liquidityPools[0];
 
@@ -134,11 +133,11 @@ describe("AMM", () => {
 
         it("should compute liquidity", async () => {
             const lpAmounts = await interBtcAPI.amm.getLiquidityProvidedByAccount(newAccountId(api, lpAccount.address));
-            assert.isNotEmpty(lpAmounts, "Should have at least one position");
+            expect(lpAmounts).not.toHaveLength(0);
 
             const poolAmounts = lpPool.getLiquidityWithdrawalPooledCurrencyAmounts(lpAmounts[0] as any);
             for (const poolAmount of poolAmounts) {
-                assert.isTrue(!poolAmount.isZero(), "Should compute withdrawal tokens");
+                expect(poolAmount.isZero()).toBe(false);
             }
         });
 
@@ -165,7 +164,8 @@ describe("AMM", () => {
             api.query.tokens.accounts(lpAccount.address, asset1),
         ]);
 
-        assert.isDefined(trade, "Did not find trade");
+        expect(trade).toBeDefined();
+
         const outputAmount = trade!.getMinimumOutputAmount(0);
         await submitExtrinsic(interBtcAPI, interBtcAPI.amm.swap(trade!, outputAmount, lpAccount.address, 999999));
 
@@ -174,19 +174,16 @@ describe("AMM", () => {
             api.query.tokens.accounts(lpAccount.address, asset1),
         ]);
 
-        assert.equal(
-            asset0AccountAfter.free.toBn().toString(),
-            asset0AccountBefore.free
-                .toBn()
-                .sub(new BN(inputAmount.toString(true)))
-                .toString()
+        expect(asset0AccountAfter.free.toBn().toString()).toBe(asset0AccountBefore.free
+            .toBn()
+            .sub(new BN(inputAmount.toString(true)))
+            .toString()
         );
-        assert.equal(
-            asset1AccountAfter.free.toBn().toString(),
-            asset1AccountBefore.free
-                .toBn()
-                .add(new BN(outputAmount.toString(true)))
-                .toString()
+
+        expect(asset1AccountAfter.free.toBn().toString()).toBe(asset1AccountBefore.free
+            .toBn()
+            .sub(new BN(inputAmount.toString(true)))
+            .toString()
         );
     });
 });

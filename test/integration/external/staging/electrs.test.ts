@@ -1,5 +1,5 @@
+import expect from "expect";
 import { ApiPromise } from "@polkadot/api";
-import { assert } from "chai";
 import { ElectrsAPI, DefaultElectrsAPI } from "../../../../src/external/electrs";
 import { createSubstrateAPI } from "../../../../src/factory";
 import {
@@ -16,12 +16,12 @@ import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
 import { BitcoinAmount } from "@interlay/monetary-js";
 import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, waitSuccess } from "../../../utils/helpers";
 
-describe("ElectrsAPI regtest", function () {
+describe("ElectrsAPI regtest", () => {
     let api: ApiPromise;
     let electrsAPI: ElectrsAPI;
     let bitcoinCoreClient: BitcoinCoreClient;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         electrsAPI = new DefaultElectrsAPI(ESPLORA_BASE_PATH);
         bitcoinCoreClient = new BitcoinCoreClient(
@@ -34,7 +34,7 @@ describe("ElectrsAPI regtest", function () {
         );
     });
 
-    after(async () => {
+    afterAll(async () => {
         await api.disconnect();
     });
 
@@ -45,9 +45,9 @@ describe("ElectrsAPI regtest", function () {
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount);
             const txid = await waitSuccess(() => electrsAPI.getLargestPaymentToRecipientAddressTxId(recipientAddress));
-            assert.strictEqual(txid, txData.txid);
+            expect(txid).toBe(txData.txid);
         });
-    }).timeout(1000 * 10);
+    }, 1000 * 10);
 
     it("should getTxByOpreturn", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
@@ -57,9 +57,9 @@ describe("ElectrsAPI regtest", function () {
 
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
             const txid = await waitSuccess(() => electrsAPI.getTxIdByOpReturn(opReturnValue, recipientAddress, amount));
-            assert.strictEqual(txid, txData.txid);
+            expect(txid).toBe(txData.txid);
         });
-    }).timeout(1000 * 10);
+    }, 1000 * 10);
 
     it("should use getTxStatus to return correct confirmations", async () => {
         await runWhileMiningBTCBlocks(bitcoinCoreClient, async () => {
@@ -70,19 +70,19 @@ describe("ElectrsAPI regtest", function () {
             const txData = await bitcoinCoreClient.broadcastTx(recipientAddress, amount, opReturnValue);
             // transaction in mempool
             let status = await electrsAPI.getTransactionStatus(txData.txid);
-            assert.strictEqual(status.confirmations, 0);
+            expect(status.confirmations).toBe(0);
 
             // transaction in the latest block
             await waitSuccess(async () => {
                 status = await electrsAPI.getTransactionStatus(txData.txid);
-                assert.strictEqual(status.confirmations, 1);
+                expect(status.confirmations).toBe(1);
             });
 
             // transaction in the parent of the latest block
             await waitSuccess(async () => {
                 status = await electrsAPI.getTransactionStatus(txData.txid);
-                assert.strictEqual(status.confirmations, 2);
+                expect(status.confirmations).toBe(2);
             });
         });
-    }).timeout(1000 * 60);
+    }, 1000 * 60);
 });

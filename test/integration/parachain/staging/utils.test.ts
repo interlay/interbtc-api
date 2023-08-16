@@ -4,7 +4,7 @@ import { bnToHex } from "@polkadot/util";
 import BN from "bn.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
+import { assert } from "chai";
 import { PARACHAIN_ENDPOINT } from "../../../config";
 import { stripHexPrefix } from "../../../../src/utils";
 
@@ -19,11 +19,11 @@ export function blake2_128Concat(data: `0x${string}`): string {
 describe("Utils", () => {
     let api: ApiPromise;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
     });
 
-    after(() => {
+    afterAll(() => {
         return api.disconnect();
     });
 
@@ -43,7 +43,7 @@ describe("Utils", () => {
         assert.equal(
             getStorageKey("AssetRegistry", "Metadata"),
             api.query.assetRegistry.metadata.keyPrefix(),
-        )
+        );
     });
 
     it("should encode storage value", async () => {

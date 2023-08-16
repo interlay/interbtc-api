@@ -22,7 +22,7 @@ describe("DefaultLoansAPI", () => {
     const testGovernanceCurrency = Interlay;
     const testRelayCurrency = Polkadot;
 
-    before(() => {
+    beforeAll(() => {
         api = new ApiPromise();
         // disconnect immediately to avoid printing errors
         // we only need the instance to create variables
@@ -95,18 +95,21 @@ describe("DefaultLoansAPI", () => {
             expect(actualTotalLiquidity.toBig().toNumber()).to.eq(0);
         });
 
-        it("should return zero available capacity if borrow is equal to issuance times exchange rate", () => {
-            const borrowAll = testTotalIssuance.mul(testExchangeRate);
-            const borrowAllAtomicAmount = borrowAll.toBig(0);
-            const [_, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
-                testUnderlying,
-                testIssuanceAtomicAmount,
-                borrowAllAtomicAmount,
-                testExchangeRate
-            );
+        it(
+            "should return zero available capacity if borrow is equal to issuance times exchange rate",
+            () => {
+                const borrowAll = testTotalIssuance.mul(testExchangeRate);
+                const borrowAllAtomicAmount = borrowAll.toBig(0);
+                const [_, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
+                    testUnderlying,
+                    testIssuanceAtomicAmount,
+                    borrowAllAtomicAmount,
+                    testExchangeRate
+                );
 
-            expect(actualAvailableCapacity.toBig().toNumber()).to.eq(0);
-        });
+                expect(actualAvailableCapacity.toBig().toNumber()).to.eq(0);
+            }
+        );
     });
 
     describe("_getSubsidyReward", () => {

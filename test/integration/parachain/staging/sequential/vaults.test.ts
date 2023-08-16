@@ -14,7 +14,7 @@ import {
 } from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "../../../../chai";
+import { assert } from "chai";
 import { VAULT_1_URI, VAULT_2_URI, PARACHAIN_ENDPOINT, VAULT_3_URI, ESPLORA_BASE_PATH } from "../../../../config";
 import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
 import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
@@ -25,7 +25,6 @@ import {
     submitExtrinsic,
     vaultStatusToLabel,
 } from "../../../../utils/helpers";
-import sinon from "sinon";
 
 describe("vaultsAPI", () => {
     let vault_1: KeyringPair;
@@ -41,7 +40,7 @@ describe("vaultsAPI", () => {
     let interBtcAPI: InterBtcApi;
     let assetRegistry: AssetRegistryAPI;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const ss58Prefix = getSS58Prefix(api);
         const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
@@ -67,13 +66,13 @@ describe("vaultsAPI", () => {
         vault_3 = keyring.addFromUri(VAULT_3_URI);
     });
 
-    after(() => {
+    afterAll(() => {
         return api.disconnect();
     });
 
     afterEach(() => {
         // discard any stubbed methods after each test
-        sinon.restore();
+        jest.restoreAllMocks();
     });
 
     function vaultIsATestVault(vaultAddress: string): boolean {
@@ -212,18 +211,21 @@ describe("vaultsAPI", () => {
         assert.isRejected(interBtcAPI.vaults.selectRandomVaultRedeem(amount));
     });
 
-    it("should fail to get vault collateralization for vault with zero collateral", async () => {
-        for (const vault_1_id of vault_1_ids) {
-            const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral);
-            const currencyTicker = collateralCurrency.ticker;
+    it(
+        "should fail to get vault collateralization for vault with zero collateral",
+        async () => {
+            for (const vault_1_id of vault_1_ids) {
+                const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral);
+                const currencyTicker = collateralCurrency.ticker;
 
-            const vault1Id = newAccountId(api, vault_1.address);
-            assert.isRejected(
-                interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency),
-                `Collateralization should not be available (${currencyTicker} vault)`
-            );
+                const vault1Id = newAccountId(api, vault_1.address);
+                assert.isRejected(
+                    interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency),
+                    `Collateralization should not be available (${currencyTicker} vault)`
+                );
+            }
         }
-    });
+    );
 
     it("should get the issuable InterBtc for a vault", async () => {
         for (const vault_1_id of vault_1_ids) {

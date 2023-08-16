@@ -14,7 +14,6 @@ import {
 } from "../../../../../src";
 import { setRawStorage, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "../../../../chai";
 import {
     SUDO_URI,
     USER_1_URI,
@@ -51,7 +50,7 @@ describe.skip("NominationAPI", () => {
     let wrappedCurrency: WrappedCurrency;
     let collateralCurrencies: Array<CollateralCurrencyExt>;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
@@ -84,7 +83,7 @@ describe.skip("NominationAPI", () => {
         );
     });
 
-    after(() => {
+    afterAll(() => {
         return api.disconnect();
     });
 

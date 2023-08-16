@@ -1,5 +1,5 @@
+import mock from "jest-mock";
 import Big, { BigSource } from "big.js";
-import sinon from "sinon";
 import {
     CollateralCurrencyExt,
     CurrencyExt,
@@ -42,19 +42,19 @@ export const prepareRegisterNewCollateralVaultMocks = (
     doesSendLoggedReject?: boolean
 ): SubmittableExtrinsic<"promise", ISubmittableResult> | null => {
     if (isAccountIdUndefined) {
-        stubbedTransactionApi.getAccount.returns(undefined);
+        stubbedTransactionApi.getAccount.mockReturnValue(undefined);
         return null;
     }
 
     // mock getting a valid (ie. has been set) account id
     const vaultAccountId = createMockAccountId("0x0123456789012345678901234567890123456789012345678901234567890123");
-    stubbedTransactionApi.getAccount.returns(vaultAccountId);
+    stubbedTransactionApi.getAccount.mockReturnValue(vaultAccountId);
 
     // mock api returns to be able to call sendLogged
     const mockSubmittableExtrinsic = <SubmittableExtrinsic<"promise", ISubmittableResult>>{};
-    sinon.stub(vaultsApi, "buildRegisterVaultExtrinsic").returns(mockSubmittableExtrinsic);
+    mock.spyOn(vaultsApi, "buildRegisterVaultExtrinsic").mockClear().mockReturnValue(mockSubmittableExtrinsic);
     const fakeEvent = <AugmentedEvent<ApiTypes, AnyTuple>>{};
-    sinon.stub(vaultsApi, "getRegisterVaultEvent").returns(fakeEvent);
+    mock.spyOn(vaultsApi, "getRegisterVaultEvent").mockClear().mockReturnValue(fakeEvent);
 
     if (doesSendLoggedReject) {
         stubbedTransactionApi.sendLogged.rejects(new Error(MOCKED_SEND_LOGGED_ERR_MSG));
@@ -131,7 +131,7 @@ export const mockComputeCollateralInStakingPoolMethod = (
 ): void => {
     // don't care what the inner method returns as we mock the outer one
     const tempId = <InterbtcPrimitivesVaultId>{};
-    sinon.stub(allThingsEncoding, "newVaultId").returns(tempId);
+    mock.spyOn(allThingsEncoding, "newVaultId").mockClear().mockReturnValue(tempId);
 
     // the actual mock that matters
     stubbedRewardsApi.computeCollateralInStakingPool.resolves(newMonetaryAmount(amount, currency) as never);
@@ -162,7 +162,7 @@ export const mockVaultsApiGetMethod = (
     vault: VaultExt
 ): void => {
     // make VaultAPI.get() return a mocked vault
-    sinon.stub(vaultsApi, "get").returns(Promise.resolve(vault));
+    mock.spyOn(vaultsApi, "get").mockClear().mockReturnValue(Promise.resolve(vault));
 };
 
 export const prepareLiquidationRateMocks = (
@@ -184,9 +184,9 @@ export const prepareLiquidationRateMocks = (
 
     // mock this.getLiquidationCollateralThreshold return value
     // if we have less than 2x collateral (in BTC) compared to BTC, we need to liquidate
-    sinon.stub(vaultsApi, "getLiquidationCollateralThreshold").returns(Promise.resolve(Big(mockLiquidationThreshold)));
+    mock.spyOn(vaultsApi, "getLiquidationCollateralThreshold").mockClear().mockReturnValue(Promise.resolve(Big(mockLiquidationThreshold)));
 
     // mock this.getCollateral return value
     const mockCollateral = new MonetaryAmount(collateralCurrency, mockCollateralTokensNumber);
-    sinon.stub(vaultsApi, "getCollateral").returns(Promise.resolve(mockCollateral));
+    mock.spyOn(vaultsApi, "getCollateral").mockClear().mockReturnValue(Promise.resolve(mockCollateral));
 };

@@ -1,4 +1,3 @@
-import { assert } from "../../../../chai";
 import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { StorageKey } from "@polkadot/types";
@@ -20,7 +19,7 @@ describe("AssetRegistry", () => {
     let assetRegistryMetadataPrefix: string;
     let registeredKeysBefore: StorageKey<AnyTuple>[] = [];
 
-    before(async () => {
+    beforeAll(async () => {
         const keyring = new Keyring({ type: "sr25519" });
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
 
@@ -33,7 +32,7 @@ describe("AssetRegistry", () => {
         registeredKeysBefore = keys.toArray();
     });
 
-    after(async () => {
+    afterAll(async () => {
         // clean up keys created in tests if necessary
         const registeredKeysAfter = (await interBtcAPI.api.rpc.state.getKeys(assetRegistryMetadataPrefix)).toArray();
 
@@ -90,7 +89,7 @@ describe("AssetRegistry", () => {
                 api.events.sudo.RegisteredAsset
             );
 
-            assert.isTrue(result.isCompleted, "Sudo event to create new foreign asset not found");
+            expect(result.isCompleted).toBe(true);
         }
 
         // get the metadata for the asset we just registered
@@ -109,22 +108,28 @@ describe("AssetRegistry", () => {
         ]);
 
         for (const [storageKey, metadata] of unwrappedMetadataTupleArray) {
-            assert.isDefined(metadata, "Expected metadata to be defined, but it is not.");
-            assert.isDefined(storageKey, "Expected storage key to be defined, but it is not.");
+            expect(metadata).toBeDefined();
+            expect(storageKey).toBeDefined();
 
             const storageKeyValue = storageKeyToNthInner<AssetId>(storageKey);
-            assert.isDefined(storageKeyValue, "Expected storage key can be decoded but it cannot.");
+            expect(storageKeyValue).toBeDefined();
 
             for (const [key, className] of requiredFieldClassnames) {
-                assert.isDefined(metadata[key], `Expected metadata to have field ${key.toString()}, but it does not.`);
+                try {
+                    expect(metadata[key]).toBeDefined();
+                } catch(_) {
+                    throw Error(`Expected metadata to have field ${key.toString()}, but it does not.`);
+                }
 
                 // check type
-                assert.equal(
-                    metadata[key]?.constructor.name,
-                    className,
-                    `Expected metadata to have field ${key.toString()} of type ${className}, 
-                    but its type is ${metadata[key]?.constructor.name}.`
-                );
+                try {
+                    expect(metadata[key]?.constructor.name).toBe(className);
+                } catch(_) {
+                    throw Error(
+                        `Expected metadata to have field ${key.toString()} of type ${className}, 
+                        but its type is ${metadata[key]?.constructor.name}.`
+                    );
+                }
             }
         }
     });
@@ -134,10 +139,6 @@ describe("AssetRegistry", () => {
     it("should get at least one collateral foreign asset", async () => {
         const collateralForeignAssets = await interBtcAPI.assetRegistry.getCollateralForeignAssets();
 
-        assert.isAtLeast(
-            collateralForeignAssets.length,
-            1,
-            "Expected at least one foreign asset that can be used as collateral currency, but found none"
-        );
+        expect(collateralForeignAssets.length).toBeGreaterThanOrEqual(1);
     });
 });

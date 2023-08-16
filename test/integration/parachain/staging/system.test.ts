@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
+import { assert } from "chai";
 import { SUDO_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { BLOCK_TIME_SECONDS, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
@@ -12,14 +12,14 @@ describe("systemAPI", () => {
     let interBtcAPI: InterBtcApi;
     let keyring: Keyring;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
     });
 
-    after(async () => {
+    afterAll(async () => {
         api.disconnect();
     });
 

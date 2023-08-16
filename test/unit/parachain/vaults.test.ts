@@ -1,6 +1,5 @@
-import { assert, expect } from "../../chai";
+import { assert, expect } from "chai";
 import Big from "big.js";
-import sinon from "sinon";
 import { DefaultRewardsAPI, DefaultTransactionAPI, DefaultVaultsAPI } from "../../../src";
 import { newMonetaryAmount } from "../../../src/utils";
 import { KBtc, Kusama } from "@interlay/monetary-js";
@@ -36,59 +35,65 @@ describe("DefaultVaultsAPI", () => {
     });
 
     afterEach(() => {
-        sinon.restore();
-        sinon.reset();
+        jest.restoreAllMocks();
+        sinon.mockReset();
     });
 
     describe("backingCollateralProportion", () => {
-        it("should return 0 if nominator and vault have zero collateral", async () => {
-            // prepare mocks
-            const { nominatorId, vaultId } = prepareBackingCollateralProportionMocks(
-                sinon,
-                vaultsApi,
-                stubbedRewardsApi,
-                new Big(0),
-                new Big(0),
-                testCollateralCurrency
-            );
+        it(
+            "should return 0 if nominator and vault have zero collateral",
+            async () => {
+                // prepare mocks
+                const { nominatorId, vaultId } = prepareBackingCollateralProportionMocks(
+                    sinon,
+                    vaultsApi,
+                    stubbedRewardsApi,
+                    new Big(0),
+                    new Big(0),
+                    testCollateralCurrency
+                );
 
-            // do the thing
-            const proportion = await vaultsApi.backingCollateralProportion(
-                vaultId,
-                nominatorId,
-                testCollateralCurrency
-            );
+                // do the thing
+                const proportion = await vaultsApi.backingCollateralProportion(
+                    vaultId,
+                    nominatorId,
+                    testCollateralCurrency
+                );
 
-            // check result
-            const expectedProportion = new Big(0);
-            assert.equal(
-                proportion.toString(),
-                expectedProportion.toString(),
-                `Expected actual proportion to be ${expectedProportion.toString()} but it was ${proportion.toString()}`
-            );
-        });
+                // check result
+                const expectedProportion = new Big(0);
+                assert.equal(
+                    proportion.toString(),
+                    expectedProportion.toString(),
+                    `Expected actual proportion to be ${expectedProportion.toString()} but it was ${proportion.toString()}`
+                );
+            }
+        );
 
-        it("should reject if nominator has collateral, but vault has zero collateral", async () => {
-            // prepare mocks
-            const nominatorAmount = new Big(1);
-            const vaultAmount = new Big(0);
-            const { nominatorId, vaultId } = prepareBackingCollateralProportionMocks(
-                sinon,
-                vaultsApi,
-                stubbedRewardsApi,
-                nominatorAmount,
-                vaultAmount,
-                testCollateralCurrency
-            );
+        it(
+            "should reject if nominator has collateral, but vault has zero collateral",
+            async () => {
+                // prepare mocks
+                const nominatorAmount = new Big(1);
+                const vaultAmount = new Big(0);
+                const { nominatorId, vaultId } = prepareBackingCollateralProportionMocks(
+                    sinon,
+                    vaultsApi,
+                    stubbedRewardsApi,
+                    nominatorAmount,
+                    vaultAmount,
+                    testCollateralCurrency
+                );
 
-            // do & check
-            const proportionPromise = vaultsApi.backingCollateralProportion(
-                vaultId,
-                nominatorId,
-                testCollateralCurrency
-            );
-            expect(proportionPromise).to.be.rejectedWith(Error);
-        });
+                // do & check
+                const proportionPromise = vaultsApi.backingCollateralProportion(
+                    vaultId,
+                    nominatorId,
+                    testCollateralCurrency
+                );
+                expect(proportionPromise).to.be.rejectedWith(Error);
+            }
+        );
 
         it("should calculate expected proportion", async () => {
             // prepare mocks

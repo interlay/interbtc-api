@@ -22,7 +22,7 @@ describe("Encoding", () => {
         return new (registry.createClass("H256Le"))(registry, hash) as H256Le;
     };
 
-    before(() => {
+    beforeAll(() => {
         registry = new TypeRegistry();
         registry.register(getAPITypes());
     });
@@ -115,33 +115,39 @@ describe("Encoding", () => {
             const mockInternalPendingStatus = buildMockStatus("Pending");
             const expectedStatus = RedeemStatus.Expired;
 
-            it("when global redeem period is greater than request period and less than opentime + period", () => {
-                const globalRedeemPeriod = currentBlock - 5;
-                const requestPeriod = globalRedeemPeriod - 3;
-                // preconditions
-                assert.isAbove(globalRedeemPeriod, requestPeriod, "Precondition failed: fix test setup");
-                assert.isBelow(globalRedeemPeriod, currentBlock, "Precondition failed: fix test setup");
+            it(
+                "when global redeem period is greater than request period and less than opentime + period",
+                () => {
+                    const globalRedeemPeriod = currentBlock - 5;
+                    const requestPeriod = globalRedeemPeriod - 3;
+                    // preconditions
+                    assert.isAbove(globalRedeemPeriod, requestPeriod, "Precondition failed: fix test setup");
+                    assert.isBelow(globalRedeemPeriod, currentBlock, "Precondition failed: fix test setup");
 
-                const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
+                    const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
 
-                const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
+                    const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
-                assertEqualPretty(actualStatus, expectedStatus);
-            });
+                    assertEqualPretty(actualStatus, expectedStatus);
+                }
+            );
 
-            it("when request period is greater than global redeem period and less than opentime + period", () => {
-                const requestPeriod = currentBlock - 3;
-                const globalRedeemPeriod = requestPeriod - 5;
-                // preconditions
-                assert.isAbove(requestPeriod, globalRedeemPeriod, "Precondition failed: fix test setup");
-                assert.isBelow(requestPeriod, currentBlock, "Precondition failed: fix test setup");
+            it(
+                "when request period is greater than global redeem period and less than opentime + period",
+                () => {
+                    const requestPeriod = currentBlock - 3;
+                    const globalRedeemPeriod = requestPeriod - 5;
+                    // preconditions
+                    assert.isAbove(requestPeriod, globalRedeemPeriod, "Precondition failed: fix test setup");
+                    assert.isBelow(requestPeriod, currentBlock, "Precondition failed: fix test setup");
 
-                const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
+                    const mockRequest = buildMockRedeemRequest(mockInternalPendingStatus, opentimeBlock, requestPeriod);
 
-                const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
+                    const actualStatus = parseRedeemRequestStatus(mockRequest, globalRedeemPeriod, currentBlock);
 
-                assertEqualPretty(actualStatus, expectedStatus);
-            });
+                    assertEqualPretty(actualStatus, expectedStatus);
+                }
+            );
         });
 
         describe("should correctly parse pending status", () => {

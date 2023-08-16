@@ -2,7 +2,7 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
+import { assert } from "chai";
 import { USER_1_URI, USER_2_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import {
     ATOMIC_UNIT,
@@ -22,7 +22,7 @@ describe("TokensAPI", () => {
     let interBtcAPI: InterBtcApi;
     let collateralCurrencies: Array<CollateralCurrencyExt>;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         user1Account = keyring.addFromUri(USER_1_URI);
@@ -31,7 +31,7 @@ describe("TokensAPI", () => {
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
     });
 
-    after(() => {
+    afterAll(() => {
         return api.disconnect();
     });
 

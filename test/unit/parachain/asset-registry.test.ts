@@ -1,5 +1,5 @@
-import { expect } from "../../chai";
-import sinon from "sinon";
+import mock from "jest-mock";
+import { expect } from "chai";
 import { ApiPromise } from "@polkadot/api";
 import { StorageKey, u32 } from "@polkadot/types";
 import {
@@ -27,7 +27,7 @@ describe("DefaultAssetRegistryAPI", () => {
         coingeckoId: "mock-coin-one",
     };
 
-    before(() => {
+    beforeAll(() => {
         api = new ApiPromise();
         // disconnect immediately to avoid printing errors
         // we only need the instance to create variables
@@ -67,43 +67,49 @@ describe("DefaultAssetRegistryAPI", () => {
 
         // mock return type of storageKeyToNthInner method which only works correctly in integration tests
         const mockedReturn = api.createType("AssetId", mockStorageKeyValue);
-        sinon.stub(allThingsEncoding, "storageKeyToNthInner").returns(mockedReturn);
+        mock.spyOn(allThingsEncoding, "storageKeyToNthInner").mockClear().mockReturnValue(mockedReturn);
     });
 
     afterEach(() => {
-        sinon.restore();
-        sinon.reset();
+        jest.restoreAllMocks();
+        sinon.mockReset();
     });
 
     describe("getForeignAssets", () => {
-        it("should return empty list if chain returns no foreign assets", async () => {
-            // mock empty list returned from chain
-            sinon.stub(assetRegistryApi, "getAssetRegistryEntries").returns(Promise.resolve([]));
+        it(
+            "should return empty list if chain returns no foreign assets",
+            async () => {
+                // mock empty list returned from chain
+                mock.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve([]));
 
-            const actual = await assetRegistryApi.getForeignAssets();
-            expect(actual).to.be.empty;
-        });
+                const actual = await assetRegistryApi.getForeignAssets();
+                expect(actual).to.be.empty;
+            }
+        );
 
-        it("should ignore empty optionals in foreign assets data from chain", async () => {
-            const chainDataReturned: AssetRegistryMetadataTuple[] = [
-                // one "good" returned value
-                [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", mockMetadata)],
-                // one empty option
-                [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", undefined)],
-            ];
+        it(
+            "should ignore empty optionals in foreign assets data from chain",
+            async () => {
+                const chainDataReturned: AssetRegistryMetadataTuple[] = [
+                    // one "good" returned value
+                    [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", mockMetadata)],
+                    // one empty option
+                    [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", undefined)],
+                ];
 
-            sinon.stub(assetRegistryApi, "getAssetRegistryEntries").returns(Promise.resolve(chainDataReturned));
+                mock.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve(chainDataReturned));
 
-            const actual = await assetRegistryApi.getForeignAssets();
+                const actual = await assetRegistryApi.getForeignAssets();
 
-            expect(actual).to.have.lengthOf(1, `Expected only one currency to be returned, but got ${actual.length}`);
+                expect(actual).to.have.lengthOf(1, `Expected only one currency to be returned, but got ${actual.length}`);
 
-            const actualCurrency = actual[0];
-            expect(actualCurrency.ticker).to.equal(
-                mockMetadataValues.symbol,
-                `Expected the returned currency ticker to be ${mockMetadataValues.symbol}, but it was ${actualCurrency.ticker}`
-            );
-        });
+                const actualCurrency = actual[0];
+                expect(actualCurrency.ticker).to.equal(
+                    mockMetadataValues.symbol,
+                    `Expected the returned currency ticker to be ${mockMetadataValues.symbol}, but it was ${actualCurrency.ticker}`
+                );
+            }
+        );
     });
 
     describe("unwrapMetadataFromEntries", () => {
@@ -146,15 +152,14 @@ describe("DefaultAssetRegistryAPI", () => {
             allForeignAssets: ForeignAsset[],
             collateralCeilingCurrencyPairs?: InterbtcPrimitivesVaultCurrencyPair[]
         ) => {
-            sinon.stub(assetRegistryApi, "getForeignAssets").returns(Promise.resolve(allForeignAssets));
+            mock.spyOn(assetRegistryApi, "getForeignAssets").mockClear().mockReturnValue(Promise.resolve(allForeignAssets));
 
             // this return does not matter since individual tests mock extractCollateralCeilingEntryKeys
             // which returns the actual values of interest
-            sinon.stub(assetRegistryApi, "getSystemCollateralCeilingEntries").returns(Promise.resolve([]));
+            mock.spyOn(assetRegistryApi, "getSystemCollateralCeilingEntries").mockClear().mockReturnValue(Promise.resolve([]));
             if (collateralCeilingCurrencyPairs !== undefined) {
-                sinon
-                    .stub(assetRegistryApi, "extractCollateralCeilingEntryKeys")
-                    .returns(collateralCeilingCurrencyPairs);
+                mock.spyOn(assetRegistryApi, "extractCollateralCeilingEntryKeys").mockClear()
+                    .mockReturnValue(collateralCeilingCurrencyPairs);
             }
         };
 
@@ -166,52 +171,58 @@ describe("DefaultAssetRegistryAPI", () => {
             expect(actual).to.be.empty;
         });
 
-        it("should return empty array if there are no foreign assets with a collateral ceiling set", async () => {
-            prepareMocks(sinon, assetRegistryApi, mockForeignAssets, []);
+        it(
+            "should return empty array if there are no foreign assets with a collateral ceiling set",
+            async () => {
+                prepareMocks(sinon, assetRegistryApi, mockForeignAssets, []);
 
-            const actual = await assetRegistryApi.getCollateralForeignAssets();
-            expect(actual).to.be.empty;
-        });
+                const actual = await assetRegistryApi.getCollateralForeignAssets();
+                expect(actual).to.be.empty;
+            }
+        );
 
-        it("should return only foreign assets, not tokens with collateral ceilings set", async () => {
-            // pick an asset id that we expect to get returned
-            const expectedForeignAssetId = mockForeignAssets[0].foreignAsset.id;
+        it(
+            "should return only foreign assets, not tokens with collateral ceilings set",
+            async () => {
+                // pick an asset id that we expect to get returned
+                const expectedForeignAssetId = mockForeignAssets[0].foreignAsset.id;
 
-            // only bother mocking collateral currencies, the wrapped side is ignored
-            const mockCurrencyPairs = [
-                <InterbtcPrimitivesVaultCurrencyPair>{
-                    // mocked foreign asset collateral
-                    collateral: <InterbtcPrimitivesCurrencyId>{
-                        isForeignAsset: true,
-                        isToken: false,
-                        asForeignAsset: api.createType("u32", expectedForeignAssetId),
-                        type: "ForeignAsset",
+                // only bother mocking collateral currencies, the wrapped side is ignored
+                const mockCurrencyPairs = [
+                    <InterbtcPrimitivesVaultCurrencyPair>{
+                        // mocked foreign asset collateral
+                        collateral: <InterbtcPrimitivesCurrencyId>{
+                            isForeignAsset: true,
+                            isToken: false,
+                            asForeignAsset: api.createType("u32", expectedForeignAssetId),
+                            type: "ForeignAsset",
+                        },
                     },
-                },
-                <InterbtcPrimitivesVaultCurrencyPair>{
-                    // mocked token collateral (ie. not foreign asset)
-                    collateral: <InterbtcPrimitivesCurrencyId>{
-                        isForeignAsset: false,
-                        isToken: true,
-                        // logically inconsistent (but trying to trick into having a valid result if this is used when it shouldn't)
-                        asForeignAsset: api.createType(
-                            "u32",
-                            mockForeignAssets[mockForeignAssets.length - 1].foreignAsset.id
-                        ),
-                        type: "Token",
+                    <InterbtcPrimitivesVaultCurrencyPair>{
+                        // mocked token collateral (ie. not foreign asset)
+                        collateral: <InterbtcPrimitivesCurrencyId>{
+                            isForeignAsset: false,
+                            isToken: true,
+                            // logically inconsistent (but trying to trick into having a valid result if this is used when it shouldn't)
+                            asForeignAsset: api.createType(
+                                "u32",
+                                mockForeignAssets[mockForeignAssets.length - 1].foreignAsset.id
+                            ),
+                            type: "Token",
+                        },
                     },
-                },
-            ];
+                ];
 
-            prepareMocks(sinon, assetRegistryApi, mockForeignAssets, mockCurrencyPairs);
+                prepareMocks(sinon, assetRegistryApi, mockForeignAssets, mockCurrencyPairs);
 
-            const actual = await assetRegistryApi.getCollateralForeignAssets();
+                const actual = await assetRegistryApi.getCollateralForeignAssets();
 
-            // expect one returned value
-            expect(actual).to.have.lengthOf(1);
+                // expect one returned value
+                expect(actual).to.have.lengthOf(1);
 
-            const actualAssetId = actual[0].foreignAsset.id;
-            expect(actualAssetId).to.be.eq(expectedForeignAssetId);
-        });
+                const actualAssetId = actual[0].foreignAsset.id;
+                expect(actualAssetId).to.be.eq(expectedForeignAssetId);
+            }
+        );
     });
 });

@@ -6,7 +6,6 @@ import * as bitcoinjs from "bitcoinjs-lib";
 import { BitcoinAddress } from "@polkadot/types/lookup";
 import { getAPITypes } from "../../../src/factory";
 import { H160, H256 } from "@polkadot/types/interfaces/runtime";
-import sinon from "sinon";
 import { DefaultElectrsAPI } from "../../../src/external";
 
 describe("Bitcoin", () => {
@@ -20,7 +19,7 @@ describe("Bitcoin", () => {
         return registry.createType("H160", hash);
     };
 
-    before(() => {
+    beforeAll(() => {
         registry = new TypeRegistry();
         registry.register(getAPITypes());
     });
@@ -123,8 +122,8 @@ describe("Bitcoin", () => {
         const mockElectrsGetParsedExecutionParameters = (merkleProofHex: string, txHex: string) => {
             const stubbedElectrsApi = sinon.createStubInstance(DefaultElectrsAPI);
             const [proof, tx] = [BitcoinMerkleProof.fromHex(merkleProofHex), bitcoinjs.Transaction.fromHex(txHex)];
-            stubbedElectrsApi.getParsedExecutionParameters.withArgs(sinon.match.any).resolves([proof, tx]);
-            stubbedElectrsApi.getCoinbaseTxId.withArgs(sinon.match.any).resolves(tx.getId());
+            stubbedElectrsApi.getParsedExecutionParameters.withArgs(expect.anything()).resolves([proof, tx]);
+            stubbedElectrsApi.getCoinbaseTxId.withArgs(expect.anything()).resolves(tx.getId());
             return stubbedElectrsApi;
         };
 

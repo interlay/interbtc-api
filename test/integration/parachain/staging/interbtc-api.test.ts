@@ -19,12 +19,12 @@ describe("InterBtcApi", () => {
     const registry = createAPIRegistry();
     let api: ApiPromise;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         interBTC = new DefaultInterBtcApi(api);
     });
 
-    after(async () => {
+    afterAll(async () => {
         await api.disconnect();
     });
 

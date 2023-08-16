@@ -3,7 +3,7 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinAmount, ExchangeRate } from "@interlay/monetary-js";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "../../../../chai";
+import { assert } from "chai";
 import { ESPLORA_BASE_PATH, ORACLE_URI, PARACHAIN_ENDPOINT } from "../../../../config";
 import {
     CollateralCurrencyExt,
@@ -28,7 +28,7 @@ describe("OracleAPI", () => {
     let bobAccount: KeyringPair;
     let charlieAccount: KeyringPair;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const ss58Prefix = getSS58Prefix(api);
         const keyring = new Keyring({ type: "sr25519", ss58Format: ss58Prefix });
@@ -41,7 +41,7 @@ describe("OracleAPI", () => {
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
     });
 
-    after(() => {
+    afterAll(() => {
         return api.disconnect();
     });
 

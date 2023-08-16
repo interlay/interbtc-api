@@ -13,7 +13,6 @@ import {
     newMonetaryAmount,
 } from "../../../../../src/index";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { assert } from "../../../../chai";
 import {
     USER_1_URI,
     VAULT_1_URI,
@@ -53,7 +52,7 @@ describe("issue", () => {
     let wrappedCurrency: WrappedCurrency;
     let collateralCurrencies: Array<CollateralCurrencyExt>;
 
-    before(async function () {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         userAccount = keyring.addFromUri(USER_1_URI);
@@ -80,7 +79,7 @@ describe("issue", () => {
         );
     });
 
-    after(async () => {
+    afterAll(async () => {
         api.disconnect();
     });
 
@@ -92,23 +91,16 @@ describe("issue", () => {
             userInterBtcAPI,
             await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.issue.request(amount))
         );
-        assert.equal(
-            requestResults.length,
-            1,
-            "Created multiple requests instead of one (ensure vault has sufficient collateral)"
-        );
+        expect(requestResults).toHaveLength(1);
         const requestResult = requestResults[0];
         const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
-        assert.equal(
-            issueRequest.wrappedAmount.toString(),
-            amount.sub(feesToPay).toString(),
-            "Amount different than expected"
-        );
+
+        expect(issueRequest.wrappedAmount.toString()).toBe(amount.sub(feesToPay).toString());
     });
 
     it("should list existing requests", async () => {
         const issueRequests = await userInterBtcAPI.issue.list();
-        assert.isAtLeast(issueRequests.length, 1, "Should have at least 1 issue request");
+        expect(issueRequests.length).toBeGreaterThanOrEqual(1);
     });
 
     // FIXME: can we make this test more elegant? i.e. check what is issuable
@@ -120,16 +112,14 @@ describe("issue", () => {
             userInterBtcAPI,
             await submitExtrinsic(userInterBtcAPI, await userInterBtcAPI.issue.request(amount))
         );
-        assert.equal(issueRequests.length, 2, "Created wrong amount of requests, vaults have insufficient collateral");
+        expect(issueRequests).toHaveLength(2);
         const issuedAmount1 = issueRequests[0].wrappedAmount;
         const issueFee1 = issueRequests[0].bridgeFee;
         const issuedAmount2 = issueRequests[1].wrappedAmount;
         const issueFee2 = issueRequests[1].bridgeFee;
-        assert.equal(
-            issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig().round(5).toString(),
-            amount.toBig().round(5).toString(),
-            "Issued amount is not equal to requested amount"
-        );
+
+        expect(issuedAmount1.add(issueFee1).add(issuedAmount2).add(issueFee2).toBig().round(5).toString())
+            .toBe(amount.toBig().round(5).toString());
     });
 
     it("should request and manually execute issue", async () => {
@@ -156,20 +146,19 @@ describe("issue", () => {
                 .sub(feesInSatoshiRounded)
                 .sub(oneSatoshi.toBig(ATOMIC_UNIT))
                 .toString();
-            assert.equal(
+
+            expect(
                 issueResult.finalWrappedTokenBalance
                     .sub(issueResult.initialWrappedTokenBalance)
                     .toBig(ATOMIC_UNIT)
-                    .toString(),
-                expectedFinalBalance,
-                `Final balance was not increased by the exact amount specified (collateral: ${currencyTicker})`
-            );
+                    .toString()
+                ).toBe(expectedFinalBalance);
         }
-    }).timeout(1000 * 60);
+    }, 1000 * 60);
 
     it("should get issueBtcDustValue", async () => {
         const dust = await userInterBtcAPI.api.query.issue.issueBtcDustValue();
-        assert.equal(dust.toString(), "1000");
+        expect(dust.toString()).toBe("1000");
     });
 
     it("should getFeesToPay", async () => {
@@ -178,18 +167,19 @@ describe("issue", () => {
         const feeRate = await userInterBtcAPI.issue.getFeeRate();
 
         const expectedFeesInBTC = amount.toBig().toNumber() * feeRate.toNumber();
+
         // compare floating point values in BTC, allowing for small delta difference
-        assert.closeTo(
-            feesToPay.toBig().toNumber(),
-            expectedFeesInBTC,
-            0.00001,
-            "Calculated fees in BTC do not match expectations"
-        );
+        const decimalsToCheck = 5;
+        const maxDelta = 10**(-decimalsToCheck); // 0.00001
+        // rounded after max delta's decimals, 
+        // probably not needed, but safeguards against Big -> Number conversion having granularity issues.
+        const differenceRounded = Math.abs(feesToPay.toBig().sub(expectedFeesInBTC).round(decimalsToCheck+2).toNumber());
+        expect(differenceRounded).toBeLessThan(maxDelta);
     });
 
     it("should getFeeRate", async () => {
         const feePercentage = await userInterBtcAPI.issue.getFeeRate();
-        assert.equal(feePercentage.toString(), "0.0015");
+        expect(feePercentage.toNumber()).toBe(0.0015);
     });
 
     it("should getRequestLimits", async () => {
@@ -204,14 +194,17 @@ describe("issue", () => {
         );
         const totalIssuable = issuableAmounts.reduce((prev, curr) => prev.add(curr));
 
-        assert.isTrue(
-            singleMaxIssuable.toBig().sub(singleIssueable.toBig()).abs().lte(1),
-            `${singleMaxIssuable.toHuman()} != ${singleIssueable.toHuman()}`
-        );
-        assert.isTrue(
-            totalMaxIssuable.toBig().sub(totalIssuable.toBig()).abs().lte(1),
-            `${totalMaxIssuable.toHuman()} != ${totalIssuable.toHuman()}`
-        );
+        try {
+            expect(singleMaxIssuable.toBig().sub(singleIssueable.toBig()).abs().lte(1)).toBe(true);
+        } catch(_) {
+            throw Error(`${singleMaxIssuable.toHuman()} != ${singleIssueable.toHuman()}`);
+        }
+
+        try {
+            expect(totalMaxIssuable.toBig().sub(totalIssuable.toBig()).abs().lte(1)).toBe(true);
+        } catch(_) {
+            throw Error(`${totalMaxIssuable.toHuman()} != ${totalIssuable.toHuman()}`);
+        }
     });
 
     // This test should be kept at the end of the file as it will ban the vault used for issuing
@@ -237,13 +230,13 @@ describe("issue", () => {
                             )
                         )
                     );
-                    assert.equal(requestResults.length, 1, "Test broken: more than one issue request created"); // sanity check
+                    expect(requestResults).toHaveLength(1);
                     const requestResult = requestResults[0];
 
                     await submitExtrinsic(userInterBtcAPI, userInterBtcAPI.issue.cancel(requestResult.id));
 
                     const issueRequest = await userInterBtcAPI.issue.getRequestById(requestResult.id);
-                    assert.isTrue(issueRequest.status === IssueStatus.Cancelled, "Failed to cancel issue request");
+                    expect(issueRequest.status).toBe(IssueStatus.Cancelled);
 
                     // Set issue period back to its initial value to minimize side effects.
                     await sudo(userInterBtcAPI, async () => {

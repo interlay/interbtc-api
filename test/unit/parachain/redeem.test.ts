@@ -1,5 +1,4 @@
-import { expect } from "../../chai";
-import sinon from "sinon";
+import { expect } from "chai";
 import { DefaultRedeemAPI, DefaultVaultsAPI, VaultsAPI } from "../../../src";
 import { newMonetaryAmount } from "../../../src/utils";
 import { ExchangeRate, KBtc, Kintsugi } from "@interlay/monetary-js";
@@ -28,14 +27,14 @@ describe("DefaultRedeemAPI", () => {
     });
 
     afterEach(() => {
-        sinon.restore();
-        sinon.reset();
+        jest.restoreAllMocks();
+        sinon.mockReset();
     });
 
     describe("getBurnExchangeRate", () => {
         afterEach(() => {
-            sinon.restore();
-            sinon.reset();
+            jest.restoreAllMocks();
+            sinon.mockReset();
         });
 
         it("should reject if burnable amount is zero", async () => {
@@ -48,7 +47,7 @@ describe("DefaultRedeemAPI", () => {
             };
 
             // stub internal call to reutn our mocked vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).resolves(mockVaultExt as any);
+            stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
 
             await expect(redeemApi.getBurnExchangeRate(Kintsugi)).to.be.rejectedWith("no burnable tokens");
         });
@@ -62,7 +61,7 @@ describe("DefaultRedeemAPI", () => {
             };
 
             // stub internal call to reutn our mocked vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).resolves(mockVaultExt as any);
+            stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
 
             const exchangeRate = await redeemApi.getBurnExchangeRate(Kintsugi);
             expect(exchangeRate).to.be.an.instanceof(ExchangeRate);
@@ -86,7 +85,7 @@ describe("DefaultRedeemAPI", () => {
             const testMultiplier = 0.00001;
 
             // stub internal call to reutn our mocked vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).resolves(mockVaultExt as any);
+            stubbedVaultsApi.getLiquidationVault.withArgs(expect.anything()).resolves(mockVaultExt as any);
 
             const exchangeRate = await redeemApi.getBurnExchangeRate(Kintsugi);
             expect(exchangeRate).to.be.an.instanceof(ExchangeRate);
@@ -99,23 +98,37 @@ describe("DefaultRedeemAPI", () => {
 
     describe("getMaxBurnableTokens", () => {
         afterEach(() => {
-            sinon.restore();
-            sinon.reset();
+            jest.restoreAllMocks();
+            sinon.mockReset();
         });
 
-        it("should return zero if getLiquidationVault rejects with no liquidation vault message", async () => {
-            // stub internal call to return no liquidation vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).returns(Promise.reject(NO_LIQUIDATION_VAULT_FOUND_REJECTION));
+        it(
+            "should return zero if getLiquidationVault rejects with no liquidation vault message",
+            async () => {
+                // stub internal call to return no liquidation vault
+                stubbedVaultsApi.getLiquidationVault.mockImplementation((...args: any[]) => {
+                    if (args.length >= 1) {
+                        return Promise.reject(NO_LIQUIDATION_VAULT_FOUND_REJECTION);
+                    }
+                });
 
-            const actualValue = await redeemApi.getMaxBurnableTokens(Kintsugi);
-            expect(actualValue.toBig().toNumber()).to.be.eq(0);
-        });
+                const actualValue = await redeemApi.getMaxBurnableTokens(Kintsugi);
+                expect(actualValue.toBig().toNumber()).to.be.eq(0);
+            }
+        );
 
-        it("should propagate rejection if getLiquidationVault rejects with other message", async () => {
-            // stub internal call to return no liquidation vault
-            stubbedVaultsApi.getLiquidationVault.withArgs(sinon.match.any).returns(Promise.reject("foobar happened here"));
+        it(
+            "should propagate rejection if getLiquidationVault rejects with other message",
+            async () => {
+                // stub internal call to return no liquidation vault
+                stubbedVaultsApi.getLiquidationVault.mockImplementation((...args: any[]) => {
+                    if (args.length >= 1) {
+                        return Promise.reject("foobar happened here");
+                    }
+                });
 
-            await expect(redeemApi.getMaxBurnableTokens(Kintsugi)).to.be.rejectedWith("foobar happened here");
-        });
+                await expect(redeemApi.getMaxBurnableTokens(Kintsugi)).to.be.rejectedWith("foobar happened here");
+            }
+        );
     });
 });
