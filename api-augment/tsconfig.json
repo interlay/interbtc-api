@@ -1,0 +1,22 @@
+{
+    "ts-node": {
+        "experimentalSpecifierResolution": "node"
+    },
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "target": "esnext",
+        "module": "esnext",
+        "outDir": "build",
+        "declaration": true,
+        "strict": true,
+        "noImplicitAny": true,
+        "esModuleInterop": true,
+        "baseUrl": "./",
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "paths": {
+            "@interlay/interbtc-api/*": ["src/*"]
+        }
+    },
+    "exclude": ["./node_modules/*"]
+}

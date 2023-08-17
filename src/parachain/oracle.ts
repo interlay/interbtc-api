@@ -16,7 +16,7 @@ import {
     storageKeyToNthInner,
     unwrapRawExchangeRate,
 } from "../utils";
-import { UnsignedFixedPoint } from "../interfaces/default";
+import { UnsignedFixedPoint } from "@interlay/api-augment/interfaces";
 import { CollateralCurrencyExt, CurrencyExt, WrappedCurrency } from "../types/currency";
 import { ExtrinsicData } from "../types";
 import { currencyIdToMonetaryCurrency, isLendToken } from "../utils/currency";

@@ -15,13 +15,14 @@
         "moduleResolution": "node",
         "lib": ["ES2019"],
         "paths": {
-            "@polkadot/api/augment": ["src/interfaces/augment-api.ts"],
-            "@polkadot/types/augment": ["src/interfaces/augment-types.ts"],
-            "@polkadot/types/lookup": ["src/interfaces/types-lookup.ts"],
+            "@polkadot/api/augment": ["api-augment/src/interfaces/augment-api.ts"],
+            "@polkadot/types/augment": ["api-augment/src/interfaces/augment-types.ts"],
+            "@polkadot/types/lookup": ["api-augment/src/interfaces/types-lookup.ts"],
             "bitcoinjs-lib/src/bufferutils": ["node_modules/bitcoinjs-lib/types/bufferutils"],
-            "@interlay/interbtc-api/*": ["src/*"]
+            "@interlay/interbtc-api/*": ["src/*", "api-augment/src/*"],
+            "@interlay/api-augment/*": ["api-augment/src/*"]
         }
     },
-    "include": ["src/**/*", "test/**/*.ts", "scripts/**/*.ts"],
+    "include": ["src/**/*", "test/**/*.ts", "scripts/**/*.ts", "api-augment"],
     "exclude": ["./node_modules/*"]
 }

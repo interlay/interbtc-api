@@ -33,7 +33,7 @@ import {
 } from ".";
 import { SystemVaultExt } from "../types/vault";
 import { Issue, IssueStatus, Redeem, RedeemStatus, ReplaceRequestExt } from "../types/requestTypes";
-import { NumberOrHex, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "../interfaces";
+import { NumberOrHex, SignedFixedPoint, UnsignedFixedPoint, VaultId } from "@interlay/api-augment/interfaces";
 import { CollateralCurrencyExt, CurrencyExt, HexString, WrappedCurrency } from "../types";
 import { newMonetaryAmount } from "../utils";
 import { VaultsAPI } from "../parachain";

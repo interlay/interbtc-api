@@ -200,15 +200,23 @@ NOTE: This will remove the volumes attached to the images. So your chain will st
 
 ### Updating types
 
-We only need to update types when we have changed to newer docker images for the parachain / clients.
+We only need to update types when we have changed to newer docker images for the parachain / clients.  
+We need to fetch the metadata, and regenerate typescript types from the chain data. This is done in the
+`api-augment` subpackage, but we can run the commands from our main folder.
 
 Run the parachain (as shown above) and update the metadata:
 
 ```bash
-yarn update-metadata
+yarn update:metadata
+```
+This will update the `parachain.json` file in `api-augment/src/json/` to contain the downloaded metadata.
+
+Next, we update the type definitions:
+```bash
+yarn generate:defs && yarn generate:meta
 ```
 
-Then, update the metadata by building the library:
+And with the updated metadata and types, we can build the library:
 
 ```bash
 yarn build

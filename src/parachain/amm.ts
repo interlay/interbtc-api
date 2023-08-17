@@ -13,7 +13,7 @@ import {
     DexStablePrimitivesBasePool,
 } from "@polkadot/types/lookup";
 import { TokensAPI } from "./tokens";
-import { InterbtcPrimitivesCurrencyId } from "../interfaces";
+import { InterbtcPrimitivesCurrencyId } from "@interlay/api-augment/interfaces";
 import { CurrencyExt, LpCurrency, StableLpToken, StandardLpToken } from "../types";
 import {
     addressOrPairAsAccountId,

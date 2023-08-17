@@ -1,12 +1,12 @@
-import { FundAccountJsonRpcRequest } from "../interfaces/default";
 import { getAPITypes } from "../factory";
 import { TypeRegistry } from "@polkadot/types";
-import { Constructor } from "@polkadot/types/types";
+import { CodecClass } from "@polkadot/types/types";
 import { AccountId } from "@polkadot/types/interfaces";
 import { JsonRpcClient } from "./client";
 import { newCurrencyId } from "../utils";
 import { ApiPromise } from "@polkadot/api";
 import { CollateralCurrencyExt } from "../types";
+import { FundAccountJsonRpcRequest } from "@interlay/api-augment/interfaces";
 
 /**
  * @category Clients
@@ -15,7 +15,7 @@ export class FaucetClient extends JsonRpcClient<void> {
     registry: TypeRegistry;
 
     constr: {
-        FundAccountJsonRpcRequest: Constructor<FundAccountJsonRpcRequest>;
+        FundAccountJsonRpcRequest: CodecClass<FundAccountJsonRpcRequest>;
     };
 
     constructor(private api: ApiPromise, url: string) {

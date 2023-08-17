@@ -29,7 +29,7 @@ import {
 } from "../types/currency";
 import { decodeBytesAsString, newForeignAssetId, newCurrencyId, storageKeyToNthInner } from "./encoding";
 import { ApiPromise } from "@polkadot/api";
-import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../interfaces";
+import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "@interlay/api-augment/interfaces";
 import { DefaultAssetRegistryAPI } from "../parachain/asset-registry";
 import { Option } from "@polkadot/types/codec";
 import { DefaultLoansAPI } from "../parachain";

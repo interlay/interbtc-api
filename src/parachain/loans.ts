@@ -37,7 +37,7 @@ import {
 } from "../utils";
 import { InterbtcPrimitivesCurrencyId, LoansMarket } from "@polkadot/types/lookup";
 import { OracleAPI } from "./oracle";
-import { CurrencyId } from "../interfaces";
+import { CurrencyId } from "@interlay/api-augment/interfaces";
 
 /**
  * @category Lending protocol

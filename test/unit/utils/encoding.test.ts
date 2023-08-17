@@ -9,7 +9,7 @@ import {
     reverseEndiannessHex,
     parseRedeemRequestStatus,
 } from "../../../src/utils";
-import { H256Le } from "../../../src/interfaces/default";
+import { H256Le } from "@interlay/api-augment/interfaces";
 import {
     InterbtcPrimitivesRedeemRedeemRequest,
     InterbtcPrimitivesRedeemRedeemRequestStatus,

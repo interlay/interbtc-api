@@ -15,7 +15,7 @@ import {
 } from "../utils";
 import { CollateralCurrencyExt, ExtrinsicData, NominationStatus, WrappedCurrency } from "../types";
 import { RewardsAPI } from "./rewards";
-import { UnsignedFixedPoint } from "../interfaces";
+import { UnsignedFixedPoint } from "@interlay/api-augment/interfaces";
 import { currencyIdToMonetaryCurrency } from "../utils/currency";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";

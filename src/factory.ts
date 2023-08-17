@@ -5,7 +5,7 @@ import { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { TypeRegistry } from "@polkadot/types";
 import { RegistryTypes } from "@polkadot/types/types";
 import { DefinitionRpc, DefinitionRpcSub } from "@polkadot/types/types";
-import * as definitions from "./interfaces/definitions";
+import * as definitions from "@interlay/api-augment/interfaces/definitions";
 import { InterBtcApi, DefaultInterBtcApi } from "./interbtc-api";
 import { BitcoinNetwork } from "./types";
 import { objectSpread } from "@polkadot/util";

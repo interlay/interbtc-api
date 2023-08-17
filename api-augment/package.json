@@ -1,0 +1,42 @@
+{
+  "name": "@interlay/api-augment",
+  "version": "1.0.0",
+  "description": "polkadot-js typegen for interbtc-api",
+  "author": "dev@interlay.io",
+  "main": "build/src/index.js",
+  "type": "module",
+  "typings": "build/src/index.d.ts",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/interlay/interbtc-api.git",
+    "directory": "api-augment"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "regen:local": "yarn load:meta:local && yarn typegen && yarn build",
+    "regen:kintnet": "yarn load:meta:kintnet && yarn typegen && yarn build",
+    "regen:interlay": "yarn load:meta:interlay && yarn typegen && yarn build",
+    "regen:kintsugi": "yarn load:meta:kintsugi && yarn typegen && yarn build",
+    "load:meta:local": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json",
+    "load:meta:kintnet": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' https://api-dev-kintsugi.interlay.io/parachain > src/json/parachain.json",
+    "load:meta:interlay": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' https://api.interlay.io/parachain > src/json/parachain.json",
+    "load:meta:kintsugi": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' https://api-kusama.interlay.io/parachain > src/json/parachain.json",
+    "typegen": "yarn typegen:defs && yarn typegen:meta",
+    "typegen:defs": "node --experimental-specifier-resolution=node --loader ts-node/esm node_modules/.bin/polkadot-types-from-defs --package @interlay/interbtc-api/interfaces --input ./src/interfaces --endpoint ./src/json/parachain.json",
+    "typegen:meta": "node --experimental-specifier-resolution=node --loader ts-node/esm node_modules/.bin/polkadot-types-from-chain --package @interlay/interbtc-api/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
+    "build:ci": "yarn typegen && yarn build",
+    "build": "tsc -b --verbose"
+  },
+  "dependencies": {
+    "@polkadot/api": "10.9.1"
+  },
+  "devDependencies": {
+    "@interlay/interbtc-types": "1.13.0",
+    "@polkadot/typegen": "10.9.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  }
+}

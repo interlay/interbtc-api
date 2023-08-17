@@ -37,7 +37,7 @@ import {
     ExtrinsicData,
 } from "../types";
 import { RewardsAPI } from "./rewards";
-import { UnsignedFixedPoint } from "../interfaces";
+import { UnsignedFixedPoint } from "@interlay/api-augment/interfaces";
 import { SystemAPI, DefaultNominationAPI } from "./index";
 import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult, AnyTuple } from "@polkadot/types/types";

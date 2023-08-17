@@ -1,4 +1,4 @@
-import { InterbtcPrimitivesCurrencyId } from "../../interfaces";
+import { InterbtcPrimitivesCurrencyId } from "@interlay/api-augment/interfaces";
 import { MonetaryAmount } from "@interlay/monetary-js";
 import { ApiPromise } from "@polkadot/api";
 import { CurrencyExt } from "../../types";
