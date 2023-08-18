@@ -1,5 +1,4 @@
 /* eslint-disable max-len */
-import { ApiPromise } from "@polkadot/api";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -10,28 +9,22 @@ import {
     TickerToData,
     newMonetaryAmount,
 } from "../../../src/";
-import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
 import { Bitcoin, ExchangeRate, InterBtc, Interlay, KBtc, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("DefaultLoansAPI", () => {
-    let api: ApiPromise;
     let loansApi: DefaultLoansAPI;
     const wrappedCurrency = InterBtc;
     const testGovernanceCurrency = Interlay;
     const testRelayCurrency = Polkadot;
 
-    beforeAll(() => {
-        api = new ApiPromise();
-        // disconnect immediately to avoid printing errors
-        // we only need the instance to create variables
-        api.disconnect();
-        api.registerTypes(getAPITypes());
+    afterAll(() => {
+        jest.resetAllMocks();
     });
 
     beforeEach(() => {
-        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
-        loansApi = new DefaultLoansAPI(api, KBtc, oracleAPI);
+        const oracleAPI = new DefaultOracleAPI(null as never, wrappedCurrency);
+        loansApi = new DefaultLoansAPI(null as never, KBtc, oracleAPI);
     });
 
     describe.skip("getLendPositionsOfAccount", () => {
