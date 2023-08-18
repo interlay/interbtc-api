@@ -27,8 +27,6 @@
     "ci:test:release": "run-s build test:integration:release",
     "ci:test-with-coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" yarn ci:test",
     "docs": "./generate_docs",
-    "old:generate:defs": "ts-node node_modules/.bin/polkadot-types-from-defs --package @interlay/interbtc-api/interfaces --input ./src/interfaces --endpoint ./src/json/parachain.json",
-    "old:generate:meta": "ts-node node_modules/.bin/polkadot-types-from-chain --package @interlay/interbtc-api/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "generate:defs": "node --experimental-specifier-resolution=node --loader ts-node/esm node_modules/.bin/polkadot-types-from-defs --package @interlay/interbtc-api/interfaces --input ./src/interfaces --endpoint ./src/json/parachain.json",
     "generate:meta": "node --experimental-specifier-resolution=node --loader ts-node/esm node_modules/.bin/polkadot-types-from-chain --package @interlay/interbtc-api/interfaces --endpoint ./src/json/parachain.json --output ./src/interfaces",
     "hrmp-setup": "ts-node scripts/hrmp-setup",
@@ -108,19 +106,6 @@
   "prettier": {
     "singleQuote": false,
     "tabWidth": 4
-  },
-  "mocha": {
-    "reporter": "spec",
-    "require": "ts-node/register",
-    "node-option": [
-      "experimental-specifier-resolution=node",
-      "loader=ts-node/esm"
-    ],
-    "watch-files": [
-      "src/**/*.ts",
-      "test/**/*.ts"
-    ],
-    "recursive": true
   },
   "jest": {
     "moduleNameMapper": {
