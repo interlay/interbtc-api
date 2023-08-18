@@ -1,4 +1,13 @@
-import { definitions } from "./interbtc-types";
+import { RpcFunctionDefinition } from "@interlay/interbtc-types";
+import fs from "fs";
+
+// hacky, but cannot import json "the old way" in esnext
+const definitionsString = fs.readFileSync("./node_modules/@interlay/interbtc-types/definitions.json", "utf-8");
+const definitions = JSON.parse(definitionsString);
+
+interface DecoratedRpcFunctionDefinition extends RpcFunctionDefinition {
+    aliasSection: string;
+}
 
 export default {
     types: definitions.types[0].types,
@@ -22,25 +31,4 @@ function parseProviderRpcDefinitions(
         }
     }
     return parsedDefs;
-}
-
-interface DecoratedRpcFunctionDefinition extends RpcFunctionDefinition {
-    aliasSection: string;
-}
-
-type RpcParams = Array<{
-    name: string,
-    type: string,
-    isHistoric?: boolean,
-    isOptional?: boolean
-}>;
-
-interface RpcFunctionDefinition {
-    description: string;
-    params: RpcParams;
-    type: string;
-    isSubscription?: boolean;
-    jsonrpc?: string;
-    method?: string;
-    section?: string;
 }
