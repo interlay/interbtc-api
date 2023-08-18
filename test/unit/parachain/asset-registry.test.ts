@@ -1,5 +1,4 @@
-import { ApiPromise } from "@polkadot/api";
-import { StorageKey, u32 } from "@polkadot/types";
+import { StorageKey, u32, TypeRegistry } from "@polkadot/types";
 import {
     InterbtcPrimitivesCurrencyId,
     InterbtcPrimitivesVaultCurrencyPair,
@@ -10,7 +9,8 @@ import { AssetRegistryMetadataTuple } from "../../../src/parachain/asset-registr
 import * as allThingsEncoding from "../../../src/utils/encoding";
 
 describe("DefaultAssetRegistryAPI", () => {
-    let api: ApiPromise;
+    // let api: ApiPromise;
+    let registry: TypeRegistry;
     let assetRegistryApi: DefaultAssetRegistryAPI;
     let mockMetadata: OrmlTraitsAssetRegistryAssetMetadata;
     let mockStorageKey: StorageKey<[u32]>;
@@ -26,14 +26,11 @@ describe("DefaultAssetRegistryAPI", () => {
     };
 
     beforeAll(() => {
-        api = new ApiPromise();
-        // disconnect immediately to avoid printing errors
-        // we only need the instance to create variables
-        api.disconnect();
+        registry = new TypeRegistry(undefined);
 
         // register just enough from OrmlTraitsAssetRegistryAssetMetadata to construct
         // meaningful representations for our tests
-        api.registerTypes({
+        registry.register({
             OrmlTraitsAssetRegistryAssetMetadata: {
                 name: "Bytes",
                 symbol: "Bytes",
@@ -49,22 +46,23 @@ describe("DefaultAssetRegistryAPI", () => {
     });
 
     beforeEach(() => {
-        assetRegistryApi = new DefaultAssetRegistryAPI(api);
+        // anything calling the api should have been mocked, so pass null
+        assetRegistryApi = new DefaultAssetRegistryAPI(null as never);
 
         // reset to base values
         mockMetadata = {
-            name: api.createType("Bytes", mockMetadataValues.name),
-            symbol: api.createType("Bytes", mockMetadataValues.symbol),
-            decimals: api.createType("u32", mockMetadataValues.decimals),
-            existentialDeposit: api.createType("u128", mockMetadataValues.existentialDeposit),
-            additional: api.createType("InterbtcPrimitivesCustomMetadata", {
-                feePerSecond: api.createType("u128", mockMetadataValues.feesPerMinute),
-                coingeckoId: api.createType("Bytes", mockMetadataValues.coingeckoId),
+            name: registry.createType("Bytes", mockMetadataValues.name),
+            symbol: registry.createType("Bytes", mockMetadataValues.symbol),
+            decimals: registry.createType("u32", mockMetadataValues.decimals),
+            existentialDeposit: registry.createType("u128", mockMetadataValues.existentialDeposit),
+            additional: registry.createType("InterbtcPrimitivesCustomMetadata", {
+                feePerSecond: registry.createType("u128", mockMetadataValues.feesPerMinute),
+                coingeckoId: registry.createType("Bytes", mockMetadataValues.coingeckoId),
             }),
         } as OrmlTraitsAssetRegistryAssetMetadata;
 
         // mock return type of storageKeyToNthInner method which only works correctly in integration tests
-        const mockedReturn = api.createType("AssetId", mockStorageKeyValue);
+        const mockedReturn = registry.createType("AssetId", mockStorageKeyValue);
         jest.spyOn(allThingsEncoding, "storageKeyToNthInner").mockClear().mockReturnValue(mockedReturn);
     });
 
@@ -77,7 +75,7 @@ describe("DefaultAssetRegistryAPI", () => {
             "should return empty list if chain returns no foreign assets",
             async () => {
                 // mock empty list returned from chain
-                jest.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve([]));
+                jest.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockResolvedValue([]);
 
                 const actual = await assetRegistryApi.getForeignAssets();
                 expect(actual).toHaveLength(0);
@@ -89,12 +87,12 @@ describe("DefaultAssetRegistryAPI", () => {
             async () => {
                 const chainDataReturned: AssetRegistryMetadataTuple[] = [
                     // one "good" returned value
-                    [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", mockMetadata)],
+                    [mockStorageKey, registry.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", mockMetadata)],
                     // one empty option
-                    [mockStorageKey, api.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", undefined)],
+                    [mockStorageKey, registry.createType("Option<OrmlTraitsAssetRegistryAssetMetadata>", undefined)],
                 ];
 
-                jest.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockReturnValue(Promise.resolve(chainDataReturned));
+                jest.spyOn(assetRegistryApi, "getAssetRegistryEntries").mockClear().mockResolvedValue(chainDataReturned);
 
                 const actual = await assetRegistryApi.getForeignAssets();
 
@@ -133,11 +131,11 @@ describe("DefaultAssetRegistryAPI", () => {
             allForeignAssets: ForeignAsset[],
             collateralCeilingCurrencyPairs?: InterbtcPrimitivesVaultCurrencyPair[]
         ) => {
-            jest.spyOn(assetRegistryApi, "getForeignAssets").mockClear().mockReturnValue(Promise.resolve(allForeignAssets));
+            jest.spyOn(assetRegistryApi, "getForeignAssets").mockClear().mockResolvedValue(allForeignAssets);
 
             // this return does not matter since individual tests mock extractCollateralCeilingEntryKeys
             // which returns the actual values of interest
-            jest.spyOn(assetRegistryApi, "getSystemCollateralCeilingEntries").mockClear().mockReturnValue(Promise.resolve([]));
+            jest.spyOn(assetRegistryApi, "getSystemCollateralCeilingEntries").mockClear().mockResolvedValue([]);
             if (collateralCeilingCurrencyPairs !== undefined) {
                 jest.spyOn(assetRegistryApi, "extractCollateralCeilingEntryKeys").mockClear()
                     .mockReturnValue(collateralCeilingCurrencyPairs);
@@ -175,7 +173,7 @@ describe("DefaultAssetRegistryAPI", () => {
                         collateral: <InterbtcPrimitivesCurrencyId>{
                             isForeignAsset: true,
                             isToken: false,
-                            asForeignAsset: api.createType("u32", expectedForeignAssetId),
+                            asForeignAsset: registry.createType("u32", expectedForeignAssetId),
                             type: "ForeignAsset",
                         },
                     },
@@ -185,7 +183,7 @@ describe("DefaultAssetRegistryAPI", () => {
                             isForeignAsset: false,
                             isToken: true,
                             // logically inconsistent (but trying to trick into having a valid result if this is used when it shouldn't)
-                            asForeignAsset: api.createType(
+                            asForeignAsset: registry.createType(
                                 "u32",
                                 mockForeignAssets[mockForeignAssets.length - 1].foreignAsset.id
                             ),
