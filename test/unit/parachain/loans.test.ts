@@ -34,15 +34,15 @@ describe("DefaultLoansAPI", () => {
         loansApi = new DefaultLoansAPI(api, KBtc, oracleAPI);
     });
 
-    describe("getLendPositionsOfAccount", () => {
+    describe.skip("getLendPositionsOfAccount", () => {
         // TODO: add tests
     });
 
-    describe("getBorrowPositionsOfAccount", () => {
+    describe.skip("getBorrowPositionsOfAccount", () => {
         // TODO: add tests
     });
 
-    describe("getLoanAssets", () => {
+    describe.skip("getLoanAssets", () => {
         // TODO: add tests
     });
 
@@ -99,7 +99,7 @@ describe("DefaultLoansAPI", () => {
             () => {
                 const borrowAll = testTotalIssuance.mul(testExchangeRate);
                 const borrowAllAtomicAmount = borrowAll.toBig(0);
-                const [_, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
+                const [, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
                     testUnderlying,
                     testIssuanceAtomicAmount,
                     borrowAllAtomicAmount,
