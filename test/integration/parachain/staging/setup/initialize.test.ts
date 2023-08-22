@@ -152,7 +152,7 @@ describe("Initialize parachain state", () => {
     });
 
     afterAll(async () => {
-        api.disconnect();
+        await api.disconnect();
     });
 
     it(

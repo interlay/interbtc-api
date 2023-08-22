@@ -30,8 +30,8 @@ describe("TokensAPI", () => {
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
     });
 
-    afterAll(() => {
-        return api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     it("should subscribe to balance updates", async () => {

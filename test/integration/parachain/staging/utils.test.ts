@@ -22,8 +22,8 @@ describe("Utils", () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
     });
 
-    afterAll(() => {
-        return api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     it("should encode and decode exchange rate", async () => {

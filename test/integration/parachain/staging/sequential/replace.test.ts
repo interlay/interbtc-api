@@ -72,7 +72,7 @@ describe("replace", () => {
     });
 
     afterAll(async () => {
-        api.disconnect();
+        await api.disconnect();
     });
 
     describe("request", () => {

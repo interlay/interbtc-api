@@ -80,7 +80,7 @@ describe("issue", () => {
     });
 
     afterAll(async () => {
-        api.disconnect();
+        await api.disconnect();
     });
 
     it("should request one issue", async () => {

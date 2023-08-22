@@ -89,7 +89,7 @@ describe("AMM", () => {
     });
 
     afterAll(async () => {
-        return api.disconnect();
+        await api.disconnect();
     });
 
     it("should create and get liquidity pool", async () => {

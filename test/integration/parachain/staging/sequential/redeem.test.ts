@@ -69,8 +69,8 @@ describe("redeem", () => {
         );
     });
 
-    afterAll(() => {
-        return api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     it("should issue and request redeem", async () => {

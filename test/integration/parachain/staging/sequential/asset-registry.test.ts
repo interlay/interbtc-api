@@ -54,7 +54,7 @@ describe("AssetRegistry", () => {
             );
         }
 
-        return api.disconnect();
+        await api.disconnect();
     });
 
     /**

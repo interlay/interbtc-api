@@ -40,8 +40,8 @@ describe("OracleAPI", () => {
         collateralCurrencies = getCorrespondingCollateralCurrenciesForTests(interBtcAPI.getGovernanceCurrency());
     });
 
-    afterAll(() => {
-        return api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     it("should set exchange rate", async () => {

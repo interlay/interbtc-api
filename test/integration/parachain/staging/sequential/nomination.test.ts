@@ -83,8 +83,8 @@ describe.skip("NominationAPI", () => {
         );
     });
 
-    afterAll(() => {
-        return api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     it("Should opt a vault in and out of nomination", async () => {

@@ -121,7 +121,7 @@ describe("Loans", () => {
     });
 
     afterAll(async () => {
-        api.disconnect();
+        await api.disconnect();
     });
 
     afterEach(() => {

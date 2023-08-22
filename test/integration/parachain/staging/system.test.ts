@@ -19,7 +19,7 @@ describe("systemAPI", () => {
     });
 
     afterAll(async () => {
-        api.disconnect();
+        await api.disconnect();
     });
 
     it("should getCurrentBlockNumber", async () => {

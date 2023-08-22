@@ -65,8 +65,8 @@ describe("vaultsAPI", () => {
         vault_3 = keyring.addFromUri(VAULT_3_URI);
     });
 
-    afterAll(() => {
-        return api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     afterEach(() => {

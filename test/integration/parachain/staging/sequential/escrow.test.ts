@@ -64,7 +64,7 @@ describe("escrow", () => {
     });
 
     afterAll(async () => {
-        api.disconnect();
+        await api.disconnect();
     });
 
     // PRECONDITION: This test must run first, so no tokens are locked.

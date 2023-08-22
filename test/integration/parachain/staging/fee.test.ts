@@ -28,7 +28,7 @@ describe("fee", () => {
     });
 
     afterAll(async () => {
-        api.disconnect();
+        await api.disconnect();
     });
 
     it("should check getReplaceGriefingCollateralRate", async () => {
