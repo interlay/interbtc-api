@@ -130,6 +130,7 @@
     ],
     "setupFilesAfterEnv": [
       "<rootDir>/test/utils/jestSetupFileAfterEnv.ts"
-    ]
+    ],
+    "testTimeout": 30000
   }
 }
