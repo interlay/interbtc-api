@@ -201,7 +201,7 @@ describe("vaultsAPI", () => {
                 const vault1Id = newAccountId(api, vault_1.address);
 
                 try {
-                    await expect(interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency)).rejects.toThrow();
+                    await expect(interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency)).rejects.toBeDefined();
                 } catch(_) {
                     throw Error(`Collateralization should not be available (${currencyTicker} vault)`);
                 }
@@ -265,10 +265,20 @@ describe("vaultsAPI", () => {
             expect(govTokenReward.gte(newMonetaryAmount(0, governanceCurrency))).toBe(true);
         }
         // make sure not every vault has been skipped (due to no issued tokens)
-        expect(countSkippedVaults).not.toEqual(vaultIdsInScope.length);
+        try {
+            expect(countSkippedVaults).not.toEqual(vaultIdsInScope.length);
+        } catch(_) {
+            // eslint-disable-next-line max-len
+            fail(`Unexpected test behavior: skipped all ${vaultIdsInScope.length} vaults in the test; all vaults lacking capacity (issued + issuable > 0)`);
+        }
 
         // make sure at least one vault is receiving wrapped rewards greater than zero
-        expect(countVaultsWithNonZeroWrappedRewards).toBeGreaterThan(0);
+        try {
+            expect(countVaultsWithNonZeroWrappedRewards).toBeGreaterThan(0);
+        } catch(_) {
+            // eslint-disable-next-line max-len
+            fail(`Unexpected test behavior: none of the ${vaultIdsInScope.length} vaults in the test have received more than 0 wrapped token rewards`);
+        }
     });
 
     it("should getAPY", async () => {
