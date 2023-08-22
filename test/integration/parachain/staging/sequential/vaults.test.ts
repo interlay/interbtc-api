@@ -154,7 +154,7 @@ describe("vaultsAPI", () => {
             try {
                 expect(threshold.gt(0)).toBe(true);
             } catch(_) {
-                fail(`Liqduiation collateral threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
+                throw Error(`Liqduiation collateral threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
             }
         }
     });
@@ -167,7 +167,7 @@ describe("vaultsAPI", () => {
             try {
                 expect(threshold.gt(0)).toBe(true);
             } catch(_) {
-                fail(`Premium redeem threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
+                throw Error(`Premium redeem threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
             }
         }
     });
@@ -203,7 +203,7 @@ describe("vaultsAPI", () => {
                 try {
                     await expect(interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency)).rejects.toBeDefined();
                 } catch(_) {
-                    fail(`Collateralization should not be available (${currencyTicker} vault)`);
+                    throw Error(`Collateralization should not be available (${currencyTicker} vault)`);
                 }
             }
         }
@@ -220,7 +220,7 @@ describe("vaultsAPI", () => {
             try {
                 expect(issuableTokens.gt(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
             } catch(_) {
-                fail(`Issuable tokens should be greater than 0 (${currencyTicker} vault)`);
+                throw Error(`Issuable tokens should be greater than 0 (${currencyTicker} vault)`);
             }
         }
     });
@@ -260,7 +260,7 @@ describe("vaultsAPI", () => {
                 expect(feesWrapped.gte(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
             } catch(_) {
                 // eslint-disable-next-line max-len
-                fail(`Fees (wrapped reward) should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`);
+                throw Error(`Fees (wrapped reward) should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`);
             }
 
             if (feesWrapped.gt(newMonetaryAmount(0, wrappedCurrency))) {
@@ -278,7 +278,7 @@ describe("vaultsAPI", () => {
                 expect(govTokenReward.gte(newMonetaryAmount(0, governanceCurrency))).toBe(true);
             } catch(_) {
                 // eslint-disable-next-line max-len
-                fail(`Governance reward should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`);
+                throw Error(`Governance reward should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`);
             }
         }
         // make sure not every vault has been skipped (due to no issued tokens)
@@ -286,7 +286,7 @@ describe("vaultsAPI", () => {
             expect(countSkippedVaults).not.toEqual(vaultIdsInScope.length);
         } catch(_) {
             // eslint-disable-next-line max-len
-            fail(`Unexpected test behavior: skipped all ${vaultIdsInScope.length} vaults in the test; all vaults lacking capacity (issued + issuable > 0)`);
+            throw Error(`Unexpected test behavior: skipped all ${vaultIdsInScope.length} vaults in the test; all vaults lacking capacity (issued + issuable > 0)`);
         }
 
         // make sure at least one vault is receiving wrapped rewards greater than zero
@@ -294,7 +294,7 @@ describe("vaultsAPI", () => {
             expect(countVaultsWithNonZeroWrappedRewards).toBeGreaterThan(0);
         } catch(_) {
             // eslint-disable-next-line max-len
-            fail(`Unexpected test behavior: none of the ${vaultIdsInScope.length} vaults in the test have received more than 0 wrapped token rewards`);
+            throw Error(`Unexpected test behavior: none of the ${vaultIdsInScope.length} vaults in the test have received more than 0 wrapped token rewards`);
         }
     });
 
@@ -310,7 +310,7 @@ describe("vaultsAPI", () => {
             try {
                 expect(apyBig.gte(apyBenchmark)).toBe(true);
             } catch(_) {
-                fail(`APY should be greater than or equal to ${apyBenchmark.toString()},
+                throw Error(`APY should be greater than or equal to ${apyBenchmark.toString()},
                 but was ${apyBig.toString()} (${currencyTicker} vault)`);
             }
         }
@@ -337,7 +337,7 @@ describe("vaultsAPI", () => {
             try {
                 expect(status === expectedStatus).toBe(true);
             } catch(_) {
-                fail(assertionMessage);
+                throw Error(assertionMessage);
             }
         };
         const ACCEPT_NEW_ISSUES = true;
