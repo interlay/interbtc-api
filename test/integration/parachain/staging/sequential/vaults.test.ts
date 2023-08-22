@@ -123,7 +123,7 @@ describe("vaultsAPI", () => {
                 collateralCurrency
             );
             if (collateralizationBeforeDeposit === undefined || collateralizationAfterDeposit == undefined) {
-                fail(
+                throw Error(
                     `Collateralization is undefined for vault with collateral currency ${currencyTicker}
                     - potential cause: the vault may not have any issued tokens secured by ${currencyTicker}`
                 );
@@ -136,7 +136,7 @@ describe("vaultsAPI", () => {
                 collateralCurrency
             );
             if (collateralizationAfterWithdrawal === undefined) {
-                fail(`Collateralization is undefined for vault with collateral currency ${currencyTicker}`);
+                throw Error(`Collateralization is undefined for vault with collateral currency ${currencyTicker}`);
             }
             expect(collateralizationAfterDeposit.gt(collateralizationAfterWithdrawal)).toBe(true);
             expect(collateralizationBeforeDeposit.toString()).toEqual(collateralizationAfterWithdrawal.toString());
