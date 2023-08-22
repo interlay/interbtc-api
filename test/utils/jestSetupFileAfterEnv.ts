@@ -11,4 +11,8 @@ import console from "console";
 /**
  * Replace the logger with a silent spy, suppressing console.log outputs.
  */
-jest.spyOn(console, "log").mockImplementation(() => jest.fn());
+global.console = {
+    ...console,
+    log: jest.fn(),
+    debug: jest.fn()
+};
