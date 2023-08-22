@@ -369,7 +369,7 @@ describe("Loans", () => {
             jest.spyOn(LoansAPI, "getLoansMarkets").mockClear().mockReturnValue(Promise.resolve([]));
 
             const loanAssets = await LoansAPI.getLoanAssets();
-            expect(loanAssets).toHaveLength(0);
+            expect(JSON.stringify(loanAssets)).toBe("{}");
         });
     });
 
