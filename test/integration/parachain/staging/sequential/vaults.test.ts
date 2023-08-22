@@ -154,7 +154,7 @@ describe("vaultsAPI", () => {
             try {
                 expect(threshold.gt(0)).toBe(true);
             } catch(_) {
-                throw Error(`Liqduiation collateral threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
+                fail(`Liqduiation collateral threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
             }
         }
     });
@@ -167,7 +167,7 @@ describe("vaultsAPI", () => {
             try {
                 expect(threshold.gt(0)).toBe(true);
             } catch(_) {
-                throw Error(`Premium redeem threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
+                fail(`Premium redeem threshold for ${currencyTicker} was ${threshold.toString()}, expected: 0`);
             }
         }
     });
@@ -203,7 +203,7 @@ describe("vaultsAPI", () => {
                 try {
                     await expect(interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency)).rejects.toBeDefined();
                 } catch(_) {
-                    throw Error(`Collateralization should not be available (${currencyTicker} vault)`);
+                    fail(`Collateralization should not be available (${currencyTicker} vault)`);
                 }
             }
         }
@@ -216,7 +216,12 @@ describe("vaultsAPI", () => {
 
             const vault = await interBtcAPI.vaults.get(vault_1_id.accountId, collateralCurrency);
             const issuableTokens = await vault.getIssuableTokens();
-            expect(issuableTokens.gt(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
+
+            try {
+                expect(issuableTokens.gt(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
+            } catch(_) {
+                fail(`Issuable tokens should be greater than 0 (${currencyTicker} vault)`);
+            }
         }
     });
 
@@ -250,7 +255,13 @@ describe("vaultsAPI", () => {
                 collateralCurrency,
                 wrappedCurrency
             );
-            expect(feesWrapped.gte(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
+
+            try {
+                expect(feesWrapped.gte(newMonetaryAmount(0, wrappedCurrency))).toBe(true);
+            } catch(_) {
+                // eslint-disable-next-line max-len
+                fail(`Fees (wrapped reward) should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`);
+            }
 
             if (feesWrapped.gt(newMonetaryAmount(0, wrappedCurrency))) {
                 // we will check that at least one return was greater than zero
@@ -262,7 +273,13 @@ describe("vaultsAPI", () => {
                 collateralCurrency,
                 governanceCurrency
             );
-            expect(govTokenReward.gte(newMonetaryAmount(0, governanceCurrency))).toBe(true);
+
+            try {
+                expect(govTokenReward.gte(newMonetaryAmount(0, governanceCurrency))).toBe(true);
+            } catch(_) {
+                // eslint-disable-next-line max-len
+                fail(`Governance reward should be greater than or equal to 0 (${currencyTicker} vault, account id ${vaultId.accountId.toString()}), but was: ${feesWrapped.toHuman()}`);
+            }
         }
         // make sure not every vault has been skipped (due to no issued tokens)
         try {
@@ -290,7 +307,12 @@ describe("vaultsAPI", () => {
             const apy = await interBtcAPI.vaults.getAPY(accountId, collateralCurrency);
             const apyBig = new Big(apy);
             const apyBenchmark = new Big("0");
-            expect(apyBig.gte(apyBenchmark)).toBe(true);
+            try {
+                expect(apyBig.gte(apyBenchmark)).toBe(true);
+            } catch(_) {
+                fail(`APY should be greater than or equal to ${apyBenchmark.toString()},
+                but was ${apyBig.toString()} (${currencyTicker} vault)`);
+            }
         }
     });
 
@@ -312,7 +334,11 @@ describe("vaultsAPI", () => {
             const assertionMessage = `Vault with id ${id.toString()} (collateral: ${currencyTicker}) was expected to have
                     status: ${vaultStatusToLabel(expectedStatus)}, but got status: ${vaultStatusToLabel(status)}`;
 
-            expect(status === expectedStatus).toBe(true);
+            try {
+                expect(status === expectedStatus).toBe(true);
+            } catch(_) {
+                fail(assertionMessage);
+            }
         };
         const ACCEPT_NEW_ISSUES = true;
         const REJECT_NEW_ISSUES = false;
