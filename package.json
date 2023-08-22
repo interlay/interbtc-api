@@ -131,7 +131,6 @@
     "setupFilesAfterEnv": [
       "<rootDir>/test/utils/jestSetupFileAfterEnv.ts"
     ],
-    "testSequencer": "<rootDir>/test/utils/jestTestSequencer.ts",
     "testTimeout": 30000
   }
 }
