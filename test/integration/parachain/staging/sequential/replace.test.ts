@@ -174,7 +174,11 @@ describe("replace", () => {
                         false
                     );
 
-                    expect(replacePromise).rejects.toThrow();
+                    try {
+                        await expect(replacePromise).rejects.toEqual("error");
+                    } catch(_) {
+                        throw Error(`Expected replace request to fail with Error (${currencyTicker} vault)`);
+                    }
                 }
             }
         );
@@ -194,7 +198,7 @@ describe("replace", () => {
         const vault3Id = newAccountId(api, vault_3.address);
         const replaceRequests = await interBtcAPI.replace.mapReplaceRequests(vault3Id);
         replaceRequests.forEach((request) => {
-            expect(request.oldVault.accountId).toEqual(vault3Id);
+            expect(request.oldVault.accountId.toString()).toEqual(vault3Id.toString());
         });
     });
 });
