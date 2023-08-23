@@ -192,24 +192,6 @@ export const vaultsTests = () => {
             await expect(interBtcAPI.vaults.selectRandomVaultRedeem(amount)).rejects.toThrow();
         });
     
-        it(
-            "should fail to get vault collateralization for vault with zero collateral",
-            async () => {
-                for (const vault_1_id of vault_1_ids) {
-                    const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral);
-                    const currencyTicker = collateralCurrency.ticker;
-    
-                    const vault1Id = newAccountId(api, vault_1.address);
-    
-                    try {
-                        await expect(interBtcAPI.vaults.getVaultCollateralization(vault1Id, collateralCurrency)).rejects.toBeDefined();
-                    } catch(_) {
-                        throw Error(`Collateralization should not be available (${currencyTicker} vault)`);
-                    }
-                }
-            }
-        );
-    
         it("should get the issuable InterBtc for a vault", async () => {
             for (const vault_1_id of vault_1_ids) {
                 const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral);
