@@ -306,6 +306,8 @@ export const vaultsTests = () => {
         });
     
         it("should disable and enable issuing with vault", async () => {
+            const interBtcAPI = new DefaultInterBtcApi(api, "regtest", vault_1, ESPLORA_BASE_PATH);
+
             const assertVaultStatus = async (id: InterbtcPrimitivesVaultId, expectedStatus: VaultStatusExt) => {
                 const collateralCurrency = await currencyIdToMonetaryCurrency(api, id.currencies.collateral);
                 const currencyTicker = collateralCurrency.ticker;
