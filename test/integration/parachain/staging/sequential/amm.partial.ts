@@ -183,7 +183,7 @@ export const ammTests = () => {
     
             expect(asset1AccountAfter.free.toBn().toString()).toBe(asset1AccountBefore.free
                 .toBn()
-                .sub(new BN(inputAmount.toString(true)))
+                .add(new BN(outputAmount.toString(true)))
                 .toString()
             );
         });
