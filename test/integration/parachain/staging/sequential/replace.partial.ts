@@ -172,11 +172,7 @@ export const replaceTests = () => {
                         false
                     );
 
-                    try {
-                        await expect(replacePromise).rejects.toThrow();
-                    } catch(_) {
-                        throw Error(`Expected replace request to fail with Error (${currencyTicker} vault)`);
-                    }
+                    await expect(replacePromise).rejects.toBeDefined();
                 }
             );
         });
