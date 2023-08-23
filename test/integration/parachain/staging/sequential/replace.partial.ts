@@ -161,10 +161,7 @@ export const replaceTests = () => {
                     const currencyTicker = collateralCurrency.ticker;
 
                     // fetch tokens held by vault
-                    const tokensInVault = await interBtcAPI.vaults.getIssuedAmount(
-                        newAccountId(api, vault_2.address),
-                        collateralCurrency
-                    );
+                    const tokensInVault = await interBtcAPI.vaults.getTotalIssuedAmount();
 
                     // make sure vault does not hold enough issued tokens to request a replace
                     const replaceAmount = tokensInVault.mul(2);
