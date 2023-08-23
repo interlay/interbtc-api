@@ -4,33 +4,33 @@ import {
     DefaultInterBtcApi,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
+    SLEEP_TIME_MS,
     newMonetaryAmount,
     sleep,
-    SLEEP_TIME_MS,
 } from "../../../../../src/index";
 
-import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
+import { MonetaryAmount } from "@interlay/monetary-js";
+import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
+import { BlockHash } from "@polkadot/types/interfaces";
+import { FrameSystemEventRecord } from "@polkadot/types/lookup";
+import { WrappedCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId } from "../../../../../src";
 import { createSubstrateAPI } from "../../../../../src/factory";
+import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
+import { issueSingle } from "../../../../../src/utils/issueRedeem";
 import {
-    USER_1_URI,
-    VAULT_2_URI,
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,
     BITCOIN_CORE_PASSWORD,
     BITCOIN_CORE_PORT,
     BITCOIN_CORE_USERNAME,
     BITCOIN_CORE_WALLET,
-    PARACHAIN_ENDPOINT,
-    VAULT_3_URI,
     ESPLORA_BASE_PATH,
+    PARACHAIN_ENDPOINT,
+    USER_1_URI,
+    VAULT_2_URI,
+    VAULT_3_URI,
 } from "../../../../config";
-import { issueSingle } from "../../../../../src/utils/issueRedeem";
-import { currencyIdToMonetaryCurrency, newAccountId, newVaultId, WrappedCurrency } from "../../../../../src";
-import { MonetaryAmount } from "@interlay/monetary-js";
 import { getCorrespondingCollateralCurrenciesForTests, submitExtrinsic } from "../../../../utils/helpers";
-import { BlockHash } from "@polkadot/types/interfaces";
-import { AddressOrPair, ApiTypes, AugmentedEvent } from "@polkadot/api/types";
-import { FrameSystemEventRecord } from "@polkadot/types/lookup";
 
 export const replaceTests = () => {
     describe("replace", () => {
@@ -79,27 +79,16 @@ export const replaceTests = () => {
         describe("request", () => {
             let dustValue: MonetaryAmount<WrappedCurrency>;
             let feesEstimate: MonetaryAmount<WrappedCurrency>;
-            let accountBeforeTest: AddressOrPair | undefined;
-    
+
             beforeAll(async () => {
                 dustValue = await interBtcAPI.replace.getDustValue();
                 feesEstimate = newMonetaryAmount(await interBtcAPI.oracle.getBitcoinFees(), wrappedCurrency, false);
             });
 
-            beforeEach(() => {
-                accountBeforeTest = interBtcAPI.account;
-            });
-
-            afterEach(() => {
-                if (accountBeforeTest) {
-                    interBtcAPI.setAccount(accountBeforeTest);
-                }
-            });
-    
             // TODO: update test once replace protocol changes
             // https://github.com/interlay/interbtc/issues/823
             it("should request vault replacement", async () => {
-                interBtcAPI.setAccount(vault_3);
+                const interBtcAPI = new DefaultInterBtcApi(api, "regtest", vault_3, ESPLORA_BASE_PATH);
                 for (const vault_3_id of vault_3_ids) {
                     // try to set value above dust + estimated fees
                     const issueAmount = dustValue.add(feesEstimate).mul(1.2);
@@ -166,7 +155,7 @@ export const replaceTests = () => {
             it(
                 "should fail vault replace request if not having enough tokens",
                 async () => {
-                    interBtcAPI.setAccount(vault_2);
+                    const interBtcAPI = new DefaultInterBtcApi(api, "regtest", vault_2, ESPLORA_BASE_PATH);
                     const vault_2_id = vault_2_ids[0];
                     const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_2_id.currencies.collateral);
                     const currencyTicker = collateralCurrency.ticker;
@@ -214,6 +203,5 @@ export const replaceTests = () => {
                 });
             });
         });
-    
     });
 };
