@@ -106,12 +106,11 @@ export const vaultsTests = () => {
         // WARNING: this test is not idempotent
         // PRECONDITION: vault_1 must have issued some tokens against all collateral currencies
         it("should deposit and withdraw collateral", async () => {
-            const prevAccount = interBtcAPI.account;
+            const interBtcAPI = new DefaultInterBtcApi(api, "regtest", vault_1, ESPLORA_BASE_PATH);
             for (const vault_1_id of vault_1_ids) {
                 const collateralCurrency = await currencyIdToMonetaryCurrency(api, vault_1_id.currencies.collateral);
                 const currencyTicker = collateralCurrency.ticker;
     
-                interBtcAPI.setAccount(vault_1);
                 const amount = newMonetaryAmount(100, collateralCurrency, true);
     
                 const collateralizationBeforeDeposit = await interBtcAPI.vaults.getVaultCollateralization(
@@ -141,9 +140,6 @@ export const vaultsTests = () => {
                 }
                 expect(collateralizationAfterDeposit.gt(collateralizationAfterWithdrawal)).toBe(true);
                 expect(collateralizationBeforeDeposit.toString()).toEqual(collateralizationAfterWithdrawal.toString());
-            }
-            if (prevAccount) {
-                interBtcAPI.setAccount(prevAccount);
             }
         });
     

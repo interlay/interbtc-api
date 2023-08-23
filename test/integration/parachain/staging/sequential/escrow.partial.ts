@@ -93,10 +93,10 @@ export const escrowTests = () => {
                 const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
                 const stakedTotalBefore = await interBtcAPI.escrow.getTotalStakedBalance();
     
-                interBtcAPI.setAccount(userAccount1);
+                const user1InterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount1, ESPLORA_BASE_PATH);
                 await submitExtrinsic(
-                    interBtcAPI,
-                    interBtcAPI.escrow.createLock(user1Amount, currentBlockNumber + unlockHeightDiff)
+                    user1InterBtcAPI,
+                    user1InterBtcAPI.escrow.createLock(user1Amount, currentBlockNumber + unlockHeightDiff)
                 );
     
                 const votingBalance = await interBtcAPI.escrow.votingBalance(
@@ -121,17 +121,18 @@ export const escrowTests = () => {
                 );
     
                 const account1 = newAccountId(api, userAccount1.address);
-    
+
                 const rewardsEstimate = await interBtcAPI.escrow.getRewardEstimate(account1);
     
                 expect(rewardsEstimate.amount.toBig().gt(0)).toBe(true);
                 expect(rewardsEstimate.apy.gte(100)).toBe(true);
     
                 // Lock the tokens of a second user, to ensure total voting supply is still correct
-                interBtcAPI.setAccount(userAccount2);
+                const user2InterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount2, ESPLORA_BASE_PATH);
+
                 await submitExtrinsic(
-                    interBtcAPI,
-                    interBtcAPI.escrow.createLock(user2Amount, currentBlockNumber + unlockHeightDiff)
+                    user2InterBtcAPI,
+                    user2InterBtcAPI.escrow.createLock(user2Amount, currentBlockNumber + unlockHeightDiff)
                 );
                 const votingSupplyAfterSecondUser = await interBtcAPI.escrow.totalVotingSupply(
                     currentBlockNumber + 0.4 * unlockHeightDiff
@@ -153,15 +154,15 @@ export const escrowTests = () => {
             const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
             const unlockHeightDiff = (await interBtcAPI.escrow.getSpan()).toNumber();
     
-            interBtcAPI.setAccount(userAccount3);
+            const user3InterBtcAPI = new DefaultInterBtcApi(api, "regtest", userAccount3, ESPLORA_BASE_PATH);
             await submitExtrinsic(
-                interBtcAPI,
-                interBtcAPI.escrow.createLock(userAmount, currentBlockNumber + unlockHeightDiff)
+                user3InterBtcAPI,
+                user3InterBtcAPI.escrow.createLock(userAmount, currentBlockNumber + unlockHeightDiff)
             );
-            await submitExtrinsic(interBtcAPI, interBtcAPI.escrow.increaseAmount(userAmount));
+            await submitExtrinsic(user3InterBtcAPI, user3InterBtcAPI.escrow.increaseAmount(userAmount));
             await submitExtrinsic(
-                interBtcAPI,
-                interBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff)
+                user3InterBtcAPI,
+                user3InterBtcAPI.escrow.increaseUnlockHeight(currentBlockNumber + unlockHeightDiff + unlockHeightDiff)
             );
         });
     });
