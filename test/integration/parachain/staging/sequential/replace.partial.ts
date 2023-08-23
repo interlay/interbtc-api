@@ -176,7 +176,7 @@ export const replaceTests = () => {
                         );
     
                         try {
-                            await expect(replacePromise).rejects.toEqual("error");
+                            await expect(replacePromise).rejects.toThrow();
                         } catch(_) {
                             throw Error(`Expected replace request to fail with Error (${currencyTicker} vault)`);
                         }
