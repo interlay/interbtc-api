@@ -1,5 +1,4 @@
 /* eslint-disable max-len */
-import { ApiPromise } from "@polkadot/api";
 import {
     BorrowPosition,
     CurrencyExt,
@@ -10,40 +9,33 @@ import {
     TickerToData,
     newMonetaryAmount,
 } from "../../../src/";
-import { getAPITypes } from "../../../src/factory";
 import Big from "big.js";
-import { expect } from "chai";
 import { Bitcoin, ExchangeRate, InterBtc, Interlay, KBtc, MonetaryAmount, Polkadot } from "@interlay/monetary-js";
 
 describe("DefaultLoansAPI", () => {
-    let api: ApiPromise;
     let loansApi: DefaultLoansAPI;
     const wrappedCurrency = InterBtc;
     const testGovernanceCurrency = Interlay;
     const testRelayCurrency = Polkadot;
 
-    before(() => {
-        api = new ApiPromise();
-        // disconnect immediately to avoid printing errors
-        // we only need the instance to create variables
-        api.disconnect();
-        api.registerTypes(getAPITypes());
+    afterAll(() => {
+        jest.resetAllMocks();
     });
 
     beforeEach(() => {
-        const oracleAPI = new DefaultOracleAPI(api, wrappedCurrency);
-        loansApi = new DefaultLoansAPI(api, KBtc, oracleAPI);
+        const oracleAPI = new DefaultOracleAPI(null as never, wrappedCurrency);
+        loansApi = new DefaultLoansAPI(null as never, KBtc, oracleAPI);
     });
 
-    describe("getLendPositionsOfAccount", () => {
+    describe.skip("getLendPositionsOfAccount", () => {
         // TODO: add tests
     });
 
-    describe("getBorrowPositionsOfAccount", () => {
+    describe.skip("getBorrowPositionsOfAccount", () => {
         // TODO: add tests
     });
 
-    describe("getLoanAssets", () => {
+    describe.skip("getLoanAssets", () => {
         // TODO: add tests
     });
 
@@ -67,8 +59,8 @@ describe("DefaultLoansAPI", () => {
                 testExchangeRate
             );
 
-            expect(actualTotalLiquidity.toString()).to.be.eq(expectedTotalLiquidityAmount.toString());
-            expect(actualAvailableCapacity.toString()).to.be.eq(expectedAvailableCapacityAmount.toString());
+            expect(actualTotalLiquidity.toString()).toBe(expectedTotalLiquidityAmount.toString());
+            expect(actualAvailableCapacity.toString()).toBe(expectedAvailableCapacityAmount.toString());
         });
 
         it("should return zero total liquidity if exchange rate is zero", () => {
@@ -80,7 +72,7 @@ describe("DefaultLoansAPI", () => {
                 zeroExchangeRate
             );
 
-            expect(actualTotalLiquidity.toBig().toNumber()).to.eq(0);
+            expect(actualTotalLiquidity.toBig().toNumber()).toBe(0);
         });
 
         it("should return zero total liquidity if total issuance is zero", () => {
@@ -92,21 +84,24 @@ describe("DefaultLoansAPI", () => {
                 testExchangeRate
             );
 
-            expect(actualTotalLiquidity.toBig().toNumber()).to.eq(0);
+            expect(actualTotalLiquidity.toBig().toNumber()).toBe(0);
         });
 
-        it("should return zero available capacity if borrow is equal to issuance times exchange rate", () => {
-            const borrowAll = testTotalIssuance.mul(testExchangeRate);
-            const borrowAllAtomicAmount = borrowAll.toBig(0);
-            const [_, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
-                testUnderlying,
-                testIssuanceAtomicAmount,
-                borrowAllAtomicAmount,
-                testExchangeRate
-            );
+        it(
+            "should return zero available capacity if borrow is equal to issuance times exchange rate",
+            () => {
+                const borrowAll = testTotalIssuance.mul(testExchangeRate);
+                const borrowAllAtomicAmount = borrowAll.toBig(0);
+                const [, actualAvailableCapacity] = loansApi._calculateLiquidityAndCapacityAmounts(
+                    testUnderlying,
+                    testIssuanceAtomicAmount,
+                    borrowAllAtomicAmount,
+                    testExchangeRate
+                );
 
-            expect(actualAvailableCapacity.toBig().toNumber()).to.eq(0);
-        });
+                expect(actualAvailableCapacity.toBig().toNumber()).toBe(0);
+            }
+        );
     });
 
     describe("_getSubsidyReward", () => {
@@ -117,19 +112,22 @@ describe("DefaultLoansAPI", () => {
 
             const actualReward = loansApi._getSubsidyReward(Big(testAmountAtomic), testGovernanceCurrency);
 
-            expect(actualReward).to.not.be.null;
+            expect(actualReward).not.toBeNull();
 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            expect(expectedAmount.toBig().eq(actualReward!.toBig())).to.be.eq(
-                true,
-                `Expected total amount (atomic value) to equal ${expectedAmount.toString(true)} 
-                but was: ${actualReward?.toString(true)}`
-            );
-            expect(actualReward?.currency).to.eq(testGovernanceCurrency);
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                expect(expectedAmount.toBig().eq(actualReward!.toBig())).toBe(true);
+            } catch(_) {
+                throw Error(
+                    `Expected total amount (atomic value) to equal ${expectedAmount.toString(true)} 
+                    but was: ${actualReward?.toString(true)}`
+                );
+            }
+            expect(actualReward?.currency).toBe(testGovernanceCurrency);
         });
 
         it("should return null if the amount is zero", () => {
-            expect(loansApi._getSubsidyReward(Big(0), testGovernanceCurrency)).to.be.null;
+            expect(loansApi._getSubsidyReward(Big(0), testGovernanceCurrency)).toBeNull();
         });
     });
 
@@ -218,24 +216,39 @@ describe("DefaultLoansAPI", () => {
                 loanAssets
             );
 
-            expect(
-                totalLentBtc.toBig().eq(expectedTotalLentBtc),
-                `Total lent amount: ${totalLentBtc
-                    .toBig()
-                    .toString()} doesn't match expected amount ${expectedTotalLentBtc.toString()}`
-            ).to.be.true;
-            expect(
-                totalBorrowedBtc.toBig().eq(expectedTotalBorrowedBtc),
-                `Total borrowed amount: ${totalBorrowedBtc.toString()} doesn't match expected amount ${expectedTotalBorrowedBtc.toString()}`
-            ).to.be.true;
-            expect(
-                totalCollateralBtc.toBig().eq(expectedTotalLentBtc),
-                `Collateral amount: ${totalCollateralBtc.toString()} doesn't match expected amount ${expectedTotalLentBtc.toString()}`
-            ).to.be.true;
-            expect(
-                borrowLimitBtc.toBig().eq(expectedBorrowLimitBtc),
-                `Borrow limit amount: ${borrowLimitBtc.toString()} doesn't match expected amount ${expectedBorrowLimitBtc.toString()}`
-            ).to.be.true;
+            try {
+                expect(totalLentBtc.toBig().eq(expectedTotalLentBtc)).toBe(true);
+            } catch(_) {
+                throw Error(
+                    `Total lent amount: ${totalLentBtc
+                        .toBig()
+                        .toString()} doesn't match expected amount ${expectedTotalLentBtc.toString()}`
+                );
+            }
+
+            try {
+                expect(totalBorrowedBtc.toBig().eq(expectedTotalBorrowedBtc)).toBe(true);
+            } catch(_) {
+                throw Error(
+                    `Total borrowed amount: ${totalBorrowedBtc.toString()} doesn't match expected amount ${expectedTotalBorrowedBtc.toString()}`
+                );
+            }
+
+            try {
+                expect(totalCollateralBtc.toBig().eq(expectedTotalLentBtc)).toBe(true);
+            } catch(_) {
+                throw Error(
+                    `Collateral amount: ${totalCollateralBtc.toString()} doesn't match expected amount ${expectedTotalLentBtc.toString()}`
+                );
+            }
+
+            try {
+                expect(borrowLimitBtc.toBig().eq(expectedBorrowLimitBtc)).toBe(true);
+            } catch(_) {
+                throw Error(
+                    `Borrow limit amount: ${borrowLimitBtc.toString()} doesn't match expected amount ${expectedBorrowLimitBtc.toString()}`
+                );
+            }
         });
 
         it("should compute correct LTV and average thresholds", () => {
@@ -284,31 +297,42 @@ describe("DefaultLoansAPI", () => {
             const expectedAverageLiquidationThreshold =
                 totalLiquidationThresholdAdjustedCollateralAmountBtc.div(totalCollateralAmountBtc);
 
-            expect(ltv.eq(expectedLtv), `LTV: ${ltv.toString()} does not match expected LTV: ${expectedLtv.toString()}`)
-                .to.be.true;
-            expect(
-                collateralThresholdWeightedAverage.eq(expectedAverageCollateralThreshold),
-                `Average collateral threshold: ${collateralThresholdWeightedAverage.toString()} does not match expected threshold: ${expectedAverageCollateralThreshold.toString()}`
-            ).to.be.true;
-            expect(
-                liquidationThresholdWeightedAverage.eq(expectedAverageLiquidationThreshold),
-                `Average liquidation threshold: ${liquidationThresholdWeightedAverage.toString()} does not match expected threshold: ${expectedAverageLiquidationThreshold.toString()}`
-            ).to.be.true;
+            try {
+                expect(ltv.eq(expectedLtv)).toBe(true);
+            } catch(_) {
+                throw Error(`LTV: ${ltv.toString()} does not match expected LTV: ${expectedLtv.toString()}`);
+            }
+
+            try {
+                expect(collateralThresholdWeightedAverage.eq(expectedAverageCollateralThreshold)).toBe(true);
+            } catch(_) {
+                throw Error(
+                    `Average collateral threshold: ${collateralThresholdWeightedAverage.toString()} does not match expected threshold: ${expectedAverageCollateralThreshold.toString()}`
+                );
+            }
+
+            try {
+                expect(liquidationThresholdWeightedAverage.eq(expectedAverageLiquidationThreshold)).toBe(true);
+            } catch(_) {
+                throw Error(
+                    `Average liquidation threshold: ${liquidationThresholdWeightedAverage.toString()} does not match expected threshold: ${expectedAverageLiquidationThreshold.toString()}`
+                );
+            }
         });
 
         it("should not throw when there are no positions", () => {
-            expect(() => loansApi.getLendingStats([], [], loanAssets)).to.not.throw;
+            expect(() => loansApi.getLendingStats([], [], loanAssets)).not.toThrow();
         });
 
         it("should not throw when there are no borrow positions", () => {
             const lendPositions = [mockLendPosition(new MonetaryAmount(testGovernanceCurrency, 1))];
-            expect(() => loansApi.getLendingStats(lendPositions, [], loanAssets)).to.not.throw;
+            expect(() => loansApi.getLendingStats(lendPositions, [], loanAssets)).not.toThrow();
         });
 
         it("should throw when loan assets are empty", () => {
             const lendPositions = [mockLendPosition(new MonetaryAmount(testGovernanceCurrency, 1))];
             const borrowPositions = [mockBorrowPosition(new MonetaryAmount(testGovernanceCurrency, 0.1))];
-            expect(() => loansApi.getLendingStats(lendPositions, borrowPositions, {})).to.throw;
+            expect(() => loansApi.getLendingStats(lendPositions, borrowPositions, {})).toThrow();
         });
     });
 });

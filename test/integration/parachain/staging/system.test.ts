@@ -2,7 +2,6 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 
 import { createSubstrateAPI } from "../../../../src/factory";
-import { assert } from "../../../chai";
 import { SUDO_URI, PARACHAIN_ENDPOINT, ESPLORA_BASE_PATH } from "../../../config";
 import { BLOCK_TIME_SECONDS, DefaultInterBtcApi, InterBtcApi } from "../../../../src";
 
@@ -12,20 +11,20 @@ describe("systemAPI", () => {
     let interBtcAPI: InterBtcApi;
     let keyring: Keyring;
 
-    before(async () => {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         keyring = new Keyring({ type: "sr25519" });
         sudoAccount = keyring.addFromUri(SUDO_URI);
         interBtcAPI = new DefaultInterBtcApi(api, "regtest", sudoAccount, ESPLORA_BASE_PATH);
     });
 
-    after(async () => {
-        api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     it("should getCurrentBlockNumber", async () => {
         const currentBlockNumber = await interBtcAPI.system.getCurrentBlockNumber();
-        assert.isDefined(currentBlockNumber);
+        expect(currentBlockNumber).toBeDefined();
     });
 
     it("should getFutureBlockNumber", async () => {
@@ -35,16 +34,13 @@ describe("systemAPI", () => {
             interBtcAPI.system.getFutureBlockNumber(approximately10BlocksTime),
         ]);
 
-        assert.isAtLeast(futureBlockNumber, currentBlockNumber + 9);
-        assert.isAtMost(futureBlockNumber, currentBlockNumber + 11);
+        expect(futureBlockNumber).toBeGreaterThanOrEqual(currentBlockNumber + 9);
+        expect(futureBlockNumber).toBeLessThanOrEqual(currentBlockNumber + 11);
     });
 
     it("should get paymentInfo", async () => {
         const tx = api.tx.system.remark("");
-        assert.isTrue(tx.hasPaymentInfo);
-        await assert.isFulfilled(
-            tx.paymentInfo(sudoAccount),
-            "Expected payment info for extrinsic"
-        );
+        expect(tx.hasPaymentInfo).toBe(true);
+        await expect(tx.paymentInfo(sudoAccount)).resolves.toBeDefined();
     });
 });

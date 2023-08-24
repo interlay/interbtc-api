@@ -25,7 +25,6 @@ import {
     storageKeyToNthInner,
 } from "../../src/utils";
 import { SUDO_URI } from "../config";
-import { expect } from "chai";
 import { ISubmittableResult } from "@polkadot/types/types";
 
 export const SLEEP_TIME_MS = 1000;
@@ -78,7 +77,11 @@ export async function callWithExchangeRate(
         api.tx.sudo.sudo(removeAllOraclesExtrinsic),
         api.events.sudo.Sudid
     );
-    expect(txResult1.isCompleted, "Sudo event to remove authorized oracles not found").to.be.true;
+    try {
+        expect(txResult1.isCompleted).toBe(true);
+    } catch(_) {
+        throw Error("Sudo event to remove authorized oracles not found");
+    }
 
     // Change Exchange rate storage for currency.
     const exchangeRateOracleKey = createExchangeRateOracleKey(api, currency);
@@ -114,7 +117,7 @@ export async function callWithExchangeRate(
             api.tx.sudo.sudo(restoreAllOraclesExtrinsic),
             api.events.sudo.Sudid
         );
-        expect(txResult2.isCompleted, "Sudo event to remove authorized oracles not found").to.be.true;
+        expect(txResult2.isCompleted).toBe(true);
     }
 
     return result;

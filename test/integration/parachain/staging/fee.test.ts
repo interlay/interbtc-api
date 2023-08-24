@@ -1,5 +1,4 @@
 import { ApiPromise, Keyring } from "@polkadot/api";
-import { assert } from "chai";
 import Big from "big.js";
 
 import { createSubstrateAPI } from "../../../../src/factory";
@@ -16,7 +15,7 @@ describe("fee", () => {
 
     let wrappedCurrency: WrappedCurrency;
 
-    before(async function () {
+    beforeAll(async () => {
         api = await createSubstrateAPI(PARACHAIN_ENDPOINT);
         const keyring = new Keyring({ type: "sr25519" });
         const oracleAccount = keyring.addFromUri(ORACLE_URI);
@@ -28,13 +27,13 @@ describe("fee", () => {
         wrappedCurrency = oracleInterBtcAPI.getWrappedCurrency();
     });
 
-    after(async () => {
-        api.disconnect();
+    afterAll(async () => {
+        await api.disconnect();
     });
 
     it("should check getReplaceGriefingCollateralRate", async () => {
         const replaceGriefingCollateralRate = await oracleInterBtcAPI.fee.getReplaceGriefingCollateralRate();
-        assert.equal(replaceGriefingCollateralRate.toString(), "0.1");
+        expect(replaceGriefingCollateralRate.toString()).toEqual("0.1");
     });
 
     it("should getGriefingCollateral for issue", async () => {
@@ -48,7 +47,7 @@ describe("fee", () => {
                 GriefingCollateralType.Issue
             );
             console.log(griefingCollateral.toString());
-            assert.equal(griefingCollateral.toBig().round(5, 0).toString(), "0.0014");
+            expect(griefingCollateral.toBig().round(5, 0).toString()).toEqual("0.0014");
         });
     });
 
@@ -62,7 +61,7 @@ describe("fee", () => {
                 amountToReplace,
                 GriefingCollateralType.Replace
             );
-            assert.equal(griefingCollateral.toString(), "2040.35874224");
+            expect(griefingCollateral.toString()).toEqual("2040.35874224");
         });
     });
 });

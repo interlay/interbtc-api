@@ -159,7 +159,7 @@ yarn test:unit
 Note that the parachain needs to be running for all tests to run.
 
 ```bash
-docker-compose up
+docker-compose up -d
 ```
 
 The default parachain runtime is Kintsugi.
@@ -178,9 +178,18 @@ yarn test
 yarn test:integration
 ```
 
-NOTE: While the parachain is starting up, there will be warnings from the integration tests until it can locate the locally running test vaults. Expect the startup to take around 2-3 minutes, and only start the integration tests after that time frame.
+NOTE: While the parachain is starting up, there will be warnings from the integration tests until it can locate the locally running test vaults. Expect the startup to take a few seconds, before the integration tests start.
 
-Another option is to check the logs, i.e. for `vault_1` you can use this:
+##### Dealing with timeouts during local testing
+
+At times, when running tests locally, the timeout set in `package.json`'s `jest.testTimeout` setting might not be enough. In that case, you can override the `testTimeout` value (in ms) on the command line:
+
+```bash
+yarn test:integration --testTimeout=900000
+```
+
+##### Check service logs in detached mode
+To check the logs or the services (for example, `vault_1`) you can use this:
 
 ```bash
 docker-compose logs -f vault_1
