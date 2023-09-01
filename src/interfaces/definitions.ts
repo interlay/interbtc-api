@@ -1,9 +1,9 @@
 import { RpcFunctionDefinition } from "@interlay/interbtc-types";
-import fs from "fs";
+import { createRequire } from "module";
 
-// hacky, but cannot import json "the old way" in esnext
-const definitionsString = fs.readFileSync("./node_modules/@interlay/interbtc-types/definitions.json", "utf-8");
-const definitions = JSON.parse(definitionsString);
+// need to use "require" to be able to import json file from @interlay/interbtc-types
+const require = createRequire(import.meta.url);
+const definitions = require("@interlay/interbtc-types/definitions.json");
 
 interface DecoratedRpcFunctionDefinition extends RpcFunctionDefinition {
     aliasSection: string;
