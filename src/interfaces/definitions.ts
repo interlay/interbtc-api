@@ -2,8 +2,8 @@ import { RpcFunctionDefinition } from "@interlay/interbtc-types";
 import { createRequire } from "module";
 
 // need to use "require" to be able to import json file from @interlay/interbtc-types
-const require = createRequire(import.meta.url);
-const definitions = require("@interlay/interbtc-types/definitions.json");
+const moduleRequire = createRequire(import.meta.url);
+const definitions = moduleRequire("@interlay/interbtc-types/definitions.json");
 
 interface DecoratedRpcFunctionDefinition extends RpcFunctionDefinition {
     aliasSection: string;
