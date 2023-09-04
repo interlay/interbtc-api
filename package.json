@@ -59,7 +59,7 @@
     "@interlay/monetary-js": "0.7.3",
     "@polkadot/api": "10.9.1",
     "big.js": "6.1.1",
-    "bitcoin-core": "^3.0.0",
+    "bitcoin-core": "^4.1.0",
     "bitcoinjs-lib": "^5.2.0",
     "bn.js": "4.12.0",
     "cross-fetch": "^4.0.0",
