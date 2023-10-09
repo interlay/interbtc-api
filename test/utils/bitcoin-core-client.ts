@@ -2,7 +2,7 @@
 
 import { MonetaryAmount } from "@interlay/monetary-js";
 import Big from "big.js";
-import { WrappedCurrency } from "../types";
+import { WrappedCurrency } from "../../src/types";
 
 // eslint-disable-next-line
 const Client = require("bitcoin-core");

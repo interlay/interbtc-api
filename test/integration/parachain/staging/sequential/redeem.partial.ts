@@ -21,10 +21,10 @@ import {
     VAULT_2_URI,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { issueAndRedeem, newMonetaryAmount } from "../../../../../src/utils";
-import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
+import { newMonetaryAmount } from "../../../../../src/utils";
+import { BitcoinCoreClient } from "../../../../utils/bitcoin-core-client";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
-import { ExecuteRedeem } from "../../../../../src/utils/issueRedeem";
+import { issueAndRedeem, ExecuteRedeem } from "../../../../utils/issue-redeem";
 import { getAUSDForeignAsset, getCorrespondingCollateralCurrenciesForTests } from "../../../../utils/helpers";
 
 export type RequestResult = { hash: Hash; vault: VaultRegistryVault };

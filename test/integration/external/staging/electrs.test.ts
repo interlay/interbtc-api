@@ -12,7 +12,7 @@ import {
     ESPLORA_BASE_PATH,
     PARACHAIN_ENDPOINT,
 } from "../../../config";
-import { BitcoinCoreClient } from "../../../../src/utils/bitcoin-core-client";
+import { BitcoinCoreClient } from "../../../utils/bitcoin-core-client";
 import { BitcoinAmount } from "@interlay/monetary-js";
 import { makeRandomBitcoinAddress, runWhileMiningBTCBlocks, waitSuccess } from "../../../utils/helpers";
 

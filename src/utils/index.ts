@@ -2,7 +2,6 @@ export * from "./bitcoin";
 export * from "./currency";
 export * from "./encoding";
 export * from "./constants";
-export * from "./bitcoin-core-client";
 export * from "./issueRedeem";
 export * from "./storage";
 export * from "./loans";

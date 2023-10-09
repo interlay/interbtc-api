@@ -14,6 +14,7 @@ import {
 
 import { NO_LIQUIDATION_VAULT_FOUND_REJECTION, VaultsAPI } from "./vaults";
 import {
+    allocateAmountsToVaults,
     decodeBtcAddress,
     decodeFixedPointType,
     getTxProof,
@@ -23,7 +24,6 @@ import {
     newMonetaryAmount,
     newVaultCurrencyPair,
 } from "../utils";
-import { allocateAmountsToVaults } from "../utils/issueRedeem";
 import { ElectrsAPI } from "../external";
 import { TransactionAPI } from "./transaction";
 import { OracleAPI } from "./oracle";
