@@ -17,11 +17,12 @@
     "kBTC"
   ],
   "scripts": {
-    "build": "run-s generate:defs generate:meta build:clean build:types build:esm build:cjs",
+    "build": "run-s generate:defs generate:meta build:clean build:types build:esm build:cjs build:create-package-json",
     "build:clean": "rm -fr build/*",
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig-cjs.json",
     "build:types": "tsc -p tsconfig-types.json",
+    "build:create-package-json": "sh ./create-build-package-json.sh",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint --fix src --ext .ts",
