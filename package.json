@@ -2,9 +2,9 @@
   "name": "@interlay/interbtc-api",
   "version": "2.5.2",
   "description": "JavaScript library to interact with interBTC",
-  "main": "build/src/index.js",
-  "type": "module",
-  "typings": "build/src/index.d.ts",
+  "main": "build/cjs/src/index.js",
+  "module": "build/esm/src/index.js",
+  "types": "build/types/src/index.d.ts",
   "repository": "https://github.com/interlay/interbtc-api",
   "license": "Apache-2.0",
   "keywords": [
@@ -17,10 +17,11 @@
     "kBTC"
   ],
   "scripts": {
-    "build": "run-s generate:defs generate:meta build:clean build:tsc:esm build:tsc:cjs",
+    "build": "run-s generate:defs generate:meta build:clean build:types build:esm build:cjs",
     "build:clean": "rm -fr build/*",
-    "build:tsc:esm": "tsc -p tsconfig.json",
-    "build:tsc:cjs": "tsc -p tsconfig-cjs.json",
+    "build:esm": "tsc -p tsconfig.json",
+    "build:cjs": "tsc -p tsconfig-cjs.json",
+    "build:types": "tsc -p tsconfig-types.json",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint --fix src --ext .ts",
