@@ -17,8 +17,10 @@
     "kBTC"
   ],
   "scripts": {
-    "build": "run-s generate:defs generate:meta build:tsc",
-    "build:tsc": "tsc -p tsconfig.json",
+    "build": "run-s generate:defs generate:meta build:clean build:tsc:esm build:tsc:cjs",
+    "build:clean": "rm -fr build/*",
+    "build:tsc:esm": "tsc -p tsconfig.json",
+    "build:tsc:cjs": "tsc -p tsconfig-cjs.json",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint --fix src --ext .ts",

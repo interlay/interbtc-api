@@ -1,0 +1,26 @@
+{
+    "ts-node": {
+        "experimentalSpecifierResolution": "node"
+    },
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "declaration": true,
+        "strict": true,
+        "noImplicitAny": true,
+        "esModuleInterop": true,
+        "baseUrl": "./",
+        "resolveJsonModule": true,
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "lib": ["ES2019"],
+        "paths": {
+            "@polkadot/api/augment": ["src/interfaces/augment-api.ts"],
+            "@polkadot/types/augment": ["src/interfaces/augment-types.ts"],
+            "@polkadot/types/lookup": ["src/interfaces/types-lookup.ts"],
+            "bitcoinjs-lib/src/bufferutils": ["node_modules/bitcoinjs-lib/types/bufferutils"],
+            "@interlay/interbtc-api/*": ["src/*"]
+        }
+    },
+    "include": ["src/**/*", "scripts/**/*.ts"],
+    "exclude": ["./node_modules/*"]
+}
