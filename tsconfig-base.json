@@ -1,6 +1,9 @@
 {
     "ts-node": {
-        "experimentalSpecifierResolution": "node"
+        "experimentalSpecifierResolution": "node",
+        "moduleTypes": {
+            "src/interfaces/**/*": "esm"
+        }
     },
     "compilerOptions": {
         "skipLibCheck": true,
