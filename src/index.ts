@@ -1,5 +1,5 @@
-import "./interfaces/augment-api";
-import "./interfaces/augment-types";
+import "./interfaces/augment-api.js";
+import "./interfaces/augment-types.js";
 
 export * from "./factory";
 export * from "./interbtc-api";
