@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "JavaScript library to interact with interBTC",
   "main": "build/cjs/src/index.js",
   "module": "build/esm/src/index.js",
