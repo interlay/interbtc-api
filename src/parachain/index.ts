@@ -1,5 +1,5 @@
 export { VaultsAPI, DefaultVaultsAPI } from "./vaults";
-export { IssueAPI, DefaultIssueAPI } from "./issue";
+export { IssueAPI, DefaultIssueAPI, IssueLimits } from "./issue";
 export { RedeemAPI, DefaultRedeemAPI } from "./redeem";
 export { OracleAPI, DefaultOracleAPI } from "./oracle";
 export { BTCRelayAPI, DefaultBTCRelayAPI } from "./btc-relay";
