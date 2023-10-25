@@ -6,6 +6,7 @@
         }
     },
     "compilerOptions": {
+        "declaration": true,
         "skipLibCheck": true,
         "strict": true,
         "noImplicitAny": true,
