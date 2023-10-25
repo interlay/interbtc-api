@@ -5,7 +5,6 @@ import { mnemonicGenerate } from "@polkadot/util-crypto";
 import Big from "big.js";
 import * as bitcoinjs from "bitcoinjs-lib";
 import {
-    BitcoinCoreClient,
     InterBtcApi,
     VaultStatusExt,
     CurrencyExt,
@@ -17,6 +16,7 @@ import {
     ExtrinsicData,
     newExtrinsicStatus,
 } from "../../src";
+import { BitcoinCoreClient } from "./bitcoin-core-client";
 import {
     setStorageAtKey,
     setRawStorage,

@@ -25,6 +25,6 @@
             "@interlay/interbtc-api/*": ["src/*"]
         }
     },
-    "include": ["src/**/*", "test/**/*.ts", "scripts/**/*.ts"],
+    "include": ["src/**/*", "scripts/**/*.ts"],
     "exclude": ["./node_modules/*"]
 }

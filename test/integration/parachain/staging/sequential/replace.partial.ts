@@ -15,8 +15,8 @@ import { BlockHash } from "@polkadot/types/interfaces";
 import { FrameSystemEventRecord } from "@polkadot/types/lookup";
 import { WrappedCurrency, currencyIdToMonetaryCurrency, newAccountId, newVaultId } from "../../../../../src";
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { BitcoinCoreClient } from "../../../../../src/utils/bitcoin-core-client";
-import { issueSingle } from "../../../../../src/utils/issueRedeem";
+import { BitcoinCoreClient } from "../../../../utils/bitcoin-core-client";
+import { issueSingle } from "../../../../utils/issue-redeem";
 import {
     BITCOIN_CORE_HOST,
     BITCOIN_CORE_NETWORK,

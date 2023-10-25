@@ -4,7 +4,6 @@ import BN from "bn.js";
 import { DefaultInterBtcApi, InterBtcApi, InterbtcPrimitivesVaultId } from "../../../../../src/index";
 
 import {
-    BitcoinCoreClient,
     CollateralCurrencyExt,
     currencyIdToMonetaryCurrency,
     encodeUnsignedFixedPoint,
@@ -12,7 +11,9 @@ import {
     newVaultId,
     WrappedCurrency,
 } from "../../../../../src";
-import { setRawStorage, issueSingle, newMonetaryAmount } from "../../../../../src/utils";
+import { setRawStorage, newMonetaryAmount } from "../../../../../src/utils";
+import { issueSingle } from "../../../../utils/issue-redeem";
+import { BitcoinCoreClient } from "../../../../utils/bitcoin-core-client";
 import { createSubstrateAPI } from "../../../../../src/factory";
 import {
     SUDO_URI,

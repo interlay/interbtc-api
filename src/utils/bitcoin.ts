@@ -1,19 +1,8 @@
 import { Block as BitcoinBlock, payments, Network, TxInput, TxOutput } from "bitcoinjs-lib";
 import { BufferReader } from "bitcoinjs-lib/src/bufferutils";
 
-import { H160 } from "@polkadot/types/interfaces";
+import { bufferToHexString } from "../../src/utils";
 import { BitcoinAddress } from "@polkadot/types/lookup";
-import { TypeRegistry } from "@polkadot/types";
-
-import { BTCRelayAPI } from "../parachain";
-import {
-    sleep,
-    addHexPrefix,
-    reverseEndiannessHex,
-    SLEEP_TIME_MS,
-    BitcoinCoreClient,
-    bufferToHexString,
-} from "../utils";
 import {
     HexString,
     MerkleProof,
@@ -22,7 +11,7 @@ import {
     TransactionInputSource,
     TransactionLocktime,
     TransactionOutput,
-} from "../types";
+} from "../../src/types";
 
 import { Transaction as BitcoinTransaction } from "bitcoinjs-lib";
 import { ElectrsAPI } from "../external";
@@ -77,16 +66,6 @@ function decode<P extends Payable, O>(p: P, f: (payment: P, options?: O) => P): 
     } catch (err) {
         return undefined;
     }
-}
-
-export function btcAddressFromParams(
-    registry: TypeRegistry,
-    params: { p2pkh: H160 | string } | { p2sh: H160 | string } | { p2wpkhv0: H160 | string }
-): BitcoinAddress {
-    registry.register;
-    return registry.createType<BitcoinAddress>("BitcoinAddress", {
-        ...params,
-    });
 }
 
 export function decodeBtcAddress(
@@ -203,26 +182,6 @@ export async function getTxProof(
         userTxProof: userTxPartialProof,
         coinbaseProof: coinbaseTxPartialProof,
     };
-}
-
-export async function waitForBlockRelaying(
-    btcRelayAPI: BTCRelayAPI,
-    blockHash: string,
-    sleepMs = SLEEP_TIME_MS
-): Promise<void> {
-    while (!(await btcRelayAPI.isBlockInRelay(blockHash))) {
-        console.log(`Blockhash ${blockHash} not yet relayed...`);
-        await sleep(sleepMs);
-    }
-}
-
-export async function waitForBlockFinalization(
-    bitcoinCoreClient: BitcoinCoreClient,
-    btcRelayAPI: BTCRelayAPI
-): Promise<void> {
-    const bestBlockHash = addHexPrefix(reverseEndiannessHex(await bitcoinCoreClient.getBestBlockHash()));
-    // wait for block to be relayed
-    await waitForBlockRelaying(btcRelayAPI, bestBlockHash);
 }
 
 export class BitcoinMerkleProof {

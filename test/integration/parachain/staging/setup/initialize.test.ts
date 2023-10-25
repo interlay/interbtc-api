@@ -5,7 +5,6 @@ import { Bitcoin, ExchangeRate, Kintsugi, Kusama, MonetaryAmount, Polkadot } fro
 import Big from "big.js";
 
 import {
-    BitcoinCoreClient,
     createSubstrateAPI,
     VaultsAPI,
     newAccountId,
@@ -51,6 +50,7 @@ import {
 } from "../../../../utils/helpers";
 import { DefaultAssetRegistryAPI } from "../../../../../src/parachain/asset-registry";
 import { BN } from "bn.js";
+import { BitcoinCoreClient } from "../../../../utils/bitcoin-core-client";
 
 function getSetBalanceExtrinsic(
     api: ApiPromise,
