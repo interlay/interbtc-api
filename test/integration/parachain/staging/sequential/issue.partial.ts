@@ -5,6 +5,7 @@ import {
     CollateralCurrencyExt,
     currencyIdToMonetaryCurrency,
     DefaultInterBtcApi,
+    getIssueRequestsFromExtrinsicResult,
     InterBtcApi,
     InterbtcPrimitivesVaultId,
     IssueStatus,
@@ -25,7 +26,6 @@ import {
     PARACHAIN_ENDPOINT,
     ESPLORA_BASE_PATH,
 } from "../../../../config";
-import { getIssueRequestsFromExtrinsicResult } from "../../../../utils/issue-redeem";
 import { BitcoinCoreClient } from "../../../../utils/bitcoin-core-client";
 import { issueSingle } from "../../../../utils/issue-redeem";
 import { newVaultId, WrappedCurrency } from "../../../../../src";
