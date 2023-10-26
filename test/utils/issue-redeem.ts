@@ -1,13 +1,9 @@
-import { Hash, EventRecord } from "@polkadot/types/interfaces";
-import { ApiTypes, AugmentedEvent } from "@polkadot/api/types";
-import type { AnyTuple } from "@polkadot/types/types";
-import { ApiPromise } from "@polkadot/api";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { Bitcoin, BitcoinAmount, InterBtcAmount, MonetaryAmount } from "@interlay/monetary-js";
-import { InterbtcPrimitivesVaultId } from "@polkadot/types/lookup";
-import { ISubmittableResult } from "@polkadot/types/types";
+import { InterbtcPrimitivesVaultId } from "../../src/parachain";
 
-import { newAccountId } from "../../src/utils";
+
+import { getIssueRequestsFromExtrinsicResult, getRedeemRequestsFromExtrinsicResult, newAccountId } from "../../src/utils";
 import { BitcoinCoreClient } from "./bitcoin-core-client";
 import { stripHexPrefix } from "../../src/utils/encoding";
 import { Issue, IssueStatus, Redeem, RedeemStatus, WrappedCurrency } from "../../src/types";
@@ -27,48 +23,6 @@ export enum ExecuteRedeem {
     Manually,
     Auto,
 }
-
-/**
- * @param events The EventRecord array returned after sending a transaction
- * @param methodToCheck The name of the event method whose existence to check
- * @returns The id associated with the transaction. If the EventRecord array does not
- * contain required events, the function throws an error.
- */
-export function getRequestIdsFromEvents(
-    events: EventRecord[],
-    eventToFind: AugmentedEvent<ApiTypes, AnyTuple>,
-    api: ApiPromise
-): Hash[] {
-    const ids = new Array<Hash>();
-    for (const { event } of events) {
-        if (eventToFind.is(event)) {
-            // the redeem id has type H256 and is the first item of the event data array
-            const id = api.createType("Hash", event.data[0]);
-            ids.push(id);
-        }
-    }
-
-    if (ids.length > 0) return ids;
-    throw new Error("Transaction failed");
-}
-
-export const getIssueRequestsFromExtrinsicResult = async (
-    interBtcApi: InterBtcApi,
-    result: ISubmittableResult
-): Promise<Array<Issue>> => {
-    const ids = getRequestIdsFromEvents(result.events, interBtcApi.api.events.issue.RequestIssue, interBtcApi.api);
-    const issueRequests = await interBtcApi.issue.getRequestsByIds(ids);
-    return issueRequests;
-};
-
-export const getRedeemRequestsFromExtrinsicResult = async (
-    interBtcApi: InterBtcApi,
-    result: ISubmittableResult
-): Promise<Array<Redeem>> => {
-    const ids = getRequestIdsFromEvents(result.events, interBtcApi.api.events.redeem.RequestRedeem, interBtcApi.api);
-    const redeemRequests = await interBtcApi.redeem.getRequestsByIds(ids);
-    return redeemRequests;
-};
 
 export async function issueSingle(
     interBtcApi: InterBtcApi,
