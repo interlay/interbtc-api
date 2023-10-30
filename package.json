@@ -68,7 +68,7 @@
     "yargs": "^17.5.1"
   },
   "devDependencies": {
-    "@polkadot/typegen": "10.9.1",
+    "@polkadot/typegen": "10.10.1",
     "@types/big.js": "6.1.2",
     "@types/jest": "^29.5.3",
     "@types/node": "^20.5.7",
