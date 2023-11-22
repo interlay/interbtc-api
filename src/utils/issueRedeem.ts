@@ -69,7 +69,7 @@ export function getRequestIdsFromEvents(
     eventToFind: AugmentedEvent<ApiTypes, AnyTuple>,
     api: ApiPromise
 ): Hash[] {
-    const ids = new Array<Hash>();
+    const ids: Hash[] = [];
     for (const { event } of events) {
         if (eventToFind.is(event)) {
             // the redeem id has type H256 and is the first item of the event data array
