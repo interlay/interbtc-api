@@ -37,7 +37,7 @@ jobs:
               run: docker-compose logs > logs.txt
             - name: Upload logs
               if: always()
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: docker-compose-logs
                   path: logs.txt
