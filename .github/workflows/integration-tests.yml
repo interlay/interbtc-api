@@ -31,6 +31,10 @@ jobs:
                   npx ts-node --version
             - name: Run required services
               run: docker-compose up --detach
+            - name: Check metadata
+              run: |
+                  yarn update-metadata
+                  git status --porcelain
             - run: yarn ci:test
             - name: Archive Docker logs
               if: always()
