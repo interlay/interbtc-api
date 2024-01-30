@@ -15,7 +15,7 @@ export * from "./asset-registry";
 export * from "./loans";
 export * from "./amm";
 export * from "./transaction";
-export * from "./amm/";
+export * from "./amm1";
 
 // Hacky way of forcing the resolution of these types in test files
 export { InterbtcPrimitivesVaultId, VaultRegistryVault, LoansMarket } from "@polkadot/types/lookup";

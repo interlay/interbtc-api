@@ -33,7 +33,7 @@ import { InterbtcPrimitivesCurrencyId, InterbtcPrimitivesTokenSymbol } from "../
 import { DefaultAssetRegistryAPI } from "../parachain/asset-registry";
 import { Option } from "@polkadot/types/codec";
 import { DefaultLoansAPI } from "../parachain";
-import { DefaultAMMAPI } from "../parachain/amm";
+import { DefaultAMMAPI } from "../parachain/amm1";
 
 // set maximum exponents
 Big.PE = 21;
@@ -52,7 +52,7 @@ export function atomicToBaseAmount(atomicAmount: BigSource, currency: Currency):
 export function newMonetaryAmount<CurrencyT extends CurrencyExt>(
     amount: BigSource,
     currency: CurrencyT,
-    base = false
+    base = false,
 ): MonetaryAmount<CurrencyT> {
     const finalAmount = base ? new Big(amount) : atomicToBaseAmount(amount, currency);
     return new MonetaryAmount<CurrencyT>(currency, finalAmount);
@@ -61,7 +61,7 @@ export function newMonetaryAmount<CurrencyT extends CurrencyExt>(
 export function newCollateralBTCExchangeRate(
     rate: Big,
     counterCurrency: Currency,
-    useBaseUnits = false
+    useBaseUnits = false,
 ): ExchangeRate<Bitcoin, Currency> {
     const [baseCurrencyUnit, counterCurrencyUnit] = useBaseUnits
         ? [Bitcoin.decimals, counterCurrency.decimals]
@@ -75,7 +75,7 @@ export function createFeeEstimationOracleKey(api: ApiPromise): InterbtcPrimitive
 
 export function createExchangeRateOracleKey(
     api: ApiPromise,
-    collateralCurrency: CurrencyExt
+    collateralCurrency: CurrencyExt,
 ): InterbtcPrimitivesOracleKey {
     const currencyId = newCurrencyId(api, collateralCurrency);
     return api.createType("InterbtcPrimitivesOracleKey", { ExchangeRate: currencyId });
@@ -111,7 +111,7 @@ export async function getCollateralCurrencies(api: ApiPromise): Promise<Array<Co
         .map(([storageKey, _]) => storageKeyToNthInner(storageKey));
 
     return Promise.all(
-        collateralCurrencyPrimitives.map((currencyPair) => currencyIdToMonetaryCurrency(api, currencyPair.collateral))
+        collateralCurrencyPrimitives.map((currencyPair) => currencyIdToMonetaryCurrency(api, currencyPair.collateral)),
     );
 }
 
@@ -184,7 +184,7 @@ export function getCurrencyIdentifier(currency: CurrencyExt): CurrencyIdentifier
 
 export async function currencyIdToMonetaryCurrency(
     api: ApiPromise,
-    currencyId: InterbtcPrimitivesCurrencyId
+    currencyId: InterbtcPrimitivesCurrencyId,
 ): Promise<CurrencyExt> {
     if (currencyId.isToken) {
         return tokenSymbolToCurrency(currencyId.asToken);
@@ -259,7 +259,7 @@ export async function getForeignAssetFromId(api: ApiPromise, id: number | u32): 
  */
 export async function getUnderlyingCurrencyFromLendTokenId(
     api: ApiPromise,
-    lendTokenId: InterbtcPrimitivesCurrencyId
+    lendTokenId: InterbtcPrimitivesCurrencyId,
 ): Promise<CurrencyExt> {
     const underlyingCurrencyId = await api.query.loans.underlyingAssetId(lendTokenId);
 
@@ -276,7 +276,7 @@ export async function getUnderlyingCurrencyFromLendTokenId(
  */
 export async function getStandardLpTokenFromCurrencyId(
     api: ApiPromise,
-    currencyId: InterbtcPrimitivesCurrencyId
+    currencyId: InterbtcPrimitivesCurrencyId,
 ): Promise<StandardLpToken> {
     if (!currencyId.isLpToken) {
         throw new Error("Provided currencyId is not standard LP token.");
@@ -284,8 +284,8 @@ export async function getStandardLpTokenFromCurrencyId(
     const standardLpTokenCurrencyId = currencyId.asLpToken;
     const [token0, token1] = await Promise.all(
         standardLpTokenCurrencyId.map((currencyId) =>
-            currencyIdToMonetaryCurrency(api, currencyId as InterbtcPrimitivesCurrencyId)
-        )
+            currencyIdToMonetaryCurrency(api, currencyId as InterbtcPrimitivesCurrencyId),
+        ),
     );
 
     return {
@@ -307,7 +307,7 @@ export async function getStandardLpTokenFromCurrencyId(
  */
 export async function getStableLpTokenFromCurrencyId(
     api: ApiPromise,
-    currencyId: InterbtcPrimitivesCurrencyId
+    currencyId: InterbtcPrimitivesCurrencyId,
 ): Promise<StableLpToken> {
     if (!currencyId.isStableLpToken) {
         throw new Error("Provided currencyId is not stable LP token.");

@@ -45,7 +45,7 @@ import {
     isStableMetaPool,
     isStandardPool,
     StableLiquidityMetaPool,
-} from "./amm/";
+} from "./amm";
 import { ExtrinsicData } from "../types/extrinsic";
 
 const HOP_LIMIT = 4;
@@ -71,7 +71,7 @@ export interface AMMAPI {
     getOptimalTrade(
         inputAmount: MonetaryAmount<CurrencyExt>,
         outputCurrency: CurrencyExt,
-        pools: Array<LiquidityPool>
+        pools: Array<LiquidityPool>,
     ): Trade | null;
 
     /**
@@ -101,7 +101,7 @@ export interface AMMAPI {
     getClaimableFarmingRewards(
         accountId: AccountId,
         accountLiquidity: Array<MonetaryAmount<LpCurrency>>,
-        pools: Array<LiquidityPool>
+        pools: Array<LiquidityPool>,
     ): Promise<Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>>;
 
     /**
@@ -117,7 +117,7 @@ export interface AMMAPI {
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
         recipient: AddressOrPair,
-        deadline: number | string
+        deadline: number | string,
     ): ExtrinsicData;
 
     /**
@@ -136,7 +136,7 @@ export interface AMMAPI {
         pool: LiquidityPool,
         maxSlippage: number,
         deadline: number,
-        recipient: AddressOrPair
+        recipient: AddressOrPair,
     ): Promise<ExtrinsicData>;
 
     /**
@@ -155,7 +155,7 @@ export interface AMMAPI {
         pool: LiquidityPool,
         maxSlippage: number,
         deadline: number,
-        recipient: AddressOrPair
+        recipient: AddressOrPair,
     ): Promise<ExtrinsicData>;
 
     /**
@@ -194,12 +194,15 @@ export class DefaultAMMAPI implements AMMAPI {
         };
     }
 
-    constructor(private api: ApiPromise, private tokensAPI: TokensAPI) {}
+    constructor(
+        private api: ApiPromise,
+        private tokensAPI: TokensAPI,
+    ) {}
 
     public getOptimalTrade(
         inputAmount: MonetaryAmount<CurrencyExt>,
         outputCurrency: CurrencyExt,
-        pools: Array<LiquidityPool>
+        pools: Array<LiquidityPool>,
     ): Trade | null {
         const pairs = getAllTradingPairs(pools);
 
@@ -213,7 +216,7 @@ export class DefaultAMMAPI implements AMMAPI {
     public async getLiquidityProvidedByAccount(accountId: AccountId): Promise<Array<MonetaryAmount<LpCurrency>>> {
         const allLpTokens = await this.getLpTokens();
         const accountBalances = await Promise.all(
-            allLpTokens.map((lpToken) => this.tokensAPI.balance(lpToken, accountId))
+            allLpTokens.map((lpToken) => this.tokensAPI.balance(lpToken, accountId)),
         );
         // Adds free and staked balances together.
         return accountBalances.map((balance) => <MonetaryAmount<LpCurrency>>balance.free.add(balance.reserved));
@@ -223,8 +226,8 @@ export class DefaultAMMAPI implements AMMAPI {
         const standardPools = await this.api.query.dexGeneral.liquidityPairs.entries();
         const standardLpTokens = await Promise.all(
             standardPools.map(([_, lpTokenCurrencyId]) =>
-                getStandardLpTokenFromCurrencyId(this.api, lpTokenCurrencyId.unwrap())
-            )
+                getStandardLpTokenFromCurrencyId(this.api, lpTokenCurrencyId.unwrap()),
+            ),
         );
 
         return standardLpTokens;
@@ -261,7 +264,7 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _getStandardPoolReserveBalances(
         token0: CurrencyExt,
         token1: CurrencyExt,
-        pairAccount: AccountId
+        pairAccount: AccountId,
     ): Promise<[MonetaryAmount<CurrencyExt>, MonetaryAmount<CurrencyExt>]> {
         const [token0Balance, token1Balance] = await Promise.all([
             this.tokensAPI.balance(token0, pairAccount),
@@ -284,7 +287,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 const amountPerBlock = Big(value.perPeriod.toString()).div(rewardPeriod.toNumber());
                 const annualizedRewardAmount = calculateAnnualizedRewardAmount(amountPerBlock, blockTimeMs);
                 return newMonetaryAmount(annualizedRewardAmount, rewardCurrency);
-            })
+            }),
         );
 
         return rewardAmountsYearly;
@@ -294,7 +297,7 @@ export class DefaultAMMAPI implements AMMAPI {
         pairCurrencies: [InterbtcPrimitivesCurrencyId, InterbtcPrimitivesCurrencyId],
         lpTokenCurrencyId: InterbtcPrimitivesCurrencyId,
         pairStatus: DexGeneralPrimitivesPairStatus,
-        blockTimeMs: number
+        blockTimeMs: number,
     ): Promise<StandardLiquidityPool | null> {
         let typedPairStatus: DexGeneralPrimitivesPairMetadata | DexGeneralPrimitivesBootstrapParameter;
         let isTradingActive: boolean;
@@ -319,7 +322,7 @@ export class DefaultAMMAPI implements AMMAPI {
 
         const pairAccount = typedPairStatus.pairAccount;
         const [token0, token1] = await Promise.all(
-            pairCurrencies.map((currency) => currencyIdToMonetaryCurrency(this.api, currency))
+            pairCurrencies.map((currency) => currencyIdToMonetaryCurrency(this.api, currency)),
         );
 
         const [lpToken, pooledCurrencies, yearlyRewards] = await Promise.all([
@@ -338,7 +341,7 @@ export class DefaultAMMAPI implements AMMAPI {
             tradingFee,
             isTradingActive,
             totalSupply,
-            isEmpty
+            isEmpty,
         );
     }
 
@@ -346,7 +349,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const pairEntries = await this.api.query.dexGeneral.liquidityPairs.entries();
         const pairs = pairEntries.filter(([_, lpToken]) => lpToken.isSome);
         const pairStatuses = await Promise.all(
-            pairs.map(([pairKey]) => this.api.query.dexGeneral.pairStatuses(storageKeyToNthInner(pairKey)))
+            pairs.map(([pairKey]) => this.api.query.dexGeneral.pairStatuses(storageKeyToNthInner(pairKey))),
         );
         const pools = await Promise.all(
             pairs.map(([pairKey, lpToken], index) =>
@@ -354,9 +357,9 @@ export class DefaultAMMAPI implements AMMAPI {
                     storageKeyToNthInner(pairKey),
                     lpToken.unwrap(),
                     pairStatuses[index],
-                    blockTimeMs
-                )
-            )
+                    blockTimeMs,
+                ),
+            ),
         );
 
         return pools.filter((pool) => pool !== null) as Array<StandardLiquidityPool>;
@@ -364,14 +367,14 @@ export class DefaultAMMAPI implements AMMAPI {
 
     private async _getStablePoolPooledCurrencies(
         currencyIds: Array<InterbtcPrimitivesCurrencyId>,
-        balances: Array<u128>
+        balances: Array<u128>,
     ): Promise<Array<MonetaryAmount<CurrencyExt>>> {
         const pooledMonetaryCurrencies = await Promise.all(
-            currencyIds.map((currencyId) => currencyIdToMonetaryCurrency(this.api, currencyId))
+            currencyIds.map((currencyId) => currencyIdToMonetaryCurrency(this.api, currencyId)),
         );
 
         const pooledCurrencies = pooledMonetaryCurrencies.map((currency, index) =>
-            newMonetaryAmount(Big(balances[index].toString()), currency)
+            newMonetaryAmount(Big(balances[index].toString()), currency),
         );
 
         return pooledCurrencies;
@@ -395,7 +398,7 @@ export class DefaultAMMAPI implements AMMAPI {
     private _getStableBasePooledCurrenciesAdjustedToLpTokenAmount(
         basePooledCurrencies: PooledCurrencies,
         lpTokenTotalSupply: MonetaryAmount<StableLpToken>,
-        metaPoolLpTokenAmount: MonetaryAmount<StableLpToken>
+        metaPoolLpTokenAmount: MonetaryAmount<StableLpToken>,
     ) {
         const changeCoefficient = metaPoolLpTokenAmount.div(lpTokenTotalSupply.toBig()).toBig();
         return basePooledCurrencies.map((amount) => amount.mul(changeCoefficient));
@@ -405,7 +408,7 @@ export class DefaultAMMAPI implements AMMAPI {
         poolId: number,
         poolData: DexStablePrimitivesPool,
         blockTimeMs: number,
-        metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>
+        metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>,
     ) {
         const poolInfo = DefaultAMMAPI.getStablePoolInfo(poolData);
         if (poolInfo === null) {
@@ -432,7 +435,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 ? this._getStableBasePooledCurrenciesAdjustedToLpTokenAmount(
                       pooledCurrenciesBase,
                       totalSupply,
-                      metaPoolLpTokenAmount
+                      metaPoolLpTokenAmount,
                   )
                 : pooledCurrenciesBase;
 
@@ -442,7 +445,7 @@ export class DefaultAMMAPI implements AMMAPI {
     private async _getStableMetaPoolBasePool(
         poolData: DexStablePrimitivesMetaPool,
         pooledCurrencies: PooledCurrencies,
-        blockTimeMs: number
+        blockTimeMs: number,
     ): Promise<StableLiquidityPool> {
         const basePoolId = poolData.basePoolId;
         const basePoolData = await this.api.query.dexStable.pools(basePoolId);
@@ -459,7 +462,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 basePoolId.toNumber(),
                 basePoolData.unwrap(),
                 blockTimeMs,
-                pooledLpTokenAmount
+                pooledLpTokenAmount,
             );
             if (basePool === null) {
                 throw new Error("Metapool's base pool data are not valid.");
@@ -473,13 +476,13 @@ export class DefaultAMMAPI implements AMMAPI {
         poolId: number,
         poolData: DexStablePrimitivesPool,
         blockTimeMs: number,
-        metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>
+        metaPoolLpTokenAmount?: MonetaryAmount<StableLpToken>,
     ): Promise<StableLiquidityPool | null> {
         const processedPoolData = await this._getStableLiquidityPoolData(
             poolId,
             poolData,
             blockTimeMs,
-            metaPoolLpTokenAmount
+            metaPoolLpTokenAmount,
         );
         if (processedPoolData === null) {
             return null;
@@ -499,7 +502,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 poolId,
                 amplificationCoefficient,
                 totalSupply,
-                isEmpty
+                isEmpty,
             );
         }
 
@@ -510,7 +513,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 isStableLpToken(currentAmount.currency)
                     ? [...result, ...basePool.pooledCurrencies]
                     : [...result, currentAmount],
-            []
+            [],
         );
 
         return new StableLiquidityMetaPool(
@@ -523,7 +526,7 @@ export class DefaultAMMAPI implements AMMAPI {
             amplificationCoefficient,
             totalSupply,
             isEmpty,
-            basePool
+            basePool,
         );
     }
 
@@ -532,8 +535,8 @@ export class DefaultAMMAPI implements AMMAPI {
         const rawPoolsData = poolEntries.filter(([_, pool]) => pool.isSome);
         const pools = await Promise.all(
             rawPoolsData.map(([poolId, poolData]) =>
-                this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap(), blockTimeMs)
-            )
+                this._getStableLiquidityPool(storageKeyToNthInner(poolId).toNumber(), poolData.unwrap(), blockTimeMs),
+            ),
         );
 
         return pools.filter((pool) => pool !== null) as Array<StableLiquidityPool>;
@@ -553,19 +556,19 @@ export class DefaultAMMAPI implements AMMAPI {
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
         recipient: AddressOrPair,
-        deadline: number | string
+        deadline: number | string,
     ): ExtrinsicData {
         const { amountIn, amountOutMin, path } = encodeSwapParamsForStandardPoolsOnly(
             this.api,
             trade,
-            minimumAmountOut
+            minimumAmountOut,
         );
         const swapExtrinsic = this.api.tx.dexGeneral.swapExactAssetsForAssets(
             amountIn,
             amountOutMin,
             path,
             addressOrPairAsAccountId(this.api, recipient),
-            deadline
+            deadline,
         );
         const swapEvent = this.api.events.dexGeneral.AssetSwap;
 
@@ -576,26 +579,26 @@ export class DefaultAMMAPI implements AMMAPI {
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
         recipient: AddressOrPair,
-        deadline: number | string
+        deadline: number | string,
     ): ExtrinsicData {
         const { amountIn, amountOutMin, path } = encodeSwapParamsForStandardAndStablePools(
             this.api,
             trade,
-            minimumAmountOut
+            minimumAmountOut,
         );
         const swapExtrinsic = this.api.tx.dexSwapRouter.swapExactTokenForTokensThroughStablePool(
             amountIn,
             amountOutMin,
             path,
             addressOrPairAsAccountId(this.api, recipient),
-            deadline
+            deadline,
         );
 
         return { extrinsic: swapExtrinsic, event: this.api.events.dexStable.CurrencyExchange };
     }
 
     private async _getFarmingRewardCurrencyIds(
-        lpTokenCurrencyId: InterbtcPrimitivesCurrencyId
+        lpTokenCurrencyId: InterbtcPrimitivesCurrencyId,
     ): Promise<Array<InterbtcPrimitivesCurrencyId>> {
         const rewardCurrenciesRaw = await this.api.query.farmingRewards.rewardCurrencies(lpTokenCurrencyId);
 
@@ -606,7 +609,7 @@ export class DefaultAMMAPI implements AMMAPI {
 
     private async _getClaimableFarmingRewardsByPool(
         accountId: AccountId,
-        lpToken: LpCurrency
+        lpToken: LpCurrency,
     ): Promise<Array<MonetaryAmount<CurrencyExt>>> {
         const lpTokenCurrencyId = newCurrencyId(this.api, lpToken);
 
@@ -614,15 +617,15 @@ export class DefaultAMMAPI implements AMMAPI {
 
         const farmingRewards = await Promise.all(
             rewardCurrencyIds.map((rewardCurrencyId) =>
-                this.api.rpc.reward.computeFarmingReward(accountId, lpTokenCurrencyId, rewardCurrencyId)
-            )
+                this.api.rpc.reward.computeFarmingReward(accountId, lpTokenCurrencyId, rewardCurrencyId),
+            ),
         );
 
         const rewardAmounts = Promise.all(
             rewardCurrencyIds.map(async (currencyId, index) => {
                 const currency = await currencyIdToMonetaryCurrency(this.api, currencyId);
                 return newMonetaryAmount(farmingRewards[index].amount.toString(), currency);
-            })
+            }),
         );
 
         return rewardAmounts;
@@ -631,7 +634,7 @@ export class DefaultAMMAPI implements AMMAPI {
     async getClaimableFarmingRewards(
         accountId: AccountId,
         accountLiquidity: MonetaryAmount<LpCurrency>[],
-        pools: LiquidityPool[]
+        pools: LiquidityPool[],
     ): Promise<Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>> {
         const rewardAmounts = await Promise.all(
             accountLiquidity.map(({ currency }) => {
@@ -641,7 +644,7 @@ export class DefaultAMMAPI implements AMMAPI {
                     return [];
                 }
                 return this._getClaimableFarmingRewardsByPool(accountId, currency);
-            })
+            }),
         );
 
         const claimableRewards = new Map<LpCurrency, Array<MonetaryAmount<CurrencyExt>>>();
@@ -657,7 +660,7 @@ export class DefaultAMMAPI implements AMMAPI {
         trade: Trade,
         minimumAmountOut: MonetaryAmount<CurrencyExt>,
         recipient: AddressOrPair,
-        deadline: number | string
+        deadline: number | string,
     ): ExtrinsicData {
         const containsStablePool = trade.path.some(isStableMultiPathElement);
         if (containsStablePool) {
@@ -671,7 +674,7 @@ export class DefaultAMMAPI implements AMMAPI {
         amounts: PooledCurrencies,
         pool: StandardLiquidityPool,
         maxSlippageComplement: number,
-        deadline: number
+        deadline: number,
     ): ExtrinsicData {
         if (amounts.length !== 2) {
             throw new Error("Invalid count of input amounts.");
@@ -697,7 +700,7 @@ export class DefaultAMMAPI implements AMMAPI {
             amount1Desired,
             amount0Min,
             amount1Min,
-            deadline
+            deadline,
         );
 
         return { extrinsic: addLiquidityToStandardPoolExtrinsic, event: this.api.events.dexGeneral.LiquidityAdded };
@@ -708,7 +711,7 @@ export class DefaultAMMAPI implements AMMAPI {
         pool: StableLiquidityPool,
         maxSlippageComplement: number,
         deadline: number,
-        recipient: AddressOrPair
+        recipient: AddressOrPair,
     ): ExtrinsicData {
         const minAmounts = amounts.map((amount) => amount.mul(maxSlippageComplement));
         const minimumLpTokenOut = pool.getLiquidityDepositLpTokenAmount(minAmounts[0]).toString(true);
@@ -718,7 +721,7 @@ export class DefaultAMMAPI implements AMMAPI {
             amounts.forEach((amount, index) => {
                 if (!isCurrencyEqual(pool.pooledCurrencies[index].currency, amount.currency)) {
                     throw new Error(
-                        `Invalid input amounts, currency ${amount.currency.ticker} is not at index ${index} of pool.`
+                        `Invalid input amounts, currency ${amount.currency.ticker} is not at index ${index} of pool.`,
                     );
                 }
             });
@@ -729,7 +732,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 rawAmounts,
                 minimumLpTokenOut,
                 recipientAccount,
-                deadline
+                deadline,
             );
 
             return { extrinsic: addLiquidityToStablePoolExtrinsic, event: this.api.events.dexStable.AddLiquidity };
@@ -740,7 +743,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const metaAmounts = pool.actuallyPooledCurrencies.map(
             (actuallyPooledCurrency) =>
                 amounts.find((amount) => isCurrencyEqual(amount.currency, actuallyPooledCurrency.currency)) ||
-                new MonetaryAmount(actuallyPooledCurrency.currency, 0)
+                new MonetaryAmount(actuallyPooledCurrency.currency, 0),
         );
         const rawMetaAmounts = metaAmounts.map(monetaryAmountToRawString);
 
@@ -761,7 +764,7 @@ export class DefaultAMMAPI implements AMMAPI {
             rawBaseAmounts,
             minimumLpTokenOut,
             recipientAccount,
-            deadline
+            deadline,
         );
 
         return { extrinsic: addLiquidityToStableMetaPoolExtrinsic, event: this.api.events.dexStable.AddLiquidity };
@@ -772,7 +775,7 @@ export class DefaultAMMAPI implements AMMAPI {
         pool: LiquidityPool,
         maxSlippage: number,
         deadline: number,
-        recipient: AddressOrPair
+        recipient: AddressOrPair,
     ): Promise<ExtrinsicData> {
         const maxSlippageComplement = 1 - maxSlippage / 100;
 
@@ -783,7 +786,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 amounts,
                 pool,
                 maxSlippageComplement,
-                deadline
+                deadline,
             ));
         } else {
             ({ extrinsic: depositExtrinsic, event: depositEvent } = this._getLiquidityDepositStablePoolParams(
@@ -791,7 +794,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 pool,
                 maxSlippageComplement,
                 deadline,
-                recipient
+                recipient,
             ));
         }
 
@@ -808,7 +811,7 @@ export class DefaultAMMAPI implements AMMAPI {
         pool: StandardLiquidityPool,
         maxSlippageComplement: number,
         recipient: AddressOrPair,
-        deadline: number
+        deadline: number,
     ): ExtrinsicData {
         const outputAmounts = pool.getLiquidityWithdrawalPooledCurrencyAmounts(amount);
         const minAmounts = outputAmounts.map((amount) => amount.mul(maxSlippageComplement).toString(true));
@@ -821,7 +824,7 @@ export class DefaultAMMAPI implements AMMAPI {
             minAmounts[0],
             minAmounts[1],
             recipientAccount,
-            deadline
+            deadline,
         );
 
         return { extrinsic: withdrawalExtrinsic, event: this.api.events.dexGeneral.LiquidityRemoved };
@@ -832,7 +835,7 @@ export class DefaultAMMAPI implements AMMAPI {
         pool: StableLiquidityPool,
         maxSlippageComplement: number,
         recipient: AddressOrPair,
-        deadline: number
+        deadline: number,
     ): ExtrinsicData {
         const outputAmounts = pool.getLiquidityWithdrawalPooledCurrencyAmounts(amount);
         const minAmounts = outputAmounts.map((amount) => amount.mul(maxSlippageComplement));
@@ -846,8 +849,8 @@ export class DefaultAMMAPI implements AMMAPI {
                 .map(
                     (actuallyPooledCurrency) =>
                         minAmounts.find((amount) =>
-                            isCurrencyEqual(amount.currency, actuallyPooledCurrency.currency)
-                        ) || new MonetaryAmount(actuallyPooledCurrency.currency, 0)
+                            isCurrencyEqual(amount.currency, actuallyPooledCurrency.currency),
+                        ) || new MonetaryAmount(actuallyPooledCurrency.currency, 0),
                 )
                 .map(monetaryAmountToRawString);
             const minAmountsBase = minAmounts
@@ -861,7 +864,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 minAmountsMeta,
                 minAmountsBase,
                 recipientAccount,
-                deadline
+                deadline,
             );
 
             return { extrinsic: withdrawLiquidityExtrinsic, event: this.api.events.dexStable.RemoveLiquidity };
@@ -873,7 +876,7 @@ export class DefaultAMMAPI implements AMMAPI {
             lpTokenAmount,
             minAmountsRaw,
             recipientAccount,
-            deadline
+            deadline,
         );
 
         return { extrinsic: withdrawLiquidityExtrinsic, event: this.api.events.dexStable.RemoveLiquidity };
@@ -884,11 +887,11 @@ export class DefaultAMMAPI implements AMMAPI {
         pool: LiquidityPool,
         maxSlippage: number, // Percentage.
         deadline: number,
-        recipient: AddressOrPair
+        recipient: AddressOrPair,
     ): Promise<ExtrinsicData> {
         if (!isCurrencyEqual(amount.currency, pool.lpToken)) {
             throw new Error(
-                `Input amount and pool lp token should be same but are: [${amount.currency.ticker}, ${pool.lpToken.ticker}].`
+                `Input amount and pool lp token should be same but are: [${amount.currency.ticker}, ${pool.lpToken.ticker}].`,
             );
         }
         const maxSlippageComplement = 1 - maxSlippage / 100;
@@ -902,7 +905,7 @@ export class DefaultAMMAPI implements AMMAPI {
                     pool,
                     maxSlippageComplement,
                     recipient,
-                    deadline
+                    deadline,
                 ));
         } else {
             ({ extrinsic: withdrawalExtrinsic, event: withdrawalEvent } = this._getLiquidityWithdrawalStablePoolParams(
@@ -910,7 +913,7 @@ export class DefaultAMMAPI implements AMMAPI {
                 pool,
                 maxSlippageComplement,
                 recipient,
-                deadline
+                deadline,
             ));
         }
 
@@ -919,7 +922,7 @@ export class DefaultAMMAPI implements AMMAPI {
         const farmWithdrawalExtrinsic = this.api.tx.farming.withdraw(
             lpTokenCurrencyId,
             amount.toString(true),
-            rewardCurrencies.size
+            rewardCurrencies.size,
         );
 
         const batchedExtrinsics = this.api.tx.utility.batchAll([farmWithdrawalExtrinsic, withdrawalExtrinsic]);

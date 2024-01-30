@@ -24,7 +24,7 @@ import { DefaultAssetRegistryAPI, DefaultEscrowAPI, DefaultLoansAPI, EscrowAPI, 
 import { tokenSymbolToCurrency } from "./utils";
 import { AssetRegistryAPI } from "./parachain/asset-registry";
 import { Currency } from "@interlay/monetary-js";
-import { AMMAPI, DefaultAMMAPI } from "./parachain/amm";
+import { AMMAPI, DefaultAMMAPI } from "./parachain/amm1";
 
 export * from "./factory";
 export * from "./parachain/transaction";
@@ -96,7 +96,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
         readonly api: ApiPromise,
         bitcoinNetwork: BitcoinNetwork = "mainnet",
         _account?: AddressOrPair,
-        esploraNetwork?: string
+        esploraNetwork?: string,
     ) {
         const wrappedCurrency = this.getWrappedCurrency() as WrappedCurrency;
         const governanceCurrency = this.getGovernanceCurrency() as GovernanceCurrency;
@@ -124,7 +124,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.fee,
             this.rewards,
             this.system,
-            this.transaction
+            this.transaction,
         );
         this.faucet = new FaucetClient(api, "");
         this.btcRelay = new DefaultBTCRelayAPI(api);
@@ -136,7 +136,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.electrsAPI,
             wrappedCurrency,
             this.vaults,
-            this.transaction
+            this.transaction,
         );
         this.redeem = new DefaultRedeemAPI(
             api,
@@ -146,7 +146,7 @@ export class DefaultInterBtcApi implements InterBtcApi {
             this.vaults,
             this.oracle,
             this.transaction,
-            this.system
+            this.system,
         );
         this.nomination = new DefaultNominationAPI(api, wrappedCurrency, this.vaults, this.rewards);
         this.amm = new DefaultAMMAPI(api, this.tokens);
