@@ -1,6 +1,6 @@
 {
   "name": "inter-exchange",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "JavaScript library to interact with interBTC",
   "main": "build/cjs/src/index.js",
   "module": "build/esm/src/index.js",
