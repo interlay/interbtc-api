@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     BlockApi,
     Status,
@@ -187,19 +188,19 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     }
 
     getLatestBlock(): Promise<string> {
-        return this.getData(this.blockApi.getLastBlockHash());
+        return this.getData(this.blockApi.getLastBlockHash() as any);
     }
 
     getLatestBlockHeight(): Promise<number> {
-        return this.getData(this.blockApi.getLastBlockHeight());
+        return this.getData(this.blockApi.getLastBlockHeight() as any);
     }
 
     getMerkleProof(txid: string): Promise<string> {
-        return this.getData(this.txApi.getTxMerkleBlockProof(txid));
+        return this.getData(this.txApi.getTxMerkleBlockProof(txid) as any);
     }
 
     getTx(txid: string): Promise<ElectrsTransaction> {
-        return this.getData(this.txApi.getTx(txid));
+        return this.getData(this.txApi.getTx(txid) as any);
     }
 
     async getUtxoAmount(txid: string, recipient: string): Promise<number> {
@@ -222,7 +223,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     async getLargestPaymentToRecipientAddressTxId(recipientAddress: string): Promise<string> {
         try {
             // TODO: this should be paged
-            const txs = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
+            const txs: any = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress) as any);
             if (txs.length >= 25) {
                 throw new Error("Too many transactions");
             }
@@ -252,10 +253,10 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     async getEarliestPaymentToRecipientAddressTxId(recipientAddress: string, amount?: BitcoinAmount): Promise<string> {
         try {
             // TODO: this should be paged
-            const txs = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress));
+            const txs: any = await this.getData(this.addressApi.getAddressTxHistory(recipientAddress) as any);
             if (txs.length >= 25) {
                 throw new Error(
-                    "Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address"
+                    "Over 25 transactions returned; this is either a highly non-standard vault, or not a vault address",
                 );
             }
 
@@ -305,7 +306,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
         let txs: ElectrsTransaction[] = [];
         try {
             // TODO: this should be paged
-            txs = await this.getData(this.scripthashApi.getTxsByScripthash(hash));
+            txs = await this.getData(this.scripthashApi.getTxsByScripthash(hash) as any);
         } catch (e) {
             return Promise.reject(new Error(`Error during tx lookup by OP_RETURN: ${e}`));
         }
@@ -388,7 +389,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      * @returns The txid of the transaction
      */
     async broadcastRawTransaction(hex: string): Promise<AxiosResponse<string>> {
-        return await this.txApi.postTx(hex);
+        return (await this.txApi.postTx(hex)) as any;
     }
 
     async getTransactionStatus(txid: string): Promise<TxStatus> {
@@ -426,7 +427,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
     }
 
     getRawTransaction(txid: string): Promise<string> {
-        return this.getData(this.txApi.getTxHex(txid));
+        return this.getData(this.txApi.getTxHex(txid) as any);
     }
 
     async getCoinbaseTxId(userTxId: string): Promise<string | undefined> {
@@ -436,7 +437,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
             return undefined;
         }
 
-        return this.getData(this.blockApi.getBlockTxByIndex(blockHash, 0));
+        return this.getData(this.blockApi.getBlockTxByIndex(blockHash, 0) as any);
     }
 
     /**
@@ -445,7 +446,7 @@ export class DefaultElectrsAPI implements ElectrsAPI {
      * @returns A Status object, containing transaction settlement information
      */
     private getTxStatus(txid: string): Promise<Status> {
-        return this.getData(this.txApi.getTxStatus(txid));
+        return this.getData(this.txApi.getTxStatus(txid) as any);
     }
 
     /**
