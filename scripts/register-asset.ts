@@ -38,37 +38,37 @@ const NEW_ASSET = {
     pools: [
         {
             token1: { Token: "INTR" },
-            dexFees: 15,
+            dexFees: 100,
         },
     ],
     market: {
-        collateralFactor: 630000,
-        liquidationThreshold: 670000,
-        reserveFactor: 200000,
-        closeFactor: 500000,
-        liquidateIncentive: "1100000000000000000",
+        collateralFactor: 650000, // 65%
+        liquidationThreshold: 870000, // 87%
+        reserveFactor: 100000,  // 10%
+        closeFactor: 500000, // 50%
+        liquidateIncentive: "1100000000000000000", // 110%
         liquidateIncentiveReservedFactor: 25000,
         rateModel: {
             Jump: {
                 baseRate: 0,
-                jumpRate: "50000000000000000",
-                fullRate: "500000000000000000",
-                jumpUtilization: 900000
+                jumpRate: "100000000000000000", // 10%
+                fullRate: "500000000000000000", // 50%
+                jumpUtilization: 800000 // 80%
             }
         },
         state: "Pending",
-        supplyCap: "10000000000",
-        borrowCap: "10000000000",
+        supplyCap: "2000000000000", // 2,000,000
+        borrowCap: "2000000000000", // 2,000,000
         lendTokenId: { LendToken: 5 }, // NOTE: make sure this is free
         supplyIncentivesPerBlock: 0
     },
     vaultParams: {
         wrappedCurrency: { Token: "IBTC" },
-        liquidationCollateral: "1450000000000000000",
-        premiumRedeem: "1650000000000000000",
-        secureCollateral: "1800000000000000000",
-        minimumCollateral: "20000000000000",
-        systemCollateralCeiling: "38000000000000000",
+        liquidationCollateral: "1050000000000000000", // 105%
+        premiumRedeem: "1150000000000000000", // 115%
+        secureCollateral: "1550000000000000000", // 155%
+        minimumCollateral: "1550000000", // 1550 USDC
+        systemCollateralCeiling: "2000000000000", // 2,000,000 USDC
     }
 };
 
