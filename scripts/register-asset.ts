@@ -88,6 +88,7 @@ const NEW_ASSET = {
 function vaultRegistryCalls(
     api: ApiPromise,
     collateralCurrency: { ForeignAsset: number } | { LendToken: number },
+    vaultParams: any,
 ) {
     const {
         wrappedCurrency,
@@ -96,7 +97,7 @@ function vaultRegistryCalls(
         secureCollateral,
         minimumCollateral,
         systemCollateralCeiling
-    } = NEW_ASSET.vaultParams;
+    } = vaultParams;
     const currencyPair = {
         collateral: collateralCurrency,
         wrapped: wrappedCurrency,
@@ -133,10 +134,10 @@ async function main(): Promise<void> {
         paraApi.tx.loans.activateMarket(currencyId)
     ]);
 
-    allCalls.push(...vaultRegistryCalls(paraApi, currencyId));
+    allCalls.push(...vaultRegistryCalls(paraApi, currencyId, NEW_ASSET.vaultParams));
 
     const lendCurrencyId = NEW_ASSET.market.lendTokenId;
-    allCalls.push(...vaultRegistryCalls(paraApi, lendCurrencyId));
+    allCalls.push(...vaultRegistryCalls(paraApi, lendCurrencyId, NEW_ASSET.lendVaultParams));
 
     const batched = paraApi.tx.utility.batchAll(allCalls);
 
