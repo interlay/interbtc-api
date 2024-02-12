@@ -10,6 +10,7 @@ main().catch((err) => {
 });
 
 const NEW_ASSET = {
+    // this is the metadata for the new asset to register
     metadata: {
         decimals: 6,
         name: "USD Coin",
@@ -35,19 +36,21 @@ const NEW_ASSET = {
         },
         additional: { feePerSecond: 11888560, coingeckoId: "usd-coin" }
     },
+    // adds `DexGeneral` pools (uniswap v2) for the asset
     pools: [
         {
             token1: { Token: "INTR" },
             dexFees: 100,
         },
     ],
+    // adds a market to the `Loans` pallet
     market: {
         collateralFactor: 650000, // 65%
         liquidationThreshold: 870000, // 87%
         reserveFactor: 100000,  // 10%
         closeFactor: 500000, // 50%
         liquidateIncentive: "1100000000000000000", // 110%
-        liquidateIncentiveReservedFactor: 25000,
+        liquidateIncentiveReservedFactor: 0,
         rateModel: {
             Jump: {
                 baseRate: 0,
@@ -62,6 +65,7 @@ const NEW_ASSET = {
         lendTokenId: { LendToken: 5 }, // NOTE: make sure this is free
         supplyIncentivesPerBlock: 0
     },
+    // adds vault thresholds for asset
     vaultParams: {
         wrappedCurrency: { Token: "IBTC" },
         liquidationCollateral: "1050000000000000000", // 105%
@@ -69,12 +73,21 @@ const NEW_ASSET = {
         secureCollateral: "1550000000000000000", // 155%
         minimumCollateral: "1550000000", // 1550 USDC
         systemCollateralCeiling: "2000000000000", // 2,000,000 USDC
+    },
+    // adds vault thresholds for `Loans` asset
+    lendVaultParams: {
+        wrappedCurrency: { Token: "IBTC" },
+        liquidationCollateral: "1050000000000000000", // 105%
+        premiumRedeem: "1150000000000000000", // 115%
+        secureCollateral: "1550000000000000000", // 155%
+        minimumCollateral: "77500000000", // 1550 USDC = 77,500 qUSDC
+        systemCollateralCeiling: "75000000000000", // 1,500,000 USDC = 75,000,000 qUSDC
     }
 };
 
 function vaultRegistryCalls(
     api: ApiPromise,
-    collateralCurrency: { ForeignAsset: number },
+    collateralCurrency: { ForeignAsset: number } | { LendToken: number },
 ) {
     const {
         wrappedCurrency,
@@ -115,14 +128,15 @@ async function main(): Promise<void> {
         paraApi.tx.dexGeneral.createPair(currencyId, pool.token1, pool.dexFees)
     ))
 
-    allCalls.push(
-        ...[
-            paraApi.tx.loans.addMarket(currencyId, NEW_ASSET.market),
-            paraApi.tx.loans.activateMarket(currencyId)
-        ]
-    );
+    allCalls.push(...[
+        paraApi.tx.loans.addMarket(currencyId, NEW_ASSET.market),
+        paraApi.tx.loans.activateMarket(currencyId)
+    ]);
 
     allCalls.push(...vaultRegistryCalls(paraApi, currencyId));
+
+    const lendCurrencyId = NEW_ASSET.market.lendTokenId;
+    allCalls.push(...vaultRegistryCalls(paraApi, lendCurrencyId));
 
     const batched = paraApi.tx.utility.batchAll(allCalls);
 
