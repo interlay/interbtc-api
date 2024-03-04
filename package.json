@@ -76,7 +76,7 @@
     "@types/yargs": "^17.0.10",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.18.0",
-    "bitcoin-core": "^3.0.0",
+    "bitcoin-core": "^4.2.0",
     "cli-table3": "0.6.3",
     "eslint": "^8.41.0",
     "eslint-config-prettier": "^9.1.0",
