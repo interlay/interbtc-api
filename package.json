@@ -1,6 +1,6 @@
 {
   "name": "@interlay/interbtc-api",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "JavaScript library to interact with interBTC",
   "main": "build/cjs/src/index.js",
   "module": "build/esm/src/index.js",
@@ -51,7 +51,8 @@
     "watch:build": "tsc -p tsconfig.json -w",
     "watch:test": "jest --watch test/**/*.test.ts",
     "update-metadata": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' http://localhost:9933 > src/json/parachain.json",
-    "update-metadata-kintnet": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' https://api-dev-kintsugi.interlay.io/parachain > src/json/parachain.json"
+    "update-metadata-kintnet": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' https://api-dev-kintsugi.interlay.io/parachain > src/json/parachain.json",
+    "update-metadata-interlay": "curl -H 'Content-Type: application/json' -d '{\"id\":\"1\", \"jsonrpc\":\"2.0\", \"method\": \"state_getMetadata\", \"params\":[]}' https://api.interlay.io/parachain > src/json/parachain.json"
   },
   "engines": {
     "node": ">=11"

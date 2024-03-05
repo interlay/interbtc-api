@@ -228,6 +228,22 @@ export interface VaultsAPI {
     withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<ExtrinsicData>;
 
     /**
+     * Build withdraw collateral extrinsic (transaction) without sending it.
+     *
+     * @param collateralCurrency The collateral currency for which to withdraw all
+     * @returns A withdraw collateral submittable extrinsic as promise.
+     */
+    buildWithdrawAllCollateralExtrinsic(
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>>;
+
+    /**
+     * @param collateralCurrency The collateral currency for which to withdraw all
+     * @returns {Promise<ExtrinsicData>} A submittable extrinsic and an event that is emitted when extrinsic is submitted.
+     */
+    withdrawAllCollateral(collateralCurrency: CollateralCurrencyExt): Promise<ExtrinsicData>;
+
+    /**
      * Build deposit collateral extrinsic (transaction) without sending it.
      *
      * @param amount The amount of extra collateral to lock
@@ -462,12 +478,35 @@ export class DefaultVaultsAPI implements VaultsAPI {
             this.rewardsAPI,
             vaultAccountId,
             amount,
-            this.wrappedCurrency
+            this.wrappedCurrency,
         );
     }
 
     async withdrawCollateral(amount: MonetaryAmount<CollateralCurrencyExt>): Promise<ExtrinsicData> {
         const tx = await this.buildWithdrawCollateralExtrinsic(amount);
+        return { extrinsic: tx, event: this.api.events.vaultRegistry.WithdrawCollateral };
+    }
+
+    async buildWithdrawAllCollateralExtrinsic(
+        collateralCurrency: CollateralCurrencyExt
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
+        const account = this.transactionAPI.getAccount();
+        if (account == undefined) {
+            throw new Error("Account must be connected to create a collateral withdrawal request.");
+        }
+        const vaultAccountId = addressOrPairAsAccountId(this.api, account);
+
+        return await DefaultNominationAPI.buildWithdrawAllCollateralExtrinsic(
+            this.api,
+            this.rewardsAPI,
+            vaultAccountId,
+            collateralCurrency,
+            this.wrappedCurrency
+        );
+    }
+
+    async withdrawAllCollateral(collateralCurrency: CollateralCurrencyExt): Promise<ExtrinsicData> {
+        const tx = await this.buildWithdrawAllCollateralExtrinsic(collateralCurrency);
         return { extrinsic: tx, event: this.api.events.vaultRegistry.WithdrawCollateral };
     }
 

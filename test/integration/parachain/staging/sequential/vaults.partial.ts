@@ -11,12 +11,13 @@ import {
     GovernanceCurrency,
     AssetRegistryAPI,
     DefaultAssetRegistryAPI,
+    DefaultTransactionAPI,
 } from "../../../../../src/index";
 
 import { createSubstrateAPI } from "../../../../../src/factory";
-import { VAULT_1_URI, VAULT_2_URI, PARACHAIN_ENDPOINT, VAULT_3_URI, ESPLORA_BASE_PATH } from "../../../../config";
+import { VAULT_1_URI, VAULT_2_URI, PARACHAIN_ENDPOINT, VAULT_3_URI, ESPLORA_BASE_PATH, SUDO_URI } from "../../../../config";
 import { newAccountId, WrappedCurrency, newVaultId } from "../../../../../src";
-import { getSS58Prefix, newMonetaryAmount } from "../../../../../src/utils";
+import { getSS58Prefix, newCurrencyId, newMonetaryAmount } from "../../../../../src/utils";
 import {
     getAUSDForeignAsset,
     getCorrespondingCollateralCurrenciesForTests,
@@ -27,6 +28,7 @@ import {
 
 export const vaultsTests = () => {
     describe("vaultsAPI", () => {
+        let sudoAccount: KeyringPair;
         let vault_1: KeyringPair;
         let vault_1_ids: Array<InterbtcPrimitivesVaultId>;
         let vault_2: KeyringPair;
@@ -56,7 +58,8 @@ export const vaultsTests = () => {
                 // also add aUSD collateral vaults if they exist (ie. the foreign asset exists)
                 collateralCurrencies.push(aUSD);
             }
-    
+            
+            sudoAccount = keyring.addFromUri(SUDO_URI);
             vault_1 = keyring.addFromUri(VAULT_1_URI);
             vault_1_ids = collateralCurrencies.map((collateralCurrency) =>
                 newVaultId(api, vault_1.address, collateralCurrency, wrappedCurrency)
@@ -141,6 +144,61 @@ export const vaultsTests = () => {
                 expect(collateralizationAfterDeposit.gt(collateralizationAfterWithdrawal)).toBe(true);
                 expect(collateralizationBeforeDeposit.toString()).toEqual(collateralizationAfterWithdrawal.toString());
             }
+        });
+
+        it("should be able to withdraw all collateral", async () => {
+            const vaults = await interBtcAPI.vaults.list();
+            // find vault with issued tokens, but zero to-be-issued tokens
+            const vaultExt = vaults.find((vault) => vault.toBeIssuedTokens.isZero() && vault.issuedTokens.toBig().gt(0));
+
+            if (vaultExt === undefined) {
+                throw Error("Precondition failure: Unable to find test vault to attempt withdraw all collateral");
+            }
+
+            const vaultAccountId = newAccountId(api, vaultExt.id.accountId.toHuman());
+            const collateralCurrency = await currencyIdToMonetaryCurrency(api, vaultExt.id.currencies.collateral);
+            
+            // give enough wrapped tokens to vault to be able to self redeem all
+            const amountIssued = vaultExt.getBackedTokens();
+            // .toBig(0) returns amount in atomic units
+            const amountIssuedAtomic = amountIssued.toBig(0).toNumber();
+            const issuedCurrencyId = newCurrencyId(api, amountIssued.currency);
+
+            const vaultIssuedBalance = await interBtcAPI.tokens.balance(amountIssued.currency, vaultAccountId);
+            if (!vaultIssuedBalance.free.gt(amountIssued)) {
+                // set balance and wait for event
+                const result = await DefaultTransactionAPI.sendLogged(
+                    api,
+                    sudoAccount,
+                    api.tx.sudo.sudo(api.tx.tokens.setBalance(vaultAccountId, issuedCurrencyId , amountIssuedAtomic * 2, 0)),
+                    api.events.tokens.BalanceSet
+                );
+                expect(result.isCompleted).toBe(true);
+            }
+            
+            // find matching keyring
+            const vaultKR = (vault_1.address === vaultAccountId.toHuman())
+            ? vault_1
+            : (vault_2.address === vaultAccountId.toHuman())
+            ? vault_2
+            : vault_3;
+
+            // self redeem so vault has no more issued tokens
+            const result2 = await DefaultTransactionAPI.sendLogged(
+                api,
+                vaultKR,
+                api.tx.redeem.selfRedeem(vaultExt.id.currencies, amountIssuedAtomic),
+                api.events.redeem.ExecuteRedeem
+            );
+            expect(result2.isCompleted).toBe(true);
+            
+            const vaultInterBtcApi = new DefaultInterBtcApi(api, "regtest", vaultKR, ESPLORA_BASE_PATH);
+
+            // finally, withdraw all collateral
+            await submitExtrinsic(vaultInterBtcApi, await vaultInterBtcApi.vaults.withdrawAllCollateral(collateralCurrency));
+
+            const collateralAfter = await vaultInterBtcApi.vaults.getCollateral(vaultAccountId, collateralCurrency);
+            expect(collateralAfter.toBig().toNumber()).toEqual(0);
         });
     
         it("should getLiquidationCollateralThreshold", async () => {

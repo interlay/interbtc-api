@@ -184,6 +184,20 @@ export class DefaultNominationAPI implements NominationAPI {
         const parsedNonce = api.createType("Index", definedNonce);
         return api.tx.nomination.withdrawCollateral(vaultId, amountAsPlanck, parsedNonce);
     }
+    
+    static async buildWithdrawAllCollateralExtrinsic(
+        api: ApiPromise,
+        rewardsAPI: RewardsAPI,
+        vaultAccountId: AccountId,
+        collateralCurrency: Currency,
+        wrappedCurrency: Currency,
+        nonce?: number
+    ): Promise<SubmittableExtrinsic<"promise", ISubmittableResult>> {
+        const vaultId = newVaultId(api, vaultAccountId.toString(), collateralCurrency, wrappedCurrency);
+        const definedNonce = nonce ? nonce : await rewardsAPI.getStakingPoolNonce(collateralCurrency, vaultAccountId);
+        const parsedNonce = api.createType("Index", definedNonce);
+        return api.tx.nomination.withdrawCollateral(vaultId, null, parsedNonce);
+    }
 
     async withdrawCollateral(
         vaultAccountId: AccountId,
