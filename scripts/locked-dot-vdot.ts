@@ -39,13 +39,13 @@ type ReservedBalanceData = {
     "reserved": BN;
 }
 
-type ReservedBalance = {
-    // currency symbol
+type TokenBalance = {
+    // token symbol
     [key: string]: string;
 };
 
 type UnderlyingBalance = {
-    // currency symbol
+    // token symbol
     [key: string]: {
         locked: string;
         rateApplied: string;
@@ -54,7 +54,7 @@ type UnderlyingBalance = {
 
 type AccountsMap = {
     [key: string]: {
-        reserved: ReservedBalance;
+        reserved: TokenBalance;
         underlying?: UnderlyingBalance;
     };
 };
@@ -64,18 +64,19 @@ type LendTokenRate = {
     [key: string]: Big
 };
 
+// first key is account id, collateral values are in planck
+type OutputFormat = {
+    [key: string]: TokenBalance;
+};
+
+// Run from project root folder with `npx tsx ./scripts/locked-dot-vdot.ts [options]`
+// eg. `npx tsx ./scripts/locked-dot-vdot.ts --block-hash 0xb541ad774ba9e8d35d9551a3b6580e813990cd17abe1d8dcc1bde3a0d6f43348`
 const argsPromise = yargs(hideBin(process.argv))
-    .option("block-number", {
-        description: "Block number at which to query, defaults to latest block.",
-        number: true,
-        type: "number",
-        demandOption: false,
-        alias: "b"
-    })
     .option("block-hash", {
-        description: "Block hash at which to query, defaults to latest block. Must be prefixed with '0x' and have a length of 66.",
+        // eslint-disable-next-line max-len
+        description: "Block hash at which to query, defaults to latest block. Must be prefixed with '0x' and have a length of 66. eg. Last block on March 31, 2024, has the hash 0xb541ad774ba9e8d35d9551a3b6580e813990cd17abe1d8dcc1bde3a0d6f43348",
         type: "string",
-        alias: "h"
+        alias: "b"
     })
     .option("output-file", {
         description: "Which file to write json results to, defaults to 'output-{blockhash}.json'",
@@ -138,7 +139,7 @@ const organizeReservedBalances = (data: ReservedBalanceData[]): AccountsMap => {
         const accountId = entry.accountId.toHuman();
         const symbol = entry.symbol;
         const reservedString = entry.reserved.toString();
-        const reservedBalance: ReservedBalance = {};
+        const reservedBalance: TokenBalance = {};
         reservedBalance[symbol] = reservedString;
 
         if (!map[accountId]) {
@@ -162,6 +163,27 @@ const organizeReservedBalances = (data: ReservedBalanceData[]): AccountsMap => {
 };
 
 const isLendTokenSymbol = (symbol: string): boolean => symbol.startsWith("q");
+
+const transformEnrichedToOutput = (enrichedData: AccountsMap): OutputFormat => {
+    const output: OutputFormat = {};
+    for (const [account, data] of Object.entries(enrichedData)) {
+        const {reserved, underlying} = data;
+        const collateral: TokenBalance = {};
+        for(const token of ["DOT", "VDOT"]) {
+            const reservedPlanck = BigInt(reserved[token] || 0);
+            const lockedPlanck = underlying ? BigInt(underlying[token]?.locked || 0) : BigInt(0);
+            const totalCollateralPlanck = reservedPlanck + lockedPlanck;
+
+            if (totalCollateralPlanck > 0) {
+                collateral[token] = totalCollateralPlanck.toString();
+            }
+        }
+
+        output[account] = collateral;
+    }
+
+    return output;
+};
 
 // warning! mutates dataByAccountId
 const enrichWithUnderlyingLocked = (dataByAccountId: AccountsMap, rates: LendTokenRate) => {
@@ -245,8 +267,6 @@ const main = async (): Promise<void> => {
 
     const blockhash = (args.blockHash) 
     ? args.blockHash
-    : (args.blockNumber) 
-    ? (await api.query.system.blockHash(args.blockNumber)).toString()
     : (await api.query.system.number()
         .then((currentProcessingNumber) => api.query.system.blockHash(currentProcessingNumber.toNumber() - 1))
     ).toString();
@@ -258,16 +278,14 @@ const main = async (): Promise<void> => {
     const dataByAccountId = organizeReservedBalances(reservedBalancesData);
 
     const rates = await getLendTokenRates(api, blockhash);
-    console.log(`Applying lendtoken exchange rates: ${JSON.stringify(rates, null, 2)}`);
-
     const enrichedData = enrichWithUnderlyingLocked(dataByAccountId, rates);
 
-    console.log(`Found data for ${Object.keys(enrichedData).length} accounts.`);
+    const outputFormatted = transformEnrichedToOutput(enrichedData);
 
     let writeFilePromise = Promise.resolve();
     if (!args.printOnly) {
         const outFilename = args.outputFile || `output-${blockhash}.json`;
-        writeFilePromise = fsp.writeFile(outFilename, JSON.stringify(enrichedData, null, 2), "utf-8");
+        writeFilePromise = fsp.writeFile(outFilename, JSON.stringify(outputFormatted, null, 2), "utf-8");
     } else {
         // print to console
         console.log(JSON.stringify(enrichedData, null, 2));
