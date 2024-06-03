@@ -38,12 +38,18 @@ main().catch((err) => {
 });
 
 async function setAllClientReleases(api: ApiPromise, baseUrl: string, runtimeName: string) {
-    const checksumFile = await fetch(baseUrl + "sha256sums.txt").then((res) => {
-        if (!res.ok) {
-            throw new Error("Bad response from server");
-        }
-        return res.text();
-    });
+    let checksumFile;
+    try {
+        checksumFile = await fetch(baseUrl + "sha256sums.txt").then((res) => {
+            if (!res.ok) {
+                throw new Error("Bad response from server");
+            }
+            return res.text();
+        });
+    } catch (error) {
+        console.error("Error fetching checksum file:", error);
+        return [];
+    }
 
     const regex = new RegExp(
         "([a-f0-9]+)\\s*[.]/((oracle|vault|faucet)-parachain-metadata-" + runtimeName + ")\n",
@@ -93,11 +99,16 @@ async function main(): Promise<void> {
     const parachainVersion = args["parachain-version"];
     console.log(`Downloading parachain runtime (${parachainVersion})...`);
     const runtimeFileName = `${args["runtime-name"]}_runtime_parachain.compact.compressed.wasm`;
-    // NOTE: fetch flagged as experimental, not sure if there is a better alternative
-    const wasmRuntime = await fetch(`${parachainRepo}/releases/download/${parachainVersion}/${runtimeFileName}`);
 
-    if (!wasmRuntime.ok) {
-        throw wasmRuntime.statusText;
+    let wasmRuntime;
+    try {
+        wasmRuntime = await fetch(`${parachainRepo}/releases/download/${parachainVersion}/${runtimeFileName}`);
+        if (!wasmRuntime.ok) {
+            throw wasmRuntime.statusText;
+        }
+    } catch (error) {
+        console.error("Error fetching WASM runtime:", error);
+        return;
     }
 
     const wasmRuntimeRaw = await wasmRuntime.arrayBuffer();
@@ -108,16 +119,20 @@ async function main(): Promise<void> {
     const clientsVersion = args["clients-version"];
     const clientsBaseUrl = `${clientsRepo}/releases/download/${clientsVersion}/`;
 
-    const paraApi = await createSubstrateAPI(args["parachain-endpoint"]);
+    try {
+        const paraApi = await createSubstrateAPI(args["parachain-endpoint"]);
 
-    const batched = paraApi.tx.utility.batchAll(
-        [paraApi.tx.parachainSystem.authorizeUpgrade(codeHash, true)].concat(
-            await setAllClientReleases(paraApi, clientsBaseUrl, args["runtime-name"])
-        )
-    );
+        const batched = paraApi.tx.utility.batchAll(
+            [paraApi.tx.parachainSystem.authorizeUpgrade(codeHash, true)].concat(
+                await setAllClientReleases(paraApi, clientsBaseUrl, args["runtime-name"])
+            )
+        );
 
-    const title = `Runtime Upgrade ${parachainVersion}`;
-    printDiscordProposal(title, batched, args["parachain-endpoint"], paraApi);
+        const title = `Runtime Upgrade ${parachainVersion}`;
+        printDiscordProposal(title, batched, args["parachain-endpoint"], paraApi);
 
-    await paraApi.disconnect();
+        await paraApi.disconnect();
+    } catch (error) {
+        console.error("Error with Polkadot API:", error);
+    }
 }
